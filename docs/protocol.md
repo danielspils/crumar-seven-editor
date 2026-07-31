@@ -137,10 +137,13 @@ tun=440;glb=0,1,1,0,0,1,0,1,0;wfp=00000000
 
 The nine `glb` slots correspond, in order, to the editor's home-page dropdowns: Channel,
 Alt. Channel, Send CC, Send PC, Midi Soft-Thru, Sustain Polarity, Volume Type, Velocity
-Curve, Memory Protect. This ordering is inferred from DOM order and is **still UNVERIFIED as a
-whole**, but two slots are pinned empirically: **index 2 = Send CC** (captured `0x30` frame) and
-**index 8 = Memory Protect** (toggling it OFF→ON moved slot 8 from 0 to 1, nothing else). Both
-match the assumed order. Leave `orderUnverified` until all nine names are pinned.
+Curve, Memory Protect. A full nine-index sweep confirmed that **`0x30 <index>` addresses
+`glb[index]` 1:1 for all nine slots** — each index moved exactly its own slot (snapshot then
+restored), so the set-global index and the get-globals array position are the same numbering, no
+permutation. The **name↔index mapping is still UNVERIFIED as a whole**; only two names are pinned
+against the display: **index 2 = Send CC** (captured `0x30` frame) and **index 8 = Memory
+Protect** (toggling it OFF→ON moved slot 8, nothing else). Both match the assumed DOM order. Keep
+`orderUnverified` until all nine names are pinned against the panel.
 
 `glb` values are **not uniformly 0-based dropdown indices** — the encoding is per-field and
 partly unknown. Slot 1 reads `1` while Alt. Channel displays "Ch. 1", so that field is offset or

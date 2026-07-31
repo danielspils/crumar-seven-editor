@@ -207,7 +207,7 @@
     "format": "semicolon-delimited key=value",
     "keys": {
       "tun": { "meaning": "global tuning Hz", "range": [430, 450], "note": "changing tuning needs a reboot to take effect" },
-      "glb": { "meaning": "nine globals, each set individually via SET_GLOBAL (0x30) by index", "setGlobalFrame": "F0 73 26 14 30 <index> <value> F7; ack 0x31 echoes index only; no 0x00 pad", "order": ["Channel", "Alt. Channel", "Send CC", "Send PC", "Midi Soft-Thru", "Sustain Polarity", "Volume Type", "Velocity Curve", "Memory Protect"], "orderUnverified": true, "confirmedSlots": { "2": "Send CC", "8": "Memory Protect" }, "valueEncoding": "per-field, not uniformly a 0-based index; e.g. slot 1 (Alt. Channel) reads 1 but displays 'Ch. 1'. UNKNOWN per field." },
+      "glb": { "meaning": "nine globals, each set individually via SET_GLOBAL (0x30) by index", "setGlobalFrame": "F0 73 26 14 30 <index> <value> F7; ack 0x31 echoes index only; no 0x00 pad", "indexAddressingVerified": "0x30 <index> maps 1:1 to glb array position for all nine slots (nine-index sweep, each index moved exactly its own slot)", "order": ["Channel", "Alt. Channel", "Send CC", "Send PC", "Midi Soft-Thru", "Sustain Polarity", "Volume Type", "Velocity Curve", "Memory Protect"], "orderUnverified": true, "confirmedNames": { "2": "Send CC", "8": "Memory Protect" }, "confirmedNamesNote": "index->name pinned against the display for these two only; the other seven are assumed from DOM order", "valueEncoding": "per-field, not uniformly a 0-based index; e.g. slot 1 (Alt. Channel) reads 1 but displays 'Ch. 1'. Store raw values; UNKNOWN per field." },
       "wfp": { "meaning": "Wi-Fi password, plaintext", "redact": true }
     }
   }
