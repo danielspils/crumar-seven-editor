@@ -19,3 +19,11 @@ Thumbs.db
 
 # NOTE: captures/ is intentionally NOT ignored.
 # Raw MIDI logs are the project's ground truth (Rule 2) and must be tracked.
+
+# Secrets — never commit a raw globals dump (Rule 6).
+# The globals reply carries wfp, the instrument's Wi-Fi password in plaintext.
+# Redaction is enforced in code; these patterns are a backstop only.
+*globals*.raw
+*globals*.dump
+*.globals.json
+raw-globals*

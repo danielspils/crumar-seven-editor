@@ -2,8 +2,9 @@
 
 Cross-platform desktop editor for the **Crumar Seven**, a physical-modeling stage
 piano. The Seven exposes its full parameter set over class-compliant USB-MIDI
-SysEx. There is **no published protocol spec** — this project reverse-engineers
-the protocol from captured traffic.
+SysEx. There is **no published protocol spec** — this project reverse-engineered
+the protocol by interrogating the device directly. The instrument turned out to
+be self-describing (ASCII payloads), so it describes its own parameter set.
 
 Cross-platform desktop app (Electron, macOS + Windows). Plain JavaScript.
 MIT-licensed and public.
@@ -23,13 +24,21 @@ Treat **all documentation as stale and unverified** — the manual, forum posts,
 web-editor labels, everything. Documentation may suggest what to look for in a
 capture; it may never stand in for one.
 
-### 2. Protocol facts come ONLY from `captures/`
+### 2. Protocol facts come from the device: `docs/protocol.md` and `schema/seven-1.37.json`
 
-Every claim about a SysEx frame must be traceable to a specific file in
-`captures/`. **Never infer, assume, or extrapolate a frame.** If a byte's
-meaning is not demonstrated by a capture, it is `UNKNOWN` — mark it `UNKNOWN`
-and say so explicitly. "Probably", "likely by analogy", and "the manual implies"
-are not evidence. No capture, no fact.
+Both files were derived from **live device interrogation on FW 1.37** — a
+stronger source than inference from captures, because the instrument describes
+itself. They are the authority on the protocol and the parameter map.
+
+`captures/` stays for future recordings but is **legitimately empty and is no
+longer a precondition** for a protocol fact.
+
+The spirit of the rule is unchanged: **anything not demonstrated by the device
+is marked `UNKNOWN` and never guessed.** "Probably", "likely by analogy", and
+"the manual implies" are not evidence. Both files already use this convention —
+`valuesUnverified`, `ccUnverified`, `orderUnverified` flags, plus an open-items
+list in `docs/protocol.md`. Preserve those flags; clear one only when the device
+demonstrates the answer, and never invent a fact to fill a gap.
 
 ### 3. No code from the manufacturer's web editor
 
@@ -52,13 +61,21 @@ overwrites the raw hex** — decoded views live *alongside* the raw bytes, never
 place of them. If a decode is later found wrong, the raw bytes are still there to
 re-decode. Preserve the raw, always.
 
+### 6. The globals reply leaks a plaintext secret — redact `wfp`, never commit it
+
+The globals reply (`0x33`) includes **`wfp`, the instrument's Wi-Fi password in
+plaintext**. Any logger, capture writer, error reporter, or crash handler **must
+redact `wfp`**, and a **raw globals dump must never be committed** to this public
+repo. Redaction lives in code; `.gitignore` is only a backstop. When in doubt,
+mask it.
+
 ---
 
 ## Layout
 
 ```
-docs/        parameter-reference.md, protocol.md (decoded/human-facing docs)
-captures/    raw MIDI logs — the only source of protocol truth
+docs/        manual-notes.md (stale v1.22 manual), protocol.md (v1.37 spec)
+captures/    raw MIDI logs — empty for now, kept for future recordings
 schema/      seven-<firmware>.json — version-gated parameter maps
 tools/       capture-hook.js, probe.js — capture & probing utilities
 src/         application code (none yet)
@@ -66,5 +83,8 @@ src/         application code (none yet)
 
 ## Status
 
-Scaffolding stage. No protocol or UI code written yet. `captures/` is empty, so
-per Rule 2 **every byte of the protocol is currently `UNKNOWN`.**
+The protocol is **known**, not unknown: `docs/protocol.md` and
+`schema/seven-1.37.json` document FW 1.37 from live interrogation — frame format,
+26 opcodes, 110 parameters, 24 sounds, globals. Remaining gaps are tracked as the
+open-items list in `docs/protocol.md` and are flagged `UNKNOWN` in place. No UI
+code yet; `tools/probe.js` is the current work.
