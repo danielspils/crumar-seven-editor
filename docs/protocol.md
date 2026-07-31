@@ -91,7 +91,16 @@ property of the protocol: **the device describes itself.**
 | `cc` | Assigned MIDI CC, or `-1` if unassigned |
 | `max` | Maximum value; minimum is 0 throughout |
 | `value` | Current value at time of query |
-| `flag` | Always `0` in every observed response — purpose UNKNOWN |
+| `flag` | **`1` = fixed panel CC** (cannot be reassigned); **`0` = user-assignable** CC slot |
+
+**`flag` — verified across a full 0–109 enumeration.** It is `1` for exactly the 22 parameters
+carrying a fixed panel CC (`veq_*`, `fx1_*`, `fx2_*`, `amp_sw`, `amp_dr`, `rev_sw`, `rev_lv`,
+`rev_dc`, `pad_*`) and `0` for all others. This matches the manual's rule that panel controls
+have unchangeable fixed CCs while the rest are freely assignable. A `flag=0` slot may still
+hold a live CC assignment — see `pdl_exp` below. Per-parameter values are in the schema.
+
+The ASCII text of a `0x15` reply is preceded by a leading `0x00` pad byte (strip it before
+parsing the first field). Same for the `0x33` globals reply.
 
 Values are plain 0–max in a single byte. **No MSB/LSB split anywhere.** Writes clamp at max
 rather than wrapping.
@@ -162,12 +171,16 @@ The July 2021 manual documents v1.22. On v1.37:
 
 ## Open items
 
-1. `flag` (8th spec field) is `0` for all 110 parameters. Purpose UNKNOWN.
-2. `pdl_exp` CC values look wrong: `exp_fn` reports cc `1`, `exp_mn` cc `0`, `exp_mx` cc `1`.
-   Every other unassigned parameter reports `-1`. Either these are genuinely assigned to
-   CC 0/1 or the field means something else for this group. UNVERIFIED.
+1. ~~`flag` (8th spec field)~~ **CLOSED (by read, no writes).** `flag` is **not** always `0`:
+   it is `1` for the 22 fixed-panel-CC parameters and `0` for the rest. `flag=1` = fixed CC,
+   `flag=0` = user-assignable. See the `0x15` spec table above; per-parameter values in schema.
+2. ~~`pdl_exp` CC values~~ **RESOLVED.** `pdl_exp` params have `flag=0` (user-assignable) while
+   holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
+   with a current assignment, not an inconsistency — no contradiction with the `-1` seen on
+   unassigned params. `ccUnverified` dropped from these three in the schema.
 3. `0x46` (set sound), `0x30` (set global), `0x70`/`0x72` (string, action) are named but their
-   payload formats are unobserved — all involve writes, so test deliberately.
+   payload formats are unobserved — all involve writes, so test deliberately. (`0x20` set-param
+   is now verified — see above.)
 4. Whether the device pushes unsolicited notifications when panel encoders move, and on which
    opcode. UNVERIFIED — the panel does emit ordinary MIDI CC, observed during capture.
 5. Whether `.bin` preset export shares this layout. Untested.

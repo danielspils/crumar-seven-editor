@@ -108,8 +108,13 @@ function idBytes(id) {
 }
 
 function payloadText(msg) {
-  // Strip header+opcode and trailing F7, decode as ASCII/latin1.
-  return Buffer.from(msg.slice(5, -1)).toString('latin1');
+  // Strip header+opcode and trailing F7. ASCII text replies (0x15 spec, 0x33
+  // globals) carry a leading 0x00 pad byte before the text — drop it so the
+  // first field isn't prefixed with a NUL (which made id parse as NaN and the
+  // tun key never match). Binary replies are read byte-wise, not via this path.
+  let p = msg.slice(5, -1);
+  if (p.length && p[0] === 0x00) p = p.slice(1);
+  return Buffer.from(p).toString('latin1');
 }
 
 function sleep(ms) {
@@ -309,8 +314,9 @@ class Seven {
 
   async currentSound() {
     const m = await this.request(OP.RQ_CURRENT_SOUND, [], OP.RP_CURRENT_SOUND);
-    const p = m.slice(5, -1);
-    return (p[1] << 7) | p[2];
+    // 0x45 payload is [<binary value>, <ASCII digit(s)>]. Byte 5 is the value;
+    // never combine it with the ASCII byte (that gave 0x31<<7 = 6272 for sound 1).
+    return m[5];
   }
 
   // Enumerate 0..MAX_VALID_PARAM_ID with a re-request pass for dropped replies.
@@ -826,7 +832,12 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('error:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('error:', err.message);
+    process.exit(1);
+  });
+}
+
+// Exported for unit-testing the pure parsers without a device attached.
+module.exports = { payloadText, parseParamSpec, parseGlobals, Seven };
