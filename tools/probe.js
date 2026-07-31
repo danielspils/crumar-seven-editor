@@ -24,9 +24,10 @@
 //   * set-global (0x30) IS used, but only for the glb-ordering probe. It sets one
 //     global by index (0x30 <index> <value>), and the probe changes exactly one
 //     slot at a time, confirms the change by read-back, then restores it. A global
-//     is never left modified: restore runs on normal exit, on error, and on
-//     SIGINT, and the process exits non-zero with manual instructions if it can't.
-//     Memory Protect is always left enabled. `tun` is never a probe target.
+//     is never left modified: every index is restored to its pre-run snapshot
+//     value (never a literal), and restore runs on normal exit, on error, and on
+//     SIGINT (exiting non-zero with manual instructions if it can't). `tun` is
+//     never a probe target.
 //
 // The SET-PARAMETER (0x20) and SET-GLOBAL (0x30) frames are both VERIFIED from
 // editor captures (see docs/protocol.md). Verification of a write is an actual
@@ -492,8 +493,6 @@ async function probeFlag(dev) {
   }
 }
 
-const MEMORY_PROTECT_NAME = 'Memory Protect';
-
 // 2. `glb` slot ordering & per-field value encoding.
 // Sweep all nine indices: set each to a different valid value, confirm exactly
 // that slot moves, restore. This pins index↔slot addressing and reveals value
@@ -521,8 +520,8 @@ async function probeGlbOrdering(dev, schema) {
   const snapshot = (await dev.globals()).glb.slice();
   console.log(`  glb snapshot: [${snapshot.join(', ')}]`);
   console.log('  Sweeping all nine indices: set a different value, confirm only that slot moves, restore.');
-  console.log('  ⚠ This briefly toggles MIDI Channel, Alt. Channel and Memory Protect; each is restored,');
-  console.log('    and Memory Protect is guaranteed left enabled (=1). No preset is ever stored.');
+  console.log('  ⚠ This briefly changes several options (incl. MIDI Channel, Alt. Channel, Memory Protect).');
+  console.log('    Every index is restored to its pre-run snapshot value. No preset is ever stored.');
   const go = await ask('  Proceed? type "yes": ');
   if (go.toLowerCase() !== 'yes') { console.log('  Skipped.'); return; }
 
@@ -553,19 +552,11 @@ async function probeGlbOrdering(dev, schema) {
     console.log(`  [${index}] ${String(order[index]).padEnd(16)} ${clean ? '✓' : '·'} ${status}${restoredOk ? '' : '  ⚠ RESTORE FAILED'}`);
   }
 
-  // Full restore, then a hard guarantee that Memory Protect ends enabled.
+  // Restore every index to its pre-run snapshot value — including Memory Protect,
+  // which may deliberately be off. Never restore to a literal.
   const ok = await dev.restoreGlbIfDirty();
-  const mp = order.indexOf(MEMORY_PROTECT_NAME);
-  if (mp >= 0) {
-    const now = (await dev.globals()).glb;
-    if (now[mp] !== 1) {
-      console.log(`  Memory Protect (index ${mp}) is ${now[mp]}; forcing back to 1…`);
-      await dev.setGlobal(mp, 1);
-      await sleep(30);
-    }
-  }
   const finalGlb = (await dev.globals()).glb;
-  const good = ok && arraysEqual(finalGlb, snapshot) && (mp < 0 || finalGlb[mp] === 1);
+  const good = ok && arraysEqual(finalGlb, snapshot);
   console.log(`  glb restored: [${finalGlb.join(', ')}]  ${good ? '✓' : '✗ NOT FULLY RESTORED'}`);
   if (!good) {
     printManualRestore(snapshot);
@@ -654,10 +645,11 @@ async function runOpenItems(dev, schema, opts, which) {
     `(protected bank = ${PROTECTED_BANK}), and NEVER sends set-sound, string or`,
     'action opcodes.',
     '',
-    'Do NOT press Store on the instrument now. Every edit and every global change',
-    'is read back and restored — a global is never left modified, and Memory',
-    'Protect is left enabled. Results are printed for a human to record into',
-    'schema/protocol.md; this tool never edits them itself.',
+    'Advice: do NOT press Store on the instrument now (this is advice, not',
+    'enforced — Memory Protect may legitimately be off). Every edit and every',
+    'global change is read back and restored to its pre-run value; nothing is left',
+    'modified. Results are printed for a human to record into schema/protocol.md;',
+    'this tool never edits them itself.',
   ]);
   if (dev.writesEnabled) {
     const go = await ask('\nWrites are ENABLED. Type "yes" to proceed: ');
@@ -727,9 +719,8 @@ Options:
 Safety: this tool never stores a preset and never writes a preset bank
 (protected bank ${PROTECTED_BANK}); it never sends set-sound/string/action opcodes.
 Writes (edit-buffer 0x20, plus a set-global sweep for the glb probe) are gated
-behind --enable-writes, read back, and restored — a global is never left modified
-and Memory Protect is left enabled. It never edits docs/ or schema/ — you record
-findings.`);
+behind --enable-writes, read back, and restored to their pre-run values — nothing
+is left modified. It never edits docs/ or schema/ — you record findings.`);
 }
 
 async function main() {
