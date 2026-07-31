@@ -1,0 +1,8 @@
+{
+  "$comment": "Stub. Version-gated parameter map (Rule 4). Firmware v1.37 (2022-05-16). No parameters captured yet; per Rule 2 the map is empty until captures demonstrate entries.",
+  "firmware": "1.37",
+  "firmwareDate": "2022-05-16",
+  "schemaVersion": 0,
+  "status": "stub",
+  "parameters": []
+}
