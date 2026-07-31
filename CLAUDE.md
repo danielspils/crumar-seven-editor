@@ -105,8 +105,22 @@ docs/        manual-notes.md (stale v1.22 manual), protocol.md (v1.37 spec)
 captures/    raw MIDI logs — empty for now, kept for future recordings
 schema/      seven-<firmware>.json — version-gated parameter maps
 tools/       capture-hook.js, probe.js — capture & probing utilities
-src/         application code (none yet)
+assets/      seven-panel.svg — panel artwork, inlined into the DOM for id access
+fixtures/    generate.js + sample-library.json — DEMO data only, never evidence
+src/         Electron app: main.js, preload.js (the data-source swap point),
+             index.html, app.js, renderer.js (pure view), defaults.js
 ```
+
+Two fences on the new code, in the spirit of Rule 2:
+
+- **`fixtures/` is never evidence.** `sample-library.json` is generated demo data
+  (regenerate with `npm run fixtures`); nothing in it demonstrates anything about
+  the device.
+- **Parameter "defaults" in the UI are a heuristic, not device truth.** The schema
+  stores no per-parameter default (the `0x15` `value` field was current state, not
+  factory state). The UI's muted-at-default display uses `min(64, max)` from
+  `src/defaults.js` — the single place to change when real factory defaults are
+  captured from the device. Capturing them is an open item.
 
 ## Status
 
@@ -118,7 +132,17 @@ pedal CC); the one left is **enum labels** for `fx1_md`, `fx2_md`, `pha_st`,
 `amp_mo` — cosmetic, and it needs a human reading labels off the editor. Other gaps
 stay flagged `UNKNOWN` in place (see the open-items list in `docs/protocol.md`).
 
-No UI code yet. **Next step: design the patch file format** — the app's own format,
-not the instrument's `.bin`. All four features (backup, transfer, editing,
-visibility) route through it, so it gets designed before any of them are built. No
-hardware needed. Not started.
+A runnable Electron shell exists (`npm start`): panel strip (inlined SVG with
+addressable ids, LEDs lit from state), connection row (hardcoded disconnected),
+four-bank library list with modeled/sampled and missing-sound badges, and a
+two-column detail view (engine group + effects chain, switch-driven dimming,
+default-muted values, FX2-conditional sub-params). **Everything renders from
+`fixtures/sample-library.json` — there is no MIDI in the app**; when real MIDI
+arrives, only `src/preload.js` changes. Dev note: Electron must be ≥ a current
+major — macOS XProtect flags outdated Electron binaries as malware and trashes
+them (this bit us on v31; fixed on v43).
+
+**Next step: design the patch file format** — the app's own format, not the
+instrument's `.bin`. All four features (backup, transfer, editing, visibility)
+route through it, so it gets designed before any of them are built. No hardware
+needed. Not started.

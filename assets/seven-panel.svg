@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1950 210" width="1950" height="210" role="img" aria-label="Crumar Seven front panel" class="seven-panel readonly">
+  <title>Crumar Seven front panel</title>
+
+  <style>
+    .panel-bg  { fill: #2b2b2d; }
+    .knob-face { fill: #3a3a3d; stroke: #8e8e93; stroke-width: 2; }
+    .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
+    .knob-ptr  { stroke: #e8e8ea; stroke-width: 2.5; stroke-linecap: round; }
+    .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
+    .btn.on    { fill: #7d1418; }
+    .lbl       { fill: #e8e8ea; font-family: Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: .06em; text-anchor: middle; }
+    .lbl-sm    { fill: #c8c8cc; font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: .05em; text-anchor: middle; }
+    .lbl-alt   { fill: #d9c24a; font-family: Helvetica, Arial, sans-serif; font-size: 9px;  letter-spacing: .04em; text-anchor: middle; }
+    .lbl-cyan  { fill: #4fc3d9; }
+    .lbl-red   { fill: #d9534f; }
+    .lbl-blue  { fill: #5b8fd9; }
+    .led       { fill: #4a1416; stroke: #1a1a1c; stroke-width: .5; }
+    .led.on    { fill: #ff3b30; }
+    .led.amber { fill: #4a3a14; }
+    .led.amber.on { fill: #ffb020; }
+    .sw        { fill: #ececee; stroke: #6d6d72; stroke-width: 1; rx: 2; }
+    .sw-body   { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
+    .divider   { stroke: #46464a; stroke-width: 1; }
+    .readonly .btn, .readonly .knob-face, .readonly .sw { cursor: default; pointer-events: none; }
+  </style>
+
+  <rect class="panel-bg" x="0" y="0" width="1950" height="210" rx="6"/>
+
+  <g id="sec-volume">
+    <text class="lbl" x="72" y="30">VOLUME</text>
+    <g id="knob-volume">
+      <circle class="knob-face" cx="72" cy="105" r="34"/>
+      <circle class="knob-ring" cx="72" cy="105" r="42"/>
+      <line class="knob-ptr" x1="72" y1="105" x2="72" y2="76"/>
+    </g>
+    <rect x="38" y="168" width="68" height="17" rx="2" fill="#8e2f8e"/>
+    <text class="lbl-sm" x="72" y="181" fill="#ffffff">LOCAL OFF</text>
+  </g>
+
+  <g id="sec-reverb">
+    <text class="lbl" x="196" y="30">REVERB</text>
+    <g id="knob-reverb">
+      <circle class="knob-face" cx="196" cy="105" r="34"/>
+      <circle class="knob-ring" cx="196" cy="105" r="42"/>
+      <line class="knob-ptr" x1="196" y1="105" x2="196" y2="76"/>
+    </g>
+    <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
+    <text class="lbl-sm" x="292" y="50" text-anchor="start">LEVEL</text>
+    <circle class="led" id="led-rev-decay" cx="252" cy="70" r="5"/>
+    <text class="lbl-sm" x="292" y="74" text-anchor="start">DECAY</text>
+  </g>
+
+  <g id="sec-eq">
+    <g id="knob-bass-mid">
+      <circle class="knob-face" cx="380" cy="105" r="34"/>
+      <circle class="knob-ring" cx="380" cy="105" r="42"/>
+      <line class="knob-ptr" x1="380" y1="105" x2="380" y2="76"/>
+    </g>
+    <text class="lbl-sm" x="380" y="30">BASS</text>
+    <text class="lbl-sm" x="380" y="46">MIDDLE</text>
+
+    <g id="knob-treble-midf">
+      <circle class="knob-face" cx="500" cy="105" r="34"/>
+      <circle class="knob-ring" cx="500" cy="105" r="42"/>
+      <line class="knob-ptr" x1="500" y1="105" x2="500" y2="76"/>
+    </g>
+    <text class="lbl-sm" x="500" y="30">TREBLE</text>
+    <text class="lbl-sm" x="500" y="46">MID FREQ</text>
+  </g>
+
+  <line class="divider" x1="562" y1="26" x2="562" y2="184"/>
+
+  <g id="sec-clavi-tabs">
+    <rect class="sw-body" x="596" y="52" width="46" height="34"/>
+    <rect class="sw" x="604" y="60" width="30" height="18"/>
+    <rect class="sw-body" x="596" y="108" width="46" height="34"/>
+    <rect class="sw" x="604" y="116" width="30" height="18"/>
+    <text class="lbl-alt" x="619" y="164">CLAVI TABS</text>
+  </g>
+
+  <g id="sec-bank">
+    <text class="lbl" x="700" y="30">BANK</text>
+    <rect class="btn on" id="btn-bank" x="676" y="52" width="48" height="60"/>
+    <circle class="led amber on" id="led-bank-1" cx="748" cy="48"  r="5"/>
+    <text class="lbl-sm" x="766" y="52" text-anchor="start">1</text>
+    <circle class="led amber"    id="led-bank-2" cx="748" cy="70"  r="5"/>
+    <text class="lbl-sm" x="766" y="74" text-anchor="start">2</text>
+    <circle class="led amber"    id="led-bank-3" cx="748" cy="92"  r="5"/>
+    <text class="lbl-sm" x="766" y="96" text-anchor="start">3</text>
+    <circle class="led amber"    id="led-bank-4" cx="748" cy="114" r="5"/>
+    <text class="lbl-sm" x="766" y="118" text-anchor="start">4</text>
+  </g>
+
+  <g id="sec-presets">
+    <g id="preset-1">
+      <text class="lbl-sm" x="836" y="30">1</text>
+      <text class="lbl" x="836" y="48">TINES</text>
+      <rect class="btn on" x="800" y="60" width="72" height="62"/>
+      <circle class="led on" id="led-preset-1" cx="836" cy="76" r="5"/>
+      <text class="lbl-alt" x="836" y="142">BRILLIANT</text>
+    </g>
+    <g id="preset-2">
+      <text class="lbl-sm" x="920" y="30">2</text>
+      <text class="lbl" x="920" y="48">REEDS</text>
+      <rect class="btn" x="884" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-2" cx="920" cy="76" r="5"/>
+      <text class="lbl-alt" x="920" y="142">TREBLE</text>
+    </g>
+    <g id="preset-3">
+      <text class="lbl-sm" x="1004" y="30">3</text>
+      <text class="lbl" x="1004" y="48">EGRAND</text>
+      <rect class="btn" x="968" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-3" cx="1004" cy="76" r="5"/>
+      <text class="lbl-alt" x="1004" y="142">MEDIUM</text>
+    </g>
+    <g id="preset-4">
+      <text class="lbl-sm" x="1088" y="30">4</text>
+      <text class="lbl" x="1088" y="48">CLAVI</text>
+      <rect class="btn" x="1052" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-4" cx="1088" cy="76" r="5"/>
+      <text class="lbl-alt" x="1088" y="142">SOFT</text>
+    </g>
+    <g id="preset-5">
+      <text class="lbl-sm" x="1172" y="30">5</text>
+      <text class="lbl" x="1172" y="48">DX EP</text>
+      <rect class="btn" x="1136" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-5" cx="1172" cy="76" r="5"/>
+      <text class="lbl-alt" x="1172" y="142">C / D</text>
+    </g>
+    <g id="preset-6">
+      <text class="lbl-sm" x="1256" y="30">6</text>
+      <text class="lbl" x="1256" y="48">MKS EP</text>
+      <rect class="btn" x="1220" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-6" cx="1256" cy="76" r="5"/>
+      <text class="lbl-alt" x="1256" y="142">A / B</text>
+    </g>
+    <g id="preset-7">
+      <text class="lbl-sm" x="1340" y="30">7</text>
+      <text class="lbl" x="1340" y="48">VIBES</text>
+      <rect class="btn" x="1304" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-7" cx="1340" cy="76" r="5"/>
+    </g>
+    <g id="preset-8">
+      <text class="lbl-sm" x="1424" y="30">8</text>
+      <text class="lbl" x="1424" y="48">GRAND</text>
+      <rect class="btn" x="1388" y="60" width="72" height="62"/>
+      <circle class="led" id="led-preset-8" cx="1424" cy="76" r="5"/>
+    </g>
+  </g>
+
+  <line class="divider" x1="1486" y1="26" x2="1486" y2="184"/>
+
+  <g id="sec-fx1">
+    <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <text class="lbl-sm" x="1536" y="62">SELECT</text>
+    <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="48"/>
+    <circle class="led on" id="led-fx1-0" cx="1584" cy="72"  r="4.5"/>
+    <text class="lbl-sm" x="1598" y="76" text-anchor="start">TREM</text>
+    <circle class="led"    id="led-fx1-1" cx="1584" cy="94"  r="4.5"/>
+    <text class="lbl-sm" x="1598" y="98" text-anchor="start">PAN</text>
+    <circle class="led"    id="led-fx1-2" cx="1584" cy="116" r="4.5"/>
+    <text class="lbl-sm" x="1598" y="120" text-anchor="start">A-WHA</text>
+    <circle class="led"    id="led-fx1-3" cx="1584" cy="138" r="4.5"/>
+    <text class="lbl-sm" x="1598" y="142" text-anchor="start">P-WHA</text>
+    <text class="lbl" x="1560" y="34">FX1</text>
+    <g id="knob-fx1">
+      <circle class="knob-face" cx="1664" cy="110" r="28"/>
+      <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
+    </g>
+    <text class="lbl-sm" x="1664" y="62">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1664" y="76">RATE</text>
+  </g>
+
+  <g id="sec-amp">
+    <text class="lbl" x="1758" y="34">AMP / DRIVE</text>
+    <g id="knob-amp-drive">
+      <circle class="knob-face" cx="1758" cy="110" r="34"/>
+      <circle class="knob-ring" cx="1758" cy="110" r="42"/>
+      <line class="knob-ptr" x1="1758" y1="110" x2="1758" y2="81"/>
+    </g>
+  </g>
+
+  <g id="sec-pad">
+    <text class="lbl lbl-red" x="1866" y="34">PAD LEVEL</text>
+    <g id="knob-pad">
+      <circle class="knob-face" cx="1866" cy="110" r="34"/>
+      <circle class="knob-ring" cx="1866" cy="110" r="42"/>
+      <line class="knob-ptr" x1="1866" y1="110" x2="1866" y2="81"/>
+    </g>
+    <circle class="led" id="led-pad-sw" cx="1866" cy="166" r="5"/>
+    <text class="lbl-sm lbl-blue" x="1866" y="186">BLEND</text>
+  </g>
+</svg>

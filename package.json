@@ -6,7 +6,10 @@
   "license": "MIT",
   "type": "commonjs",
   "main": "src/main.js",
+  "productName": "Crumar Seven Editor",
   "scripts": {
+    "start": "electron .",
+    "fixtures": "node fixtures/generate.js",
     "capture": "node tools/capture-hook.js",
     "probe": "node tools/probe.js",
     "probe:open-items": "node tools/probe.js open-items"
@@ -16,5 +19,8 @@
   },
   "dependencies": {
     "@julusian/midi": "^3.1.1"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0"
   }
 }
