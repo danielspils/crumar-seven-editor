@@ -50,6 +50,26 @@ Verified: max parameter ID replies `F0 73 26 14 11 00 00 6E F7` → **0x6E = 110
 > IDs 0–109 are real. **ID 110 is a sentinel** — it returns a malformed spec with a garbage
 > key/label and nonsense numeric fields. Enumerate 0–109 and stop.
 
+## Writing a parameter value (`0x20`) — verified
+
+Captured from the editor dragging Master Volume (`veq_vol`, ID 68 = `0x44`) across its
+full range:
+
+```
+F0 73 26 14 20 00 <idHi> <idLo> <value> F7      set parameter <id> to <value>
+```
+
+Same `0x00, idHi, idLo` addressing as the read requests, then a **single value byte**
+(0–max; no MSB/LSB split, writes clamp at max). Each write drew a `0x23` reply echoing the
+new value, confirmed across a full 0→127 drag. This frame is **verified**, not inferred.
+
+### Get-value reply (`0x23`) — verified
+
+```
+<id>|<key>|<value>
+68|veq_vol|64
+```
+
 ## Payloads are ASCII
 
 Replies carry pipe-delimited ASCII text, not packed binary. This is the single most useful
