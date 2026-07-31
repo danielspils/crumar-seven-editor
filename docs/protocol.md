@@ -129,7 +129,7 @@ tun=440;glb=0,1,1,0,0,1,0,1,0;wfp=00000000
 | Key | Meaning |
 |---|---|
 | `tun` | Global tuning in Hz (430–450) |
-| `glb` | Nine option indices |
+| `glb` | Nine global options, each set individually by index via `0x30` (see below) |
 | `wfp` | **Wi-Fi password, plaintext** |
 
 > **`wfp` returns the instrument's Wi-Fi password in the clear.** Redact it from any log,
@@ -137,8 +137,30 @@ tun=440;glb=0,1,1,0,0,1,0,1,0;wfp=00000000
 
 The nine `glb` slots correspond, in order, to the editor's home-page dropdowns: Channel,
 Alt. Channel, Send CC, Send PC, Midi Soft-Thru, Sustain Polarity, Volume Type, Velocity
-Curve, Memory Protect. **This ordering is inferred from DOM order and is UNVERIFIED** —
-confirm by changing one setting and diffing the array before relying on it.
+Curve, Memory Protect. This ordering is inferred from DOM order and is **still UNVERIFIED as a
+whole**, but two slots are pinned empirically: **index 2 = Send CC** (captured `0x30` frame) and
+**index 8 = Memory Protect** (toggling it OFF→ON moved slot 8 from 0 to 1, nothing else). Both
+match the assumed order. Leave `orderUnverified` until all nine names are pinned.
+
+`glb` values are **not uniformly 0-based dropdown indices** — the encoding is per-field and
+partly unknown. Slot 1 reads `1` while Alt. Channel displays "Ch. 1", so that field is offset or
+1-based. Record raw values; do not assume value == displayed position.
+
+### Set one global (`0x30`) — verified
+
+Captured from the editor writing a global (Send CC toggled No, then Yes):
+
+```
+F0 73 26 14 30 <index> <value> F7      set global <index> to <value>
+F0 73 26 14 31 <index> F7              ack — echoes the index only
+
+out: f0 73 26 14 30 02 00 f7   →  in: f0 73 26 14 31 02 f7
+out: f0 73 26 14 30 02 01 f7   →  in: f0 73 26 14 31 02 f7
+```
+
+Sets **one** global, not the array. Index and value are single bytes immediately after the
+opcode — **no `0x00` pad** (unlike parameter addressing, which is `0x00, idHi, idLo`). Do not
+share an address encoder between them. The ack carries only the index.
 
 ## Bulk dump caveat
 
@@ -178,9 +200,9 @@ The July 2021 manual documents v1.22. On v1.37:
    holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
    with a current assignment, not an inconsistency — no contradiction with the `-1` seen on
    unassigned params. `ccUnverified` dropped from these three in the schema.
-3. `0x46` (set sound), `0x30` (set global), `0x70`/`0x72` (string, action) are named but their
-   payload formats are unobserved — all involve writes, so test deliberately. (`0x20` set-param
-   is now verified — see above.)
+3. `0x46` (set sound), `0x70`/`0x72` (string, action) are named but their payload formats are
+   unobserved — all involve writes, so test deliberately. (`0x20` set-param and `0x30`
+   set-global are now verified — see above.)
 4. Whether the device pushes unsolicited notifications when panel encoders move, and on which
    opcode. UNVERIFIED — the panel does emit ordinary MIDI CC, observed during capture.
 5. Whether `.bin` preset export shares this layout. Untested.

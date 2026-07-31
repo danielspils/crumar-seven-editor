@@ -21,20 +21,17 @@
 //     in particular the protected bank (PROTECTED_BANK = 1).
 //   * Edit-buffer writes (set-parameter, 0x20) are gated behind --enable-writes,
 //     read back after every write, and the original value is restored.
-//   * set-global (0x30) IS used, but only for the glb-ordering probe, and only
-//     as: validate framing with a zero-change identity write → change exactly
-//     one option → diff → restore. A global is never left modified: restore runs
-//     on normal exit, on error, and on SIGINT, and the process exits non-zero
-//     with manual instructions if it can't. `tun` is never a probe target
-//     (tuning needs a reboot to apply).
+//   * set-global (0x30) IS used, but only for the glb-ordering probe. It sets one
+//     global by index (0x30 <index> <value>), and the probe changes exactly one
+//     slot at a time, confirms the change by read-back, then restores it. A global
+//     is never left modified: restore runs on normal exit, on error, and on
+//     SIGINT, and the process exits non-zero with manual instructions if it can't.
+//     Memory Protect is always left enabled. `tun` is never a probe target.
 //
-// The SET-PARAMETER (0x20) frame is VERIFIED (docs/protocol.md — captured from the
-// editor). The SET-GLOBAL (0x30) payload is still an UNOBSERVED hypothesis,
-// isolated to one builder (_glbSetFrame). A wrong 0x30 frame would rewrite all
-// nine options at once, so the glb probe first does an identity write — writing
-// the current glb back unchanged — and refuses to proceed unless the device acks
-// AND the re-read is byte-identical. That way a mis-framed write is detected with
-// zero state change instead of scrambling every global. Review before hardware use.
+// The SET-PARAMETER (0x20) and SET-GLOBAL (0x30) frames are both VERIFIED from
+// editor captures (see docs/protocol.md). Verification of a write is an actual
+// value change plus read-back — never an identity write, which a device that
+// silently ignores a bad frame would pass. Review before hardware use.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -150,14 +147,14 @@ function parseParamSpec(text) {
 
 // Parse a 0x33 globals reply, REDACTING wfp. Never returns the password.
 function parseGlobals(text) {
-  const out = { tun: null, glb: [], glbCsv: '', wfp: WFP_REDACTED };
+  const out = { tun: null, glb: [], wfp: WFP_REDACTED };
   for (const pair of text.split(';')) {
     const eq = pair.indexOf('=');
     if (eq < 0) continue;
     const key = pair.slice(0, eq);
     const val = pair.slice(eq + 1);
     if (key === 'tun') out.tun = Number(val);
-    else if (key === 'glb') { out.glbCsv = val; out.glb = val.split(',').map(Number); }
+    else if (key === 'glb') out.glb = val.split(',').map(Number);
     else if (key === 'wfp') out.wfp = WFP_REDACTED; // never keep the real value
     else out[key] = val;
   }
@@ -362,43 +359,47 @@ class Seven {
     return { key: before.key, requested: value, readBack: after, confirmed: ok, before: before.value };
   }
 
-  // --- Globals write (0x30) — snapshot & restore for the glb-ordering probe --
+  // --- Globals write (0x30) — VERIFIED: sets ONE global by index -------------
   //
-  // The 0x30 payload layout is UNOBSERVED. Hypothesis: ASCII "glb=<v0..v8>",
-  // mirroring the 0x33 get format, touching ONLY the glb array — never `tun`
-  // (tuning needs a reboot to apply) and never `wfp`. If a capture shows a
-  // different layout, change ONLY this one builder.
-  _glbSetFrame(glbArray) {
-    const ascii = 'glb=' + glbArray.join(',');
-    const bytes = [];
-    for (const ch of ascii) bytes.push(ch.charCodeAt(0) & 0x7f);
-    return bytes;
+  //   F0 73 26 14 30 <index> <value> F7      set global <index> to <value>
+  //   F0 73 26 14 31 <index> F7              ack, echoes the index only
+  //
+  // Index and value are single bytes and go immediately after the opcode — there
+  // is NO 0x00 pad here (unlike parameter addressing, which is 0x00,idHi,idLo).
+  // Do not share an address encoder between the two. `tun`/`wfp` are never touched.
+  _setGlobalFrame(index, value) {
+    return [index & 0x7f, value & 0x7f];
   }
 
-  // Send set-global and await the 0x31 ack. The frame is sent regardless of the
-  // ack; returns true iff an ack arrived within the timeout.
-  async sendSetGlb(glbArray, { timeout = this.timeout } = {}) {
+  // Set one global; await the 0x31 ack (which echoes the index). Returns true iff
+  // the ack arrived AND echoed the index we sent. The frame is sent regardless.
+  async setGlobal(index, value, { timeout = this.timeout } = {}) {
     try {
-      await this.request(OP.RQ_SET_GLOBAL, this._glbSetFrame(glbArray), OP.RP_SET_GLOBAL, timeout);
-      return true;
+      const m = await this.request(
+        OP.RQ_SET_GLOBAL, this._setGlobalFrame(index, value), OP.RP_SET_GLOBAL, timeout
+      );
+      return m[5] === (index & 0x7f); // ack payload is the index at byte 5
     } catch {
       return false; // no ack within timeout
     }
   }
 
-  // Restore glb to the armed snapshot; clears the dirty flag once the device
-  // reads back equal. Returns false if it could not confirm.
+  // Restore glb to the armed snapshot, per index, and confirm by read-back.
+  // Clears the dirty flag once the whole array reads back equal.
   async restoreGlbIfDirty({ retries = 3 } = {}) {
     if (!this._dirtyGlb) return true;
     const target = this._dirtyGlb.slice();
-    for (let i = 0; i < retries; i++) {
-      try {
-        await this.sendSetGlb(target);
-        await sleep(40);
-        const now = (await this.globals()).glb;
-        if (arraysEqual(now, target)) { this._dirtyGlb = null; return true; }
-      } catch { /* fall through to retry */ }
-      await sleep(60);
+    for (let attempt = 0; attempt < retries; attempt++) {
+      const now = (await this.globals()).glb;
+      for (let i = 0; i < target.length; i++) {
+        if (now[i] !== target[i]) {
+          await this.setGlobal(i, target[i]);
+          await sleep(30);
+        }
+      }
+      const after = (await this.globals()).glb;
+      if (arraysEqual(after, target)) { this._dirtyGlb = null; return true; }
+      await sleep(40);
     }
     return false;
   }
@@ -491,23 +492,22 @@ async function probeFlag(dev) {
   }
 }
 
-// Targets for the glb probe. Different arity (2 vs 5 values) helps disambiguate a
-// framing bug that the zero-change identity write can't catch by itself.
-const GLB_TARGETS = {
-  sendcc: { name: 'Send CC', alt: (v) => (v === 0 ? 1 : 0) }, // 0/1 toggle
-  velocity: { name: 'Velocity Curve', alt: (v) => (v + 1) % 5 }, // 5 values
-};
+const MEMORY_PROTECT_NAME = 'Memory Protect';
 
-// 2. `glb` nine-slot ordering is inferred from editor DOM order — UNVERIFIED.
-async function probeGlbOrdering(dev, schema, opts) {
-  console.log('\n== Open item 2: `glb` slot ordering ==');
+// 2. `glb` slot ordering & per-field value encoding.
+// Sweep all nine indices: set each to a different valid value, confirm exactly
+// that slot moves, restore. This pins index↔slot addressing and reveals value
+// behaviour per field. set-global (0x30) framing is verified, so a "no change"
+// now means the value was out of range for that field, not a framing failure.
+async function probeGlbOrdering(dev, schema) {
+  console.log('\n== Open item 2: `glb` slot ordering & value encoding ==');
   const order = schema.globals.keys.glb.order;
   console.log('  Assumed order: ' + order.map((o, i) => `[${i}] ${o}`).join(', '));
 
   if (!dev.writesEnabled) {
     // Read-only fallback: you change one option on the panel, we diff.
     console.log('  (read-only mode — no set-global) Change ONE option on the instrument and we diff.');
-    console.log('  ⚠ Do NOT change MIDI Channel or Tuning; pick e.g. Send CC or Velocity Curve.');
+    console.log('  ⚠ Do NOT change Tuning; anything else is fine (SysEx is channel-independent).');
     const before = await dev.globals();
     console.log(`  glb before: [${before.glb.join(', ')}]`);
     await ask('  Change exactly one option on the instrument, then press Enter… ');
@@ -518,74 +518,66 @@ async function probeGlbOrdering(dev, schema, opts) {
     return;
   }
 
-  const target = GLB_TARGETS[opts.globalTarget];
-  if (!target) { console.log(`  unknown --global-target "${opts.globalTarget}" (sendcc|velocity); skipping.`); return; }
-  const slot = order.indexOf(target.name);
-  if (slot < 0) { console.log(`  "${target.name}" not in assumed order; skipping.`); return; }
-
-  console.log(`  Target: "${target.name}" (assumed slot ${slot}). Plan:`);
-  console.log('    a) validate 0x30 framing with a zero-change identity write (abort if it fails)');
-  console.log('    b) change only that option, diff, then restore');
-  console.log('  Note: set-global (0x30) payload is an UNOBSERVED hypothesis.');
+  const snapshot = (await dev.globals()).glb.slice();
+  console.log(`  glb snapshot: [${snapshot.join(', ')}]`);
+  console.log('  Sweeping all nine indices: set a different value, confirm only that slot moves, restore.');
+  console.log('  ⚠ This briefly toggles MIDI Channel, Alt. Channel and Memory Protect; each is restored,');
+  console.log('    and Memory Protect is guaranteed left enabled (=1). No preset is ever stored.');
   const go = await ask('  Proceed? type "yes": ');
   if (go.toLowerCase() !== 'yes') { console.log('  Skipped.'); return; }
 
-  // --- (a) Identity-write framing check — MANDATORY precondition ------------
-  // Write the current glb back unchanged. If the frame is well-formed the device
-  // acks and the re-read is byte-identical; if it is mis-framed we detect it here
-  // (differing re-read) instead of scrambling all nine options with a real change.
-  const snap = await dev.globals();
-  const original = snap.glb.slice();
-  const originalCsv = snap.glbCsv;
-  dev._dirtyGlb = original; // arm restore before ANY set-global leaves the wire
-  console.log(`  glb now: [${original.join(', ')}]  (csv "${originalCsv}")`);
-  console.log('  Identity write: sending the current glb CSV back unchanged…');
-  const acked = await dev.sendSetGlb(original);
-  await sleep(40);
-  const idRead = await dev.globals();
-  const identical = idRead.glbCsv === originalCsv;
-  console.log(`  ack=${acked ? 'yes' : 'NO'}  re-read ${identical ? 'byte-identical ✓' : `DIFFERS ✗ (now "${idRead.glbCsv}")`}`);
-  if (!(acked && identical)) {
-    if (identical) dev._dirtyGlb = null; // nothing changed; safe to disarm
-    console.log('  → 0x30 framing NOT validated. Aborting before any real change.');
-    console.log('     Identical-but-no-ack ⇒ set-global may simply not ack; a differing re-read ⇒ the');
-    console.log('     layout in _glbSetFrame() is wrong — fix it there, do not push a real change.');
-    throw new Error(`set-global framing unvalidated (ack=${acked}, identical=${identical})`);
-  }
-  console.log('  → framing validated with zero state change.');
+  dev._dirtyGlb = snapshot; // arm whole-array restore for the entire sweep
 
-  // --- (b) Change exactly one option ---------------------------------------
-  const cur = original[slot];
-  const next = target.alt(cur);
-  const modified = original.slice();
-  modified[slot] = next;
-  console.log(`  Changing slot ${slot} ("${target.name}") ${cur}→${next}…`);
-  await dev.sendSetGlb(modified);
-  await sleep(40);
-  const after = (await dev.globals()).glb;
-  console.log(`  glb after : [${after.join(', ')}]`);
+  const results = [];
+  for (let index = 0; index < snapshot.length; index++) {
+    const before = (await dev.globals()).glb;
+    const cur = before[index];
+    const alt = cur === 0 ? 1 : cur - 1; // minimal in-range neighbour, never negative
+    const acked = await dev.setGlobal(index, alt);
+    await sleep(30);
+    const after = (await dev.globals()).glb;
+    const moved = [];
+    for (let i = 0; i < after.length; i++) if (after[i] !== before[i]) moved.push(i);
+    const clean = moved.length === 1 && moved[0] === index;
+    // Restore this slot immediately.
+    await dev.setGlobal(index, cur);
+    await sleep(30);
+    const restored = (await dev.globals()).glb;
+    const restoredOk = arraysEqual(restored, before);
+    results.push({ index, name: order[index], cur, alt, sentValue: after[index], moved, clean, acked, restoredOk });
 
-  const moved = reportGlbDiff(original, after, order);
-  if (moved.length === 0) {
-    console.log('  → nothing changed despite validated framing — record this anomaly.');
-  } else if (moved.length === 1 && moved[0] === slot) {
-    console.log(`  → exactly slot ${slot} moved, as sent. Confirm "${target.name}" actually changed on the`);
-    console.log(`     instrument; if so, slot ${slot} = ${target.name} is CONFIRMED.`);
-  } else {
-    console.log(`  → UNEXPECTED: slots ${moved.join(', ')} moved (sent slot ${slot}). Re-run --global-target with a`);
-    console.log('     different arity to disambiguate, and record the true mapping.');
+    let status;
+    if (clean) status = `${cur}→${after[index]} (ack ${acked ? 'ok' : 'NO'})`;
+    else if (moved.length === 0) status = `NO CHANGE — value ${alt} likely out of range for this field (encoding unknown)`;
+    else status = `UNEXPECTED — slots ${moved.join(', ')} moved`;
+    console.log(`  [${index}] ${String(order[index]).padEnd(16)} ${clean ? '✓' : '·'} ${status}${restoredOk ? '' : '  ⚠ RESTORE FAILED'}`);
   }
 
-  // --- Restore no matter what the diff showed ------------------------------
+  // Full restore, then a hard guarantee that Memory Protect ends enabled.
   const ok = await dev.restoreGlbIfDirty();
-  const confirm = (await dev.globals()).glb;
-  const good = ok && arraysEqual(confirm, original);
-  console.log(`  glb restored: [${confirm.join(', ')}]  ${good ? '✓' : '✗ NOT RESTORED'}`);
-  if (!good) {
-    printManualRestore(original);
-    throw new Error('failed to restore glb after the ordering probe');
+  const mp = order.indexOf(MEMORY_PROTECT_NAME);
+  if (mp >= 0) {
+    const now = (await dev.globals()).glb;
+    if (now[mp] !== 1) {
+      console.log(`  Memory Protect (index ${mp}) is ${now[mp]}; forcing back to 1…`);
+      await dev.setGlobal(mp, 1);
+      await sleep(30);
+    }
   }
-  console.log('  RESULT: record the confirmed slot; clear orderUnverified only when all nine are pinned.');
+  const finalGlb = (await dev.globals()).glb;
+  const good = ok && arraysEqual(finalGlb, snapshot) && (mp < 0 || finalGlb[mp] === 1);
+  console.log(`  glb restored: [${finalGlb.join(', ')}]  ${good ? '✓' : '✗ NOT FULLY RESTORED'}`);
+  if (!good) {
+    printManualRestore(snapshot);
+    throw new Error('failed to fully restore glb after the sweep');
+  }
+
+  const clean = results.filter((r) => r.clean).length;
+  console.log(`\n  ${clean}/9 indices moved exactly their own slot — set-global addresses glb by index (0x30 <index> <value>).`);
+  console.log('  Confirmed against the display so far: index 2 = Send CC, index 8 = Memory Protect.');
+  console.log('  Value encoding is per-field and NOT uniformly a 0-based index (e.g. Alt. Channel reads 1');
+  console.log('  but displays "Ch. 1"). Record raw values; do not assume value == displayed position.');
+  console.log('  RESULT: keep orderUnverified until all nine NAMES are pinned against the panel.');
 }
 
 // 3. Enum labels for fx1_md, fx2_md, pha_st, amp_mo assumed from manual — UNVERIFIED.
@@ -655,16 +647,16 @@ async function runOpenItems(dev, schema, opts, which) {
   banner([
     'OPEN-ITEMS PROBE — read this before continuing',
     '',
-    'This session issues edit-buffer writes (set-parameter 0x20), a reversible',
-    'set-global for the glb probe (validate framing via a zero-change identity',
-    'write → change one option → restore), and ordinary MIDI CC for the pedal',
-    'probe. It NEVER stores a preset, NEVER writes',
-    `any preset bank (protected bank = ${PROTECTED_BANK}), and NEVER sends`,
-    'set-sound, string or action opcodes.',
+    'This session issues edit-buffer writes (set-parameter 0x20), a verified',
+    'set-global sweep for the glb probe (per index: change one value, confirm',
+    'only that slot moves, restore), and ordinary MIDI CC for the pedal probe.',
+    'It NEVER stores a preset, NEVER writes any preset bank',
+    `(protected bank = ${PROTECTED_BANK}), and NEVER sends set-sound, string or`,
+    'action opcodes.',
     '',
-    'Keep Memory Protect ON and do NOT press Store on the instrument now.',
-    'Every edit and the one global change are read back and restored — a global',
-    'is never left modified. Results are printed for a human to record into',
+    'Do NOT press Store on the instrument now. Every edit and every global change',
+    'is read back and restored — a global is never left modified, and Memory',
+    'Protect is left enabled. Results are printed for a human to record into',
     'schema/protocol.md; this tool never edits them itself.',
   ]);
   if (dev.writesEnabled) {
@@ -680,7 +672,7 @@ async function runOpenItems(dev, schema, opts, which) {
   else { console.error(`unknown open-item "${which}" (flag|glb|enums|pedal|all)`); return; }
 
   if (run.flag) await probeFlag(dev);
-  if (run.glb) await probeGlbOrdering(dev, schema, opts);
+  if (run.glb) await probeGlbOrdering(dev, schema);
   if (run.enums) await probeEnums(dev, schema);
   if (run.pedal) await probePedalCc(dev, schema, opts.channel);
 
@@ -694,7 +686,7 @@ async function runOpenItems(dev, schema, opts, which) {
 function parseArgs(argv) {
   const opts = {
     _: [], in: null, out: null, timeout: 600, channel: 0,
-    globalTarget: 'sendcc', enableWrites: false, verbose: false,
+    enableWrites: false, verbose: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -702,7 +694,6 @@ function parseArgs(argv) {
     else if (a === '--out') opts.out = argv[++i];
     else if (a === '--timeout') opts.timeout = Number(argv[++i]);
     else if (a === '--channel') opts.channel = Number(argv[++i]);
-    else if (a === '--global-target') opts.globalTarget = argv[++i];
     else if (a === '--enable-writes') opts.enableWrites = true;
     else if (a === '--verbose' || a === '-v') opts.verbose = true;
     else if (a === '--help' || a === '-h') opts.help = true;
@@ -727,8 +718,7 @@ Commands:
 Options:
   --in <name|idx>         MIDI input port (default: auto-detect Seven/Crumar/GSi)
   --out <name|idx>        MIDI output port (default: auto-detect)
-  --enable-writes         Allow edit-buffer writes (0x20) and CC. Off by default.
-  --global-target <t>     glb-probe target: sendcc (2 values, default) | velocity (5)
+  --enable-writes         Allow edit-buffer writes (0x20), set-global, and CC. Off by default.
   --channel <n>           MIDI channel 0..15 for the pedal-CC probe (default 0)
   --timeout <ms>          Per-request reply timeout (default 600)
   --verbose, -v           Print every frame sent and any unmatched frame
@@ -736,9 +726,10 @@ Options:
 
 Safety: this tool never stores a preset and never writes a preset bank
 (protected bank ${PROTECTED_BANK}); it never sends set-sound/string/action opcodes.
-Writes (edit-buffer 0x20, plus one reversible set-global for the glb probe) are
-gated behind --enable-writes, read back, and restored — a global is never left
-modified. It never edits docs/ or schema/ — you record findings.`);
+Writes (edit-buffer 0x20, plus a set-global sweep for the glb probe) are gated
+behind --enable-writes, read back, and restored — a global is never left modified
+and Memory Protect is left enabled. It never edits docs/ or schema/ — you record
+findings.`);
 }
 
 async function main() {
