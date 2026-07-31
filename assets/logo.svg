@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Seven Editor placeholder logo">
+  <title>Seven Editor — placeholder logo</title>
+  <!-- PLACEHOLDER, dev only: riffs on 7-Eleven trade dress ("11" + SEVEN).
+       Must be replaced with an original mark before the repo goes public. -->
+
+  <!-- left "1" — orange -->
+  <path fill="#F58220" d="M44 48 C56 42 74 32 86 22 L86 96 L52 96 L52 60 L44 64 Z"/>
+  <rect x="52" y="146" width="34" height="66" fill="#F58220"/>
+
+  <!-- right "1" — red -->
+  <path fill="#EE2526" d="M150 40 C162 34 180 24 192 12 L192 96 L158 96 L158 52 L150 56 Z"/>
+  <rect x="158" y="146" width="34" height="66" fill="#EE2526"/>
+
+  <!-- green wordmark band -->
+  <text x="120" y="134" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-size="52" font-weight="800"
+        letter-spacing="2" fill="#00754A">SEVEN</text>
+</svg>

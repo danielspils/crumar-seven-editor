@@ -19,4 +19,6 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Static reference data (parameter map + panel artwork), not device state.
   getSchema: () => readJson('schema/seven-1.37.json'),
   getPanelSvg: () => readText('assets/seven-panel.svg'),
+  // Placeholder logo (7-Eleven riff) — replace before the repo goes public.
+  getLogoSvg: () => readText('assets/logo.svg'),
 });

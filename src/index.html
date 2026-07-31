@@ -55,6 +55,8 @@
       width: 8px; height: 8px; border-radius: 50%;
       background: var(--text-dim);
     }
+    #app-logo { display: flex; align-items: center; margin-right: 6px; }
+    #app-logo svg { height: 22px; width: 22px; }
 
     /* Main area: library left, detail right */
     #main { flex: 1; display: flex; min-height: 0; }
@@ -146,6 +148,7 @@
 <body>
   <div id="panel-strip"></div>
   <div id="connection-row">
+    <span id="app-logo"></span>
     <span class="conn-dot"></span>
     <span id="connection-text">No instrument connected</span>
   </div>

@@ -18,6 +18,7 @@
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
   const panelStrip = document.getElementById('panel-strip');
   panelStrip.innerHTML = window.sevenAPI.getPanelSvg(); // keeps class="readonly"
+  document.getElementById('app-logo').innerHTML = window.sevenAPI.getLogoSvg();
 
   // Panel buttons drive the same state as the tabs/list below. BANK cycles
   // 1→2→3→4→1 like the hardware; preset buttons select directly.

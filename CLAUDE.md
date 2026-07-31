@@ -106,6 +106,8 @@ captures/    raw MIDI logs — empty for now, kept for future recordings
 schema/      seven-<firmware>.json — version-gated parameter maps
 tools/       capture-hook.js, probe.js — capture & probing utilities
 assets/      seven-panel.svg — panel artwork, inlined into the DOM for id access
+             logo.svg — dev-only placeholder riffing on 7-Eleven's trade dress;
+             MUST be replaced with an original mark before the repo goes public
 fixtures/    generate.js + sample-library.json — DEMO data only, never evidence
 src/         Electron app: main.js, preload.js (the data-source swap point),
              index.html, app.js, renderer.js (pure view), defaults.js
