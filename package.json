@@ -8,9 +8,13 @@
   "main": "src/main.js",
   "scripts": {
     "capture": "node tools/capture-hook.js",
-    "probe": "node tools/probe.js"
+    "probe": "node tools/probe.js",
+    "probe:open-items": "node tools/probe.js open-items"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@julusian/midi": "^3.1.1"
   }
 }
