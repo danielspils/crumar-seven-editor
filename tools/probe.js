@@ -588,7 +588,10 @@ async function probeEnums(dev, schema) {
     const orig = await dev.paramValue(p.id);
     try {
       for (let idx = 0; idx <= p.max; idx++) {
-        const w = await dev.setParamValueChecked(p.id, idx, { restoreTo: orig });
+        // Hold the value at idx during observation — do NOT restore per write, or
+        // the device would be back at orig before you read the label. The finally
+        // restores orig after every index of this param.
+        const w = await dev.setParamValueChecked(p.id, idx);
         if (!w.confirmed) { console.log(`    index ${idx}: write NOT confirmed (read back ${w.readBack}) — skipping`); continue; }
         const assumed = p.values && p.values[idx] != null ? p.values[idx] : '(none assumed)';
         const seen = await ask(`    index ${idx}: assumed "${assumed}". What does the instrument/editor show? `);
