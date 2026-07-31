@@ -11,6 +11,33 @@ MIT-licensed and public.
 
 ---
 
+## What the app is for
+
+Crumar's own editor works but is bare-bones. This project exists to give the Seven
+better UX around four things the stock editor doesn't do well:
+
+- **Backup** — patches survive hardware failure. Today the only path is a thumb
+  drive and 24 manual exports.
+- **Transfer** — load your patches onto a *different* Seven (e.g. a rented
+  instrument on tour).
+- **Editing** — a genuinely pleasant editor. Crumar's is one page at a time, with
+  no A/B comparison and no undo.
+- **Visibility** — show which sample expansions are installed, and flag when a
+  patch needs one the unit lacks.
+
+Two hardware realities shape all four features:
+
+- **Sound IDs are not portable.** A patch using "Venice Grand CB1898" is sound ID
+  18 on one unit; a Seven with different expansions has a different list entirely.
+  The patch format therefore stores the sound **name** and resolves it on import,
+  **warning when the target instrument lacks it**. Never persist a bare sound ID as
+  a patch's identity (see `soundsNote` in the schema).
+- **Storing a preset needs a physical three-second button hold.** The app can load
+  a patch into the edit buffer over USB, but the user finishes the save on the
+  panel. The UI must **say this plainly** rather than pretend to work around it.
+
+---
+
 ## Hard project rules
 
 These are non-negotiable. They exist because we are documenting an undocumented
@@ -83,8 +110,15 @@ src/         application code (none yet)
 
 ## Status
 
-The protocol is **known**, not unknown: `docs/protocol.md` and
-`schema/seven-1.37.json` document FW 1.37 from live interrogation — frame format,
-26 opcodes, 110 parameters, 24 sounds, globals. Remaining gaps are tracked as the
-open-items list in `docs/protocol.md` and are flagged `UNKNOWN` in place. No UI
-code yet; `tools/probe.js` is the current work.
+The protocol is **known**: `docs/protocol.md` and `schema/seven-1.37.json` document
+FW 1.37 from live interrogation — frame format, 26 opcodes, 110 parameters, 24
+sounds, globals. `0x20` set-parameter and `0x30` set-global are verified. Of the
+prober's four open items three are closed (flag semantics, glb index addressing,
+pedal CC); the one left is **enum labels** for `fx1_md`, `fx2_md`, `pha_st`,
+`amp_mo` — cosmetic, and it needs a human reading labels off the editor. Other gaps
+stay flagged `UNKNOWN` in place (see the open-items list in `docs/protocol.md`).
+
+No UI code yet. **Next step: design the patch file format** — the app's own format,
+not the instrument's `.bin`. All four features (backup, transfer, editing,
+visibility) route through it, so it gets designed before any of them are built. No
+hardware needed. Not started.
