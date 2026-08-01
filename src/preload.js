@@ -26,19 +26,22 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     readText('assets/seven-panel.svg').replace(/@font-face\s*{[^}]*}\s*/g, ''),
   // Self-hosted fonts as data: URIs — path-independent and fully offline.
   getFontCss: () => {
-    const face = (family, rel) => {
+    const face = (family, rel, { weight = '100 900', style = 'normal' } = {}) => {
       const b64 = fs.readFileSync(path.join(root, rel)).toString('base64');
       return (
         `@font-face { font-family: '${family}'; ` +
         `src: url(data:font/woff2;base64,${b64}) format('woff2'); ` +
-        `font-weight: 100 900; font-display: swap; }`
+        `font-weight: ${weight}; font-style: ${style}; font-display: swap; }`
       );
     };
-    return (
-      face('Archivo', 'assets/fonts/Archivo-Variable.woff2') +
-      '\n' +
-      face('Inter', 'assets/fonts/Inter-Variable.woff2')
-    );
+    return [
+      face('Archivo', 'assets/fonts/Archivo-Variable.woff2'),
+      face('Archivo Narrow', 'assets/fonts/ArchivoNarrow-Italic-Variable.woff2', {
+        weight: '400 700',
+        style: 'italic',
+      }),
+      face('Inter', 'assets/fonts/Inter-Variable.woff2'),
+    ].join('\n');
   },
   // View-menu commands from the main process (Show raw values, Expand/Collapse
   // all). View state only — nothing here touches patch data.

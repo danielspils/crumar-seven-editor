@@ -13,16 +13,33 @@
       font-weight: 100 900;
       font-display: swap;
     }
+    @font-face {
+      font-family: 'Archivo Narrow';
+      src: url('fonts/ArchivoNarrow-Italic-Variable.woff2') format('woff2');
+      font-weight: 400 700;
+      font-style: italic;
+      font-display: swap;
+    }
     .panel-bg  { fill: #2b2b2d; }
     .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
     .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
     .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .btn.on    { fill: #7d1418; }
-    .lbl       { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: .06em; text-anchor: middle; }
-    .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: .05em; text-anchor: middle; }
+    /* Preset/bank button layers: recessed bezel, narrow raised face (lighter
+       stroke on lower/outer edges only), inset LED panel in the top third.
+       Decorative layers pass clicks through to the .btn face beneath. */
+    .btn-face  { stroke: none; }
+    .btn-bezel { fill: #1a1a1c; pointer-events: none; }
+    .btn-edge  { fill: none; stroke: #5a5a5f; stroke-width: 1; pointer-events: none; }
+    .btn-inset { fill: #141416; pointer-events: none; }
+    /* Silkscreen legends: heavier, narrower, all caps, italic — bundled
+       Archivo Narrow (true italic). Tracking slightly reduced from the plain
+       face so condensed+bold doesn't crowd. Panel strip only. */
+    .lbl       { fill: #e8e8ea; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 13px; letter-spacing: .05em; text-anchor: middle; }
+    .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 10px; letter-spacing: .04em; text-anchor: middle; }
     .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
-    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 9px;  letter-spacing: .04em; text-anchor: middle; }
+    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 9px;  letter-spacing: .03em; text-anchor: middle; }
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }
@@ -98,7 +115,10 @@
 
   <g id="sec-bank">
     <text class="lbl" x="700" y="30">BANK</text>
-    <rect class="btn on" id="btn-bank" x="676" y="52" width="48" height="60"/>
+    <rect class="btn-bezel" x="676" y="48" width="48" height="68" rx="3"/>
+    <rect class="btn btn-face on" id="btn-bank" x="680" y="52" width="40" height="60"/>
+    <path class="btn-edge" d="M680 112 L720 112 L720 52"/>
+    <rect class="btn-inset" x="683" y="55" width="34" height="17" rx="1"/>
     <circle class="led amber on" id="led-bank-1" cx="748" cy="48"  r="5"/>
     <text class="lbl-sm" x="766" y="52" text-anchor="start">1</text>
     <circle class="led amber"    id="led-bank-2" cx="748" cy="70"  r="5"/>
@@ -113,56 +133,80 @@
     <g id="preset-1">
       <text class="lbl-sm" x="836" y="30">1</text>
       <text class="lbl" x="836" y="48">TINES</text>
-      <rect class="btn on" x="800" y="60" width="72" height="62"/>
-      <circle class="led on" id="led-preset-1" cx="836" cy="76" r="5"/>
+      <rect class="btn-bezel" x="806" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face on" x="810" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M810 122 L862 122 L862 60"/>
+      <rect class="btn-inset" x="813" y="63" width="46" height="17" rx="1"/>
+      <circle class="led on" id="led-preset-1" cx="836" cy="71" r="5"/>
       <text class="lbl-alt" x="836" y="142">BRILLIANT</text>
     </g>
     <g id="preset-2">
       <text class="lbl-sm" x="920" y="30">2</text>
       <text class="lbl" x="920" y="48">REEDS</text>
-      <rect class="btn" x="884" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-2" cx="920" cy="76" r="5"/>
+      <rect class="btn-bezel" x="890" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="894" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M894 122 L946 122 L946 60"/>
+      <rect class="btn-inset" x="897" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-2" cx="920" cy="71" r="5"/>
       <text class="lbl-alt" x="920" y="142">TREBLE</text>
     </g>
     <g id="preset-3">
       <text class="lbl-sm" x="1004" y="30">3</text>
       <text class="lbl" x="1004" y="48">EGRAND</text>
-      <rect class="btn" x="968" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-3" cx="1004" cy="76" r="5"/>
+      <rect class="btn-bezel" x="974" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="978" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M978 122 L1030 122 L1030 60"/>
+      <rect class="btn-inset" x="981" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-3" cx="1004" cy="71" r="5"/>
       <text class="lbl-alt" x="1004" y="142">MEDIUM</text>
     </g>
     <g id="preset-4">
       <text class="lbl-sm" x="1088" y="30">4</text>
       <text class="lbl" x="1088" y="48">CLAVI</text>
-      <rect class="btn" x="1052" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-4" cx="1088" cy="76" r="5"/>
+      <rect class="btn-bezel" x="1058" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="1062" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M1062 122 L1114 122 L1114 60"/>
+      <rect class="btn-inset" x="1065" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-4" cx="1088" cy="71" r="5"/>
       <text class="lbl-alt" x="1088" y="142">SOFT</text>
     </g>
     <g id="preset-5">
       <text class="lbl-sm" x="1172" y="30">5</text>
       <text class="lbl" x="1172" y="48">DX EP</text>
-      <rect class="btn" x="1136" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-5" cx="1172" cy="76" r="5"/>
+      <rect class="btn-bezel" x="1142" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="1146" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M1146 122 L1198 122 L1198 60"/>
+      <rect class="btn-inset" x="1149" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-5" cx="1172" cy="71" r="5"/>
       <text class="lbl-alt" x="1172" y="142">C / D</text>
     </g>
     <g id="preset-6">
       <text class="lbl-sm" x="1256" y="30">6</text>
       <text class="lbl" x="1256" y="48">MKS EP</text>
-      <rect class="btn" x="1220" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-6" cx="1256" cy="76" r="5"/>
+      <rect class="btn-bezel" x="1226" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="1230" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M1230 122 L1282 122 L1282 60"/>
+      <rect class="btn-inset" x="1233" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-6" cx="1256" cy="71" r="5"/>
       <text class="lbl-alt" x="1256" y="142">A / B</text>
     </g>
     <g id="preset-7">
       <text class="lbl-sm" x="1340" y="30">7</text>
       <text class="lbl" x="1340" y="48">VIBES</text>
-      <rect class="btn" x="1304" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-7" cx="1340" cy="76" r="5"/>
+      <rect class="btn-bezel" x="1310" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="1314" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M1314 122 L1366 122 L1366 60"/>
+      <rect class="btn-inset" x="1317" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-7" cx="1340" cy="71" r="5"/>
     </g>
     <g id="preset-8">
       <text class="lbl-sm" x="1424" y="30">8</text>
       <text class="lbl" x="1424" y="48">GRAND</text>
-      <rect class="btn" x="1388" y="60" width="72" height="62"/>
-      <circle class="led" id="led-preset-8" cx="1424" cy="76" r="5"/>
+      <rect class="btn-bezel" x="1394" y="56" width="60" height="70" rx="3"/>
+      <rect class="btn btn-face" x="1398" y="60" width="52" height="62"/>
+      <path class="btn-edge" d="M1398 122 L1450 122 L1450 60"/>
+      <rect class="btn-inset" x="1401" y="63" width="46" height="17" rx="1"/>
+      <circle class="led" id="led-preset-8" cx="1424" cy="71" r="5"/>
     </g>
   </g>
 
