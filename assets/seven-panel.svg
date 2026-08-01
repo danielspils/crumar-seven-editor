@@ -272,13 +272,13 @@
     <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1536" y="62">SELECT</text>
     <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx1-0" cx="1572" cy="72"  r="4.5"/>
+    <circle class="led on" id="led-fx1-0" cx="1577" cy="72"  r="4.5"/>
     <text class="lbl-sm" x="1596" y="76" text-anchor="start">TREM</text>
-    <circle class="led"    id="led-fx1-1" cx="1572" cy="94"  r="4.5"/>
+    <circle class="led"    id="led-fx1-1" cx="1577" cy="94"  r="4.5"/>
     <text class="lbl-sm" x="1596" y="98" text-anchor="start">PAN</text>
-    <circle class="led"    id="led-fx1-2" cx="1572" cy="116" r="4.5"/>
+    <circle class="led"    id="led-fx1-2" cx="1577" cy="116" r="4.5"/>
     <text class="lbl-sm" x="1596" y="120" text-anchor="start">A-WHA</text>
-    <circle class="led"    id="led-fx1-3" cx="1572" cy="138" r="4.5"/>
+    <circle class="led"    id="led-fx1-3" cx="1577" cy="138" r="4.5"/>
     <text class="lbl-sm" x="1596" y="142" text-anchor="start">P-WHA</text>
     <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
@@ -305,13 +305,13 @@
     <rect x="1826" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1860" y="62">SELECT</text>
     <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx2-0" cx="1896" cy="72"  r="4.5"/>
+    <circle class="led on" id="led-fx2-0" cx="1900" cy="72"  r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1918" y="76" text-anchor="start">CHORUS</text>
-    <circle class="led"    id="led-fx2-1" cx="1896" cy="94"  r="4.5"/>
+    <circle class="led"    id="led-fx2-1" cx="1900" cy="94"  r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1918" y="98" text-anchor="start">PHASER</text>
-    <circle class="led"    id="led-fx2-2" cx="1896" cy="116" r="4.5"/>
+    <circle class="led"    id="led-fx2-2" cx="1900" cy="116" r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1918" y="120" text-anchor="start">FLANGER</text>
-    <circle class="led"    id="led-fx2-3" cx="1896" cy="138" r="4.5"/>
+    <circle class="led"    id="led-fx2-3" cx="1900" cy="138" r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1918" y="142" text-anchor="start">DELAY</text>
     <text class="lbl-fx" x="1859" y="152">FX2</text>
     <g id="knob-fx2">
