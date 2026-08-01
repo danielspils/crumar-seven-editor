@@ -46,8 +46,9 @@
       <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
       <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <!-- Lit = unmuted; press-and-hold on the hardware mutes and darkens it.
-         Mute's data source is unresolved (docs/PROJECT-SCOPE.md). -->
+    <!-- Lit = Local On. A slow push (held ≥100ms) on the hardware toggles
+         Local Off — keyboard keeps sending MIDI out — and the knob turns BLUE.
+         SysEx visibility of Local Off is unknown (docs/PROJECT-SCOPE.md). -->
     <circle class="led on" id="led-volume" cx="72" cy="166" r="5"/>
   </g>
 

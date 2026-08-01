@@ -93,11 +93,14 @@ property of the protocol: **the device describes itself.**
 | `value` | Current value at time of query |
 | `flag` | **`1` = fixed panel CC** (cannot be reassigned); **`0` = user-assignable** CC slot |
 
-**`flag` — verified across a full 0–109 enumeration.** It is `1` for exactly the 22 parameters
-carrying a fixed panel CC (`veq_*`, `fx1_*`, `fx2_*`, `amp_sw`, `amp_dr`, `rev_sw`, `rev_lv`,
-`rev_dc`, `pad_*`) and `0` for all others. This matches the manual's rule that panel controls
-have unchangeable fixed CCs while the rest are freely assignable. A `flag=0` slot may still
-hold a live CC assignment — see `pdl_exp` below. Per-parameter values are in the schema.
+**`flag` — verified across a full 0–109 enumeration, and confirmed by the manufacturer's
+documentation.** It is `1` for exactly the 22 parameters carrying a fixed panel CC (`veq_*`,
+`fx1_*`, `fx2_*`, `amp_sw`, `amp_dr`, `rev_sw`, `rev_lv`, `rev_dc`, `pad_*`) and `0` for all
+others. The manual states that parameters accessible from the physical panel have pre-assigned
+fixed CC numbers that cannot be changed, while all other parameters are unassigned by default
+and freely assignable — and its fixed-CC table lists **exactly these 22**. Observation and
+manufacturer documentation agree. A `flag=0` slot may still hold a live CC assignment — see
+`pdl_exp` below. Per-parameter values are in the schema.
 
 The ASCII text of a `0x15` reply is preceded by a leading `0x00` pad byte (strip it before
 parsing the first field). Same for the `0x33` globals reply.
@@ -196,9 +199,11 @@ The July 2021 manual documents v1.22. On v1.37:
 
 ## Open items
 
-1. ~~`flag` (8th spec field)~~ **CLOSED (by read, no writes).** `flag` is **not** always `0`:
-   it is `1` for the 22 fixed-panel-CC parameters and `0` for the rest. `flag=1` = fixed CC,
-   `flag=0` = user-assignable. See the `0x15` spec table above; per-parameter values in schema.
+1. ~~`flag` (8th spec field)~~ **CLOSED (by read, no writes) — and now documented, not just
+   inferred.** `flag` is **not** always `0`: it is `1` for the 22 fixed-panel-CC parameters and
+   `0` for the rest. `flag=1` = fixed CC, `flag=0` = user-assignable. The manual's fixed-CC
+   table lists exactly the same 22 parameters, so observation and manufacturer documentation
+   agree. See the `0x15` spec table above; per-parameter values in schema.
 2. ~~`pdl_exp` CC values~~ **RESOLVED.** `pdl_exp` params have `flag=0` (user-assignable) while
    holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
    with a current assignment, not an inconsistency — no contradiction with the `-1` seen on

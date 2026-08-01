@@ -2,6 +2,16 @@
 
 UI principles for the editor. Add to this file as they accumulate.
 
+## Effects section order
+
+Section order follows the manufacturer's manual (chapter 20). Crumar does not
+document the Seven's actual audio signal path anywhere; the routing is unknown.
+
+Related, from the same manual: the PAD is documented as a virtual analog synth
+that plays on top of any piano sound — a parallel layer, not an insert effect.
+The phaser and delay parameter groups are documented as sub-sections of FX2,
+which is how the UI already nests them (phaser at mode 1, delay at mode 3).
+
 ## Device state is device-reported — never optimistic
 
 Controls that represent instrument state (the section ON/OFF pills, and later
@@ -21,8 +31,8 @@ pretending — it never flips to reflect local UI state.
 
 ## Three knob/section cues — keep them distinct
 
-- **Amber glow on a knob** = the effect is **on** (patch data; not yet
-  implemented).
+- **Knob lit/colour** = effect state (patch data; not yet implemented — the
+  target is the RGB value-encoding scheme below, not a flat amber glow).
 - **Accent ring on a knob** = its section is **expanded** (view state,
   persistent while open).
 - **Brief accent tint on a section** = you **just opened** it (transient,
@@ -32,16 +42,27 @@ Never reuse one of these colours/treatments for another meaning — and the
 library's selected-patch red edge marker is a fourth, unrelated cue that stays
 in the list only. Closing a section gets no highlight at all.
 
-## Volume knob light — data source unresolved
+## Volume knob — Local Off state (blue)
 
-On the instrument, press-and-hold on the volume knob mutes (its light goes out);
-press-and-hold again unmutes (the light returns). The strip's `led-volume`
-mirrors that: lit = unmuted, dark = muted.
+On the instrument, a **slow push** on the volume knob (held at least **100ms**)
+toggles **Local Off** — the keyboard stops playing the internal engine but keeps
+sending MIDI out — and the knob turns **blue**. It does not go dark, and it is
+not a mute. A **quick push** (pushed and released immediately) switches which
+parameter the knob is displaying; that quick/slow distinction applies to the
+panel knobs generally (slow toggles the effect on/off, quick switches the
+displayed parameter).
 
-**The source of mute state is unresolved.** `veq_vol` is the volume *value*, not
-a mute flag, and there is no obvious mute parameter among the 110 — mute may be
-transient device state that is never stored in a patch. Until that's determined
-(see docs/PROJECT-SCOPE.md, open questions), the light renders lit: fixture
-patches have no mute field, and inventing one would bake an unverified
-assumption into the patch format. When it is resolved, the light follows the
-device-reported rule above like every other device-state control.
+Whether Local Off is readable or settable over SysEx is unknown (see
+docs/PROJECT-SCOPE.md, open questions). Until resolved, the strip's `led-volume`
+renders lit (Local On); when it lands, it follows the device-reported rule above
+like every other device-state control.
+
+## Knob lighting — eventual target (RGB, value-encoding)
+
+The hardware knobs are RGB and encode **value**, not just on/off (manual, FW
+1.2, Sep 2020): colour runs **green at low values toward red at high values**,
+and knobs turn off entirely at some values. Exceptions: **Reverb Decay** uses
+**blue→red**, and **FX1/FX2 Rate** show a **pulsing blue that blinks in sync
+with the effect's LFO**. This is the eventual target for knob rendering on the
+strip — richer and more faithful than a flat on/off treatment. **Not implemented
+yet**; the "effect is on" cue below stays reserved until this lands.

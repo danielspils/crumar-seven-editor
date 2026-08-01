@@ -151,12 +151,15 @@
   function updatePanelLeds() {
     for (let b = 1; b <= 4; b++) setLed(`led-bank-${b}`, b - 1 === bankIndex);
     for (let p = 1; p <= 8; p++) setLed(`led-preset-${p}`, p - 1 === patchIndex);
-    // Volume knob light: lit = unmuted, dark = muted (press-and-hold on the
-    // hardware toggles mute). Always lit for now — patches carry no mute field
-    // and mute is likely transient device state, not one of the 110 params
-    // (docs/DESIGN.md, docs/PROJECT-SCOPE.md).
-    // TODO(device): when press-and-hold lands, drive this from what the device
-    // reports (mute state), same honesty rule as every device-state control.
+    // Volume knob light: lit = Local On. On the hardware a slow push (held
+    // ≥100ms) toggles Local Off — the keyboard stops playing the internal
+    // engine but keeps sending MIDI out — and the knob turns BLUE (not dark;
+    // not a mute). A quick push (immediate release) switches which parameter
+    // the knob displays. Whether Local Off is readable/settable over SysEx is
+    // unknown (docs/DESIGN.md, docs/PROJECT-SCOPE.md).
+    // TODO(device): when knob pushes land, drive this from what the device
+    // reports (slow push ≥100ms = toggle, quick push = switch displayed
+    // parameter), same honesty rule as every device-state control.
     setLed('led-volume', true);
     // Preset button fills follow the LEDs.
     for (let p = 1; p <= 8; p++) {
