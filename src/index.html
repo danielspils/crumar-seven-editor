@@ -181,10 +181,15 @@
       cursor: pointer; border-radius: 4px; padding: 2px 4px; margin-left: -4px; margin-right: -4px;
     }
     .fx-head:hover { background: rgba(255, 255, 255, .045); }
+    /* Flex-centred box around a geometric SVG chevron: vertically centred on
+       the header text's midline in both states (a font glyph's ink sat below
+       centre regardless of box alignment). */
     .fx-chevron {
-      color: var(--text); font-size: 28px; line-height: 1; width: 24px; flex: none;
+      color: var(--text); width: 24px; flex: none;
+      display: flex; align-items: center; justify-content: center;
       transition: transform 180ms ease-out;
     }
+    .fx-chevron svg { display: block; }
     .fx-section.collapsed .fx-chevron { transform: rotate(-90deg); transition-duration: 140ms; }
     /* Expand/collapse animates the body's grid row 0fr↔1fr (height 0↔auto);
        content fades in slightly behind the container getting room. The body is

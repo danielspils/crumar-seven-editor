@@ -175,7 +175,10 @@
       return (
         `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
         `<div class="fx-head" data-group="${section.group}" role="button" title="Toggle section">` +
-        `<span class="fx-chevron">▾</span>` +
+        // Geometric chevron (not a font glyph): its optical centre IS its box
+        // centre, so flex centering aligns it with the header text in both
+        // rotations — glyph baselines sat visibly low.
+        `<span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` +
         `<span class="fx-title">${esc(section.title)}</span>` +
         // Summary is always rendered; CSS shows it only while collapsed.
         `<span class="fx-summary">${esc(sectionSummary(section, patch))}</span>` +
