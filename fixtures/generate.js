@@ -75,7 +75,9 @@ const EFFECT_VARY = [
   'amp_dr', 'rev_lv', 'rev_dc', 'pad_lv', 'pha_of', 'pha_fb', 'pha_mx', 'dly_mf', 'dly_ml', 'dly_sp',
 ];
 
-const BANK_NAMES = ['A', 'B', 'C', 'D'];
+// Bank names match the hardware panel, which numbers banks 1-4 (not A-D).
+// Restore prompts will tell the user which physical button to press.
+const BANK_NAMES = ['1', '2', '3', '4'];
 const banks = [];
 for (let g = 0; g < 4; g++) {
   const patches = [];

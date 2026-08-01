@@ -1,11 +1,17 @@
 'use strict';
 
-// App glue: owns UI state (selected bank/patch), injects the panel SVG, and asks
-// SevenRenderer for HTML. The ONLY data sources are the three sevenAPI getters —
-// no view code touches a device, and swapping the fixture for real MIDI changes
-// preload.js alone.
+// App glue: owns UI state (selected bank/patch + view state), injects the panel
+// SVG, and asks SevenRenderer for HTML. The ONLY data sources are the sevenAPI
+// getters — no view code touches a device, and swapping the fixture for real
+// MIDI changes preload.js alone.
 
 (function () {
+  // Self-hosted fonts (Archivo for the panel strip, Inter for the UI) — must be
+  // registered before any rendering so nothing flashes in a fallback face.
+  const fontStyle = document.createElement('style');
+  fontStyle.textContent = window.sevenAPI.getFontCss();
+  document.head.appendChild(fontStyle);
+
   // ---- Data (single library object; swappable source) ----------------------
   const library = window.sevenAPI.getLibrary();
   const schema = window.sevenAPI.getSchema();
@@ -14,6 +20,23 @@
   // ---- UI state -------------------------------------------------------------
   let bankIndex = 0;
   let patchIndex = 0; // selected patch within the bank; -1 = none
+
+  // View state only — never written to a patch or the library.
+  let showRaw = false;
+  let collapsed = {}; // section group -> bool
+
+  const currentPatch = () => library.banks[bankIndex].patches[patchIndex] || null;
+
+  // A section whose switch is 0 starts collapsed; switch 1 (or no switch)
+  // starts expanded. Recomputed whenever the selected patch changes.
+  function resetCollapsed() {
+    collapsed = {};
+    const patch = currentPatch();
+    if (!patch) return;
+    for (const s of R.FX_SECTIONS) {
+      collapsed[s.group] = s.sw != null && patch.params[s.sw] === 0;
+    }
+  }
 
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
   const panelStrip = document.getElementById('panel-strip');
@@ -24,6 +47,7 @@
   panelStrip.addEventListener('click', (e) => {
     if (e.target.closest('#btn-bank')) {
       bankIndex = (bankIndex + 1) % library.banks.length;
+      resetCollapsed();
       renderAll();
       return;
     }
@@ -32,6 +56,7 @@
       const n = Number(preset.id.replace('preset-', ''));
       if (n >= 1 && n <= 8) {
         patchIndex = n - 1;
+        resetCollapsed();
         renderAll();
       }
     }
@@ -57,10 +82,14 @@
   const listEl = document.getElementById('patch-list');
   const detailEl = document.getElementById('detail');
 
+  // Bank labels match the hardware panel (banks are numbered 1-4). Restore
+  // prompts will tell the user which physical button to press.
+  const bankLabel = (i) => `Bank ${library.banks[i].name}`;
+
   function renderTabs() {
     tabsEl.innerHTML = library.banks
       .map((b, i) =>
-        `<button class="bank-tab${i === bankIndex ? ' active' : ''}" data-bank="${i}" type="button">BANK ${b.name}</button>`
+        `<button class="bank-tab${i === bankIndex ? ' active' : ''}" data-bank="${i}" type="button"><span class="bank-tab-label">Bank ${b.name}</span></button>`
       )
       .join('');
   }
@@ -73,10 +102,14 @@
   }
 
   function renderDetail() {
-    const bank = library.banks[bankIndex];
-    const patch = bank.patches[patchIndex];
+    const patch = currentPatch();
     detailEl.innerHTML = patch
-      ? R.renderDetail(patch)
+      ? R.renderDetail(patch, {
+          showRaw,
+          collapsed,
+          bankLabel: bankLabel(bankIndex),
+          patchNumber: patchIndex + 1,
+        })
       : '<div class="placeholder">Select a patch</div>';
   }
 
@@ -92,6 +125,7 @@
     if (!tab) return;
     bankIndex = Number(tab.dataset.bank);
     patchIndex = 0; // selecting a bank lands on its first patch
+    resetCollapsed();
     renderAll();
   });
 
@@ -99,8 +133,60 @@
     const row = e.target.closest('.patch-row');
     if (!row) return;
     patchIndex = Number(row.dataset.index);
+    resetCollapsed();
     renderAll();
   });
 
+  // The state pill reflects DEVICE state only — it never flips from a click
+  // (docs/DESIGN.md). A write can fail; render what the instrument reports.
+  function handleStatePill(pill) {
+    // TODO(device): when MIDI lands, this becomes:
+    //   1. send set-parameter (0x20) for the switch id (pill.dataset.switch)
+    //      with the toggled value,
+    //   2. await the device reply,
+    //   3. re-render the pill from the value the DEVICE reports.
+    // Until then: no device, so the pill stays put and we say why.
+    const head = pill.parentElement;
+    let note = head.querySelector('.device-note');
+    if (!note) {
+      note = document.createElement('span');
+      note.className = 'device-note';
+      head.appendChild(note);
+    }
+    note.textContent = 'No instrument connected.';
+    clearTimeout(note._timer);
+    note._timer = setTimeout(() => note.remove(), 1800);
+  }
+
+  // Clicking a section header toggles it regardless of switch state — values in
+  // a bypassed section must stay reachable. The state pill is its own control
+  // and must not toggle collapse.
+  detailEl.addEventListener('click', (e) => {
+    const pill = e.target.closest('.fx-state');
+    if (pill) {
+      handleStatePill(pill);
+      return;
+    }
+    const head = e.target.closest('.fx-head');
+    if (!head || !head.dataset.group) return;
+    collapsed[head.dataset.group] = !collapsed[head.dataset.group];
+    renderDetail();
+  });
+
+  // ---- View menu commands (main process → here) -----------------------------
+  if (window.sevenAPI.onViewCommand) {
+    window.sevenAPI.onViewCommand((msg) => {
+      if (msg.type === 'showRaw') {
+        showRaw = !!msg.value;
+      } else if (msg.type === 'expandAll') {
+        for (const s of R.FX_SECTIONS) collapsed[s.group] = false;
+      } else if (msg.type === 'collapseAll') {
+        for (const s of R.FX_SECTIONS) collapsed[s.group] = true;
+      }
+      renderDetail();
+    });
+  }
+
+  resetCollapsed();
   renderAll();
 })();

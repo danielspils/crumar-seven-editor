@@ -4,6 +4,12 @@
 // schema into HTML. No DOM, no device, no globals — everything comes in as
 // arguments, so it can be unit-tested in Node and reused unchanged when the
 // library object starts coming from real MIDI instead of the fixture.
+//
+// View state (never persisted to a patch): callers pass a `view` object —
+//   { showRaw: bool,            raw numeric values visible on every row
+//     collapsed: {group: bool}, per-section expand/collapse
+//     bankLabel: 'Bank 1',      hardware-matching bank label for the header
+//     patchNumber: 3 }          1-based position within the bank
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -24,6 +30,11 @@
     { title: 'Expression Pedal', group: 'pdl_exp', sw: null },
   ];
 
+  // Section on/off switches drive the ON/OFF badge; showing them again as
+  // parameter rows would state the same fact twice. Display-only filter — the
+  // values are still stored and backed up.
+  const SWITCH_KEYS = new Set(['veq_byp', 'fx1_sw', 'fx2_sw', 'amp_sw', 'rev_sw', 'pad_sw']);
+
   // Sound → engine group. Any sampled sound (incl. a missing one) is the sample
   // player; modeled sounds map by name.
   function engineGroupFor(patch) {
@@ -42,79 +53,134 @@
 
   function createRenderer(schema, defaultFor) {
     const byGroup = (g) => schema.parameters.filter((p) => p.group === g);
+    const byKey = new Map(schema.parameters.map((p) => [p.key, p]));
     const soundNames = new Set(schema.sounds.map((s) => s.name));
     const groupLabels = schema.groups || {};
 
     const isMissing = (patch) => !soundNames.has(patch.soundName);
 
-    function paramRow(p, rawValue) {
+    const enumLabel = (key, value) => {
+      const p = byKey.get(key);
+      return p && p.values && p.values[value] != null ? p.values[value] : String(value);
+    };
+
+    function paramRow(p, rawValue, view) {
       const value = rawValue == null ? 0 : rawValue;
       const isDefault = value === defaultFor(p);
       const pct = p.max > 0 ? Math.max(0, Math.min(100, (value / p.max) * 100)) : 0;
-      // Enum params show their label; the raw number stays visible as a chip.
-      const enumLabel = p.values && p.values[value] != null ? p.values[value] : null;
-      const valueText = enumLabel ? `${esc(enumLabel)} <em>${value}</em>` : String(value);
+      const label = p.values && p.values[value] != null ? p.values[value] : null;
+      // Raw numeric hidden by default on enum rows ("Pedal Wha-Wha", not
+      // "Pedal Wha-Wha 3"). With showRaw on, the raw byte shows on every row —
+      // for non-enums the displayed number already IS the raw value, so the
+      // toggle currently changes enum rows only; if scaled displays (Hz, dB)
+      // arrive later, they route through here and obey the same flag.
+      // Enum rows show the mode name across the bar area — a mode is a choice,
+      // not a magnitude, so a fill bar would be misleading there.
+      if (label) {
+        const valueText = view && view.showRaw ? `${esc(label)} <em>${value}</em>` : esc(label);
+        return (
+          `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}">` +
+          `<span class="param-label">${esc(p.label)}</span>` +
+          `<span class="param-value">${valueText}</span>` +
+          `</div>`
+        );
+      }
       return (
         `<div class="param ${isDefault ? 'is-default' : 'is-changed'}">` +
         `<span class="param-label">${esc(p.label)}</span>` +
         `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span></span>` +
-        `<span class="param-value">${valueText}</span>` +
+        `<span class="param-value">${String(value)}</span>` +
         `</div>`
       );
     }
 
-    function rowsFor(group, patch) {
-      return byGroup(group).map((p) => paramRow(p, patch.params[p.key])).join('');
+    function rowsFor(group, patch, view) {
+      return byGroup(group)
+        .filter((p) => !SWITCH_KEYS.has(p.key))
+        .map((p) => paramRow(p, patch.params[p.key], view))
+        .join('');
     }
 
-    function renderEngine(patch) {
+    function renderEngine(patch, view) {
       const group = engineGroupFor(patch);
       const label = groupLabels[group] || group;
       const missing = isMissing(patch);
+      const pos =
+        view && view.bankLabel
+          ? `<div class="engine-pos">${esc(view.bankLabel)} · Preset ${view.patchNumber}</div>`
+          : '';
+      // The badge alone says Modeled/Sampled; the description line is the group
+      // label only, so it never re-states the badge's word.
       return (
         `<div class="engine">` +
         `<div class="col-title">Sound engine</div>` +
         `<div class="engine-head">` +
-        `<div class="engine-sound">${esc(patch.soundName)}</div>` +
-        `<div class="engine-sub"><span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">` +
-        `${patch.sampled ? 'Sampled' : 'Modeled'}</span> <span class="engine-group">${esc(label)}</span></div>` +
+        `<div class="engine-sound">${esc(patch.soundName)} ` +
+        `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">${patch.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
+        `<div class="engine-sub"><span class="engine-group">${esc(label)}</span></div>` +
+        pos +
         (missing
           ? `<div class="warn-banner">⚠ This sound is not installed on this instrument — the patch needs “${esc(patch.soundName)}”.</div>`
           : '') +
         `</div>` +
-        `<div class="params">${rowsFor(group, patch)}</div>` +
+        `<div class="params">${rowsFor(group, patch, view)}</div>` +
         `</div>`
       );
     }
 
-    function renderSection(section, patch) {
-      const dimmed = section.sw != null && patch.params[section.sw] === 0;
-      let rows = rowsFor(section.group, patch);
-      // FX2 sub-parameters are conditional on the FX2 mode.
-      if (section.fx2) {
-        const md = patch.params.fx2_md;
-        if (md === 1) rows += rowsFor('efx_pha', patch); // Stereo Phaser
-        else if (md === 3) rows += rowsFor('efx_dly', patch); // Delay
+    // One-line summary for a collapsed section header.
+    function sectionSummary(section, patch) {
+      const v = (k) => patch.params[k];
+      switch (section.group) {
+        case 'efx_veq': return `Volume ${v('veq_vol')}`;
+        case 'efx_fx1': return enumLabel('fx1_md', v('fx1_md'));
+        case 'efx_fx2': return enumLabel('fx2_md', v('fx2_md'));
+        case 'efx_amp': return enumLabel('amp_mo', v('amp_mo'));
+        case 'efx_rev': return `Level ${v('rev_lv')} · Decay ${v('rev_dc')}`;
+        case 'efx_pad': return `Level ${v('pad_lv')}`;
+        case 'pdl_exp': return `Function ${v('exp_fn')}`;
+        default: return '';
+      }
+    }
+
+    function renderSection(section, patch, view) {
+      const off = section.sw != null && patch.params[section.sw] === 0;
+      const collapsed = !!(view && view.collapsed && view.collapsed[section.group]);
+      let body = '';
+      if (!collapsed) {
+        let rows = rowsFor(section.group, patch, view);
+        // FX2 sub-parameters are conditional on the FX2 mode.
+        if (section.fx2) {
+          const md = patch.params.fx2_md;
+          if (md === 1) rows += rowsFor('efx_pha', patch, view); // Stereo Phaser
+          else if (md === 3) rows += rowsFor('efx_dly', patch, view); // Delay
+        }
+        body = `<div class="params">${rows}</div>`;
       }
       return (
-        `<div class="fx-section ${dimmed ? 'dimmed' : ''}">` +
-        `<div class="fx-head"><span class="fx-title">${esc(section.title)}</span>` +
+        `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}">` +
+        `<div class="fx-head" data-group="${section.group}" role="button" title="Click to ${collapsed ? 'expand' : 'collapse'}">` +
+        `<span class="fx-chevron">${collapsed ? '▸' : '▾'}</span>` +
+        `<span class="fx-title">${esc(section.title)}</span>` +
+        (collapsed ? `<span class="fx-summary">${esc(sectionSummary(section, patch))}</span>` : '') +
+        // The pill is a control, but it renders DEVICE state only — app.js never
+        // flips it from a click (see docs/DESIGN.md).
         (section.sw != null
-          ? `<span class="fx-state">${dimmed ? 'OFF' : 'ON'}</span>`
+          ? `<button type="button" class="fx-state ${off ? 'off' : 'on'}" data-switch="${section.sw}" aria-pressed="${!off}">${off ? 'OFF' : 'ON'}</button>`
           : '') +
         `</div>` +
-        `<div class="params">${rows}</div>` +
+        body +
         `</div>`
       );
     }
 
-    function renderDetail(patch) {
+    function renderDetail(patch, view) {
       return (
         `<div class="detail-cols">` +
-        `<div class="col col-engine">${renderEngine(patch)}</div>` +
+        `<div class="col col-engine">${renderEngine(patch, view)}</div>` +
         `<div class="col col-fx">` +
         `<div class="col-title">Effects chain</div>` +
-        FX_SECTIONS.map((s) => renderSection(s, patch)).join('') +
+        FX_SECTIONS.map((s) => renderSection(s, patch, view)).join('') +
         `</div>` +
         `</div>`
       );
@@ -141,7 +207,9 @@
       renderSection,
       renderDetail,
       renderPatchRow,
+      sectionSummary,
       FX_SECTIONS,
+      SWITCH_KEYS,
     };
   }
 

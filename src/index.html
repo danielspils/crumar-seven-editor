@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;">
   <title>Crumar Seven Editor</title>
   <style>
     :root {
@@ -21,13 +21,16 @@
       --bar: #3a3a3f;
       --bar-fill: #8e8e96;
       --bar-fill-changed: #d9d9de;
+      --ok: #3fb950;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
     body {
       background: var(--bg);
       color: var(--text);
-      font: 13px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      /* Inter is self-hosted (registered by app.js via data: URI); the panel
+         strip alone uses Archivo inside the SVG. */
+      font: 13px/1.45 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       display: flex; flex-direction: column;
       user-select: none;
     }
@@ -66,14 +69,20 @@
       display: flex; flex-direction: column; min-height: 0;
     }
     #bank-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    /* Subtle tabs: selection is carried by the same raised background as a
+       selected patch row — no tab outline, no radius. The amber underline is
+       text-width (on the label span), so it doesn't stack with the patch row's
+       full-width red edge marker. All four tabs are identical when unselected. */
     .bank-tab {
-      flex: 1; padding: 9px 0; text-align: center;
-      background: none; border: none; border-bottom: 2px solid transparent;
+      flex: 1; padding: 9px 0 7px; text-align: center;
+      background: transparent; border: none;
       color: var(--text-muted); font: inherit; font-weight: 600; letter-spacing: .08em;
       cursor: pointer;
     }
     .bank-tab:hover { color: var(--text); }
-    .bank-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+    .bank-tab-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
+    .bank-tab.active { background: var(--bg-panel); color: var(--amber); }
+    .bank-tab.active .bank-tab-label { border-bottom-color: var(--amber); }
     #patch-list { flex: 1; overflow-y: auto; }
     .patch-row {
       display: grid; grid-template-columns: 28px 1fr 1fr auto auto;
@@ -108,8 +117,10 @@
 
     .engine-head { margin-bottom: 12px; }
     .engine-sound { font-size: 17px; font-weight: 700; }
+    .engine-sound .badge { vertical-align: 3px; margin-left: 6px; }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
     .engine-group { color: var(--text-muted); font-size: 12px; }
+    .engine-pos { color: var(--text-dim); font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .warn-banner {
       margin-top: 10px; padding: 8px 10px; border-radius: 4px;
       background: rgba(217, 161, 59, .12); border: 1px solid var(--warn);
@@ -122,9 +133,31 @@
       background: var(--bg-raised);
     }
     .fx-section.dimmed { opacity: .38; }
-    .fx-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-    .fx-title { font-weight: 700; letter-spacing: .04em; }
-    .fx-state { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--text-muted); }
+    .fx-section.collapsed { padding-bottom: 10px; }
+    /* Headers are clickable toggles; collapse state is view state only. */
+    .fx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+    .fx-section.collapsed .fx-head { margin-bottom: 0; }
+    .fx-chevron { color: var(--text-dim); font-size: 10px; width: 12px; flex: none; }
+    /* Uppercase + tracking is reserved for section headers (matches .col-title). */
+    .fx-title { font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 11px; }
+    .fx-summary {
+      flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
+    }
+    /* State pill: a real control, but it renders device state only — clicks
+       never flip it locally (docs/DESIGN.md). */
+    .fx-state {
+      font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      padding: 2px 9px; border-radius: 9px; margin-left: auto;
+      cursor: pointer; flex: none;
+    }
+    .fx-state.on { background: rgba(63, 185, 80, .16); color: var(--ok); border: 1px solid transparent; }
+    .fx-state.off { background: transparent; color: var(--text-muted); border: 1px solid var(--line); }
+    .fx-state.on:hover { background: rgba(63, 185, 80, .28); }
+    .fx-state.off:hover { color: var(--text); border-color: var(--text-muted); }
+    .fx-state:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .fx-head .fx-summary + .fx-state { margin-left: 0; }
+    .device-note { color: var(--text-muted); font-size: 11px; flex: none; }
 
     .param {
       display: grid; grid-template-columns: 150px 1fr 96px;
@@ -133,7 +166,9 @@
     .param-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: hidden; }
     .param-bar-fill { display: block; height: 100%; background: var(--bar-fill); }
-    .param-value { text-align: right; font-variant-numeric: tabular-nums; }
+    .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* Enum rows: the mode name spans the bar area (a choice, not a magnitude). */
+    .param-enum .param-value { grid-column: 2 / 4; }
     .param-value em { font-style: normal; color: var(--text-dim); margin-left: 4px; }
     /* Default vs changed: default is muted, changed is primary. */
     .param.is-default .param-label,

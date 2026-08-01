@@ -2,16 +2,27 @@
   <title>Crumar Seven front panel</title>
 
   <style>
+    /* Self-hosted panel font (no CDN; the app works offline). Path is relative
+       to this file so the SVG renders correctly opened standalone in a browser.
+       When inlined into the app DOM, preload.js strips this block and the app
+       supplies the same face via a data: URI instead (the relative path would
+       resolve against src/ there). */
+    @font-face {
+      font-family: 'Archivo';
+      src: url('fonts/Archivo-Variable.woff2') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
     .panel-bg  { fill: #2b2b2d; }
     .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
     .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
     .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .btn.on    { fill: #7d1418; }
-    .lbl       { fill: #e8e8ea; font-family: Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: .06em; text-anchor: middle; }
-    .lbl-sm    { fill: #c8c8cc; font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: .05em; text-anchor: middle; }
-    .lbl-fx    { fill: #e8e8ea; font-family: Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
-    .lbl-alt   { fill: #d9c24a; font-family: Helvetica, Arial, sans-serif; font-size: 9px;  letter-spacing: .04em; text-anchor: middle; }
+    .lbl       { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: .06em; text-anchor: middle; }
+    .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: .05em; text-anchor: middle; }
+    .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
+    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 9px;  letter-spacing: .04em; text-anchor: middle; }
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }

@@ -4,7 +4,7 @@
   "firmware": "1.37",
   "banks": [
     {
-      "name": "A",
+      "name": "1",
       "patches": [
         {
           "name": "Sunset Rhodes",
@@ -945,7 +945,7 @@
       ]
     },
     {
-      "name": "B",
+      "name": "2",
       "patches": [
         {
           "name": "Grand D Live",
@@ -1886,7 +1886,7 @@
       ]
     },
     {
-      "name": "C",
+      "name": "3",
       "patches": [
         {
           "name": "70B Punch",
@@ -2827,7 +2827,7 @@
       ]
     },
     {
-      "name": "D",
+      "name": "4",
       "patches": [
         {
           "name": "Felt Upright",

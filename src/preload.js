@@ -5,7 +5,7 @@
 // `getLibrary` would return a device-derived library object instead. The renderer
 // asks for `sevenAPI.getLibrary()` and never learns the difference.
 
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,5 +18,29 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   getLibrary: () => readJson('fixtures/sample-library.json'),
   // Static reference data (parameter map + panel artwork), not device state.
   getSchema: () => readJson('schema/seven-1.37.json'),
-  getPanelSvg: () => readText('assets/seven-panel.svg'),
+  // The SVG's internal @font-face uses a path relative to assets/ so the file
+  // renders standalone; inlined into the DOM it would resolve against src/ and
+  // 404 (masking the app-supplied face). Strip it — getFontCss() provides the
+  // same family document-wide.
+  getPanelSvg: () =>
+    readText('assets/seven-panel.svg').replace(/@font-face\s*{[^}]*}\s*/g, ''),
+  // Self-hosted fonts as data: URIs — path-independent and fully offline.
+  getFontCss: () => {
+    const face = (family, rel) => {
+      const b64 = fs.readFileSync(path.join(root, rel)).toString('base64');
+      return (
+        `@font-face { font-family: '${family}'; ` +
+        `src: url(data:font/woff2;base64,${b64}) format('woff2'); ` +
+        `font-weight: 100 900; font-display: swap; }`
+      );
+    };
+    return (
+      face('Archivo', 'assets/fonts/Archivo-Variable.woff2') +
+      '\n' +
+      face('Inter', 'assets/fonts/Inter-Variable.woff2')
+    );
+  },
+  // View-menu commands from the main process (Show raw values, Expand/Collapse
+  // all). View state only — nothing here touches patch data.
+  onViewCommand: (cb) => ipcRenderer.on('view-command', (_e, msg) => cb(msg)),
 });
