@@ -173,7 +173,7 @@
         body = `<div class="params">${rows}</div>`;
       }
       return (
-        `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}">` +
+        `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
         `<div class="fx-head" data-group="${section.group}" role="button" title="Click to ${collapsed ? 'expand' : 'collapse'}">` +
         `<span class="fx-chevron">${collapsed ? '▸' : '▾'}</span>` +
         `<span class="fx-title">${esc(section.title)}</span>` +

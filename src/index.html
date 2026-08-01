@@ -46,6 +46,14 @@
     }
     #panel-strip #btn-bank:hover,
     #panel-strip [id^="preset-"] .btn:hover { stroke: #c8c8cc; }
+    /* Mapped knobs are click targets for navigation only (strip stays readonly;
+       knobs are clickable, never draggable). Unmapped elements get no cursor or
+       hover. app.js tags mapped knob groups with .nav-knob. */
+    #panel-strip .nav-knob { pointer-events: auto; cursor: pointer; }
+    #panel-strip .nav-knob .knob-face { transition: stroke .3s; }
+    #panel-strip .nav-knob:hover .knob-face { stroke: #d8d8dc; stroke-width: 3; }
+    #panel-strip .nav-ring .knob-face,
+    #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 
     /* 2. Connection row */
     #connection-row {
@@ -131,6 +139,12 @@
       border: 1px solid var(--line); border-radius: 6px;
       padding: 10px 12px; margin-bottom: 12px;
       background: var(--bg-raised);
+      /* Nav highlight is background + inset shadow only — no layout shift. */
+      transition: background .35s, box-shadow .35s;
+    }
+    .fx-section.nav-flash {
+      background: rgba(255, 59, 48, .07);
+      box-shadow: inset 3px 0 0 var(--accent);
     }
     .fx-section.dimmed { opacity: .38; }
     .fx-section.collapsed { padding-bottom: 10px; }

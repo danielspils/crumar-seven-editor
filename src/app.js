@@ -42,9 +42,74 @@
   const panelStrip = document.getElementById('panel-strip');
   panelStrip.innerHTML = window.sevenAPI.getPanelSvg(); // keeps class="readonly"
 
+  // Panel knob → effects section. Navigation only: clicking a knob reveals and
+  // highlights the section it controls; it never changes a value. Preset/bank
+  // buttons are patch selection and are not part of this mapping.
+  const KNOB_TO_SECTION = {
+    'knob-volume': 'efx_veq',
+    'knob-bass-mid': 'efx_veq',
+    'knob-treble-midf': 'efx_veq',
+    'knob-reverb': 'efx_rev',
+    'knob-fx1': 'efx_fx1',
+    'knob-fx2': 'efx_fx2',
+    'knob-amp-drive': 'efx_amp',
+    'knob-pad': 'efx_pad',
+  };
+  const SECTION_TO_KNOBS = {};
+  for (const [knob, group] of Object.entries(KNOB_TO_SECTION)) {
+    (SECTION_TO_KNOBS[group] = SECTION_TO_KNOBS[group] || []).push(knob);
+  }
+  // Mapped knobs get the nav-knob class: it re-enables pointer events (the
+  // strip stays readonly otherwise) and carries the cursor/hover affordance.
+  for (const id of Object.keys(KNOB_TO_SECTION)) {
+    const el = panelStrip.querySelector(`#${id}`);
+    if (el) el.classList.add('nav-knob');
+  }
+
+  const flashTimers = {};
+  function flashSection(group) {
+    const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
+    if (!el) return;
+    el.classList.add('nav-flash');
+    clearTimeout(flashTimers['s:' + group]);
+    flashTimers['s:' + group] = setTimeout(() => el.classList.remove('nav-flash'), 1500);
+  }
+  function flashKnobs(group) {
+    for (const id of SECTION_TO_KNOBS[group] || []) {
+      const el = panelStrip.querySelector(`#${id}`);
+      if (!el) continue;
+      el.classList.add('nav-ring');
+      clearTimeout(flashTimers['k:' + id]);
+      flashTimers['k:' + id] = setTimeout(() => el.classList.remove('nav-ring'), 1500);
+    }
+  }
+
+  // Knob click → expand (even when bypassed), scroll into view only if not
+  // already visible, and flash both ends. Values never change.
+  function navToSection(group) {
+    if (collapsed[group]) {
+      collapsed[group] = false;
+      renderDetail();
+    }
+    const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
+    if (!el) return;
+    const dr = detailEl.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    if (er.top < dr.top || er.bottom > dr.bottom) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    flashSection(group);
+    flashKnobs(group);
+  }
+
   // Panel buttons drive the same state as the tabs/list below. BANK cycles
   // 1→2→3→4→1 like the hardware; preset buttons select directly.
   panelStrip.addEventListener('click', (e) => {
+    const knob = e.target.closest('[id^="knob-"]');
+    if (knob && KNOB_TO_SECTION[knob.id]) {
+      navToSection(KNOB_TO_SECTION[knob.id]);
+      return;
+    }
     if (e.target.closest('#btn-bank')) {
       bankIndex = (bankIndex + 1) % library.banks.length;
       resetCollapsed();
@@ -175,6 +240,10 @@
     if (!head || !head.dataset.group) return;
     collapsed[head.dataset.group] = !collapsed[head.dataset.group];
     renderDetail();
+    // Bidirectional nav: touching a section lights up its knob(s) on the strip
+    // (all three for efx_veq). Sections without a mapped knob are a no-op.
+    flashKnobs(head.dataset.group);
+    if (!collapsed[head.dataset.group]) flashSection(head.dataset.group);
   });
 
   // Enum dropdowns follow the same honesty rule as the pill: a change never
