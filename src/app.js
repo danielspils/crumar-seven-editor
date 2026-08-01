@@ -151,16 +151,6 @@
   function updatePanelLeds() {
     for (let b = 1; b <= 4; b++) setLed(`led-bank-${b}`, b - 1 === bankIndex);
     for (let p = 1; p <= 8; p++) setLed(`led-preset-${p}`, p - 1 === patchIndex);
-    // Volume knob light: lit = Local On. On the hardware a slow push (held
-    // ≥100ms) toggles Local Off — the keyboard stops playing the internal
-    // engine but keeps sending MIDI out — and the knob turns BLUE (not dark;
-    // not a mute). A quick push (immediate release) switches which parameter
-    // the knob displays. Whether Local Off is readable/settable over SysEx is
-    // unknown (docs/DESIGN.md, docs/PROJECT-SCOPE.md).
-    // TODO(device): when knob pushes land, drive this from what the device
-    // reports (slow push ≥100ms = toggle, quick push = switch displayed
-    // parameter), same honesty rule as every device-state control.
-    setLed('led-volume', true);
     // Preset button fills follow the LEDs.
     for (let p = 1; p <= 8; p++) {
       const btn = panelStrip.querySelector(`#preset-${p} .btn`);
@@ -205,11 +195,53 @@
     updateKnobRings();
   }
 
+  // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
+  // outline; the accent EXPANDED ring is a separate cue on the outer ring only
+  // — both can show at once). Interim amber scheme; the eventual target is the
+  // manual's RGB value-encoding (docs/DESIGN.md).
+  const KNOB_LIT_SWITCH = {
+    // Master volume has no switch — always lit. Its Local Off state (knob turns
+    // BLUE on the hardware; slow push ≥100ms toggles, quick push switches the
+    // displayed parameter) is a device-reported cue for when MIDI lands —
+    // TODO(device); SysEx visibility unknown (docs/PROJECT-SCOPE.md).
+    'knob-volume': null,
+    'knob-bass-mid': 'veq_byp',
+    'knob-treble-midf': 'veq_byp',
+    'knob-reverb': 'rev_sw',
+    'knob-fx1': 'fx1_sw',
+    'knob-fx2': 'fx2_sw',
+    'knob-amp-drive': 'amp_sw',
+    'knob-pad': 'pad_sw',
+  };
+  function updateKnobLit() {
+    const patch = currentPatch();
+    for (const [id, sw] of Object.entries(KNOB_LIT_SWITCH)) {
+      const el = panelStrip.querySelector(`#${id}`);
+      if (!el) continue;
+      const lit = !!patch && (sw === null || patch.params[sw] === 1);
+      el.classList.toggle('knob-lit', lit);
+    }
+  }
+
+  // Clavi tabs only act on the modeled Clavi engine. Dim the whole group unless
+  // the selected sound resolves to pno_zd6 — resolved from the ENGINE GROUP, not
+  // the sound name: "Sampled Clavi Piano" runs the pno_rom sample player and
+  // must render inactive.
+  function updateClaviGroup() {
+    const group = panelStrip.querySelector('#clavi-group');
+    if (!group) return;
+    const patch = currentPatch();
+    const active = !!patch && R.engineGroupFor(patch) === 'pno_zd6';
+    group.classList.toggle('inactive', !active);
+  }
+
   function renderAll() {
     renderTabs();
     renderList();
     renderDetail();
     updatePanelLeds();
+    updateKnobLit();
+    updateClaviGroup();
   }
 
   tabsEl.addEventListener('click', (e) => {

@@ -39,7 +39,21 @@
     .lbl       { fill: #e8e8ea; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 13px; letter-spacing: .05em; text-anchor: middle; }
     .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 10px; letter-spacing: .04em; text-anchor: middle; }
     .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
-    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 9px;  letter-spacing: .03em; text-anchor: middle; }
+    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 12px; letter-spacing: .03em; text-anchor: middle; }
+    .lbl-alt-lg { font-size: 14px; }
+    .transpose-sym { font-size: 17px; }
+    .lbl-fxled { font-size: 8.5px; }
+    /* Size overrides, matched against the reference photo: BANK is one of the
+       largest legends on the instrument; preset numbers/labels sit between it
+       and the small captions. */
+    .lbl-lg     { font-size: 18px; }
+    .lbl-preset { font-size: 15px; }
+    .lbl-num    { font-size: 12px; }
+    .clavi-line { stroke: #d9c24a; stroke-width: 1; fill: none; }
+    /* Clavi tabs only act on the modeled Clavi engine (pno_zd6); the app dims
+       the whole group when any other sound is selected. */
+    #clavi-group { transition: opacity .2s; }
+    #clavi-group.inactive { opacity: .35; }
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }
@@ -68,10 +82,12 @@
       <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
       <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <!-- Lit = Local On. A slow push (held ≥100ms) on the hardware toggles
-         Local Off — keyboard keeps sending MIDI out — and the knob turns BLUE.
-         SysEx visibility of Local Off is unknown (docs/PROJECT-SCOPE.md). -->
-    <circle class="led on" id="led-volume" cx="72" cy="166" r="5"/>
+    <!-- Silkscreened legend, not an indicator light. Local Off state is shown
+         by the volume knob turning BLUE (slow push ≥100ms toggles it); that cue
+         belongs on the knob when device wiring lands — SysEx visibility of
+         Local Off is unknown (docs/PROJECT-SCOPE.md). -->
+    <rect x="38" y="168" width="68" height="17" rx="2" fill="#8e2f8e"/>
+    <text class="lbl-sm" x="72" y="181" fill="#ffffff">LOCAL OFF</text>
   </g>
 
   <g id="sec-reverb">
@@ -111,23 +127,22 @@
   <line class="divider" x1="562" y1="26" x2="562" y2="184"/>
 
   <g id="sec-clavi-tabs">
-    <!-- Transpose: partial border (open on the right), flat/sharp flanking the
-         switch, small keyboard icon. LED lights while transposition is active;
-         transposition resets to zero at power-on, so it renders unlit. -->
-    <path class="transpose-border" d="M646 46 L590 46 L590 92 L646 92"/>
+    <!-- Transpose: flat/sharp flank the switch; a single U-shaped line (open at
+         the top) runs from below the flat, under the button with a small gap,
+         up to below the sharp. Separate from the amber Clavi grouping line.
+         LED lights while transposition is active; transposition resets to zero
+         at power-on, so it renders unlit. -->
+    <path class="transpose-border" d="M580 79 V99 H658 V79"/>
     <path class="kbd-icon" d="M607 36 h24 v9 h-24 Z M613 36 v5 M619 36 v5 M625 36 v5"/>
-    <text class="lbl-sm" x="582" y="73">♭</text>
-    <text class="lbl-sm" x="656" y="73">♯</text>
+    <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
+    <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
     <rect class="sw-body" id="btn-transpose" x="596" y="52" width="46" height="34"/>
     <rect class="sw" x="604" y="60" width="30" height="18"/>
-    <circle class="led" id="led-transpose" cx="619" cy="100" r="4"/>
-    <rect class="sw-body" x="596" y="108" width="46" height="34"/>
-    <rect class="sw" x="604" y="116" width="30" height="18"/>
-    <text class="lbl-alt" x="619" y="164">CLAVI TABS</text>
+    <circle class="led" id="led-transpose" cx="619" cy="92" r="4"/>
   </g>
 
   <g id="sec-bank">
-    <text class="lbl" x="700" y="30">BANK</text>
+    <text class="lbl lbl-lg" x="700" y="30">BANK</text>
     <rect class="btn-bezel" x="676" y="48" width="48" height="68" rx="3"/>
     <rect class="btn btn-face on" id="btn-bank" x="680" y="52" width="40" height="60"/>
     <path class="btn-edge" d="M680 112 L720 112 L720 52"/>
@@ -145,74 +160,68 @@
 
   <g id="sec-presets">
     <g id="preset-1">
-      <text class="lbl-sm" x="836" y="30">1</text>
-      <text class="lbl" x="836" y="48">TINES</text>
+      <text class="lbl-sm lbl-num" x="836" y="30">1</text>
+      <text class="lbl lbl-preset" x="836" y="48">TINES</text>
       <rect class="btn-bezel" x="806" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face on" x="810" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M810 122 L862 122 L862 60"/>
       <rect class="btn-inset" x="813" y="63" width="46" height="17" rx="1"/>
       <circle class="led on" id="led-preset-1" cx="836" cy="71" r="5"/>
-      <text class="lbl-alt" x="836" y="164">BRILLIANT</text>
       <rect class="btn-hit" x="806" y="56" width="60" height="70" role="button" aria-label="Select preset 1 (Tines)"/>
     </g>
     <g id="preset-2">
-      <text class="lbl-sm" x="920" y="30">2</text>
-      <text class="lbl" x="920" y="48">REEDS</text>
+      <text class="lbl-sm lbl-num" x="920" y="30">2</text>
+      <text class="lbl lbl-preset" x="920" y="48">REEDS</text>
       <rect class="btn-bezel" x="890" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="894" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M894 122 L946 122 L946 60"/>
       <rect class="btn-inset" x="897" y="63" width="46" height="17" rx="1"/>
       <circle class="led" id="led-preset-2" cx="920" cy="71" r="5"/>
-      <text class="lbl-alt" x="920" y="164">TREBLE</text>
       <rect class="btn-hit" x="890" y="56" width="60" height="70" role="button" aria-label="Select preset 2 (Reeds)"/>
     </g>
     <g id="preset-3">
-      <text class="lbl-sm" x="1004" y="30">3</text>
-      <text class="lbl" x="1004" y="48">EGRAND</text>
+      <text class="lbl-sm lbl-num" x="1004" y="30">3</text>
+      <text class="lbl lbl-preset" x="1004" y="48">EGRAND</text>
       <rect class="btn-bezel" x="974" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="978" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M978 122 L1030 122 L1030 60"/>
       <rect class="btn-inset" x="981" y="63" width="46" height="17" rx="1"/>
       <circle class="led" id="led-preset-3" cx="1004" cy="71" r="5"/>
-      <text class="lbl-alt" x="1004" y="164">MEDIUM</text>
       <rect class="btn-hit" x="974" y="56" width="60" height="70" role="button" aria-label="Select preset 3 (EGrand)"/>
     </g>
     <g id="preset-4">
-      <text class="lbl-sm" x="1088" y="30">4</text>
-      <text class="lbl" x="1088" y="48">CLAVI</text>
+      <text class="lbl-sm lbl-num" x="1088" y="30">4</text>
+      <text class="lbl lbl-preset" x="1088" y="48">CLAVI</text>
       <rect class="btn-bezel" x="1058" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="1062" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M1062 122 L1114 122 L1114 60"/>
       <rect class="btn-inset" x="1065" y="63" width="46" height="17" rx="1"/>
       <circle class="led" id="led-preset-4" cx="1088" cy="71" r="5"/>
-      <text class="lbl-alt" x="1088" y="164">SOFT</text>
       <rect class="btn-hit" x="1058" y="56" width="60" height="70" role="button" aria-label="Select preset 4 (Clavi)"/>
     </g>
     <g id="preset-5">
-      <text class="lbl-sm" x="1172" y="30">5</text>
-      <text class="lbl" x="1172" y="48">DX EP</text>
+      <text class="lbl-sm lbl-num" x="1172" y="30">5</text>
+      <text class="lbl lbl-preset" x="1172" y="48">DX EP</text>
       <rect class="btn-bezel" x="1142" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="1146" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M1146 122 L1198 122 L1198 60"/>
       <rect class="btn-inset" x="1149" y="63" width="46" height="17" rx="1"/>
       <circle class="led" id="led-preset-5" cx="1172" cy="71" r="5"/>
-      <text class="lbl-alt" x="1172" y="164">C / D</text>
       <rect class="btn-hit" x="1142" y="56" width="60" height="70" role="button" aria-label="Select preset 5 (DX EP)"/>
     </g>
     <g id="preset-6">
-      <text class="lbl-sm" x="1256" y="30">6</text>
-      <text class="lbl" x="1256" y="48">MKS EP</text>
+      <text class="lbl-sm lbl-num" x="1256" y="30">6</text>
+      <text class="lbl lbl-preset" x="1256" y="48">MKS EP</text>
       <rect class="btn-bezel" x="1226" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="1230" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M1230 122 L1282 122 L1282 60"/>
       <rect class="btn-inset" x="1233" y="63" width="46" height="17" rx="1"/>
       <circle class="led" id="led-preset-6" cx="1256" cy="71" r="5"/>
-      <text class="lbl-alt" x="1256" y="164">A / B</text>
       <rect class="btn-hit" x="1226" y="56" width="60" height="70" role="button" aria-label="Select preset 6 (MKS EP)"/>
     </g>
     <g id="preset-7">
-      <text class="lbl-sm" x="1340" y="30">7</text>
-      <text class="lbl" x="1340" y="48">VIBES</text>
+      <text class="lbl-sm lbl-num" x="1340" y="30">7</text>
+      <text class="lbl lbl-preset" x="1340" y="48">VIBES</text>
       <rect class="btn-bezel" x="1310" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="1314" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M1314 122 L1366 122 L1366 60"/>
@@ -221,8 +230,8 @@
       <rect class="btn-hit" x="1310" y="56" width="60" height="70" role="button" aria-label="Select preset 7 (Vibes)"/>
     </g>
     <g id="preset-8">
-      <text class="lbl-sm" x="1424" y="30">8</text>
-      <text class="lbl" x="1424" y="48">GRAND</text>
+      <text class="lbl-sm lbl-num" x="1424" y="30">8</text>
+      <text class="lbl lbl-preset" x="1424" y="48">GRAND</text>
       <rect class="btn-bezel" x="1394" y="56" width="60" height="70" rx="3"/>
       <rect class="btn btn-face" x="1398" y="60" width="52" height="62"/>
       <path class="btn-edge" d="M1398 122 L1450 122 L1450 60"/>
@@ -232,6 +241,19 @@
     </g>
   </g>
 
+  <g id="clavi-group">
+    <rect class="sw-body" x="596" y="108" width="46" height="34"/>
+    <rect class="sw" x="604" y="116" width="30" height="18"/>
+    <text class="lbl-alt lbl-alt-lg" x="673" y="164">CLAVI TABS</text>
+    <path id="clavi-group-line" class="clavi-line" d="M619 142 V158 Q619 161 622 161 H640 M710 161 H1272"/>
+    <text class="lbl-alt" x="836" y="157">BRILLIANT</text>
+    <text class="lbl-alt" x="920" y="157">TREBLE</text>
+    <text class="lbl-alt" x="1004" y="157">MEDIUM</text>
+    <text class="lbl-alt" x="1088" y="157">SOFT</text>
+    <text class="lbl-alt" x="1172" y="157">C / D</text>
+    <text class="lbl-alt" x="1256" y="157">A / B</text>
+  </g>
+
   <line class="divider" x1="1486" y1="26" x2="1486" y2="184"/>
 
   <g id="sec-fx1">
@@ -239,16 +261,17 @@
     <text class="lbl-sm" x="1536" y="62">SELECT</text>
     <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx1-0" cx="1584" cy="72"  r="4.5"/>
-    <text class="lbl-sm" x="1598" y="76" text-anchor="start">TREM</text>
+    <text class="lbl-sm" x="1600" y="76" text-anchor="start">TREM</text>
     <circle class="led"    id="led-fx1-1" cx="1584" cy="94"  r="4.5"/>
-    <text class="lbl-sm" x="1598" y="98" text-anchor="start">PAN</text>
+    <text class="lbl-sm" x="1600" y="98" text-anchor="start">PAN</text>
     <circle class="led"    id="led-fx1-2" cx="1584" cy="116" r="4.5"/>
-    <text class="lbl-sm" x="1598" y="120" text-anchor="start">A-WHA</text>
+    <text class="lbl-sm" x="1600" y="120" text-anchor="start">A-WHA</text>
     <circle class="led"    id="led-fx1-3" cx="1584" cy="138" r="4.5"/>
-    <text class="lbl-sm" x="1598" y="142" text-anchor="start">P-WHA</text>
+    <text class="lbl-sm" x="1600" y="142" text-anchor="start">P-WHA</text>
     <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
       <circle class="knob-face" cx="1664" cy="110" r="28"/>
+      <circle class="knob-ring" cx="1664" cy="110" r="32"/>
       <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
       <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
@@ -271,16 +294,17 @@
     <text class="lbl-sm" x="1860" y="62">SELECT</text>
     <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx2-0" cx="1908" cy="72"  r="4.5"/>
-    <text class="lbl-sm" x="1922" y="76" text-anchor="start">CHOR</text>
+    <text class="lbl-sm lbl-fxled" x="1920" y="76" text-anchor="start">CHORUS</text>
     <circle class="led"    id="led-fx2-1" cx="1908" cy="94"  r="4.5"/>
-    <text class="lbl-sm" x="1922" y="98" text-anchor="start">PHAS</text>
+    <text class="lbl-sm lbl-fxled" x="1920" y="98" text-anchor="start">PHASER</text>
     <circle class="led"    id="led-fx2-2" cx="1908" cy="116" r="4.5"/>
-    <text class="lbl-sm" x="1922" y="120" text-anchor="start">FLNG</text>
+    <text class="lbl-sm lbl-fxled" x="1920" y="120" text-anchor="start">FLANGER</text>
     <circle class="led"    id="led-fx2-3" cx="1908" cy="138" r="4.5"/>
-    <text class="lbl-sm" x="1922" y="142" text-anchor="start">DELAY</text>
+    <text class="lbl-sm lbl-fxled" x="1920" y="142" text-anchor="start">DELAY</text>
     <text class="lbl-fx" x="1859" y="152">FX2</text>
     <g id="knob-fx2">
       <circle class="knob-face" cx="1988" cy="110" r="28"/>
+      <circle class="knob-ring" cx="1988" cy="110" r="32"/>
       <line class="knob-ptr" x1="1988" y1="110" x2="1988" y2="87"/>
       <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>

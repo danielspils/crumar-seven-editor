@@ -24,7 +24,10 @@
       --ok: #3fb950;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
+    /* The window itself never scrolls: the panel strip is a fixed reference at
+       the top, and only the two columns below scroll, independently. A root
+       scrollbar could otherwise shift the whole UI when sections expand. */
+    html, body { height: 100%; overflow: hidden; }
     body {
       background: var(--bg);
       color: var(--text);
@@ -61,7 +64,14 @@
        ringless FX knobs) so the whole knob reads as interactive. */
     #panel-strip .nav-knob:hover .knob-ring { stroke: #9a9aa0; }
     #panel-strip .nav-knob:hover .knob-face { stroke: #c4c4c9; }
-    #panel-strip .nav-ring .knob-face,
+    /* Two distinct, stackable knob cues (docs/DESIGN.md):
+       LIT (effect on, patch data)  = amber cap fill + amber outline + dark
+                                      pointer. ID-prefixed so the SVG's own
+                                      .knob-face rule can't override the fill.
+       EXPANDED (view state)        = accent OUTER RING only — never the face,
+                                      so it can't be mistaken for amber. */
+    #panel-strip .knob-lit .knob-face { fill: #ffd9a0; stroke: #ff9d2e; }
+    #panel-strip .knob-lit .knob-ptr { stroke: #1a1a1c; }
     #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 
     /* 2. Connection row */
@@ -100,7 +110,7 @@
     .bank-tab-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
     .bank-tab.active { background: var(--bg-panel); color: var(--amber); }
     .bank-tab.active .bank-tab-label { border-bottom-color: var(--amber); }
-    #patch-list { flex: 1; overflow-y: auto; }
+    #patch-list { flex: 1; overflow-y: auto; scrollbar-gutter: stable; }
     .patch-row {
       display: grid; grid-template-columns: 28px 1fr 1fr auto auto;
       gap: 10px; align-items: center;
@@ -124,12 +134,18 @@
     .badge-gap { width: 0; }
 
     /* 4. Detail */
-    #detail { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    /* min-width 0 lets the column shrink instead of overflowing #main
+       horizontally; the stable gutter keeps content width constant whether or
+       not a classic scrollbar is showing. */
+    #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
     #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
     .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
     .col-title {
       font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 10px;
+      /* Centered over each column's own width (bank tabs stay left-aligned —
+         they're a tab strip, not a column header). */
+      text-align: center;
     }
 
     .engine-head { margin-bottom: 12px; }

@@ -31,10 +31,12 @@ pretending — it never flips to reflect local UI state.
 
 ## Three knob/section cues — keep them distinct
 
-- **Knob lit/colour** = effect state (patch data; not yet implemented — the
-  target is the RGB value-encoding scheme below, not a flat amber glow).
+- **Lit knob** = its effect is **on** (patch data). Interim scheme: amber cap
+  fill (#ffd9a0) + amber outline (#ff9d2e) + darkened pointer. The eventual
+  target is the RGB value-encoding scheme below.
 - **Accent ring on a knob** = its section is **expanded** (view state,
-  persistent while open).
+  persistent while open). Outer ring ONLY — never the face — so it stays
+  distinct from the lit cue; both can apply to one knob at once.
 - **Brief accent tint on a section** = you **just opened** it (transient,
   fades ~1.2s).
 
