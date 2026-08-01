@@ -58,12 +58,13 @@
        with .nav-knob. */
     #panel-strip .knob-hit { pointer-events: none; }
     #panel-strip .nav-knob .knob-hit { pointer-events: auto; cursor: pointer; }
-    #panel-strip .nav-knob .knob-ring,
-    #panel-strip .nav-knob .knob-face { transition: stroke .3s; }
-    /* Hover: subtle brightening of the outer ring (face stands in on the
-       ringless FX knobs) so the whole knob reads as interactive. */
-    #panel-strip .nav-knob:hover .knob-ring { stroke: #9a9aa0; }
-    #panel-strip .nav-knob:hover .knob-face { stroke: #c4c4c9; }
+    #panel-strip .nav-knob .knob-ring { transition: stroke .3s; }
+    #panel-strip .nav-knob .knob-face { transition: stroke .3s, fill .3s; }
+    /* One treatment per annulus: the outer ring belongs to the FOCUSED knob
+       only (its section expanded). At rest there is no ring at all; hover
+       shows the same ring dimmed so clickability stays discoverable. The lit
+       cue lives on the face (amber fill+outline) and never uses the annulus. */
+    #panel-strip .nav-knob:not(.nav-ring):hover .knob-ring { stroke: rgba(255, 59, 48, .35); }
     /* Two distinct, stackable knob cues (docs/DESIGN.md):
        LIT (effect on, patch data)  = amber cap fill + amber outline + dark
                                       pointer. ID-prefixed so the SVG's own
@@ -208,12 +209,16 @@
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 11px; }
+    /* The summary is the header's flex-grow middle slot in BOTH states —
+       visibility (not display) hides its text when expanded, so the slot keeps
+       filling and the ON/OFF pill stays anchored hard right regardless of
+       whether a summary exists or how long it is. */
     .fx-summary {
       flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
-      display: none; /* always in the markup; visible only while collapsed */
+      visibility: hidden;
     }
-    .fx-section.collapsed .fx-summary { display: block; }
+    .fx-section.collapsed .fx-summary { visibility: visible; }
     /* State pill: a real control, but it renders device state only — clicks
        never flip it locally (docs/DESIGN.md). */
     .fx-state {

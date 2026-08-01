@@ -37,6 +37,12 @@ pretending — it never flips to reflect local UI state.
 - **Accent ring on a knob** = its section is **expanded** (view state,
   persistent while open). Outer ring ONLY — never the face — so it stays
   distinct from the lit cue; both can apply to one knob at once.
+
+  The outer ring appears ONLY on the focused knob (plus a dimmer hover ring
+  for discoverability); at rest a knob is just its face and pointer. This is a
+  **deliberate departure from the instrument**, which has a visible ring around
+  every knob — fidelity traded for a legible focus state, since a static ring,
+  the focus ring, and hover all competed for the same annulus.
 - **Brief accent tint on a section** = you **just opened** it (transient,
   fades ~1.2s).
 

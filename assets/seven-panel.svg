@@ -22,7 +22,11 @@
     }
     .panel-bg  { fill: #2b2b2d; }
     .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
-    .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
+    /* Ring circles are geometry only — unstroked at rest. The app strokes them
+       for hover/focus states. Deliberate departure from the instrument, which
+       rings every knob (docs/DESIGN.md: fidelity traded for a legible focus
+       state). */
+    .knob-ring { fill: none; stroke: none; stroke-width: 3; }
     .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     /* Shared button component: FX1/FX2 SELECT, transpose, CLAVI TABS all use
        .btn so they stay consistent (presets add .btn-face on top). */
