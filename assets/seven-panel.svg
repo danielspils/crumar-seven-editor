@@ -45,6 +45,9 @@
       <circle class="knob-ring" cx="72" cy="105" r="35"/>
       <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
     </g>
+    <!-- Lit = unmuted; press-and-hold on the hardware mutes and darkens it.
+         Mute's data source is unresolved (docs/PROJECT-SCOPE.md). -->
+    <circle class="led on" id="led-volume" cx="72" cy="166" r="5"/>
   </g>
 
   <g id="sec-reverb">
