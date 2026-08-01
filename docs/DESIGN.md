@@ -19,6 +19,19 @@ reverb is actually off is worse than a pill that didn't move. When no instrument
 is connected, a control explains ("No instrument connected.") instead of
 pretending — it never flips to reflect local UI state.
 
+## Three knob/section cues — keep them distinct
+
+- **Amber glow on a knob** = the effect is **on** (patch data; not yet
+  implemented).
+- **Accent ring on a knob** = its section is **expanded** (view state,
+  persistent while open).
+- **Brief accent tint on a section** = you **just opened** it (transient,
+  fades ~1.2s).
+
+Never reuse one of these colours/treatments for another meaning — and the
+library's selected-patch red edge marker is a fourth, unrelated cue that stays
+in the list only. Closing a section gets no highlight at all.
+
 ## Volume knob light — data source unresolved
 
 On the instrument, press-and-hold on the volume knob mutes (its light goes out);

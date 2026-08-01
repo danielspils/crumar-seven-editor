@@ -63,44 +63,59 @@
     if (el) el.classList.add('nav-knob');
   }
 
-  const flashTimers = {};
-  function flashSection(group) {
-    const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
-    if (!el) return;
-    el.classList.add('nav-flash');
-    clearTimeout(flashTimers['s:' + group]);
-    flashTimers['s:' + group] = setTimeout(() => el.classList.remove('nav-flash'), 1500);
-  }
-  function flashKnobs(group) {
-    for (const id of SECTION_TO_KNOBS[group] || []) {
-      const el = panelStrip.querySelector(`#${id}`);
-      if (!el) continue;
-      el.classList.add('nav-ring');
-      clearTimeout(flashTimers['k:' + id]);
-      flashTimers['k:' + id] = setTimeout(() => el.classList.remove('nav-ring'), 1500);
+  // Three distinct cues (keep them distinct — docs/DESIGN.md):
+  //   amber glow on a knob  = effect is on (patch data; not yet implemented)
+  //   accent ring on a knob = its section is expanded (view state, persistent)
+  //   brief accent tint     = you just opened this section (transient ~1.2s)
+
+  // Persistent expanded-state rings: a knob wears the accent ring while its
+  // section is open. Recomputed from `collapsed`, never from clicks directly.
+  function updateKnobRings() {
+    for (const [group, knobs] of Object.entries(SECTION_TO_KNOBS)) {
+      for (const id of knobs) {
+        const el = panelStrip.querySelector(`#${id}`);
+        if (el) el.classList.toggle('nav-ring', !collapsed[group]);
+      }
     }
   }
 
-  // Knob click TOGGLES its section (even when bypassed). Opening scrolls it
-  // into view if needed and flashes both ends; closing is plain — no highlight.
-  // Values never change.
-  function navToSection(group) {
-    if (collapsed[group]) {
-      collapsed[group] = false;
-      renderDetail();
-      const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
-      if (!el) return;
-      const dr = detailEl.getBoundingClientRect();
-      const er = el.getBoundingClientRect();
-      if (er.top < dr.top || er.bottom > dr.bottom) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // Transient open-confirmation tint, fading over ~1.2s. Animation-driven;
+  // restart cleanly if the section is re-opened mid-fade.
+  const tintTimers = {};
+  function flashTint(el, group) {
+    el.classList.remove('nav-flash');
+    void el.offsetWidth; // restart the CSS animation
+    el.classList.add('nav-flash');
+    clearTimeout(tintTimers[group]);
+    tintTimers[group] = setTimeout(() => el.classList.remove('nav-flash'), 1200);
+  }
+
+  // Single path for all expand/collapse changes: keeps the `collapsed` map and
+  // the DOM class in sync, animates via CSS (no re-render), and applies the
+  // open cues. Closing is plain — no highlight.
+  function setSectionCollapsed(group, isCollapsed, opts = {}) {
+    collapsed[group] = isCollapsed;
+    const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
+    if (el) {
+      el.classList.toggle('collapsed', isCollapsed);
+      if (!isCollapsed) {
+        if (opts.scroll) {
+          const dr = detailEl.getBoundingClientRect();
+          const er = el.getBoundingClientRect();
+          if (er.top < dr.top || er.bottom > dr.bottom) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+        if (opts.tint !== false) flashTint(el, group);
       }
-      flashSection(group);
-      flashKnobs(group);
-    } else {
-      collapsed[group] = true;
-      renderDetail();
     }
+    updateKnobRings();
+  }
+
+  // Knob click TOGGLES its section (even when bypassed). Opening scrolls it
+  // into view if needed. Values never change.
+  function navToSection(group) {
+    setSectionCollapsed(group, !collapsed[group], { scroll: true });
   }
 
   // Panel buttons drive the same state as the tabs/list below. BANK cycles
@@ -184,6 +199,7 @@
           patchNumber: patchIndex + 1,
         })
       : '<div class="placeholder">Select a patch</div>';
+    updateKnobRings();
   }
 
   function renderAll() {
@@ -246,15 +262,9 @@
     }
     const head = e.target.closest('.fx-head');
     if (!head || !head.dataset.group) return;
-    collapsed[head.dataset.group] = !collapsed[head.dataset.group];
-    renderDetail();
-    // Bidirectional nav: opening a section lights up its knob(s) on the strip
-    // (all three for efx_veq). Closing is plain — no highlight. Sections
-    // without a mapped knob (pdl_exp) are a no-op.
-    if (!collapsed[head.dataset.group]) {
-      flashKnobs(head.dataset.group);
-      flashSection(head.dataset.group);
-    }
+    // Toggle without re-render so the body height animates. Knob rings update
+    // as part of setSectionCollapsed (persistent while open; pdl_exp has none).
+    setSectionCollapsed(head.dataset.group, !collapsed[head.dataset.group]);
   });
 
   // Enum dropdowns follow the same honesty rule as the pill: a change never
@@ -284,12 +294,14 @@
     window.sevenAPI.onViewCommand((msg) => {
       if (msg.type === 'showRaw') {
         showRaw = !!msg.value;
+        renderDetail();
       } else if (msg.type === 'expandAll') {
-        for (const s of R.FX_SECTIONS) collapsed[s.group] = false;
+        // Animated class toggles; no tint — the open-confirmation cue is for
+        // direct opens, not bulk menu actions.
+        for (const s of R.FX_SECTIONS) setSectionCollapsed(s.group, false, { tint: false });
       } else if (msg.type === 'collapseAll') {
-        for (const s of R.FX_SECTIONS) collapsed[s.group] = true;
+        for (const s of R.FX_SECTIONS) setSectionCollapsed(s.group, true);
       }
-      renderDetail();
     });
   }
 

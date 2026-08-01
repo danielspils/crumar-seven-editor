@@ -147,30 +147,51 @@
       border: 1px solid var(--line); border-radius: 6px;
       padding: 10px 12px; margin-bottom: 12px;
       background: var(--bg-raised);
-      /* Nav highlight is background + inset shadow only — no layout shift. */
-      transition: background .35s, box-shadow .35s;
     }
-    .fx-section.nav-flash {
-      background: rgba(255, 59, 48, .07);
-      box-shadow: inset 3px 0 0 var(--accent);
+    /* Transient open-confirmation: a brief accent tint fading out. No left
+       edge bar — that colour belongs to the library's selected-patch marker.
+       The persistent "expanded" cue is the accent ring on the knob. */
+    @keyframes nav-tint {
+      from { background-color: rgba(255, 59, 48, .10); }
+      to { background-color: var(--bg-raised); }
     }
+    .fx-section.nav-flash { animation: nav-tint 1.2s ease-out; }
     .fx-section.dimmed { opacity: .38; }
-    .fx-section.collapsed { padding-bottom: 10px; }
     /* Headers are clickable toggles; collapse state is view state only. The
        whole row is the click target, with a hover state to say so. */
     .fx-head {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 0;
       cursor: pointer; border-radius: 4px; padding: 2px 4px; margin-left: -4px; margin-right: -4px;
     }
     .fx-head:hover { background: rgba(255, 255, 255, .045); }
-    .fx-section.collapsed .fx-head { margin-bottom: 0; }
-    .fx-chevron { color: var(--text); font-size: 28px; line-height: 1; width: 24px; flex: none; }
+    .fx-chevron {
+      color: var(--text); font-size: 28px; line-height: 1; width: 24px; flex: none;
+      transition: transform 180ms ease-out;
+    }
+    .fx-section.collapsed .fx-chevron { transform: rotate(-90deg); transition-duration: 140ms; }
+    /* Expand/collapse animates the body's grid row 0fr↔1fr (height 0↔auto);
+       content fades in slightly behind the container getting room. The body is
+       always in the DOM — app.js toggles the class without re-rendering. */
+    .fx-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 180ms ease-out; }
+    .fx-section.collapsed .fx-body { grid-template-rows: 0fr; transition-duration: 140ms; }
+    .fx-body-inner {
+      min-height: 0; overflow: hidden;
+      opacity: 1; transition: opacity 120ms ease-out 40ms;
+    }
+    .fx-section.collapsed .fx-body-inner { opacity: 0; transition: opacity 100ms ease-in; }
+    .fx-body-inner .params { padding-top: 8px; }
+    @media (prefers-reduced-motion: reduce) {
+      .fx-body, .fx-body-inner, .fx-chevron { transition: none !important; }
+      .fx-section.nav-flash { animation: none; }
+    }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 11px; }
     .fx-summary {
       flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
+      display: none; /* always in the markup; visible only while collapsed */
     }
+    .fx-section.collapsed .fx-summary { display: block; }
     /* State pill: a real control, but it renders device state only — clicks
        never flip it locally (docs/DESIGN.md). */
     .fx-state {

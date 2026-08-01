@@ -163,30 +163,29 @@
     function renderSection(section, patch, view) {
       const off = section.sw != null && patch.params[section.sw] === 0;
       const collapsed = !!(view && view.collapsed && view.collapsed[section.group]);
-      let body = '';
-      if (!collapsed) {
-        let rows = rowsFor(section.group, patch, view);
-        // FX2 sub-parameters are conditional on the FX2 mode.
-        if (section.fx2) {
-          const md = patch.params.fx2_md;
-          if (md === 1) rows += rowsFor('efx_pha', patch, view); // Stereo Phaser
-          else if (md === 3) rows += rowsFor('efx_dly', patch, view); // Delay
-        }
-        body = `<div class="params">${rows}</div>`;
+      // The body is ALWAYS in the DOM — expand/collapse is a CSS class toggled
+      // by app.js without re-rendering, so height/opacity/chevron can animate.
+      let rows = rowsFor(section.group, patch, view);
+      // FX2 sub-parameters are conditional on the FX2 mode.
+      if (section.fx2) {
+        const md = patch.params.fx2_md;
+        if (md === 1) rows += rowsFor('efx_pha', patch, view); // Stereo Phaser
+        else if (md === 3) rows += rowsFor('efx_dly', patch, view); // Delay
       }
       return (
         `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
-        `<div class="fx-head" data-group="${section.group}" role="button" title="Click to ${collapsed ? 'expand' : 'collapse'}">` +
-        `<span class="fx-chevron">${collapsed ? '▸' : '▾'}</span>` +
+        `<div class="fx-head" data-group="${section.group}" role="button" title="Toggle section">` +
+        `<span class="fx-chevron">▾</span>` +
         `<span class="fx-title">${esc(section.title)}</span>` +
-        (collapsed ? `<span class="fx-summary">${esc(sectionSummary(section, patch))}</span>` : '') +
+        // Summary is always rendered; CSS shows it only while collapsed.
+        `<span class="fx-summary">${esc(sectionSummary(section, patch))}</span>` +
         // The pill is a control, but it renders DEVICE state only — app.js never
         // flips it from a click (see docs/DESIGN.md).
         (section.sw != null
           ? `<button type="button" class="fx-state ${off ? 'off' : 'on'}" data-switch="${section.sw}" aria-pressed="${!off}">${off ? 'OFF' : 'ON'}</button>`
           : '') +
         `</div>` +
-        body +
+        `<div class="fx-body"><div class="fx-body-inner"><div class="params">${rows}</div></div></div>` +
         `</div>`
       );
     }
