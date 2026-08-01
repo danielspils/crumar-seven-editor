@@ -24,6 +24,8 @@
     .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
     .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
     .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
+    /* Shared button component: FX1/FX2 SELECT, transpose, CLAVI TABS all use
+       .btn so they stay consistent (presets add .btn-face on top). */
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .btn.on    { fill: #7d1418; }
     /* Preset/bank button layers: recessed bezel, narrow raised face (lighter
@@ -61,8 +63,6 @@
     .led.on    { fill: #ff3b30; }
     .led.amber { fill: #4a3a14; }
     .led.amber.on { fill: #ffb020; }
-    .sw        { fill: #232325; stroke: #8e8e93; stroke-width: 1; rx: 2; }
-    .sw-body   { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .transpose-border { fill: none; stroke: #6d6d72; stroke-width: 1; }
     .kbd-icon  { fill: none; stroke: #6d6d72; stroke-width: 1; }
     .kbd-white { fill: #c8c8cc; }
@@ -74,7 +74,7 @@
        text-anchor="start" (LED labels, bank numerals) over class defaults. */
     text[text-anchor="start"] { text-anchor: start; }
     .divider   { stroke: #46464a; stroke-width: 1; }
-    .readonly .btn, .readonly .knob-face, .readonly .sw { cursor: default; pointer-events: none; }
+    .readonly .btn, .readonly .knob-face { cursor: default; pointer-events: none; }
   </style>
 
   <rect class="panel-bg" x="0" y="0" width="2160" height="210" rx="6"/>
@@ -146,8 +146,7 @@
     <rect class="kbd-icon" x="599" y="33.5" width="40" height="12"/>
     <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
     <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
-    <rect class="sw-body" id="btn-transpose" x="596" y="52" width="46" height="34"/>
-    <rect class="sw" x="604" y="60" width="30" height="18"/>
+    <rect class="btn" id="btn-transpose" x="596" y="52" width="46" height="34"/>
     <circle class="led" id="led-transpose" cx="619" cy="99" r="4"/>
   </g>
 
@@ -252,8 +251,7 @@
   </g>
 
   <g id="clavi-group">
-    <rect class="sw-body" x="596" y="108" width="46" height="34"/>
-    <rect class="sw" x="604" y="116" width="30" height="18"/>
+    <rect class="btn" x="596" y="108" width="46" height="34"/>
     <text class="lbl-alt lbl-alt-lg" x="673" y="164">CLAVI TABS</text>
     <path id="clavi-group-line" class="clavi-line" d="M619 142 V158 Q619 161 622 161 H628 M718 161 H1272"/>
     <text class="lbl-alt" x="836" y="157">BRILLIANT</text>
