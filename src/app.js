@@ -27,15 +27,12 @@
 
   const currentPatch = () => library.banks[bankIndex].patches[patchIndex] || null;
 
-  // A section whose switch is 0 starts collapsed; switch 1 (or no switch)
-  // starts expanded. Recomputed whenever the selected patch changes.
+  // ALL sections start collapsed regardless of switch state — the collapsed
+  // header (name, summary, ON/OFF pill) is the resting view for the whole
+  // chain. Recomputed whenever the selected patch changes.
   function resetCollapsed() {
     collapsed = {};
-    const patch = currentPatch();
-    if (!patch) return;
-    for (const s of R.FX_SECTIONS) {
-      collapsed[s.group] = s.sw != null && patch.params[s.sw] === 0;
-    }
+    for (const s of R.FX_SECTIONS) collapsed[s.group] = true;
   }
 
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
@@ -84,22 +81,26 @@
     }
   }
 
-  // Knob click → expand (even when bypassed), scroll into view only if not
-  // already visible, and flash both ends. Values never change.
+  // Knob click TOGGLES its section (even when bypassed). Opening scrolls it
+  // into view if needed and flashes both ends; closing is plain — no highlight.
+  // Values never change.
   function navToSection(group) {
     if (collapsed[group]) {
       collapsed[group] = false;
       renderDetail();
+      const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
+      if (!el) return;
+      const dr = detailEl.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      if (er.top < dr.top || er.bottom > dr.bottom) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      flashSection(group);
+      flashKnobs(group);
+    } else {
+      collapsed[group] = true;
+      renderDetail();
     }
-    const el = detailEl.querySelector(`.fx-section[data-group="${group}"]`);
-    if (!el) return;
-    const dr = detailEl.getBoundingClientRect();
-    const er = el.getBoundingClientRect();
-    if (er.top < dr.top || er.bottom > dr.bottom) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-    flashSection(group);
-    flashKnobs(group);
   }
 
   // Panel buttons drive the same state as the tabs/list below. BANK cycles
@@ -240,10 +241,13 @@
     if (!head || !head.dataset.group) return;
     collapsed[head.dataset.group] = !collapsed[head.dataset.group];
     renderDetail();
-    // Bidirectional nav: touching a section lights up its knob(s) on the strip
-    // (all three for efx_veq). Sections without a mapped knob are a no-op.
-    flashKnobs(head.dataset.group);
-    if (!collapsed[head.dataset.group]) flashSection(head.dataset.group);
+    // Bidirectional nav: opening a section lights up its knob(s) on the strip
+    // (all three for efx_veq). Closing is plain — no highlight. Sections
+    // without a mapped knob (pdl_exp) are a no-op.
+    if (!collapsed[head.dataset.group]) {
+      flashKnobs(head.dataset.group);
+      flashSection(head.dataset.group);
+    }
   });
 
   // Enum dropdowns follow the same honesty rule as the pill: a change never

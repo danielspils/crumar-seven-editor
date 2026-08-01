@@ -147,7 +147,9 @@
     function sectionSummary(section, patch) {
       const v = (k) => patch.params[k];
       switch (section.group) {
-        case 'efx_veq': return `Volume ${v('veq_vol')}`;
+        // Kept short — this summary sits beside the longest section title and
+        // must not truncate mid-word.
+        case 'efx_veq': return `Vol ${v('veq_vol')}`;
         case 'efx_fx1': return enumLabel('fx1_md', v('fx1_md'));
         case 'efx_fx2': return enumLabel('fx2_md', v('fx2_md'));
         case 'efx_amp': return enumLabel('amp_mo', v('amp_mo'));

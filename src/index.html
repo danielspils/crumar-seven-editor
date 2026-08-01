@@ -148,10 +148,15 @@
     }
     .fx-section.dimmed { opacity: .38; }
     .fx-section.collapsed { padding-bottom: 10px; }
-    /* Headers are clickable toggles; collapse state is view state only. */
-    .fx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+    /* Headers are clickable toggles; collapse state is view state only. The
+       whole row is the click target, with a hover state to say so. */
+    .fx-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+      cursor: pointer; border-radius: 4px; padding: 2px 4px; margin-left: -4px; margin-right: -4px;
+    }
+    .fx-head:hover { background: rgba(255, 255, 255, .045); }
     .fx-section.collapsed .fx-head { margin-bottom: 0; }
-    .fx-chevron { color: var(--text-dim); font-size: 10px; width: 12px; flex: none; }
+    .fx-chevron { color: var(--text); font-size: 28px; line-height: 1; width: 24px; flex: none; }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 11px; }
     .fx-summary {
