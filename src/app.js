@@ -262,6 +262,9 @@
     // Until then: revert the select — the control reflects device state only.
     const patch = currentPatch();
     if (patch) sel.value = String(patch.params[sel.dataset.key] ?? 0);
+    // Chromium keeps :focus-visible on selects after mouse interaction; drop
+    // focus so the accent ring doesn't linger as a false selected state.
+    sel.blur();
     showDeviceNote(sel.closest('.param-value'));
   });
 

@@ -172,6 +172,14 @@
     .fx-state:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
     .fx-head .fx-summary + .fx-state { margin-left: 0; }
     .device-note { color: var(--text-muted); font-size: 11px; flex: none; }
+    /* In enum rows the note overlays below the control (tooltip-like) so it
+       never squeezes the select or shifts the row. */
+    .param-enum .param-value { position: relative; }
+    .param-enum .device-note {
+      position: absolute; right: 0; top: 100%; margin-top: 3px; z-index: 1;
+      background: var(--bg-panel); border: 1px solid var(--line);
+      border-radius: 4px; padding: 2px 8px; white-space: nowrap;
+    }
 
     .param {
       display: grid; grid-template-columns: 150px 1fr 96px;
@@ -181,21 +189,32 @@
     .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: hidden; }
     .param-bar-fill { display: block; height: 100%; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    /* Enum rows: a dropdown spans the bar area (a choice, not a magnitude). */
-    .param-enum .param-value { grid-column: 2 / 4; }
-    .select-wrap { position: relative; display: inline-block; }
+    /* Enum rows: label left, dropdown right (a choice, not a magnitude).
+       Two-column layout — the control column shrinks and never exceeds the
+       card's inner edge, so the select's right edge lines up with the numeric
+       values below it and the ON pill above it. */
+    .param-enum { grid-template-columns: 150px 1fr; }
+    .param-enum .param-value {
+      grid-column: 2; display: flex; justify-content: flex-end; min-width: 0;
+    }
+    .select-wrap { position: relative; display: block; min-width: 0; max-width: 100%; }
     .select-wrap::after {
-      content: '▾'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      content: '▾'; position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
       pointer-events: none; color: var(--text-muted); font-size: 10px;
     }
     .param-select {
       appearance: none; -webkit-appearance: none;
       background: var(--bg-panel); color: var(--text);
       border: 1px solid var(--line); border-radius: 4px;
-      font: inherit; font-size: 12px; padding: 3px 24px 3px 9px;
-      cursor: pointer; max-width: 200px;
+      font: inherit; font-size: 12px; line-height: 1.3;
+      padding: 1px 20px 1px 8px; /* row-height match with the bar rows */
+      cursor: pointer;
+      width: 100%; max-width: 240px; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .param-select:hover { border-color: var(--text-muted); }
+    /* Accent ring on keyboard focus only — app.js blurs after a reverted
+       change so the ring never lingers as a false selected/error state. */
     .param-select:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
     .param.is-default .param-select { color: var(--text-muted); }
     .param-value em { font-style: normal; color: var(--text-dim); margin-left: 4px; }
