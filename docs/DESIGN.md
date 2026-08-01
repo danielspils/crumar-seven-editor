@@ -44,6 +44,14 @@ Never reuse one of these colours/treatments for another meaning — and the
 library's selected-patch red edge marker is a fourth, unrelated cue that stays
 in the list only. Closing a section gets no highlight at all.
 
+## Panel says RATE, parameter list says Speed — both correct
+
+The instrument's silkscreen prints **RATE** on both FX sections, but the device
+reports the `fx1_sp`/`fx2_sp` parameter label as **"Speed"** (a documented
+firmware-vs-silkscreen discrepancy — see protocol.md "Findings that contradict
+the manual"). The panel strip renders the silkscreen; the effects-chain rows
+render the device label. Do not "fix" either to match the other.
+
 ## Volume knob — Local Off state (blue)
 
 On the instrument, a **slow push** on the volume knob (held at least **100ms**)

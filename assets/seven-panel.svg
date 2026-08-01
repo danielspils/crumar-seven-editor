@@ -39,8 +39,8 @@
     .lbl       { fill: #e8e8ea; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 13px; letter-spacing: .05em; text-anchor: middle; }
     .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 10px; letter-spacing: .04em; text-anchor: middle; }
     .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
-    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 12px; letter-spacing: .03em; text-anchor: middle; }
-    .lbl-alt-lg { font-size: 14px; }
+    .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 14px; letter-spacing: .03em; text-anchor: middle; }
+    .lbl-alt-lg { font-size: 16px; }
     .transpose-sym { font-size: 17px; }
     .lbl-fxled { font-size: 8.5px; }
     /* Size overrides, matched against the reference photo: BANK is one of the
@@ -53,7 +53,7 @@
     /* Clavi tabs only act on the modeled Clavi engine (pno_zd6); the app dims
        the whole group when any other sound is selected. */
     #clavi-group { transition: opacity .2s; }
-    #clavi-group.inactive { opacity: .35; }
+    #clavi-group.inactive { opacity: .55; }
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }
@@ -64,10 +64,15 @@
     .sw        { fill: #232325; stroke: #8e8e93; stroke-width: 1; rx: 2; }
     .sw-body   { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .transpose-border { fill: none; stroke: #6d6d72; stroke-width: 1; }
-    .kbd-icon  { fill: none; stroke: #c8c8cc; stroke-width: 1; }
+    .kbd-icon  { fill: none; stroke: #6d6d72; stroke-width: 1; }
+    .kbd-white { fill: #c8c8cc; }
+    .kbd-black { fill: #141416; }
     /* Transparent full-button hit targets (preset/bank), drawn last and sized
        to the bezel. Cursor set here; the app re-enables pointer events. */
     .btn-hit   { fill: transparent; cursor: pointer; }
+    /* CSS text-anchor overrides presentation attributes; honor authored
+       text-anchor="start" (LED labels, bank numerals) over class defaults. */
+    text[text-anchor="start"] { text-anchor: start; }
     .divider   { stroke: #46464a; stroke-width: 1; }
     .readonly .btn, .readonly .knob-face, .readonly .sw { cursor: default; pointer-events: none; }
   </style>
@@ -132,13 +137,18 @@
          up to below the sharp. Separate from the amber Clavi grouping line.
          LED lights while transposition is active; transposition resets to zero
          at power-on, so it renders unlit. -->
-    <path class="transpose-border" d="M580 79 V99 H658 V79"/>
-    <path class="kbd-icon" d="M607 36 h24 v9 h-24 Z M613 36 v5 M619 36 v5 M625 36 v5"/>
+    <path class="transpose-border" d="M580 79 V99 H611 M627 99 H658 V79"/>
+    <rect class="kbd-white" x="600" y="34" width="12" height="11"/>
+    <rect class="kbd-white" x="613" y="34" width="12" height="11"/>
+    <rect class="kbd-white" x="626" y="34" width="12" height="11"/>
+    <rect class="kbd-black" x="609.5" y="34" width="6" height="6.5"/>
+    <rect class="kbd-black" x="622.5" y="34" width="6" height="6.5"/>
+    <rect class="kbd-icon" x="599" y="33.5" width="40" height="12"/>
     <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
     <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
     <rect class="sw-body" id="btn-transpose" x="596" y="52" width="46" height="34"/>
     <rect class="sw" x="604" y="60" width="30" height="18"/>
-    <circle class="led" id="led-transpose" cx="619" cy="92" r="4"/>
+    <circle class="led" id="led-transpose" cx="619" cy="99" r="4"/>
   </g>
 
   <g id="sec-bank">
@@ -245,7 +255,7 @@
     <rect class="sw-body" x="596" y="108" width="46" height="34"/>
     <rect class="sw" x="604" y="116" width="30" height="18"/>
     <text class="lbl-alt lbl-alt-lg" x="673" y="164">CLAVI TABS</text>
-    <path id="clavi-group-line" class="clavi-line" d="M619 142 V158 Q619 161 622 161 H640 M710 161 H1272"/>
+    <path id="clavi-group-line" class="clavi-line" d="M619 142 V158 Q619 161 622 161 H628 M718 161 H1272"/>
     <text class="lbl-alt" x="836" y="157">BRILLIANT</text>
     <text class="lbl-alt" x="920" y="157">TREBLE</text>
     <text class="lbl-alt" x="1004" y="157">MEDIUM</text>
@@ -260,14 +270,14 @@
     <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1536" y="62">SELECT</text>
     <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx1-0" cx="1584" cy="72"  r="4.5"/>
-    <text class="lbl-sm" x="1600" y="76" text-anchor="start">TREM</text>
-    <circle class="led"    id="led-fx1-1" cx="1584" cy="94"  r="4.5"/>
-    <text class="lbl-sm" x="1600" y="98" text-anchor="start">PAN</text>
-    <circle class="led"    id="led-fx1-2" cx="1584" cy="116" r="4.5"/>
-    <text class="lbl-sm" x="1600" y="120" text-anchor="start">A-WHA</text>
-    <circle class="led"    id="led-fx1-3" cx="1584" cy="138" r="4.5"/>
-    <text class="lbl-sm" x="1600" y="142" text-anchor="start">P-WHA</text>
+    <circle class="led on" id="led-fx1-0" cx="1572" cy="72"  r="4.5"/>
+    <text class="lbl-sm" x="1596" y="76" text-anchor="start">TREM</text>
+    <circle class="led"    id="led-fx1-1" cx="1572" cy="94"  r="4.5"/>
+    <text class="lbl-sm" x="1596" y="98" text-anchor="start">PAN</text>
+    <circle class="led"    id="led-fx1-2" cx="1572" cy="116" r="4.5"/>
+    <text class="lbl-sm" x="1596" y="120" text-anchor="start">A-WHA</text>
+    <circle class="led"    id="led-fx1-3" cx="1572" cy="138" r="4.5"/>
+    <text class="lbl-sm" x="1596" y="142" text-anchor="start">P-WHA</text>
     <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
       <circle class="knob-face" cx="1664" cy="110" r="28"/>
@@ -275,8 +285,8 @@
       <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
       <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
-    <text class="lbl-sm" x="1664" y="62">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1664" y="76">RATE</text>
+    <text class="lbl-sm" x="1664" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1664" y="68">RATE</text>
   </g>
 
   <g id="sec-amp">
@@ -293,14 +303,14 @@
     <rect x="1826" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1860" y="62">SELECT</text>
     <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx2-0" cx="1908" cy="72"  r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1920" y="76" text-anchor="start">CHORUS</text>
-    <circle class="led"    id="led-fx2-1" cx="1908" cy="94"  r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1920" y="98" text-anchor="start">PHASER</text>
-    <circle class="led"    id="led-fx2-2" cx="1908" cy="116" r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1920" y="120" text-anchor="start">FLANGER</text>
-    <circle class="led"    id="led-fx2-3" cx="1908" cy="138" r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1920" y="142" text-anchor="start">DELAY</text>
+    <circle class="led on" id="led-fx2-0" cx="1896" cy="72"  r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1918" y="76" text-anchor="start">CHORUS</text>
+    <circle class="led"    id="led-fx2-1" cx="1896" cy="94"  r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1918" y="98" text-anchor="start">PHASER</text>
+    <circle class="led"    id="led-fx2-2" cx="1896" cy="116" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1918" y="120" text-anchor="start">FLANGER</text>
+    <circle class="led"    id="led-fx2-3" cx="1896" cy="138" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1918" y="142" text-anchor="start">DELAY</text>
     <text class="lbl-fx" x="1859" y="152">FX2</text>
     <g id="knob-fx2">
       <circle class="knob-face" cx="1988" cy="110" r="28"/>
@@ -308,8 +318,8 @@
       <line class="knob-ptr" x1="1988" y1="110" x2="1988" y2="87"/>
       <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
-    <text class="lbl-sm" x="1988" y="62">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1988" y="76">SPEED</text>
+    <text class="lbl-sm" x="1988" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1988" y="68">RATE</text>
   </g>
 
   <g id="sec-pad">
