@@ -126,7 +126,7 @@
       navToSection(KNOB_TO_SECTION[knob.id]);
       return;
     }
-    if (e.target.closest('#btn-bank')) {
+    if (e.target.closest('#btn-bank') || e.target.closest('[data-hit="bank"]')) {
       bankIndex = (bankIndex + 1) % library.banks.length;
       resetCollapsed();
       renderAll();

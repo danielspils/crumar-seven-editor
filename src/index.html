@@ -40,12 +40,13 @@
     #panel-strip svg { display: block; width: 100%; height: auto; max-height: 150px; }
     /* The SVG's readonly class disables all controls; selectively re-enable the
        bank button and preset buttons — they drive the same state as the tabs. */
-    #panel-strip #btn-bank,
-    #panel-strip [id^="preset-"] .btn {
-      pointer-events: auto; cursor: pointer;
-    }
-    #panel-strip #btn-bank:hover,
-    #panel-strip [id^="preset-"] .btn:hover { stroke: #c8c8cc; }
+    /* Full-button hit targets: the transparent .btn-hit rect (drawn last,
+       sized to the bezel) is the only element that takes clicks — the readonly
+       rule keeps suppressing the faces beneath. Hover brightens the face via
+       :has() since the overlay sits above it. */
+    #panel-strip .btn-hit { pointer-events: auto; cursor: pointer; }
+    #panel-strip g:has(.btn-hit:hover) .btn-face:not(.on) { fill: #2b2b2e; }
+    #panel-strip g:has(.btn-hit:hover) .btn-bezel { fill: #1e1e20; }
     /* Mapped knobs are click targets for navigation only (strip stays readonly;
        knobs are clickable, never draggable). The transparent .knob-hit circle —
        drawn last, radius of the outer ring — is the ONLY element that takes
