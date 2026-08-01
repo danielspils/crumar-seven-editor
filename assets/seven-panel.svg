@@ -142,12 +142,12 @@
          LED lights while transposition is active; transposition resets to zero
          at power-on, so it renders unlit. -->
     <path class="transpose-border" d="M580 79 V99 H611 M627 99 H658 V79"/>
-    <rect class="kbd-white" x="600" y="34" width="12" height="11"/>
-    <rect class="kbd-white" x="613" y="34" width="12" height="11"/>
-    <rect class="kbd-white" x="626" y="34" width="12" height="11"/>
-    <rect class="kbd-black" x="609.5" y="34" width="6" height="6.5"/>
-    <rect class="kbd-black" x="622.5" y="34" width="6" height="6.5"/>
-    <rect class="kbd-icon" x="599" y="33.5" width="40" height="12"/>
+    <rect class="kbd-white" x="607.5" y="30.5" width="7" height="14"/>
+    <rect class="kbd-white" x="615.5" y="30.5" width="7" height="14"/>
+    <rect class="kbd-white" x="623.5" y="30.5" width="7" height="14"/>
+    <rect class="kbd-black" x="613" y="30.5" width="4" height="9"/>
+    <rect class="kbd-black" x="621" y="30.5" width="4" height="9"/>
+    <rect class="kbd-icon" x="606.5" y="30" width="25" height="15"/>
     <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
     <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
     <rect class="btn" id="btn-transpose" x="596" y="52" width="46" height="34"/>
