@@ -74,14 +74,29 @@
       // for non-enums the displayed number already IS the raw value, so the
       // toggle currently changes enum rows only; if scaled displays (Hz, dB)
       // arrive later, they route through here and obey the same flag.
-      // Enum rows show the mode name across the bar area — a mode is a choice,
-      // not a magnitude, so a fill bar would be misleading there.
-      if (label) {
-        const valueText = view && view.showRaw ? `${esc(label)} <em>${value}</em>` : esc(label);
+      // Enum rows render as a dropdown — a mode is a choice, not a magnitude,
+      // so neither a fill bar nor plain text fits. Only parameters WITH a
+      // schema `values` array get this; continuous 0–127 params stay text.
+      //
+      // CAVEAT: the labels in `values` are marked valuesUnverified in the
+      // schema. They come from the manual and are corroborated by the panel
+      // silkscreen (TREM/PAN/A-WHA/P-WHA, CHOR/PHAS/FLNG/DELAY), but the
+      // index→label mapping has not been confirmed against the device. If a
+      // dropdown ever shows a label that doesn't match what the instrument
+      // does, that's the reason.
+      if (p.values) {
+        const options = p.values
+          .map((v, i) => {
+            const text = view && view.showRaw ? `${v} (${i})` : v;
+            return `<option value="${i}"${i === value ? ' selected' : ''}>${esc(text)}</option>`;
+          })
+          .join('');
         return (
           `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}">` +
           `<span class="param-label">${esc(p.label)}</span>` +
-          `<span class="param-value">${valueText}</span>` +
+          `<span class="param-value"><span class="select-wrap">` +
+          `<select class="param-select" data-key="${p.key}">${options}</select>` +
+          `</span></span>` +
           `</div>`
         );
       }

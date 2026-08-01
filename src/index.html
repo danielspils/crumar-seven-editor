@@ -167,8 +167,23 @@
     .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: hidden; }
     .param-bar-fill { display: block; height: 100%; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    /* Enum rows: the mode name spans the bar area (a choice, not a magnitude). */
+    /* Enum rows: a dropdown spans the bar area (a choice, not a magnitude). */
     .param-enum .param-value { grid-column: 2 / 4; }
+    .select-wrap { position: relative; display: inline-block; }
+    .select-wrap::after {
+      content: '▾'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; color: var(--text-muted); font-size: 10px;
+    }
+    .param-select {
+      appearance: none; -webkit-appearance: none;
+      background: var(--bg-panel); color: var(--text);
+      border: 1px solid var(--line); border-radius: 4px;
+      font: inherit; font-size: 12px; padding: 3px 24px 3px 9px;
+      cursor: pointer; max-width: 200px;
+    }
+    .param-select:hover { border-color: var(--text-muted); }
+    .param-select:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .param.is-default .param-select { color: var(--text-muted); }
     .param-value em { font-style: normal; color: var(--text-dim); margin-left: 4px; }
     /* Default vs changed: default is muted, changed is primary. */
     .param.is-default .param-label,

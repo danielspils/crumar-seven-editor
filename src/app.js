@@ -137,6 +137,19 @@
     renderAll();
   });
 
+  // Transient inline note next to a device-state control that can't act yet.
+  function showDeviceNote(host) {
+    let note = host.querySelector('.device-note');
+    if (!note) {
+      note = document.createElement('span');
+      note.className = 'device-note';
+      host.appendChild(note);
+    }
+    note.textContent = 'No instrument connected.';
+    clearTimeout(note._timer);
+    note._timer = setTimeout(() => note.remove(), 1800);
+  }
+
   // The state pill reflects DEVICE state only — it never flips from a click
   // (docs/DESIGN.md). A write can fail; render what the instrument reports.
   function handleStatePill(pill) {
@@ -146,16 +159,7 @@
     //   2. await the device reply,
     //   3. re-render the pill from the value the DEVICE reports.
     // Until then: no device, so the pill stays put and we say why.
-    const head = pill.parentElement;
-    let note = head.querySelector('.device-note');
-    if (!note) {
-      note = document.createElement('span');
-      note.className = 'device-note';
-      head.appendChild(note);
-    }
-    note.textContent = 'No instrument connected.';
-    clearTimeout(note._timer);
-    note._timer = setTimeout(() => note.remove(), 1800);
+    showDeviceNote(pill.parentElement);
   }
 
   // Clicking a section header toggles it regardless of switch state — values in
@@ -171,6 +175,25 @@
     if (!head || !head.dataset.group) return;
     collapsed[head.dataset.group] = !collapsed[head.dataset.group];
     renderDetail();
+  });
+
+  // Enum dropdowns follow the same honesty rule as the pill: a change never
+  // updates local state. Revert to the patch value and say why. Because state
+  // never forks, the FX2-mode-conditional sub-parameters (phaser at 1, delay
+  // at 3) always read the same patch.params value the select shows.
+  detailEl.addEventListener('change', (e) => {
+    const sel = e.target.closest('.param-select');
+    if (!sel) return;
+    // TODO(device): when MIDI lands, this becomes:
+    //   1. send set-parameter (0x20) for the param behind sel.dataset.key with
+    //      Number(sel.value),
+    //   2. await the device reply,
+    //   3. re-render from the value the DEVICE reports (which also refreshes
+    //      any mode-conditional sub-parameters).
+    // Until then: revert the select — the control reflects device state only.
+    const patch = currentPatch();
+    if (patch) sel.value = String(patch.params[sel.dataset.key] ?? 0);
+    showDeviceNote(sel.closest('.param-value'));
   });
 
   // ---- View menu commands (main process → here) -----------------------------
