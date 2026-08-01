@@ -47,11 +47,19 @@
     #panel-strip #btn-bank:hover,
     #panel-strip [id^="preset-"] .btn:hover { stroke: #c8c8cc; }
     /* Mapped knobs are click targets for navigation only (strip stays readonly;
-       knobs are clickable, never draggable). Unmapped elements get no cursor or
-       hover. app.js tags mapped knob groups with .nav-knob. */
-    #panel-strip .nav-knob { pointer-events: auto; cursor: pointer; }
+       knobs are clickable, never draggable). The transparent .knob-hit circle —
+       drawn last, radius of the outer ring — is the ONLY element that takes
+       pointer events, so the readonly rule keeps suppressing the face/pointer.
+       Unmapped elements get no cursor or hover. app.js tags mapped knob groups
+       with .nav-knob. */
+    #panel-strip .knob-hit { pointer-events: none; }
+    #panel-strip .nav-knob .knob-hit { pointer-events: auto; cursor: pointer; }
+    #panel-strip .nav-knob .knob-ring,
     #panel-strip .nav-knob .knob-face { transition: stroke .3s; }
-    #panel-strip .nav-knob:hover .knob-face { stroke: #d8d8dc; stroke-width: 3; }
+    /* Hover: subtle brightening of the outer ring (face stands in on the
+       ringless FX knobs) so the whole knob reads as interactive. */
+    #panel-strip .nav-knob:hover .knob-ring { stroke: #9a9aa0; }
+    #panel-strip .nav-knob:hover .knob-face { stroke: #c4c4c9; }
     #panel-strip .nav-ring .knob-face,
     #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 

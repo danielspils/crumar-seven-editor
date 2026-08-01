@@ -44,6 +44,7 @@
       <circle class="knob-face" cx="72" cy="105" r="28"/>
       <circle class="knob-ring" cx="72" cy="105" r="35"/>
       <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
+      <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <!-- Lit = unmuted; press-and-hold on the hardware mutes and darkens it.
          Mute's data source is unresolved (docs/PROJECT-SCOPE.md). -->
@@ -56,6 +57,7 @@
       <circle class="knob-face" cx="196" cy="105" r="28"/>
       <circle class="knob-ring" cx="196" cy="105" r="35"/>
       <line class="knob-ptr" x1="196" y1="105" x2="196" y2="82"/>
+      <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
     <text class="lbl-sm" x="292" y="50" text-anchor="start">LEVEL</text>
@@ -68,6 +70,7 @@
       <circle class="knob-face" cx="380" cy="105" r="28"/>
       <circle class="knob-ring" cx="380" cy="105" r="35"/>
       <line class="knob-ptr" x1="380" y1="105" x2="380" y2="82"/>
+      <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="380" y="30">BASS</text>
     <text class="lbl-sm" x="380" y="46">MIDDLE</text>
@@ -76,6 +79,7 @@
       <circle class="knob-face" cx="500" cy="105" r="28"/>
       <circle class="knob-ring" cx="500" cy="105" r="35"/>
       <line class="knob-ptr" x1="500" y1="105" x2="500" y2="82"/>
+      <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="500" y="30">TREBLE</text>
     <text class="lbl-sm" x="500" y="46">MID FREQ</text>
@@ -179,6 +183,7 @@
     <g id="knob-fx1">
       <circle class="knob-face" cx="1664" cy="110" r="28"/>
       <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
+      <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
     <text class="lbl-sm" x="1664" y="62">DEPTH</text>
     <text class="lbl-sm lbl-cyan" x="1664" y="76">RATE</text>
@@ -190,6 +195,7 @@
       <circle class="knob-face" cx="1758" cy="110" r="28"/>
       <circle class="knob-ring" cx="1758" cy="110" r="35"/>
       <line class="knob-ptr" x1="1758" y1="110" x2="1758" y2="87"/>
+      <circle class="knob-hit" cx="1758" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
     </g>
   </g>
 
@@ -209,6 +215,7 @@
     <g id="knob-fx2">
       <circle class="knob-face" cx="1988" cy="110" r="28"/>
       <line class="knob-ptr" x1="1988" y1="110" x2="1988" y2="87"/>
+      <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
     <text class="lbl-sm" x="1988" y="62">DEPTH</text>
     <text class="lbl-sm lbl-cyan" x="1988" y="76">SPEED</text>
@@ -220,6 +227,7 @@
       <circle class="knob-face" cx="2080" cy="110" r="28"/>
       <circle class="knob-ring" cx="2080" cy="110" r="35"/>
       <line class="knob-ptr" x1="2080" y1="110" x2="2080" y2="87"/>
+      <circle class="knob-hit" cx="2080" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
     </g>
     <circle class="led" id="led-pad-sw" cx="2080" cy="166" r="5"/>
     <text class="lbl-sm lbl-blue" x="2080" y="186">BLEND</text>
