@@ -1,15 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1950 210" width="1950" height="210" role="img" aria-label="Crumar Seven front panel" class="seven-panel readonly">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2160 210" width="2160" height="210" role="img" aria-label="Crumar Seven front panel" class="seven-panel readonly">
   <title>Crumar Seven front panel</title>
 
   <style>
     .panel-bg  { fill: #2b2b2d; }
-    .knob-face { fill: #3a3a3d; stroke: #8e8e93; stroke-width: 2; }
+    .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
     .knob-ring { fill: none; stroke: #5a5a5f; stroke-width: 1; }
-    .knob-ptr  { stroke: #e8e8ea; stroke-width: 2.5; stroke-linecap: round; }
+    .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
     .btn.on    { fill: #7d1418; }
     .lbl       { fill: #e8e8ea; font-family: Helvetica, Arial, sans-serif; font-size: 13px; letter-spacing: .06em; text-anchor: middle; }
     .lbl-sm    { fill: #c8c8cc; font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: .05em; text-anchor: middle; }
+    .lbl-fx    { fill: #e8e8ea; font-family: Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
     .lbl-alt   { fill: #d9c24a; font-family: Helvetica, Arial, sans-serif; font-size: 9px;  letter-spacing: .04em; text-anchor: middle; }
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
@@ -24,7 +25,7 @@
     .readonly .btn, .readonly .knob-face, .readonly .sw { cursor: default; pointer-events: none; }
   </style>
 
-  <rect class="panel-bg" x="0" y="0" width="1950" height="210" rx="6"/>
+  <rect class="panel-bg" x="0" y="0" width="2160" height="210" rx="6"/>
 
   <g id="sec-volume">
     <text class="lbl" x="72" y="30">VOLUME</text>
@@ -162,7 +163,7 @@
     <text class="lbl-sm" x="1598" y="120" text-anchor="start">A-WHA</text>
     <circle class="led"    id="led-fx1-3" cx="1584" cy="138" r="4.5"/>
     <text class="lbl-sm" x="1598" y="142" text-anchor="start">P-WHA</text>
-    <text class="lbl" x="1560" y="34">FX1</text>
+    <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
       <circle class="knob-face" cx="1664" cy="110" r="28"/>
       <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
@@ -180,14 +181,35 @@
     </g>
   </g>
 
-  <g id="sec-pad">
-    <text class="lbl lbl-red" x="1866" y="34">PAD LEVEL</text>
-    <g id="knob-pad">
-      <circle class="knob-face" cx="1866" cy="110" r="34"/>
-      <circle class="knob-ring" cx="1866" cy="110" r="42"/>
-      <line class="knob-ptr" x1="1866" y1="110" x2="1866" y2="81"/>
+  <g id="sec-fx2">
+    <rect x="1826" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <text class="lbl-sm" x="1860" y="62">SELECT</text>
+    <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="48"/>
+    <circle class="led on" id="led-fx2-0" cx="1908" cy="72"  r="4.5"/>
+    <text class="lbl-sm" x="1922" y="76" text-anchor="start">CHOR</text>
+    <circle class="led"    id="led-fx2-1" cx="1908" cy="94"  r="4.5"/>
+    <text class="lbl-sm" x="1922" y="98" text-anchor="start">PHAS</text>
+    <circle class="led"    id="led-fx2-2" cx="1908" cy="116" r="4.5"/>
+    <text class="lbl-sm" x="1922" y="120" text-anchor="start">FLNG</text>
+    <circle class="led"    id="led-fx2-3" cx="1908" cy="138" r="4.5"/>
+    <text class="lbl-sm" x="1922" y="142" text-anchor="start">DELAY</text>
+    <text class="lbl-fx" x="1859" y="152">FX2</text>
+    <g id="knob-fx2">
+      <circle class="knob-face" cx="1988" cy="110" r="28"/>
+      <line class="knob-ptr" x1="1988" y1="110" x2="1988" y2="87"/>
     </g>
-    <circle class="led" id="led-pad-sw" cx="1866" cy="166" r="5"/>
-    <text class="lbl-sm lbl-blue" x="1866" y="186">BLEND</text>
+    <text class="lbl-sm" x="1988" y="62">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1988" y="76">SPEED</text>
+  </g>
+
+  <g id="sec-pad">
+    <text class="lbl lbl-red" x="2080" y="34">PAD LEVEL</text>
+    <g id="knob-pad">
+      <circle class="knob-face" cx="2080" cy="110" r="34"/>
+      <circle class="knob-ring" cx="2080" cy="110" r="42"/>
+      <line class="knob-ptr" x1="2080" y1="110" x2="2080" y2="81"/>
+    </g>
+    <circle class="led" id="led-pad-sw" cx="2080" cy="166" r="5"/>
+    <text class="lbl-sm lbl-blue" x="2080" y="186">BLEND</text>
   </g>
 </svg>
