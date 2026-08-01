@@ -30,20 +30,18 @@
   <g id="sec-volume">
     <text class="lbl" x="72" y="30">VOLUME</text>
     <g id="knob-volume">
-      <circle class="knob-face" cx="72" cy="105" r="34"/>
-      <circle class="knob-ring" cx="72" cy="105" r="42"/>
-      <line class="knob-ptr" x1="72" y1="105" x2="72" y2="76"/>
+      <circle class="knob-face" cx="72" cy="105" r="28"/>
+      <circle class="knob-ring" cx="72" cy="105" r="35"/>
+      <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
     </g>
-    <rect x="38" y="168" width="68" height="17" rx="2" fill="#8e2f8e"/>
-    <text class="lbl-sm" x="72" y="181" fill="#ffffff">LOCAL OFF</text>
   </g>
 
   <g id="sec-reverb">
     <text class="lbl" x="196" y="30">REVERB</text>
     <g id="knob-reverb">
-      <circle class="knob-face" cx="196" cy="105" r="34"/>
-      <circle class="knob-ring" cx="196" cy="105" r="42"/>
-      <line class="knob-ptr" x1="196" y1="105" x2="196" y2="76"/>
+      <circle class="knob-face" cx="196" cy="105" r="28"/>
+      <circle class="knob-ring" cx="196" cy="105" r="35"/>
+      <line class="knob-ptr" x1="196" y1="105" x2="196" y2="82"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
     <text class="lbl-sm" x="292" y="50" text-anchor="start">LEVEL</text>
@@ -53,17 +51,17 @@
 
   <g id="sec-eq">
     <g id="knob-bass-mid">
-      <circle class="knob-face" cx="380" cy="105" r="34"/>
-      <circle class="knob-ring" cx="380" cy="105" r="42"/>
-      <line class="knob-ptr" x1="380" y1="105" x2="380" y2="76"/>
+      <circle class="knob-face" cx="380" cy="105" r="28"/>
+      <circle class="knob-ring" cx="380" cy="105" r="35"/>
+      <line class="knob-ptr" x1="380" y1="105" x2="380" y2="82"/>
     </g>
     <text class="lbl-sm" x="380" y="30">BASS</text>
     <text class="lbl-sm" x="380" y="46">MIDDLE</text>
 
     <g id="knob-treble-midf">
-      <circle class="knob-face" cx="500" cy="105" r="34"/>
-      <circle class="knob-ring" cx="500" cy="105" r="42"/>
-      <line class="knob-ptr" x1="500" y1="105" x2="500" y2="76"/>
+      <circle class="knob-face" cx="500" cy="105" r="28"/>
+      <circle class="knob-ring" cx="500" cy="105" r="35"/>
+      <line class="knob-ptr" x1="500" y1="105" x2="500" y2="82"/>
     </g>
     <text class="lbl-sm" x="500" y="30">TREBLE</text>
     <text class="lbl-sm" x="500" y="46">MID FREQ</text>
@@ -175,9 +173,9 @@
   <g id="sec-amp">
     <text class="lbl" x="1758" y="34">AMP / DRIVE</text>
     <g id="knob-amp-drive">
-      <circle class="knob-face" cx="1758" cy="110" r="34"/>
-      <circle class="knob-ring" cx="1758" cy="110" r="42"/>
-      <line class="knob-ptr" x1="1758" y1="110" x2="1758" y2="81"/>
+      <circle class="knob-face" cx="1758" cy="110" r="28"/>
+      <circle class="knob-ring" cx="1758" cy="110" r="35"/>
+      <line class="knob-ptr" x1="1758" y1="110" x2="1758" y2="87"/>
     </g>
   </g>
 
@@ -205,9 +203,9 @@
   <g id="sec-pad">
     <text class="lbl lbl-red" x="2080" y="34">PAD LEVEL</text>
     <g id="knob-pad">
-      <circle class="knob-face" cx="2080" cy="110" r="34"/>
-      <circle class="knob-ring" cx="2080" cy="110" r="42"/>
-      <line class="knob-ptr" x1="2080" y1="110" x2="2080" y2="81"/>
+      <circle class="knob-face" cx="2080" cy="110" r="28"/>
+      <circle class="knob-ring" cx="2080" cy="110" r="35"/>
+      <line class="knob-ptr" x1="2080" y1="110" x2="2080" y2="87"/>
     </g>
     <circle class="led" id="led-pad-sw" cx="2080" cy="166" r="5"/>
     <text class="lbl-sm lbl-blue" x="2080" y="186">BLEND</text>
