@@ -154,7 +154,7 @@
   <g id="sec-fx1">
     <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1536" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="48"/>
+    <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx1-0" cx="1584" cy="72"  r="4.5"/>
     <text class="lbl-sm" x="1598" y="76" text-anchor="start">TREM</text>
     <circle class="led"    id="led-fx1-1" cx="1584" cy="94"  r="4.5"/>
@@ -184,7 +184,7 @@
   <g id="sec-fx2">
     <rect x="1826" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1860" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="48"/>
+    <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx2-0" cx="1908" cy="72"  r="4.5"/>
     <text class="lbl-sm" x="1922" y="76" text-anchor="start">CHOR</text>
     <circle class="led"    id="led-fx2-1" cx="1908" cy="94"  r="4.5"/>
