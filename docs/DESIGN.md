@@ -16,11 +16,15 @@ One meaning per treatment — don't reuse these for anything else:
 - **Dimmed section/group** = bypassed (driven by the switch param only — never
   inferred from a value being zero), or inapplicable (clavi group when the
   Clavi engine isn't selected).
-- **Tonal inversion on a preset/bank button** = selected: the face's two tones
-  swap (inset panel goes lighter, face goes near-black) and the LED lights.
-  This is **our own convention, not a copy of the hardware** — the instrument's
-  preset buttons are plain black plastic with an LED; the face never
-  illuminates.
+- **Tonal inversion on a preset button** = selected: the face's two tones swap
+  (inset panel goes lighter, face goes near-black) and the LED lights. The
+  physical preset buttons are black plastic with an LED — the face doesn't
+  illuminate — so the subtle inversion is a **closer rendering of the real
+  button** than the old red fill, which wrongly implied an illuminated face.
+  The panel strip aims to render the hardware faithfully rather than
+  substitute its own signalling. The BANK button never inverts: a bank is
+  always current, so there is no selection for it to indicate — its four LEDs
+  carry which bank is active.
 
 ## Navigation and collapse
 

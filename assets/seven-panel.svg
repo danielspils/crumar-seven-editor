@@ -32,10 +32,12 @@
        .btn so they stay consistent (presets add .btn-face on top). */
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; transition: fill .15s; }
     /* Selected = the button's two tones swap (face goes near-black, inset goes
-       lighter) and the LED lights. This is OUR convention, not hardware
-       fidelity — the instrument's buttons are plain black plastic with an LED;
-       the face never illuminates. Geometry/bezel/border identical in both
-       states; only the two fills swap. */
+       lighter) and the LED lights. The hardware's preset buttons are plain
+       black plastic with an LED — the face never illuminates — so this subtle
+       inversion renders the real button more faithfully than a lit-face fill
+       would. Geometry/bezel/border identical in both states; only the two
+       fills swap. The BANK button never takes .on (a bank is always current;
+       its LEDs carry which one). */
     .btn.on    { fill: #141416; }
     .btn-face.on ~ .btn-inset { fill: #232325; }
     /* Preset/bank button layers: recessed bezel, narrow raised face (lighter
@@ -163,7 +165,9 @@
   <g id="sec-bank">
     <text class="lbl lbl-lg" x="700" y="30">BANK</text>
     <rect class="btn-bezel" x="676" y="48" width="48" height="68" rx="3"/>
-    <rect class="btn btn-face on" id="btn-bank" x="680" y="52" width="40" height="60"/>
+    <!-- Always unselected: a bank is always current, so there is no selection
+         for the button itself to indicate — the bank LEDs carry that. -->
+    <rect class="btn btn-face" id="btn-bank" x="680" y="52" width="40" height="60"/>
     <path class="btn-edge" d="M680 112 L720 112 L720 52"/>
     <rect class="btn-inset" x="683" y="55" width="34" height="17" rx="1"/>
     <rect class="btn-hit" data-hit="bank" x="676" y="48" width="48" height="68" role="button" aria-label="Cycle preset bank"/>
