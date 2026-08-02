@@ -5,9 +5,9 @@ pick up without re-deriving anything.
 
 Companion docs in the repo: docs/PROJECT-SCOPE.md (why and what),
 docs/protocol.md (SysEx spec), schema/seven-1.37.json (parameter schema),
-docs/DESIGN.md (UI conventions), docs/FORMAT.md (patch file format — see the
-reconciliation note in §5), CLAUDE.md (working rules for Claude Code),
-docs/manual-notes.md (stale FW 1.22 manual notes).
+docs/DESIGN.md (UI conventions), CLAUDE.md (working rules for Claude Code),
+docs/manual-notes.md (stale FW 1.22 manual notes). docs/FORMAT.md (patch file
+format) does not exist yet — designed but not built; see §5.
 
 ## 1. What this is
 
@@ -188,21 +188,20 @@ Electron shell running on fixture data. **No MIDI in the app yet** —
   for packaging. Runs in dev, fails in the packaged bundle. Resolve before
   release.
 
-### Patch file format
+### Patch file format — designed, NOT built
 
-> **Reconciliation note (2026-08-02):** `docs/FORMAT.md` and `src/format/` are
-> **not in the repo** at commit time — the work described below has not landed
-> here. If the spec exists in another working copy it needs to be brought in;
-> until then, treat this subsection as the design intent for the next work
-> item (§6), not as shipped code.
+The format has never been implemented: `docs/FORMAT.md` and `src/format/` do
+not exist yet. The spec was drafted in conversation and never handed to Claude
+Code — it is the next work item (§6). The design decisions below are settled;
+read them as intent, not as shipped code:
 
-Spec written, implemented as a data layer only (src/format/, docs/FORMAT.md) —
-no MIDI. One container format, .sevenlib.json, where a single patch is a bundle
+One container format, .sevenlib.json, where a single patch is a bundle
 containing one patch. Params keyed by schema key, never by ID or array
 position. Sound NAME authoritative on import, ID diagnostic only. Per-patch
 source provenance so a library can hold patches from more than one instrument.
 Serializer throws if a wfp key appears at any depth. Parse never mutates —
 out-of-range values are preserved and reported; clamping belongs at send time.
+Data layer only — no MIDI.
 
 ### UI conventions (see docs/DESIGN.md)
 
