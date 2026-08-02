@@ -107,6 +107,17 @@ docs/PROJECT-SCOPE.md, open questions). Until resolved, the strip's `led-volume`
 renders lit (Local On); when it lands, it follows the device-reported rule above
 like every other device-state control.
 
+## Deferred fidelity
+
+- **TODO — BANK button pending state.** On the instrument, pressing BANK does
+  not switch bank immediately: the bank LED starts **blinking** and the
+  instrument waits. The bank is only committed when a preset button is pressed
+  **within three seconds**; if nothing is pressed, the previous bank is
+  restored and the LED stops blinking. Our panel currently advances the bank
+  immediately on press. Model the real pending behaviour once the app is
+  actually recalling presets on the instrument — until then the mismatch would
+  mislead about what the hardware is doing.
+
 ## Knob lighting — eventual target (RGB, value-encoding)
 
 The hardware knobs are RGB and encode **value**, not just on/off (manual, FW

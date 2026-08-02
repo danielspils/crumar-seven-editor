@@ -50,6 +50,14 @@
     #panel-strip .btn-hit { pointer-events: auto; cursor: pointer; }
     #panel-strip g:has(.btn-hit:hover) .btn-face:not(.on) { fill: #2b2b2e; }
     #panel-strip g:has(.btn-hit:hover) .btn-bezel { fill: #1e1e20; }
+    /* Momentary press state — BANK only (presets have a persistent selected
+       state instead). While the hit rect is held, the two tones invert like a
+       selected preset; release returns to resting. Press is instant
+       (transition: none wins while :active applies); release eases via the
+       base .15s fill transition. :active clears on mouseup even if the
+       pointer was dragged off first, so it can never stick. */
+    #panel-strip g:has([data-hit="bank"]:active) #btn-bank { fill: #141416; transition: none; }
+    #panel-strip g:has([data-hit="bank"]:active) .btn-inset { fill: #232325; transition: none; }
     /* Mapped knobs are click targets for navigation only (strip stays readonly;
        knobs are clickable, never draggable). The transparent .knob-hit circle —
        drawn last, radius of the outer ring — is the ONLY element that takes
@@ -242,9 +250,19 @@
       border-radius: 4px; padding: 2px 8px; white-space: nowrap;
     }
 
+    /* Shared column tracks per group (subgrid): the label column sizes to the
+       LONGEST label in the displayed group and every row aligns to it; the
+       value column is fixed (three tabular digits, never shifts); the bar
+       takes ALL remaining width. Bar start therefore differs between groups
+       (engine vs each effects section) but aligns within one — intended. */
+    .params {
+      display: grid; grid-template-columns: max-content 1fr 40px;
+      column-gap: 10px;
+    }
     .param {
-      display: grid; grid-template-columns: 150px 1fr 96px;
-      gap: 10px; align-items: center; padding: 3px 0;
+      grid-column: 1 / -1;
+      display: grid; grid-template-columns: subgrid;
+      align-items: center; padding: 3px 0;
     }
     .param-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: hidden; }
@@ -254,23 +272,25 @@
        Two-column layout — the control column shrinks and never exceeds the
        card's inner edge, so the select's right edge lines up with the numeric
        values below it and the ON pill above it. */
-    .param-enum { grid-template-columns: 150px 1fr; }
+    /* Enum rows share the same subgrid tracks; the control's LEFT edge sits on
+       the bar column's left edge (Mode aligns with the Depth/Speed bars) and
+       it sizes to its content — a control, not another bar. */
     .param-enum .param-value {
-      grid-column: 2; display: flex; justify-content: flex-end; min-width: 0;
+      grid-column: 2 / 4; display: flex; justify-content: flex-start; min-width: 0;
     }
     .select-wrap { position: relative; display: block; min-width: 0; max-width: 100%; }
-    .select-wrap::after {
-      content: '▾'; position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
-      pointer-events: none; color: var(--text-muted); font-size: 10px;
-    }
     .param-select {
       appearance: none; -webkit-appearance: none;
-      background: var(--bg-panel); color: var(--text);
+      background-color: var(--bg-panel); color: var(--text);
+      /* Same chevron as the section headers: 14x9, 2px stroke, text colour —
+         one chevron style app-wide. Inside the control at its right edge. */
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%23e8e8ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+      background-repeat: no-repeat; background-position: right 8px center;
       border: 1px solid var(--line); border-radius: 4px;
       font: inherit; font-size: 12px; line-height: 1.3;
-      padding: 1px 20px 1px 8px; /* row-height match with the bar rows */
+      padding: 1px 30px 1px 8px; /* row-height match; right pad clears chevron */
       cursor: pointer;
-      width: 100%; max-width: 240px; min-width: 0;
+      width: auto; max-width: 240px; min-width: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .param-select:hover { border-color: var(--text-muted); }
