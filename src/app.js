@@ -118,18 +118,40 @@
     setSectionCollapsed(group, !collapsed[group], { scroll: true });
   }
 
-  // Panel buttons drive the same state as the tabs/list below. BANK cycles
-  // 1→2→3→4→1 like the hardware; preset buttons select directly.
+  // BANK acts on mousedown, hardware-like: the bank advances and the LEDs
+  // update at press time. The press VISUAL (.bank-pressed inversion) holds for
+  // a minimum ~150ms so a quick click reads as intentional rather than a
+  // glitch; held longer, it stays until release (window mouseup, so dragging
+  // off the button still releases it).
+  const BANK_MIN_PRESS_MS = 150;
+  let bankPressedAt = 0;
+  let bankReleaseTimer = null;
+  panelStrip.addEventListener('mousedown', (e) => {
+    const hit = e.target.closest('[data-hit="bank"]');
+    if (!hit) return;
+    const g = hit.closest('g');
+    clearTimeout(bankReleaseTimer);
+    g.classList.add('bank-pressed');
+    bankPressedAt = performance.now();
+    bankIndex = (bankIndex + 1) % library.banks.length;
+    resetCollapsed();
+    renderAll();
+  });
+  window.addEventListener('mouseup', () => {
+    const g = panelStrip.querySelector('g.bank-pressed');
+    if (!g) return;
+    const held = performance.now() - bankPressedAt;
+    const remaining = Math.max(0, BANK_MIN_PRESS_MS - held);
+    clearTimeout(bankReleaseTimer);
+    bankReleaseTimer = setTimeout(() => g.classList.remove('bank-pressed'), remaining);
+  });
+
+  // Panel buttons drive the same state as the tabs/list below; preset buttons
+  // select directly.
   panelStrip.addEventListener('click', (e) => {
     const knob = e.target.closest('[id^="knob-"]');
     if (knob && KNOB_TO_SECTION[knob.id]) {
       navToSection(KNOB_TO_SECTION[knob.id]);
-      return;
-    }
-    if (e.target.closest('#btn-bank') || e.target.closest('[data-hit="bank"]')) {
-      bankIndex = (bankIndex + 1) % library.banks.length;
-      resetCollapsed();
-      renderAll();
       return;
     }
     const preset = e.target.closest('[id^="preset-"]');

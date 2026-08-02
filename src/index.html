@@ -51,13 +51,14 @@
     #panel-strip g:has(.btn-hit:hover) .btn-face:not(.on) { fill: #2b2b2e; }
     #panel-strip g:has(.btn-hit:hover) .btn-bezel { fill: #1e1e20; }
     /* Momentary press state — BANK only (presets have a persistent selected
-       state instead). While the hit rect is held, the two tones invert like a
-       selected preset; release returns to resting. Press is instant
-       (transition: none wins while :active applies); release eases via the
-       base .15s fill transition. :active clears on mouseup even if the
-       pointer was dragged off first, so it can never stick. */
-    #panel-strip g:has([data-hit="bank"]:active) #btn-bank { fill: #141416; transition: none; }
-    #panel-strip g:has([data-hit="bank"]:active) .btn-inset { fill: #232325; transition: none; }
+       state instead). app.js drives .bank-pressed with a ~150ms minimum hold
+       so a quick click still reads as intentional, then keeps it while held.
+       Press-down is instant (transition: none while pressed); release settles
+       via a 120ms fade. */
+    #panel-strip g:has([data-hit="bank"]) #btn-bank,
+    #panel-strip g:has([data-hit="bank"]) .btn-inset { transition: fill 120ms; }
+    #panel-strip g.bank-pressed #btn-bank { fill: #141416; transition: none; }
+    #panel-strip g.bank-pressed .btn-inset { fill: #232325; transition: none; }
     /* Mapped knobs are click targets for navigation only (strip stays readonly;
        knobs are clickable, never draggable). The transparent .knob-hit circle —
        drawn last, radius of the outer ring — is the ONLY element that takes
