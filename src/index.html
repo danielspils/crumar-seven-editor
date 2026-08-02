@@ -241,6 +241,12 @@
     .fx-state.off:hover { color: var(--text); border-color: var(--text-muted); }
     .fx-state:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
     .fx-head .fx-summary + .fx-state { margin-left: 0; }
+    /* Non-interactive pill variant: binary parameter rows reuse the header
+       pill component but reflect stored patch data only — no hover, no
+       cursor, not focusable (it's a span; pointer-events none kills both). */
+    .fx-state.static { pointer-events: none; cursor: default; }
+    /* The switch pill sits where the bar would start (bar column, left edge). */
+    .param-switch .param-pill-cell { grid-column: 2; justify-self: start; }
     .device-note { color: var(--text-muted); font-size: 11px; flex: none; }
     /* In enum rows the note overlays below the control (tooltip-like) so it
        never squeezes the select or shifts the row. */

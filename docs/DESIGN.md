@@ -13,6 +13,12 @@ One meaning per treatment — don't reuse these for anything else:
 - **Chevron** = collapsible; it rotates as the section opens.
 - **Filled pill** = active (ON, green tint); **outlined pill** = inactive (OFF).
 - **Muted text** = value at its default; **primary text** = value differs.
+  Binary parameters (schema max = 1) are **excluded from at-default muting**
+  and render as non-interactive ON/OFF pills (the header pill component) at
+  full contrast: the `min(64, max)` heuristic in `src/defaults.js` calls 1 the
+  "default" for a max=1 parameter, which made an engaged switch look untouched
+  (e.g. Filter Soft/Medium ON but muted). This is a symptom of the defaults
+  heuristic — revisit once real factory defaults are captured from the device.
 - **Dimmed section/group** = bypassed (driven by the switch param only — never
   inferred from a value being zero), or inapplicable (clavi group when the
   Clavi engine isn't selected).

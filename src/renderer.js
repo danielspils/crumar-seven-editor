@@ -100,6 +100,21 @@
           `</div>`
         );
       }
+      // Binary parameters (max 1) are switches, not continuous values — a bar
+      // pinned at an extreme misreads as a slider. Reuse the SAME pill
+      // component as the section headers (fx-state), in a non-interactive
+      // `static` variant, sitting where the bar would start. No numeric — the
+      // pill carries it. Always full contrast: the min(64,max) default
+      // heuristic makes an engaged switch (1) look like an untouched default,
+      // so at-default muting is excluded here (see docs/DESIGN.md).
+      if (p.max === 1) {
+        return (
+          `<div class="param param-switch">` +
+          `<span class="param-label">${esc(p.label)}</span>` +
+          `<span class="param-pill-cell"><span class="fx-state static ${value === 1 ? 'on' : 'off'}">${value === 1 ? 'ON' : 'OFF'}</span></span>` +
+          `</div>`
+        );
+      }
       return (
         `<div class="param ${isDefault ? 'is-default' : 'is-changed'}">` +
         `<span class="param-label">${esc(p.label)}</span>` +
