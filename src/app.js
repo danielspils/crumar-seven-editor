@@ -226,21 +226,26 @@
     // BLUE on the hardware; slow push ≥100ms toggles, quick push switches the
     // displayed parameter) is a device-reported cue for when MIDI lands —
     // TODO(device); SysEx visibility unknown (docs/PROJECT-SCOPE.md).
+    // veq_byp is EQ *Bypass* — INVERTED: 1 means bypassed, so the EQ knobs are
+    // lit when it reads 0.
     'knob-volume': null,
-    'knob-bass-mid': 'veq_byp',
-    'knob-treble-midf': 'veq_byp',
-    'knob-reverb': 'rev_sw',
-    'knob-fx1': 'fx1_sw',
-    'knob-fx2': 'fx2_sw',
-    'knob-amp-drive': 'amp_sw',
-    'knob-pad': 'pad_sw',
+    'knob-bass-mid': { sw: 'veq_byp', invert: true },
+    'knob-treble-midf': { sw: 'veq_byp', invert: true },
+    'knob-reverb': { sw: 'rev_sw' },
+    'knob-fx1': { sw: 'fx1_sw' },
+    'knob-fx2': { sw: 'fx2_sw' },
+    'knob-amp-drive': { sw: 'amp_sw' },
+    'knob-pad': { sw: 'pad_sw' },
   };
   function updateKnobLit() {
     const patch = currentPatch();
-    for (const [id, sw] of Object.entries(KNOB_LIT_SWITCH)) {
+    for (const [id, spec] of Object.entries(KNOB_LIT_SWITCH)) {
       const el = panelStrip.querySelector(`#${id}`);
       if (!el) continue;
-      const lit = !!patch && (sw === null || patch.params[sw] === 1);
+      const lit =
+        !!patch &&
+        (spec === null ||
+          (spec.invert ? patch.params[spec.sw] === 0 : patch.params[spec.sw] === 1));
       el.classList.toggle('knob-lit', lit);
     }
   }

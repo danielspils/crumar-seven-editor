@@ -32,6 +32,51 @@ One meaning per treatment — don't reuse these for anything else:
   always current, so there is no selection for it to indicate — its four LEDs
   carry which bank is active.
 
+## Parameter rendering taxonomy
+
+How a parameter renders is decided from **schema data** (`max`, `values`,
+`bipolar`, `pairMax`) — never from hardcoded key lists:
+
+| Shape | Schema signature | Examples |
+|---|---|---|
+| Continuous bar | max > 15 | most 0–127 params |
+| Centre-origin bar | `bipolar: true` (centre = neutral, per manual) | Hammer Offset, Stretch Tuning, Lid Position, String Detuning |
+| ON/OFF rocker tab | max = 1, no values | the four Clavi filters |
+| Two-way choice rocker tab | max = 1 + two values | Pickup A\|B, C\|D, Decay Type |
+| Labelled enum dropdown | values, max > 1 | fx1_md, fx2_md, pha_st, amp_mo, exp_fn |
+| Numbered selector | 2 ≤ max ≤ 15, no values | rho_tp, dx7_tp ("9 of 9") |
+| Range pair | `pairMax` on the min param | exp_mn + exp_mx |
+
+Rocker tabs draw as Clavinet-D6 hardware, rotated to horizontal: cream caps in
+a dark recessed frame (consecutive tab rows fuse into one frame, as on the
+instrument), the pressed side lower and darker, the raised side catching the
+highlight. Toggles carry one label and read pressed = on. Choices carry both
+labels and tip toward the active side — neither side is "off". Not the green
+status pills; that vocabulary stays with section headers. Value→side mapping
+(0 = first/left) is assumed, unverified (docs/PROJECT-SCOPE.md).
+
+**Display order follows the hardware where the hardware has an order**: the
+Clavi rows render BRILLIANT, TREBLE, MEDIUM, SOFT, C/D, A/B like the
+instrument's tabs and our panel legends (the reverse of schema ID order).
+Everything else keeps schema order. Display only — patch serialization stays
+keyed by schema key.
+
+Semantics carried by the renderer:
+
+- **veq_byp is EQ *Bypass* — inverted**: 1 means bypassed, i.e. EQ OFF. The
+  section pill, section dimming, and the two EQ knobs' lit state all read
+  through the inversion.
+- **Inert parameters say so** instead of pretending to apply: rom_p05 Piano
+  Harp dims unless the loaded sample is a piano; the Expression Pedal section
+  dims with an explanation while FX1 runs Pedal Wha-Wha (the wha takes
+  priority over the pedal assignment, per the manual).
+- **All four Clavi filters at 0 = no sound** from the instrument — surfaced as
+  a warning banner on the patch, not left as a silent state.
+- The range pair renders as one track with both handles; **min above max
+  reverses the pedal action** (manual) and shows an amber min→max readout.
+
+All of these controls are non-interactive for now.
+
 ## Navigation and collapse
 
 - Effect sections **start collapsed** — the header row (chevron, name, summary,

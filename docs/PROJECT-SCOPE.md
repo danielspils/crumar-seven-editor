@@ -9,7 +9,10 @@ visibility) and the hard project rules.
 1. **Enum labels are still unverified (cosmetic).** The `values` arrays for
    `fx1_md`, `fx2_md`, `pha_st`, `amp_mo` come from the manual, corroborated by
    the panel silkscreen, but the index→label mapping has never been confirmed
-   against the device. Probe exists:
+   against the device. The same applies to the later additions: `exp_fn`
+   (ten pedal functions, manual order) and the two-way choices `zd6_ab` (A/B),
+   `zd6_cd` (C/D), `vib_type` (Keyboard/Mallets), where which VALUE maps to
+   which side (0 = first assumed) is unconfirmed. Probe exists:
    `node tools/probe.js open-items enums --enable-writes` — needs a human at
    the instrument reading labels. A partial run was interrupted; no results
    were recorded.
@@ -23,7 +26,12 @@ visibility) and the hard project rules.
    a slow push — held at least 100ms — toggles Local Off; the keyboard stops
    playing the internal engine but keeps sending MIDI out, and the knob turns
    blue.)
-4. **Factory parameter defaults have never been captured.** The schema has no
+4. **Variation names unknown** for `rho_tp` ("Type", nine positions) and
+   `dx7_tp` ("Variation", nine positions; the manual mentions the set includes
+   an organ, brass, bass and marimba but gives no index mapping) — would need
+   capturing from the editor's Select Piano page. Rendered as numbered
+   selectors ("9 of 9") meanwhile; names are never invented.
+5. **Factory parameter defaults have never been captured.** The schema has no
    per-parameter default; the UI's muted-at-default display uses the
    `min(64, max)` heuristic in `src/defaults.js` (the single place to change
    when real defaults are captured from the device).

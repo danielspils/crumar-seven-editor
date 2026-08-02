@@ -20,8 +20,10 @@
 
   // Effects chain, top to bottom. `sw` is the switch whose value 0 dims the
   // section (never inferred from a parameter value). pdl_exp has no switch.
+  // `invert` marks inverted logic: veq_byp is EQ *Bypass* — 1 means bypassed,
+  // i.e. the EQ is OFF, so its pill and dimming read the opposite way.
   const FX_SECTIONS = [
-    { title: 'Master Volume / EQ', group: 'efx_veq', sw: 'veq_byp' },
+    { title: 'Master Volume / EQ', group: 'efx_veq', sw: 'veq_byp', invert: true },
     { title: 'FX1', group: 'efx_fx1', sw: 'fx1_sw' },
     { title: 'FX2', group: 'efx_fx2', sw: 'fx2_sw', fx2: true },
     { title: 'Amp Simulator', group: 'efx_amp', sw: 'amp_sw' },
@@ -64,11 +66,16 @@
       return p && p.values && p.values[value] != null ? p.values[value] : String(value);
     };
 
-    function paramRow(p, rawValue, view) {
+    function paramRow(p, rawValue, view, opts) {
       const value = rawValue == null ? 0 : rawValue;
       const isDefault = value === defaultFor(p);
       const pct = p.max > 0 ? Math.max(0, Math.min(100, (value / p.max) * 100)) : 0;
       const label = p.values && p.values[value] != null ? p.values[value] : null;
+      // Conditional/inert overlay (docs/DESIGN.md item: show when a parameter
+      // is inert rather than pretending it applies).
+      const inertReason = opts && opts.inertReason;
+      const inertCls = inertReason ? ' is-inert' : '';
+      const labelHtml = esc(p.label) + (inertReason ? ` <em class="inert-note">${esc(inertReason)}</em>` : '');
       // Raw numeric hidden by default on enum rows ("Pedal Wha-Wha", not
       // "Pedal Wha-Wha 3"). With showRaw on, the raw byte shows on every row —
       // for non-enums the displayed number already IS the raw value, so the
@@ -84,7 +91,9 @@
       // index→label mapping has not been confirmed against the device. If a
       // dropdown ever shows a label that doesn't match what the instrument
       // does, that's the reason.
-      if (p.values) {
+      // (max=1 params with values are two-way choice rockers, handled below —
+      // a dropdown for a two-position hardware tab would be wrong.)
+      if (p.values && p.max > 1) {
         const options = p.values
           .map((v, i) => {
             const text = view && view.showRaw ? `${v} (${i})` : v;
@@ -92,42 +101,158 @@
           })
           .join('');
         return (
-          `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}">` +
-          `<span class="param-label">${esc(p.label)}</span>` +
+          `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-value"><span class="select-wrap">` +
           `<select class="param-select" data-key="${p.key}">${options}</select>` +
           `</span></span>` +
           `</div>`
         );
       }
-      // Binary parameters (max 1) are switches, not continuous values — a bar
-      // pinned at an extreme misreads as a slider. Reuse the SAME pill
-      // component as the section headers (fx-state), in a non-interactive
-      // `static` variant, sitting where the bar would start. No numeric — the
-      // pill carries it. Always full contrast: the min(64,max) default
-      // heuristic makes an engaged switch (1) look like an untouched default,
-      // so at-default muting is excluded here (see docs/DESIGN.md).
-      if (p.max === 1) {
+      // ---- Rendering taxonomy (docs/DESIGN.md) — decided from SCHEMA DATA
+      // (max / values / bipolar / pairMax), never from hardcoded key lists.
+      //
+      // Binary parameters render as Clavinet-D6-style rocker TABS (cream cap
+      // in a dark recessed frame — the hardware the panel's legends imitate),
+      // not the app's green status pills; those belong to section headers.
+      // Always full contrast: the min(64,max) default heuristic calls 1 the
+      // default for max=1, which made engaged switches look untouched
+      // (docs/DESIGN.md). Value→side mapping (0 = first/left) is ASSUMED — not
+      // demonstrated by the device (docs/PROJECT-SCOPE.md).
+      //
+      // TWO-WAY CHOICE (max 1 + values): both labels on the cap, tab tips
+      // toward the active choice — neither side is "off" (Pickup A|B, C|D,
+      // Decay Type Keyboard|Mallets).
+      if (p.max === 1 && p.values) {
         return (
-          `<div class="param param-switch">` +
-          `<span class="param-label">${esc(p.label)}</span>` +
-          `<span class="param-pill-cell"><span class="fx-state static ${value === 1 ? 'on' : 'off'}">${value === 1 ? 'ON' : 'OFF'}</span></span>` +
+          `<div class="param param-switch${inertCls}">` +
+          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-pill-cell"><span class="d6-frame"><span class="d6-tab d6-choice">` +
+          `<span class="d6-half${value === 0 ? ' pressed' : ''}">${esc(p.values[0])}</span>` +
+          `<span class="d6-half${value === 1 ? ' pressed' : ''}">${esc(p.values[1])}</span>` +
+          `</span></span></span>` +
           `</div>`
         );
       }
+      // ON/OFF TOGGLE (max 1, no values): the tab carries its own name, so the
+      // row label would say the same word twice — the tab stands alone, as on
+      // the instrument. Pressed = on, raised = off; any combination valid.
+      if (p.max === 1) {
+        const cap = p.label.replace(/^Filter\s+/i, '');
+        return (
+          `<div class="param param-switch${inertCls}">` +
+          `<span class="param-pill-cell"><span class="d6-frame">` +
+          `<span class="d6-tab d6-toggle${value === 1 ? ' pressed' : ''}">${esc(cap)}</span>` +
+          `</span></span>` +
+          `</div>`
+        );
+      }
+      // Discrete selectors without labels: 2 <= max <= 15 and no values array
+      // (rho_tp "Type" and dx7_tp "Variation", both 9-position). A full bar at
+      // value 8 misreads as "maximum" rather than "the ninth variation".
+      // Compact segmented control + 1-based "position/total". Names are NOT
+      // invented — the manual never maps them (docs/PROJECT-SCOPE.md).
+      // Non-interactive like the other stored-data controls.
+      if (p.max >= 2 && p.max <= 15) {
+        const segs = Array.from({ length: p.max + 1 }, (_, i) =>
+          `<span class="seg${i === value ? ' cur' : ''}"></span>`
+        ).join('');
+        const pos = `${value + 1}/${p.max + 1}`;
+        const posText = view && view.showRaw ? `${pos} <em>${value}</em>` : pos;
+        return (
+          `<div class="param param-discrete ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-seg">${segs}</span>` +
+          `<span class="param-value">${posText}</span>` +
+          `</div>`
+        );
+      }
+      // BIPOLAR (schema bipolar:true): centre is the neutral state per the
+      // manual, so the fill grows from the centre outward — a left-origin fill
+      // would misread 64 as "low" when it means neutral.
+      if (p.bipolar) {
+        const centre = 64;
+        const centrePct = (centre / p.max) * 100;
+        const valPct = (value / p.max) * 100;
+        const left = Math.min(valPct, centrePct);
+        const width = Math.abs(valPct - centrePct);
+        return (
+          `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span></span>` +
+          `<span class="param-value">${String(value)}</span>` +
+          `</div>`
+        );
+      }
+      // CONTINUOUS: plain left-origin bar.
       return (
-        `<div class="param ${isDefault ? 'is-default' : 'is-changed'}">` +
-        `<span class="param-label">${esc(p.label)}</span>` +
+        `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+        `<span class="param-label">${labelHtml}</span>` +
         `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span></span>` +
         `<span class="param-value">${String(value)}</span>` +
         `</div>`
       );
     }
 
+    // RANGE PAIR (schema pairMax): two params forming one range. Per the
+    // manual, min greater than max REVERSES the pedal action — surfaced as an
+    // amber min→max readout instead of a broken-looking pair of bars.
+    function renderRangeRow(p, partner, patch, view) {
+      const mn = patch.params[p.key] ?? 0;
+      const mx = patch.params[partner.key] ?? 0;
+      const reversed = mn > mx;
+      const lo = Math.min(mn, mx);
+      const hi = Math.max(mn, mx);
+      const loPct = (lo / p.max) * 100;
+      const widthPct = ((hi - lo) / p.max) * 100;
+      const bothDefault = mn === defaultFor(p) && mx === defaultFor(partner);
+      return (
+        `<div class="param param-range ${bothDefault ? 'is-default' : 'is-changed'}">` +
+        `<span class="param-label">Range</span>` +
+        `<span class="param-rangebar"><span class="range-fill" style="left:${loPct}%;width:${widthPct}%"></span>` +
+        `<span class="range-handle" style="left:${(mn / p.max) * 100}%"></span>` +
+        `<span class="range-handle" style="left:${(mx / p.max) * 100}%"></span></span>` +
+        `<span class="param-value${reversed ? ' range-reversed' : ''}"` +
+        (reversed ? ` title="Reversed: min is above max, which reverses the pedal action (manual)"` : '') +
+        `>${mn}→${mx}</span>` +
+        `</div>`
+      );
+    }
+
+    // Display-order override: parameter display follows the HARDWARE where the
+    // hardware has an order; otherwise schema (ID) order. The Clavinet D6 tabs
+    // — and our panel strip's yellow legends — run BRILLIANT, TREBLE, MEDIUM,
+    // SOFT, C/D, A/B, the reverse of schema ID order. Display only: the schema
+    // and patch serialization stay keyed by schema key/ID order.
+    const DISPLAY_ORDER = {
+      pno_zd6: ['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab', 'zd6_lv'],
+    };
+
     function rowsFor(group, patch, view) {
-      return byGroup(group)
-        .filter((p) => !SWITCH_KEYS.has(p.key))
-        .map((p) => paramRow(p, patch.params[p.key], view))
+      let params = byGroup(group).filter((p) => !SWITCH_KEYS.has(p.key));
+      const order = DISPLAY_ORDER[group];
+      if (order) {
+        params = params.slice().sort((a, b) => {
+          const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
+          return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi);
+        });
+      }
+      const pairTargets = new Set(params.filter((p) => p.pairMax).map((p) => p.pairMax));
+      return params
+        .filter((p) => !pairTargets.has(p.key)) // partner renders inside the pair row
+        .map((p) => {
+          if (p.pairMax) {
+            const partner = byKey.get(p.pairMax);
+            if (partner) return renderRangeRow(p, partner, patch, view);
+          }
+          // rom_p05 "Piano Harp" does nothing unless the loaded sample is a
+          // piano (manual) — show it as inert instead of pretending it applies.
+          const opts =
+            p.key === 'rom_p05' && !/piano|grand|upright/i.test(patch.soundName || '')
+              ? { inertReason: '— inert: loaded sample isn’t a piano' }
+              : undefined;
+          return paramRow(p, patch.params[p.key], view, opts);
+        })
         .join('');
     }
 
@@ -152,6 +277,14 @@
         (missing
           ? `<div class="warn-banner">⚠ This sound is not installed on this instrument — the patch needs “${esc(patch.soundName)}”.</div>`
           : '') +
+        // All four Clavi filter switches off = the instrument produces NO
+        // SOUND (manual). Filters found from schema data: max=1 without values.
+        (group === 'pno_zd6' &&
+        byGroup('pno_zd6')
+          .filter((f) => f.max === 1 && !f.values)
+          .every((f) => (patch.params[f.key] ?? 0) === 0)
+          ? `<div class="warn-banner">⚠ All four filter switches are off — the Clavinet produces no sound in this state.</div>`
+          : '') +
         `</div>` +
         `<div class="params">${rowsFor(group, patch, view)}</div>` +
         `</div>`
@@ -170,13 +303,20 @@
         case 'efx_amp': return enumLabel('amp_mo', v('amp_mo'));
         case 'efx_rev': return `Level ${v('rev_lv')} · Decay ${v('rev_dc')}`;
         case 'efx_pad': return `Level ${v('pad_lv')}`;
-        case 'pdl_exp': return `Function ${v('exp_fn')}`;
+        case 'pdl_exp': return enumLabel('exp_fn', v('exp_fn'));
         default: return '';
       }
     }
 
     function renderSection(section, patch, view) {
-      const off = section.sw != null && patch.params[section.sw] === 0;
+      // Inverted switches (veq_byp): value 1 means the section is OFF.
+      const off = section.sw != null &&
+        patch.params[section.sw] === (section.invert ? 1 : 0);
+      // When FX1 runs Pedal Wha-Wha, the pedal IGNORES its exp_fn assignment —
+      // the wha always takes priority (manual). Index 3 = Pedal Wha-Wha per
+      // the fx1_md values (valuesUnverified — if that mapping is wrong on the
+      // device, this dims for the wrong mode).
+      const whaOverride = section.group === 'pdl_exp' && patch.params.fx1_md === 3;
       const collapsed = !!(view && view.collapsed && view.collapsed[section.group]);
       // The body is ALWAYS in the DOM — expand/collapse is a CSS class toggled
       // by app.js without re-rendering, so height/opacity/chevron can animate.
@@ -187,8 +327,14 @@
         if (md === 1) rows += rowsFor('efx_pha', patch, view); // Stereo Phaser
         else if (md === 3) rows += rowsFor('efx_dly', patch, view); // Delay
       }
+      // Say WHY the section is dimmed when it's an override, not a bypass.
+      if (whaOverride) {
+        rows =
+          `<div class="fx-inert-banner">FX1 is set to Pedal Wha-Wha — the wha takes priority and this assignment is ignored.</div>` +
+          rows;
+      }
       return (
-        `<div class="fx-section${off ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
+        `<div class="fx-section${off || whaOverride ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
         `<div class="fx-head" data-group="${section.group}" role="button" title="Toggle section">` +
         // Geometric chevron (not a font glyph): its optical centre IS its box
         // centre, so flex centering aligns it with the header text in both
