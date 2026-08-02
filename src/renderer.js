@@ -134,13 +134,13 @@
           `</div>`
         );
       }
-      // ON/OFF TOGGLE (max 1, no values): the tab carries its own name, so the
-      // row label would say the same word twice — the tab stands alone, as on
-      // the instrument. Pressed = on, raised = off; any combination valid.
+      // ON/OFF TOGGLE (max 1, no values): one label — the switch's own name —
+      // pressed = on, raised = off. Independent; any combination valid.
       if (p.max === 1) {
         const cap = p.label.replace(/^Filter\s+/i, '');
         return (
           `<div class="param param-switch${inertCls}">` +
+          `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-pill-cell"><span class="d6-frame">` +
           `<span class="d6-tab d6-toggle${value === 1 ? ' pressed' : ''}">${esc(cap)}</span>` +
           `</span></span>` +

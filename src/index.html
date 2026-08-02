@@ -269,27 +269,33 @@
       font-size: 10px; font-weight: 700; letter-spacing: .05em;
       min-width: 110px; justify-content: center;
     }
-    /* Tab state, three cues combined so it is unmistakable at small size:
-       ACTIVE   = bright cream with a warm amber cast (agreeing with the clavi
-                  line on the strip), sitting 2px LOWER with an inset top
-                  shadow and no highlight, dark text.
-       INACTIVE = dull grey-brown, clearly recessed in tone but physically
-                  RAISED (top highlight + soft under-shadow), muted text.
-       Depth is exaggerated past physical realism on purpose — subtlety failed. */
-    .d6-toggle, .d6-half {
-      text-align: center; padding: 3px 12px;
-      color: #55524a;
-      background: linear-gradient(#95907f, #7d7869);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 2px 2px rgba(0, 0, 0, .55);
+    /* Plain cream caps in both states; the ONE state cue beyond the subtle
+       pressed depth is opacity — the deselected tab (or unchosen side) fades
+       toward the background so the selection is obvious at a glance. */
+    .d6-toggle {
+      width: 100%; text-align: center; justify-content: center;
+      padding: 3px 12px; color: #232325;
+      background: linear-gradient(#f6f2e6, #dcd7c7);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -2px 3px rgba(0, 0, 0, .18), 0 1px 1px rgba(0, 0, 0, .5);
     }
-    .d6-toggle { width: 100%; justify-content: center; }
-    .d6-half { flex: 1; padding: 3px 10px; }
-    .d6-half + .d6-half { border-left: 1px solid rgba(0, 0, 0, .35); }
-    .d6-toggle.pressed, .d6-half.pressed {
-      background: linear-gradient(#f3ead0, #e6d9b2);
+    .d6-toggle.pressed {
+      background: linear-gradient(#d5d0c0, #c7c2b2);
       box-shadow: inset 0 2px 3px rgba(0, 0, 0, .35);
-      transform: translateY(2px); color: #232325;
+      transform: translateY(.5px); color: #1a1a1c;
     }
+    .d6-half {
+      flex: 1; text-align: center; padding: 3px 10px; color: #232325;
+      background: linear-gradient(#f6f2e6, #dcd7c7);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -2px 3px rgba(0, 0, 0, .18);
+    }
+    .d6-half + .d6-half { border-left: 1px solid rgba(0, 0, 0, .28); }
+    .d6-half.pressed {
+      background: linear-gradient(#d0cbbb, #c4bfaf);
+      box-shadow: inset 0 2px 3px rgba(0, 0, 0, .4);
+      color: #1a1a1c;
+    }
+    /* The one change vs the original: fade the deselected state. */
+    .d6-toggle:not(.pressed), .d6-half:not(.pressed) { opacity: .5; }
     /* Bipolar bars: a centre tick marks the neutral origin; fill is absolute
        so it can grow from the centre outward. */
     .param-bar.bipolar { position: relative; }
