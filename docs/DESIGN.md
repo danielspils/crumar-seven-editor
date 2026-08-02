@@ -2,6 +2,36 @@
 
 UI principles for the editor. Add to this file as they accumulate.
 
+## Visual vocabulary
+
+One meaning per treatment — don't reuse these for anything else:
+
+- **Underline** = selection (bank tabs: text-width amber underline + raised
+  background; the library's selected patch uses the red left-edge marker).
+- **Lighter background bar** = section header (also the hover state that says
+  the row is clickable).
+- **Chevron** = collapsible; it rotates as the section opens.
+- **Filled pill** = active (ON, green tint); **outlined pill** = inactive (OFF).
+- **Muted text** = value at its default; **primary text** = value differs.
+- **Dimmed section/group** = bypassed (driven by the switch param only — never
+  inferred from a value being zero), or inapplicable (clavi group when the
+  Clavi engine isn't selected).
+- **Tonal inversion on a preset/bank button** = selected: the face's two tones
+  swap (inset panel goes lighter, face goes near-black) and the LED lights.
+  This is **our own convention, not a copy of the hardware** — the instrument's
+  preset buttons are plain black plastic with an LED; the face never
+  illuminates.
+
+## Navigation and collapse
+
+- Effect sections **start collapsed** — the header row (chevron, name, summary,
+  pill) is the chain's resting view. Clicking a knob on the strip or a section
+  header **toggles** the section.
+- **Clicking a knob navigates only. It never changes a value.**
+- Opening scrolls the section into view if needed and briefly tints it;
+  closing gets no highlight. Expand/collapse is view state — never written to
+  patch data.
+
 ## Effects section order
 
 Section order follows the manufacturer's manual (chapter 20). Crumar does not
@@ -81,4 +111,4 @@ and knobs turn off entirely at some values. Exceptions: **Reverb Decay** uses
 **blue→red**, and **FX1/FX2 Rate** show a **pulsing blue that blinks in sync
 with the effect's LFO**. This is the eventual target for knob rendering on the
 strip — richer and more faithful than a flat on/off treatment. **Not implemented
-yet**; the "effect is on" cue below stays reserved until this lands.
+yet**; the interim amber "effect is on" cue (above) stands in until this lands.

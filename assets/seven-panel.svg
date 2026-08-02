@@ -30,15 +30,21 @@
     .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     /* Shared button component: FX1/FX2 SELECT, transpose, CLAVI TABS all use
        .btn so they stay consistent (presets add .btn-face on top). */
-    .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; }
-    .btn.on    { fill: #7d1418; }
+    .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; transition: fill .15s; }
+    /* Selected = the button's two tones swap (face goes near-black, inset goes
+       lighter) and the LED lights. This is OUR convention, not hardware
+       fidelity — the instrument's buttons are plain black plastic with an LED;
+       the face never illuminates. Geometry/bezel/border identical in both
+       states; only the two fills swap. */
+    .btn.on    { fill: #141416; }
+    .btn-face.on ~ .btn-inset { fill: #232325; }
     /* Preset/bank button layers: recessed bezel, narrow raised face (lighter
        stroke on lower/outer edges only), inset LED panel in the top third.
        Decorative layers pass clicks through to the .btn face beneath. */
     .btn-face  { stroke: none; }
     .btn-bezel { fill: #1a1a1c; pointer-events: none; }
     .btn-edge  { fill: none; stroke: #5a5a5f; stroke-width: 1; pointer-events: none; }
-    .btn-inset { fill: #141416; pointer-events: none; }
+    .btn-inset { fill: #141416; pointer-events: none; transition: fill .15s; }
     /* Silkscreen legends: heavier, narrower, all caps, italic — bundled
        Archivo Narrow (true italic). Tracking slightly reduced from the plain
        face so condensed+bold doesn't crowd. Panel strip only. */
