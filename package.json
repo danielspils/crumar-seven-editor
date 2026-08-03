@@ -12,7 +12,9 @@
     "fixtures": "node fixtures/generate.js",
     "capture": "node tools/capture-hook.js",
     "probe": "node tools/probe.js",
-    "probe:open-items": "node tools/probe.js open-items"
+    "probe:open-items": "node tools/probe.js open-items",
+    "fixtures:roundtrip": "node fixtures/generate-roundtrip.js",
+    "test": "node --test \"test/*.test.js\""
   },
   "engines": {
     "node": ">=18"

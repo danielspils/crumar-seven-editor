@@ -142,7 +142,10 @@ arrives, only `src/preload.js` changes. Dev note: Electron must be ≥ a current
 major — macOS XProtect flags outdated Electron binaries as malware and trashes
 them (this bit us on v31; fixed on v43).
 
-**Next step: design the patch file format** — the app's own format, not the
-instrument's `.bin`. All four features (backup, transfer, editing, visibility)
-route through it, so it gets designed before any of them are built. No hardware
-needed. Not started.
+**The patch file format is built** (docs/FORMAT.md + src/format/, data layer
+only, tested via `npm test`) — .sevenlib.json, one container for everything,
+params keyed by schema key, sound NAME authoritative, per-patch provenance,
+wfp serializer guard, non-mutating parse. Not wired into the renderer yet.
+**Next: the two hardware captures in docs/CONTEXT.md §6** (PC-recall first —
+it decides whether backup is automatic or guided; then 0x72 ACTION, capture
+and read only).

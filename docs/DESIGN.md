@@ -178,3 +178,30 @@ and knobs turn off entirely at some values. Exceptions: **Reverb Decay** uses
 with the effect's LFO**. This is the eventual target for knob rendering on the
 strip — richer and more faithful than a flat on/off treatment. **Not implemented
 yet**; the interim amber "effect is on" cue (above) stands in until this lands.
+
+## Planned
+
+*(This section was created for the note below; the Library-tab note it was
+meant to sit under does not exist in this file yet.)*
+
+**LIBRARY STRUCTURE — leaning, not decided.** The patch is the atom; a bank is
+a view. Storing bank-shaped sets as the primitive creates awkward cases: a
+patch captured without a slot, gaps in a partial set, wanting 3 patches out
+of 8.
+
+Proposed instead: the Library is a flat pool of patches, sortable and
+taggable, with a separate lightweight "set" concept — a name plus an ordered
+list of up to 8 patch references. Sets are what get pushed to a bank. A patch
+may belong to several sets or none.
+
+This matches the two real uses: collecting is flat (patches accumulate over
+time with no slots involved), transferring is bank-shaped (filling 8 slots on
+a specific unit).
+
+The .sevenlib.json format already supports either — patches is a flat array
+and `origin` is optional history, not location. Sets would be an additive
+top-level key, no format break.
+
+**DECIDE AFTER the first real backup and transfer against hardware.** The
+workflow will make the answer obvious, and guessing now risks building the
+wrong primitive.

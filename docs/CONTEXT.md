@@ -5,9 +5,9 @@ pick up without re-deriving anything.
 
 Companion docs in the repo: docs/PROJECT-SCOPE.md (why and what),
 docs/protocol.md (SysEx spec), schema/seven-1.37.json (parameter schema),
-docs/DESIGN.md (UI conventions), CLAUDE.md (working rules for Claude Code),
-docs/manual-notes.md (stale FW 1.22 manual notes). docs/FORMAT.md (patch file
-format) does not exist yet — designed but not built; see §5.
+docs/DESIGN.md (UI conventions), docs/FORMAT.md (patch file format),
+CLAUDE.md (working rules for Claude Code), docs/manual-notes.md (stale FW 1.22
+manual notes).
 
 ## 1. What this is
 
@@ -188,12 +188,13 @@ Electron shell running on fixture data. **No MIDI in the app yet** —
   for packaging. Runs in dev, fails in the packaged bundle. Resolve before
   release.
 
-### Patch file format — designed, NOT built
+### Patch file format — built (2 Aug 2026)
 
-The format has never been implemented: `docs/FORMAT.md` and `src/format/` do
-not exist yet. The spec was drafted in conversation and never handed to Claude
-Code — it is the next work item (§6). The design decisions below are settled;
-read them as intent, not as shipped code:
+Implemented as a data layer only: `docs/FORMAT.md` (spec) and `src/format/`
+(serialize / parse / validate / resolve), with a 10-test suite (`npm test`,
+Node's built-in runner) and a committed roundtrip fixture
+(fixtures/library-roundtrip.json). No MIDI, not yet wired into the renderer.
+The settled design decisions, all implemented:
 
 One container format, .sevenlib.json, where a single patch is a bundle
 containing one patch. Params keyed by schema key, never by ID or array
