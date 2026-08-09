@@ -16,6 +16,13 @@
 //
 // MIDI timing clock (0xF8) and active sensing (0xFE) are ignored so a clock
 // stream can't flood the capture; the header row records that choice.
+//
+// CAUTION, learned live (2026-08-09, captures/vol-confirm-*): a connection
+// opened MID-SYSEX can deliver one garbled frame and then go permanently
+// silent — the parser waits forever for a terminator that already passed.
+// If a capture shows a malformed frame at t=0 and then nothing, the stream is
+// wedged: close and reopen the port. The app's future MIDI layer must handle
+// this (verify liveness after connect; reconnect on silence).
 
 const fs = require('fs');
 const path = require('path');

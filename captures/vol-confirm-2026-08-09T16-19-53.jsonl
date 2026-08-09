@@ -1,0 +1,4 @@
+{"type":"header","tool":"tools/listen.js","port":"[0] Crumar Seven","started":"2026-08-09T16:19:53.350Z","ignored":["timing clock 0xF8","active sensing 0xFE"],"note":"passive capture; wfp values masked before write (CLAUDE.md Rule 6)"}
+{"t":"2026-08-09T16:19:53.789Z","dtMs":null,"len":9,"hex":"f0 73 26 14 45 0e 01 00 f7"}
+{"t":"2026-08-09T16:19:53.789Z","dtMs":0,"len":3,"hex":"b0 01 7f"}
+{"t":"2026-08-09T16:19:53.789Z","dtMs":0,"len":3,"hex":"b0 0b 0d"}
