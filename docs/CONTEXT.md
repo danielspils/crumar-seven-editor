@@ -190,11 +190,14 @@ Electron shell running on fixture data. **No MIDI in the app yet** —
 
 ### Patch file format — built (2 Aug 2026)
 
-Implemented as a data layer only: `docs/FORMAT.md` (spec) and `src/format/`
+Implemented as a data layer: `docs/FORMAT.md` (spec) and `src/format/`
 (serialize / parse / validate / resolve), with a 10-test suite (`npm test`,
 Node's built-in runner) and a committed roundtrip fixture
-(fixtures/library-roundtrip.json). No MIDI, not yet wired into the renderer.
-The settled design decisions, all implemented:
+(fixtures/library-roundtrip.json). Still no MIDI — but as of 9 Aug 2026 the
+format IS wired into the app: the Library UI ("On this computer") reads and
+writes .sevenlib.json files in userData/Library through library-store.js in
+the main process, with setlists (8-slot references, setlists.json) editable
+in the UI. The settled design decisions, all implemented:
 
 One container format, .sevenlib.json, where a single patch is a bundle
 containing one patch. Params keyed by schema key, never by ID or array

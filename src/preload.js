@@ -57,4 +57,15 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     reveal: () => ipcRenderer.invoke('library:reveal'),
     contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
   },
+  // Setlist mutations (setlists.json; every mutation persists immediately).
+  setlists: {
+    create: (name) => ipcRenderer.invoke('setlist:create', { name }),
+    rename: (index, name) => ipcRenderer.invoke('setlist:rename', { index, name }),
+    delete: (index) => ipcRenderer.invoke('setlist:delete', { index }),
+    assign: (index, slot, file) => ipcRenderer.invoke('setlist:assign', { index, slot, file }),
+    clear: (index, slot) => ipcRenderer.invoke('setlist:clear', { index, slot }),
+    move: (index, from, to) => ipcRenderer.invoke('setlist:move', { index, from, to }),
+    contextMenu: () => ipcRenderer.invoke('setlist:contextMenu'),
+    confirmDelete: (name) => ipcRenderer.invoke('setlist:confirmDelete', { name }),
+  },
 });

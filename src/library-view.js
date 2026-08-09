@@ -79,7 +79,7 @@
       );
     }
     return (
-      `<button type="button" class="lib-row${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
+      `<button type="button" class="lib-row${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
       nameCell(entry) +
       `<span class="patch-sound">${esc(entry.soundName)}</span>` +
       badge(entry) +
@@ -110,9 +110,15 @@
   }
 
   function renderSetlistList(data, state) {
-    if (!data.setlists.length) return `<div class="lib-empty">No setlists yet — setlists live in setlists.json in the library folder.</div>`;
-    return data.setlists
+    const rows = data.setlists
       .map((s, i) => {
+        if (state.renamingSetlist === i) {
+          return (
+            `<div class="lib-row lib-setlist-renaming" data-setlist="${i}">` +
+            `<input class="setlist-input lib-autofocus" data-setlist-rename="${i}" type="text" value="${esc(s.name)}" spellcheck="false">` +
+            `</div>`
+          );
+        }
         const filled = s.slots.filter(Boolean).length;
         // Users think in patches; the 8-slot capacity is visible in the slot
         // view itself. Note the empties only when there are any.
@@ -126,7 +132,17 @@
         );
       })
       .join('');
+    const create = state.creatingSetlist
+      ? `<div class="lib-row lib-setlist-renaming"><input class="setlist-input lib-autofocus" data-setlist-create type="text" placeholder="Setlist name…" spellcheck="false"></div>`
+      : `<button type="button" class="lib-new-setlist">＋ New setlist</button>`;
+    const empty = !data.setlists.length && !state.creatingSetlist
+      ? `<div class="lib-empty">No setlists yet. A setlist is a bank’s worth of patches — 8 slots — staged for a gig or a transfer.</div>`
+      : '';
+    return empty + rows + create;
   }
+
+  const selectedEntry = (data, state) =>
+    (state.selected && data.patches.find((e) => state.selected === rowKey(e))) || null;
 
   function renderSetlistSlots(data, state) {
     const setlist = data.setlists[state.setlistIndex];
@@ -134,27 +150,39 @@
     // First patch of a file represents it in a slot (slots reference files).
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
+    // The split selection model: when a library patch is selected, every slot
+    // offers an Assign target for it — both selections stay visible.
+    const sel = selectedEntry(data, state);
+    const assignBtn = (i) =>
+      sel
+        ? `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Assign “${esc(sel.name)}” to slot ${i + 1}">Assign</button>`
+        : '';
+    const clearBtn = (i) =>
+      `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">✕</button>`;
     const rows = setlist.slots
       .map((file, i) => {
         const num = `<span class="slot-num">${i + 1}</span>`;
         if (!file) {
-          return `<div class="lib-slot lib-slot-empty">${num}<span class="slot-text">Empty</span></div>`;
+          return (
+            `<div class="lib-slot lib-slot-empty" data-slot="${i}">` +
+            `${num}<span class="slot-text">Empty</span>${assignBtn(i)}</div>`
+          );
         }
         const entry = byFile.get(file);
         if (!entry) {
           return (
-            `<div class="lib-slot lib-slot-missing" title="Referenced file is not in the library folder">` +
+            `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Referenced file is not in the library folder">` +
             `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
-            `<span class="badge badge-warn">⚠</span></div>`
+            `<span class="badge badge-warn">⚠</span>${assignBtn(i)}${clearBtn(i)}</div>`
           );
         }
         const selected = state.selected === rowKey(entry);
         return (
-          `<button type="button" class="lib-slot lib-slot-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
+          `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}${nameCell(entry)}` +
           `<span class="patch-sound">${esc(entry.soundName)}</span>` +
           badge(entry) +
-          `</button>`
+          `${assignBtn(i)}${clearBtn(i)}</div>`
         );
       })
       .join('');
@@ -187,7 +215,15 @@
 
   // Controller: owns view state, renders into `el`, wires delegated events.
   function createLibraryView({ el, on = {} }) {
-    const state = { tab: 'patches', search: '', setlistIndex: null, selected: null, renaming: null };
+    const state = {
+      tab: 'patches',
+      search: '',
+      setlistIndex: null,
+      selected: null,
+      renaming: null,
+      renamingSetlist: null,
+      creatingSetlist: false,
+    };
     let data = { patches: [], setlists: [] };
 
     const entryAt = (node) => {
@@ -198,7 +234,7 @@
 
     function render() {
       el.innerHTML = renderBody(data, state);
-      const input = el.querySelector('.lib-rename-input');
+      const input = el.querySelector('.lib-rename-input, .lib-autofocus');
       if (input) {
         input.focus();
         input.select();
@@ -216,6 +252,23 @@
       if (e.target.closest('.lib-back')) {
         state.setlistIndex = null;
         render();
+        return;
+      }
+      if (e.target.closest('.lib-new-setlist')) {
+        state.creatingSetlist = true;
+        render();
+        return;
+      }
+      // Slot controls come before row selection — they sit inside slot rows.
+      const assign = e.target.closest('[data-slot-assign]');
+      if (assign) {
+        const sel = selectedEntry(data, state);
+        if (sel && on.assignSlot) on.assignSlot(state.setlistIndex, Number(assign.dataset.slotAssign), sel.file);
+        return;
+      }
+      const clear = e.target.closest('[data-slot-clear]');
+      if (clear) {
+        if (on.clearSlot) on.clearSlot(state.setlistIndex, Number(clear.dataset.slotClear));
         return;
       }
       const setlistRow = e.target.closest('.lib-setlist');
@@ -236,11 +289,83 @@
     });
 
     el.addEventListener('contextmenu', (e) => {
+      const setlistRow = e.target.closest('.lib-setlist');
+      if (setlistRow) {
+        e.preventDefault();
+        const i = Number(setlistRow.dataset.setlist);
+        if (data.setlists[i] && on.setlistMenu) on.setlistMenu(i, data.setlists[i].name);
+        return;
+      }
       const row = e.target.closest('[data-file]');
       if (!row) return;
       e.preventDefault();
       const entry = entryAt(row);
       if (entry && on.contextMenu) on.contextMenu(entry);
+    });
+
+    // ---- Drag and drop -------------------------------------------------------
+    // Two drags: a patch row (assign into a slot) and a slot row (reorder by
+    // swap). Spring-loaded targets let a patch drag cross into the Setlists
+    // tab and into a specific setlist without dropping.
+    el.addEventListener('dragstart', (e) => {
+      const slotRow = e.target.closest('.lib-slot[data-slot]');
+      if (slotRow && state.tab === 'setlists') {
+        e.dataTransfer.setData('text/seven-slot', slotRow.dataset.slot);
+        e.dataTransfer.effectAllowed = 'move';
+        return;
+      }
+      const row = e.target.closest('.lib-row[data-file]');
+      if (row) {
+        const entry = entryAt(row);
+        if (entry) {
+          e.dataTransfer.setData('text/seven-file', entry.file);
+          e.dataTransfer.effectAllowed = 'copy';
+        }
+      }
+    });
+    el.addEventListener('dragenter', (e) => {
+      if (!e.dataTransfer.types.includes('text/seven-file')) return;
+      // Spring-loading: hovering the Setlists tab opens it; hovering a
+      // setlist row opens its slots.
+      const seg = e.target.closest('.seg-btn[data-tab="setlists"]');
+      if (seg && state.tab !== 'setlists') {
+        state.tab = 'setlists';
+        state.setlistIndex = null;
+        render();
+        return;
+      }
+      const setlistRow = e.target.closest('.lib-setlist');
+      if (setlistRow) {
+        state.setlistIndex = Number(setlistRow.dataset.setlist);
+        render();
+      }
+    });
+    el.addEventListener('dragover', (e) => {
+      const slot = e.target.closest('[data-slot]');
+      const types = e.dataTransfer.types;
+      if (slot && (types.includes('text/seven-file') || types.includes('text/seven-slot'))) {
+        e.preventDefault(); // allow the drop
+        slot.classList.add('drop-target');
+      }
+    });
+    el.addEventListener('dragleave', (e) => {
+      const slot = e.target.closest('[data-slot]');
+      if (slot) slot.classList.remove('drop-target');
+    });
+    el.addEventListener('drop', (e) => {
+      const slot = e.target.closest('[data-slot]');
+      if (!slot) return;
+      e.preventDefault();
+      slot.classList.remove('drop-target');
+      const to = Number(slot.dataset.slot);
+      const fromSlot = e.dataTransfer.getData('text/seven-slot');
+      if (fromSlot !== '') {
+        const from = Number(fromSlot);
+        if (from !== to && on.moveSlot) on.moveSlot(state.setlistIndex, from, to);
+        return;
+      }
+      const file = e.dataTransfer.getData('text/seven-file');
+      if (file && on.assignSlot) on.assignSlot(state.setlistIndex, to, file);
     });
 
     // Search: filter as you type; input keeps focus because only .lib-list
@@ -262,10 +387,33 @@
     });
 
     el.addEventListener('keydown', (e) => {
+      // Setlist create / rename inputs.
+      const slInput = e.target.closest('.setlist-input');
+      if (slInput) {
+        if (e.key === 'Enter') {
+          const value = slInput.value.trim();
+          if (slInput.dataset.setlistCreate !== undefined) {
+            state.creatingSetlist = false;
+            if (value && on.createSetlist) on.createSetlist(value);
+            else render();
+          } else {
+            const i = Number(slInput.dataset.setlistRename);
+            state.renamingSetlist = null;
+            if (value && on.renameSetlist) on.renameSetlist(i, value);
+            else render();
+          }
+        } else if (e.key === 'Escape') {
+          state.creatingSetlist = false;
+          state.renamingSetlist = null;
+          render();
+        }
+        return;
+      }
+      // Patch rename input.
       const input = e.target.closest('.lib-rename-input');
       if (!input) return;
       const row = input.closest('[data-file]');
-      const entry = entryAt(row);
+      const entry = row ? entryAt(row) : null;
       if (e.key === 'Enter' && entry) {
         state.renaming = null;
         if (on.rename) on.rename(entry, input.value);
@@ -274,12 +422,18 @@
         render();
       }
     });
-    // Clicking away cancels an in-progress rename.
+    // Clicking away cancels any in-progress inline edit.
     el.addEventListener(
       'blur',
       (e) => {
-        if (e.target.classList && e.target.classList.contains('lib-rename-input') && state.renaming) {
+        const cls = e.target.classList;
+        if (!cls) return;
+        if (cls.contains('lib-rename-input') && state.renaming != null) {
           state.renaming = null;
+          render();
+        } else if (cls.contains('setlist-input') && (state.creatingSetlist || state.renamingSetlist != null)) {
+          state.creatingSetlist = false;
+          state.renamingSetlist = null;
           render();
         }
       },
@@ -293,10 +447,19 @@
         if (state.selected && !data.patches.some((e) => state.selected === rowKey(e))) {
           state.selected = null;
         }
+        // A deleted setlist may leave the index dangling.
+        if (state.setlistIndex != null && state.setlistIndex >= data.setlists.length) {
+          state.setlistIndex = null;
+        }
         render();
       },
       beginRename(entry) {
         state.renaming = rowKey(entry);
+        render();
+      },
+      beginSetlistRename(index) {
+        state.tab = 'setlists';
+        state.renamingSetlist = index;
         render();
       },
       select(entry) {

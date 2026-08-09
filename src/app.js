@@ -437,6 +437,39 @@
         }
         await refreshLibrary();
       },
+      // ---- setlist editing (every mutation persists via IPC, then re-syncs) --
+      async createSetlist(name) {
+        await window.sevenAPI.setlists.create(name);
+        await refreshLibrary();
+      },
+      async renameSetlist(index, name) {
+        await window.sevenAPI.setlists.rename(index, name);
+        await refreshLibrary();
+      },
+      async setlistMenu(index, name) {
+        const action = await window.sevenAPI.setlists.contextMenu();
+        if (action === 'rename') {
+          libView.beginSetlistRename(index);
+        } else if (action === 'delete') {
+          // Confirm first; deleting a setlist never touches the patches.
+          if (await window.sevenAPI.setlists.confirmDelete(name)) {
+            await window.sevenAPI.setlists.delete(index);
+            await refreshLibrary();
+          }
+        }
+      },
+      async assignSlot(index, slot, file) {
+        await window.sevenAPI.setlists.assign(index, slot, file);
+        await refreshLibrary();
+      },
+      async clearSlot(index, slot) {
+        await window.sevenAPI.setlists.clear(index, slot);
+        await refreshLibrary();
+      },
+      async moveSlot(index, from, to) {
+        await window.sevenAPI.setlists.move(index, from, to);
+        await refreshLibrary();
+      },
     },
   });
 

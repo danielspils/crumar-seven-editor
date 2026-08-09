@@ -51,21 +51,52 @@ function registerLibraryIpc() {
   });
   // Native context menu for a library row; resolves with the chosen action
   // (or null when dismissed).
-  ipcMain.handle('library:contextMenu', (e) =>
+  const popupMenu = (e, template) =>
     new Promise((resolve) => {
       let done = false;
       const pick = (action) => () => { done = true; resolve(action); };
-      const menu = Menu.buildFromTemplate([
-        { label: 'Rename', click: pick('rename') },
-        { label: 'Duplicate', click: pick('duplicate') },
-        { type: 'separator' },
-        { label: 'Export…', click: pick('export') },
-        { type: 'separator' },
-        { label: 'Delete', click: pick('trash') },
-      ]);
+      const menu = Menu.buildFromTemplate(
+        template.map((item) => (item.action ? { label: item.label, click: pick(item.action) } : item))
+      );
       menu.popup({ window: BrowserWindow.fromWebContents(e.sender) });
       menu.on('menu-will-close', () => setTimeout(() => { if (!done) resolve(null); }, 120));
-    }));
+    });
+  ipcMain.handle('library:contextMenu', (e) =>
+    popupMenu(e, [
+      { label: 'Rename', action: 'rename' },
+      { label: 'Duplicate', action: 'duplicate' },
+      { type: 'separator' },
+      { label: 'Export…', action: 'export' },
+      { type: 'separator' },
+      { label: 'Delete', action: 'trash' },
+    ]));
+
+  // ---- Setlists (all mutations persist immediately in setlists.json) -------
+  ipcMain.handle('setlist:create', (_e, { name }) => getStore().createSetlist(name));
+  ipcMain.handle('setlist:rename', (_e, { index, name }) => getStore().renameSetlist(index, name));
+  ipcMain.handle('setlist:delete', (_e, { index }) => getStore().deleteSetlist(index));
+  ipcMain.handle('setlist:assign', (_e, { index, slot, file }) => getStore().assignSlot(index, slot, file));
+  ipcMain.handle('setlist:clear', (_e, { index, slot }) => getStore().clearSlot(index, slot));
+  ipcMain.handle('setlist:move', (_e, { index, from, to }) => getStore().moveSlot(index, from, to));
+  ipcMain.handle('setlist:contextMenu', (e) =>
+    popupMenu(e, [
+      { label: 'Rename', action: 'rename' },
+      { type: 'separator' },
+      { label: 'Delete…', action: 'delete' },
+    ]));
+  // Deleting a setlist never deletes patches — the dialog says so.
+  ipcMain.handle('setlist:confirmDelete', async (e, { name }) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['Delete Setlist', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      message: `Delete the setlist “${name}”?`,
+      detail: 'Only the setlist is deleted — the patches it references stay in the library.',
+    });
+    return response === 0;
+  });
 }
 
 // View menu: display-only toggles routed to the renderer. Expand/collapse and

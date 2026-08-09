@@ -104,23 +104,91 @@ class LibraryStore {
     }, null, 2)}\n`);
   }
 
+  // Load with validation: malformed entries are DROPPED with a console
+  // warning rather than failing the whole file; malformed slot values read
+  // as empty. Slot count is fixed at 8 — a hardware bank's worth.
   readSetlists() {
     this.migrateSetlists();
+    if (!fs.existsSync(this.setlistsFile())) return [];
     try {
       const raw = JSON.parse(fs.readFileSync(this.setlistsFile(), 'utf8'));
-      return Array.isArray(raw.setlists)
-        ? raw.setlists.map((s) => ({
-            name: String(s.name || 'Untitled setlist'),
-            slots: Array.from({ length: 8 }, (_, i) => (s.slots && s.slots[i]) || null),
-          }))
-        : [];
-    } catch {
+      if (!Array.isArray(raw.setlists)) return [];
+      const ok = [];
+      for (const s of raw.setlists) {
+        if (!s || typeof s !== 'object' || typeof s.name !== 'string' || !Array.isArray(s.slots)) {
+          console.warn('[library] dropping malformed setlist entry:', JSON.stringify(s).slice(0, 120));
+          continue;
+        }
+        ok.push({
+          name: s.name || 'Untitled setlist',
+          slots: Array.from({ length: 8 }, (_, i) => {
+            const v = s.slots[i];
+            if (v == null) return null;
+            if (typeof v === 'string') return v;
+            console.warn(`[library] setlist "${s.name}": non-string slot ${i + 1} treated as empty`);
+            return null;
+          }),
+        });
+      }
+      return ok;
+    } catch (err) {
+      console.warn('[library] setlists.json unreadable:', String(err.message || err));
       return [];
     }
   }
 
   writeSetlists(setlists) {
     fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({ setlists }, null, 2)}\n`);
+  }
+
+  // ---- setlist mutations — every one persists immediately ------------------
+  createSetlist(name) {
+    const setlists = this.readSetlists();
+    setlists.push({ name: String(name).trim() || 'Untitled setlist', slots: Array(8).fill(null) });
+    this.writeSetlists(setlists);
+    return setlists.length - 1;
+  }
+
+  renameSetlist(index, name) {
+    const setlists = this.readSetlists();
+    if (!setlists[index]) throw new Error('No such setlist');
+    setlists[index].name = String(name).trim() || setlists[index].name;
+    this.writeSetlists(setlists);
+  }
+
+  // Deletes the setlist ONLY — never the patches it references.
+  deleteSetlist(index) {
+    const setlists = this.readSetlists();
+    if (!setlists[index]) throw new Error('No such setlist');
+    setlists.splice(index, 1);
+    this.writeSetlists(setlists);
+  }
+
+  // Assigning stores a filename reference — it never copies the file. The
+  // same patch may appear in several setlists and more than once in one.
+  assignSlot(index, slot, file) {
+    const setlists = this.readSetlists();
+    if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');
+    setlists[index].slots[slot] = String(file);
+    this.writeSetlists(setlists);
+  }
+
+  clearSlot(index, slot) {
+    const setlists = this.readSetlists();
+    if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');
+    setlists[index].slots[slot] = null;
+    this.writeSetlists(setlists);
+  }
+
+  // Reorder by swap — dropping on an occupied slot exchanges the two, never
+  // overwrites; dropping on an empty slot is the same swap with null (a
+  // move). Empty slots are legal anywhere; nothing auto-compacts.
+  moveSlot(index, from, to) {
+    const setlists = this.readSetlists();
+    const s = setlists[index];
+    if (!s || from < 0 || from > 7 || to < 0 || to > 7) throw new Error('Bad slot');
+    [s.slots[from], s.slots[to]] = [s.slots[to], s.slots[from]];
+    this.writeSetlists(setlists);
   }
 
   readFile(file) {

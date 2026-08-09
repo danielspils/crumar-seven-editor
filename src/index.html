@@ -289,6 +289,35 @@
        missing carries the warning treatment. */
     .lib-slot-empty .slot-text { color: var(--text-dim); font-style: italic; }
     .lib-slot-missing .slot-text { color: var(--warn); }
+    /* Setlist editing */
+    .lib-new-setlist {
+      display: block; width: 100%; padding: 9px 6px;
+      background: none; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text-muted); font: inherit; text-align: left; cursor: pointer;
+    }
+    .lib-new-setlist:hover { background: var(--bg-raised); color: var(--text); }
+    .lib-setlist-renaming { display: block; }
+    .setlist-input {
+      width: 100%; font: inherit; font-weight: 600; color: var(--text);
+      background: var(--bg); border: 1px solid var(--amber); border-radius: 3px;
+      padding: 3px 6px;
+    }
+    .slot-assign {
+      font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      color: var(--amber); background: transparent;
+      border: 1px solid var(--amber); border-radius: 9px;
+      padding: 2px 9px; cursor: pointer; flex: none; margin-left: 6px;
+    }
+    .slot-assign:hover { background: rgba(255, 176, 32, .15); }
+    .slot-clear {
+      font: inherit; font-size: 11px; color: var(--text-dim);
+      background: transparent; border: none; padding: 2px 6px; cursor: pointer;
+    }
+    .slot-clear:hover { color: var(--text); }
+    /* Drop feedback while dragging a patch or a slot over a target slot. */
+    .lib-slot.drop-target { outline: 1px dashed var(--amber); outline-offset: -2px; background: rgba(255, 176, 32, .06); }
+    /* Slot rows grew controls; make room without breaking the grid. */
+    .lib-slot { grid-template-columns: 24px 1fr 1fr auto auto auto auto; }
 
     /* 4. Detail */
     /* min-width 0 lets the column shrink instead of overflowing #main
