@@ -1,12 +1,43 @@
 'use strict';
 
-// capture-hook.js — STUB
+// capture-hook.js — browser console tap for the manufacturer's web editor.
 //
-// Intended job: tap the USB-MIDI stream to/from the Crumar Seven and append raw
-// SysEx frames to captures/ as immutable hex logs (Rule 5: raw hex is never
-// deleted or replaced by a decode).
+// NOT a Node module: paste the snippet below into the DevTools console on the
+// gsidsp.com Seven editor page. It patches MIDIOutput.prototype.send so every
+// message the EDITOR sends to the instrument is logged with a timestamp.
 //
-// No protocol logic yet — per project scaffolding, no protocol/UI code is
-// written until captures exist to justify it.
+// Outbound direction ONLY, by design: editor→device frames never carry `wfp`
+// (the Wi-Fi password lives in the device's 0x33 globals REPLY — Rule 6), so
+// this log is safe to copy around. The device→host direction is captured
+// separately by tools/listen.js, which redacts wfp before writing.
+//
+// Usage:
+//   1. Start `node tools/listen.js --label <session>` on the host FIRST, while
+//      the MIDI stream is idle (a port opened mid-SysEx can wedge — see the
+//      caution in listen.js).
+//   2. Open the editor page in Chrome, open DevTools, paste the snippet.
+//   3. Let the editor connect; perform ONLY the action under test.
+//   4. In the console: copy(window.__sevenTap)  → paste the JSON into a file
+//      under captures/ next to the listener's .jsonl.
+//
+// ---- paste everything below this line into the console ----------------------
+/*
+(() => {
+  const orig = MIDIOutput.prototype.send;
+  const log = [];
+  window.__sevenTap = log;
+  MIDIOutput.prototype.send = function (data, ts) {
+    const row = {
+      t: new Date().toISOString(),
+      port: this.name,
+      hex: Array.from(data).map((b) => b.toString(16).padStart(2, '0')).join(' '),
+    };
+    log.push(row);
+    console.log('[seven-tap]', row.t, row.hex);
+    return orig.call(this, data, ts);
+  };
+  console.log('[seven-tap] armed. Copy the log with: copy(window.__sevenTap)');
+})();
+*/
 
 module.exports = {};
