@@ -263,15 +263,19 @@ frame:
    raw captures in `captures/pc-*.jsonl`. New open items: the volume-knob
    override suspicion on `veq_vol`, and the recall-burst CC scaling for
    sub-127-max params (protocol.md open items 7 and 8).
-2. What does 0x72 ACTION expose? **PREMISE CORRECTED (9 Aug 2026): the
-   "editor's EXPORT button" does not exist in the USB editor.** Preset
-   export/import lives in the instrument-hosted Wi-Fi editor (manual §10.2)
-   and writes `Seven_x-y.bin` to the USB stick over HTTP — it never touches
-   MIDI (docs/manual-notes.md, "TWO different editors"). The remaining path
-   to observe 0x72 is passive: capture whatever the gsidsp.com USB editor
-   sends during its normal operations and see if 0x72 ever appears.
-   **Caution unchanged: that opcode space also contains factory reset and
-   firmware update. Capture and read only — never fuzz it.**
+2. ~~What does 0x72 ACTION expose?~~ **ANSWERED (9 Aug 2026), passively.**
+   The EXPORT premise was wrong — export lives in the instrument-hosted Wi-Fi
+   editor over HTTP (manual §10.2; docs/manual-notes.md "TWO different
+   editors") — but 0x72 showed itself anyway: the USB editor's home page
+   sends `72 0A 03` (storage query → "4.0GB") and `70 04 00` (string 4 →
+   the firmware version string). Same session pinned **glb index 3 = Send
+   PC** via the captured editor write, and verified that with Send PC ON,
+   panel recalls emit `Cn <slot>` — slot-identified hardware following.
+   See protocol.md; raw evidence in captures/. **Caution unchanged: ACTION's
+   write space (factory reset, firmware update) stays observe-only — never
+   send, never fuzz.** The one opcode still unobserved is `0x46` set-sound
+   (capture opportunity: click a different sound on SELECT PIANO while
+   tapped — it's what Transfer will need).
 
 **Still unanswered:** does a preset store state beyond the 110 parameters (a
 preset name?); does the .bin export layout match SysEx order; how to obtain

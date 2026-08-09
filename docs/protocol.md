@@ -159,6 +159,44 @@ physical volume knob re-asserting its position over the recalled value; open ite
 Backup implication: **unattended backup works** — for each slot, send PC n, await the
 `0x45` + CC burst, read the 110-parameter edit buffer, store. No panel interaction.
 
+### Outgoing Program Change on recall — the Send PC global (glb index 3, verified)
+
+With the **Send PC** global ON, every panel recall ALSO emits `Cn <slot>` (~60ms after
+the `0x45`), using the **same 0-based global slot numbering as the receive direction** —
+captured 2026-08-09 (`captures/send-pc-2-*.jsonl`): recalls of bank 2 presets 3/7/1
+emitted PC 10/14/8 alongside sounds 2/20/0, all cross-checked against earlier rounds.
+
+**glb index 3 = Send PC — pinned by a captured write**: flipping the editor's Send PC
+switch to YES sent `F0 73 26 14 30 03 01 F7` (ack `31 03`), and this unit's stored glb
+had index 3 = 0 back when no PC was observed on recall. Third confirmed global name
+(with 2 = Send CC, 8 = Memory Protect); the DOM-order assumption for the rest gains a
+consistent data point. Schema updated.
+
+App implication: with Send PC on, panel recalls are **slot-identified** — the UI can
+follow the hardware's bank/preset exactly, and manual recalls can be labeled without
+prompting.
+
+### String (`0x70`/`0x71`) and Action (`0x72`/`0x73`) — first observations (passive)
+
+Both appeared for the first time on 2026-08-09, sent by the USB editor while loading
+its home page (captured outbound in the browser tap, replies in
+`captures/send-pc-2-*.jsonl`):
+
+```
+→ F0 73 26 14 70 04 00 F7
+← F0 73 26 14 71 04 "CRUMAR Seven v.1.37 Build date: Thu May 12 15:4…" F7
+→ F0 73 26 14 72 0A 03 F7
+← F0 73 26 14 73 01 0A "4.0GB" F7
+```
+
+- **String index 4 = the firmware version/build string** (matches the home page's
+  firmware display).
+- **Action `0x0A` = available-storage query** (the home page / expansion installer
+  shows storage; reply payload is `01 0A` + ASCII). So ACTION has at least one
+  harmless read use — but the space is documented to also carry factory reset and
+  firmware update, so the standing rule is unchanged: **we observe ACTION passively
+  and never send it.**
+
 ### Globals (`0x33`)
 
 Semicolon-delimited `key=value`:
@@ -246,16 +284,15 @@ The July 2021 manual documents v1.22. On v1.37:
    holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
    with a current assignment, not an inconsistency — no contradiction with the `-1` seen on
    unassigned params. `ccUnverified` dropped from these three in the schema.
-3. `0x46` (set sound), `0x70`/`0x72` (string, action) are named but their payload formats are
-   unobserved — all involve writes, so test deliberately. (`0x20` set-param and `0x30`
-   set-global are now verified — see above.) **Negative evidence as of 2026-08-09**
-   (`captures/editor-tap-2026-08-09-notes.md`): none of the three appeared in the USB
-   editor's own traffic during patch browsing — the editor re-syncs after each recall with
-   plain per-parameter `0x22` sweeps of all 110 ids (~2ms per sweep), the same read pattern
-   planned for the app's backup. `0x72` may belong to the instrument-hosted Wi-Fi editor's
-   HTTP surface and never appear on USB-MIDI at all. The realistic capture opportunity left
-   for `0x46` is clicking a different sound on the USB editor's SELECT PIANO page while
-   tapped.
+3. `0x46` (set sound) remains the one named opcode whose payload is unobserved — it's a
+   write, so it only gets captured when the editor performs it (clicking a different sound
+   on the SELECT PIANO page while tapped). ~~`0x70`/`0x72` unobserved~~ **OBSERVED
+   2026-08-09, passively** — read-type uses captured from the editor's home-page load
+   (string index 4 = firmware string; ACTION 0x0A = storage query; see the new section
+   above). ACTION's write-type payloads (factory reset, firmware update) remain
+   unobserved and off-limits by rule. Earlier negative evidence from patch browsing
+   (`captures/editor-tap-2026-08-09-notes.md`) still stands: browsing traffic is pure
+   `0x22` sweeps.
 4. ~~Whether the device pushes unsolicited notifications~~ **PARTIALLY RESOLVED
    (2026-08-09).** Preset recalls push an unsolicited `0x45` + a 22-CC panel dump (see the
    `0x45` section). Whether panel *encoder moves* push anything beyond their ordinary CC is
