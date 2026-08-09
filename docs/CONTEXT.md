@@ -252,10 +252,17 @@ at-default muting, since the heuristic makes an engaged switch look untouched.
 **Two hardware captures**, using the browser-hook method that produced the 0x30
 frame:
 
-1. Does the Seven act on incoming Program Change to recall presets, and do PC
-   numbers cover all four banks? Unlocks unattended backup. Needs no thumb
-   drive — **do this one first**; its answer determines whether the backup UI
-   is automatic or a guided click-through.
+1. ~~Does the Seven act on incoming Program Change?~~ **DONE (9 Aug 2026), live
+   against the instrument — the good outcome.** The Seven recalls on incoming
+   PC; program numbers are 0-based global slots across all four banks
+   (bank = ⌊n/8⌋+1, preset = (n mod 8)+1). Every recall — panel or PC —
+   broadcasts an unsolicited `0x45` (sound ID) plus the 22 fixed panel CCs,
+   and the edit buffer follows the recall (verified by SysEx read-back).
+   **Backup can be fully unattended**: send PC n, await the broadcast, read
+   the 110-param edit buffer, store. Evidence: protocol.md `0x45` section;
+   raw captures in `captures/pc-*.jsonl`. New open items: the volume-knob
+   override suspicion on `veq_vol`, and the recall-burst CC scaling for
+   sub-127-max params (protocol.md open items 7 and 8).
 2. What does 0x72 ACTION expose? Capture from the editor's EXPORT button.
    Either confirms there's no remote store or overturns it. **Caution: that
    opcode space also contains factory reset and firmware update. Capture and

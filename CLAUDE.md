@@ -102,9 +102,9 @@ mask it.
 
 ```
 docs/        manual-notes.md (stale v1.22 manual), protocol.md (v1.37 spec)
-captures/    raw MIDI logs — empty for now, kept for future recordings
+captures/    raw MIDI logs (ground truth, committed) — pc-recall/pc-receive sessions
 schema/      seven-<firmware>.json — version-gated parameter maps
-tools/       capture-hook.js, probe.js — capture & probing utilities
+tools/       capture-hook.js, probe.js, listen.js (passive wfp-redacting recorder)
 assets/      seven-panel.svg — panel artwork, inlined into the DOM for id access
 fixtures/    generate.js + sample-library.json — DEMO data only, never evidence
 src/         Electron app: main.js, preload.js (the data-source swap point),
@@ -146,6 +146,13 @@ them (this bit us on v31; fixed on v43).
 only, tested via `npm test`) — .sevenlib.json, one container for everything,
 params keyed by schema key, sound NAME authoritative, per-patch provenance,
 wfp serializer guard, non-mutating parse. Not wired into the renderer yet.
-**Next: the two hardware captures in docs/CONTEXT.md §6** (PC-recall first —
-it decides whether backup is automatic or guided; then 0x72 ACTION, capture
-and read only).
+
+**The PC-recall capture is DONE (2026-08-09, live device)** — the good outcome:
+the Seven recalls on incoming Program Change (0-based global slots, all four
+banks), every recall broadcasts an unsolicited `0x45` + the 22 fixed panel CCs,
+and the edit buffer follows the recall (read-back verified). **Backup can be
+fully unattended.** See protocol.md `0x45` section + open items 6–8;
+raw evidence in `captures/pc-*.jsonl`; recorder is `tools/listen.js`.
+**Next: the 0x72 ACTION capture** (docs/CONTEXT.md §6 — capture and read only,
+never fuzz: that opcode space contains factory reset and firmware update), and
+wiring MIDI into `src/preload.js` for the first real in-app backup.

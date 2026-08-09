@@ -119,7 +119,45 @@ rather than wrapping.
 `sampled` is `0` for a modeled engine, `1` for a GSP-01 sample set. Sound count depends on
 installed expansions — this unit reports 24 (8 modeled + 16 sampled).
 
-### Current sound (`0x45`) — returns the active sound ID.
+### Current sound (`0x45`) — returns the active sound ID
+
+Reply to `0x44`. **Also broadcast unsolicited on every preset recall** — panel recall and
+incoming Program Change alike (captured live 2026-08-09, FW 1.37; raw frames in
+`captures/pc-recall-*.jsonl` and `captures/pc-receive-*.jsonl`):
+
+```
+F0 73 26 14 45 <soundId> <digit> F7
+```
+
+- `soundId` — binary sound ID of the recalled preset's sound. Verified: recalling three
+  sampled presets emitted 22/20/19, and a `0x44` read immediately after returned 19.
+- `digit` — one ASCII character. Across all 23 captured frames it equals the **first
+  decimal digit of `soundId`** ('0'–'3' for ids 0–3, '1' for 10/19, '2' for 20/22/23).
+  Looks like a truncated ASCII rendering of the id; meaning not pinned. It is NOT the
+  preset number (presets 6/7/8 emitted '2','2','1').
+- **Bank and preset number are NOT in the frame.** Preset 1 of banks 1, 2 and 3 produced
+  byte-identical frames.
+
+Each recall is immediately followed by a burst of the **22 fixed panel CCs** (`flag=1`
+set, ID order — CC 7, 12–16, 20–33, 91, 92) carrying the recalled preset's values, then a
+doubled `B0 01` (mod wheel) pair — unexplained. **No Program Change is emitted.**
+
+### Preset recall via incoming Program Change (verified)
+
+The Seven **acts on received `Cn <program>`**: each PC triggered the full recall
+broadcast above within ~5ms (`captures/pc-receive-2026-08-09*.jsonl`). Program numbers
+are **0-based global slots across all four banks**: bank = ⌊n/8⌋+1, preset = (n mod 8)+1.
+Evidence: PC 0/1 reproduced the sounds of bank 1 presets 1/2 from the controlled panel
+capture; PC 8 reproduced bank 2 preset 1; PC 31's 22-CC burst was **byte-identical** to a
+panel recall of bank 4 preset 8 captured minutes earlier.
+
+**Edit buffer follows recall** — verified by reading params over SysEx right after a PC
+recall and comparing against that recall's own CC broadcast: `rev_lv`, `fx2_dp`, `rev_dc`
+matched exactly. `veq_vol` did NOT (CC said 116, buffer read 127) — suspicion is the
+physical volume knob re-asserting its position over the recalled value; open item.
+
+Backup implication: **unattended backup works** — for each slot, send PC n, await the
+`0x45` + CC burst, read the 110-parameter edit buffer, store. No panel interaction.
 
 ### Globals (`0x33`)
 
@@ -211,6 +249,17 @@ The July 2021 manual documents v1.22. On v1.37:
 3. `0x46` (set sound), `0x70`/`0x72` (string, action) are named but their payload formats are
    unobserved — all involve writes, so test deliberately. (`0x20` set-param and `0x30`
    set-global are now verified — see above.)
-4. Whether the device pushes unsolicited notifications when panel encoders move, and on which
-   opcode. UNVERIFIED — the panel does emit ordinary MIDI CC, observed during capture.
+4. ~~Whether the device pushes unsolicited notifications~~ **PARTIALLY RESOLVED
+   (2026-08-09).** Preset recalls push an unsolicited `0x45` + a 22-CC panel dump (see the
+   `0x45` section). Whether panel *encoder moves* push anything beyond their ordinary CC is
+   still unverified.
 5. Whether `.bin` preset export shares this layout. Untested.
+6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
+   digit of the sound ID in all 23 captured frames — rendering quirk or something else?
+   Also unexplained: the doubled `B0 01` pair closing every recall burst.
+7. `veq_vol` read 127 from the edit buffer right after a recall whose CC broadcast said
+   116 — does the physical volume knob override the recalled master volume? Check the knob
+   position hypothesis before trusting `veq_vol` in backups.
+8. Recall-burst CC values for sub-127-max params look scaled to 0–127 (e.g. `fx1_md`,
+   max 3, broadcast as 0x54): scaling law unverified — do not decode those CCs as raw
+   parameter values until pinned.
