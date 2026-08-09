@@ -162,5 +162,16 @@ raw evidence in `captures/`; recorder is `tools/listen.js`, browser tap in
 named opcode has now been observed**: one binary byte, confirmed by `0x45` +
 a `0x47` name reply, no CC burst, and engine params survive the change
 (read-back verified) — Transfer/audition can send sound-then-params.
-**Next: wire real MIDI into `src/preload.js` for the first in-app backup**;
-the Library UI (built, uncommitted) awaits visual review.
+**Real MIDI is in the app** (`src/seven-midi.js`, main process; renderer talks
+through the `sevenAPI.midi` seam in preload): mandatory STRING-4 liveness probe
+(500ms, one reopen retry, hard fail — the wedge defence), wfp redacted in the
+parse layer (raw `0x33` frames never leave `_onMessage`), glb-3 pending-restore
+marker written to userData BEFORE any Send PC change (restored on disconnect
+and on next connect after a dead session), persistent `0x45`/`0x47`/PC
+listener, per-connection sound table (24 sounds, fingerprint + date) read via
+per-id `0x42` enumeration. Reply matchers validate echoed ids — macOS delivers
+device replies to every client on the port, so opcode-only matching can be
+satisfied by the manufacturer editor's traffic. Live-tested end-to-end
+(connect 380ms; Connect/Disconnect wired in the connection row).
+**Next: Task 6 — the first in-app backup run**; the Library UI with setlist
+editing is committed and visually verified.

@@ -95,6 +95,17 @@
       width: 8px; height: 8px; border-radius: 50%;
       background: var(--text-dim);
     }
+    #connection-row.connected .conn-dot { background: #4caf6d; }
+    #connection-row.connecting .conn-dot { background: var(--accent); }
+    #connection-row.failed .conn-dot { background: #d9534f; }
+    #conn-button {
+      margin-left: auto;
+      background: none; border: 1px solid var(--line); border-radius: 4px;
+      color: var(--text-muted); font: inherit; font-size: 12px;
+      padding: 2px 10px; cursor: pointer;
+    }
+    #conn-button:hover { color: var(--text); border-color: var(--text-dim); }
+    #conn-button:disabled { opacity: 0.5; cursor: default; }
 
     /* Main area: library left, detail right */
     #main { flex: 1; display: flex; min-height: 0; }
@@ -578,6 +589,7 @@
   <div id="connection-row">
     <span class="conn-dot"></span>
     <span id="connection-text">No instrument connected</span>
+    <button id="conn-button" type="button">Connect</button>
   </div>
   <div id="main">
     <div id="library">

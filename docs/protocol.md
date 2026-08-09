@@ -63,12 +63,24 @@ Same `0x00, idHi, idLo` addressing as the read requests, then a **single value b
 (0–max; no MSB/LSB split, writes clamp at max). Each write drew a `0x23` reply echoing the
 new value, confirmed across a full 0→127 drag. This frame is **verified**, not inferred.
 
-### Get-value reply (`0x23`) — verified
+### Get-value reply (`0x23`) — verified; 4 fields, the 4th is the DISPLAY STRING
+
+The reply is FOUR fields, `id|key|value|display` — the 4th is the device's own
+human-readable rendering of the value: a decimal string for continuous params, a **text
+label for enums and switches**. Pinned 2026-08-09 across two sessions' captures
+(`captures/action-export-2026-08-09*.jsonl` holds full sweeps):
 
 ```
-<id>|<key>|<value>
-68|veq_vol|64
+1|rho_atk|64|064            continuous: zero-padded decimal
+0|rho_tp|8|Default e.piano  enum: label
+75|fx1_md|0|Mono Tremolo    enum: label
+73|veq_byp|1|Bypass ON      switch: label (and confirms the inversion semantics)
+91|amp_mo|1|AC              enum: label
 ```
+
+**The device labels its own enum values** — the enum-labels open item is closable by
+sweeping each enum param through its range and reading the display back, no human
+transcription needed.
 
 ## Payloads are ASCII
 
@@ -108,16 +120,33 @@ parsing the first field). Same for the `0x33` globals reply.
 Values are plain 0–max in a single byte. **No MSB/LSB split anywhere.** Writes clamp at max
 rather than wrapping.
 
-### Sound spec (`0x43`)
+### Sound spec (`0x42`/`0x43`) — addressing verified 2026-08-09
+
+Request addressing is a `0x00` pad plus a **single binary id byte** — NOT the two-byte
+param addressing (`captures/probe-sound-table-2026-08-09-notes.md`):
 
 ```
-<id>|<sampled>|<name>
-0|0|Tine Piano
-8|1|GSi Grand D
+→ F0 73 26 14 42 00 <id> F7
+← F0 73 26 14 43 <id> <ascii "id|sampled|name"> F7    e.g. 43 15 "21|1|Venice Grand"
 ```
 
 `sampled` is `0` for a modeled engine, `1` for a GSP-01 sample set. Sound count depends on
 installed expansions — this unit reports 24 (8 modeled + 16 sampled).
+
+- The reply echoes the **binary id** before the ASCII triple — match on it.
+- An **out-of-range id echoes back with an empty name** (`42 00 18` → `"24|0|"`), which is
+  the termination rule for enumerating the table without touching `0x40`.
+- Misframings observed: param-style `42 00 <hi> <lo>` reads the byte after the pad as the
+  id (extras ignored — `42 00 00 17` returned sound 0); no pad (`42 15`) gets an empty
+  `0x43`.
+
+### Max sound (`0x40`) — triggers the full self-description dump
+
+A bare `F0 73 26 14 40 F7` answers with `41 <binary count> <ascii first digit>` (mirroring
+the `0x45` shape) and then, unprompted, streams **all sound specs (`0x43`), the max param
+id (`0x11`), and the entire 110-parameter spec stream (`0x15` frames, each with a trailing
+`0x0A`)**. This dump is how the manufacturer's editor syncs on page load. For a plain
+sound-table read, prefer enumerating `0x42` per id — deterministic and quiet.
 
 ### Current sound (`0x45`) — returns the active sound ID
 

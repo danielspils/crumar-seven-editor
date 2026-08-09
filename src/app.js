@@ -572,6 +572,51 @@
     });
   }
 
+  // ---- Connection row (real MIDI through the preload seam) ------------------
+  // The renderer only sees decoded status objects and events; connect() rejects
+  // with a user-facing message (probe failure, device missing).
+  if (window.sevenAPI.midi) {
+    const connRow = document.getElementById('connection-row');
+    const connText = document.getElementById('connection-text');
+    const connBtn = document.getElementById('conn-button');
+
+    const showStatus = (s, error) => {
+      connRow.className = s.state === 'connected' ? 'connected'
+        : s.state === 'connecting' ? 'connecting'
+        : error ? 'failed' : '';
+      if (s.state === 'connected') {
+        const n = s.soundTable ? s.soundTable.sounds.length : 0;
+        connText.textContent = `Connected — ${s.firmware} · ${n} sounds`;
+        connBtn.textContent = 'Disconnect';
+      } else if (s.state === 'connecting') {
+        connText.textContent = 'Connecting…';
+      } else {
+        connText.textContent = error || 'No instrument connected';
+        connBtn.textContent = 'Connect';
+      }
+      connBtn.disabled = s.state === 'connecting';
+    };
+
+    connBtn.addEventListener('click', async () => {
+      const connected = connRow.classList.contains('connected');
+      try {
+        if (connected) await window.sevenAPI.midi.disconnect();
+        else await window.sevenAPI.midi.connect();
+      } catch (err) {
+        // Message text comes from the layer (already user-facing).
+        showStatus({ state: 'disconnected' }, err.message.replace(/^.*Error: /, ''));
+      }
+    });
+
+    window.sevenAPI.midi.onEvent((ev) => {
+      if (ev.type === 'status') showStatus(ev, ev.error);
+      // current-sound / program-change / sound-name events arrive here too;
+      // consumed by later tasks (backup progress, hardware following).
+    });
+
+    window.sevenAPI.midi.status().then((s) => showStatus(s));
+  }
+
   resetCollapsed();
   renderAll();
 })();

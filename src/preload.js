@@ -57,6 +57,15 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     reveal: () => ipcRenderer.invoke('library:reveal'),
     contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
   },
+  // Real MIDI (src/seven-midi.js in the main process). The renderer speaks
+  // only in decoded events and high-level calls — it never learns what SysEx
+  // is. connect() rejects with a user-facing message on failure.
+  midi: {
+    connect: () => ipcRenderer.invoke('midi:connect'),
+    disconnect: () => ipcRenderer.invoke('midi:disconnect'),
+    status: () => ipcRenderer.invoke('midi:status'),
+    onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
+  },
   // Setlist mutations (setlists.json; every mutation persists immediately).
   setlists: {
     create: (name) => ipcRenderer.invoke('setlist:create', { name }),

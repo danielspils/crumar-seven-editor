@@ -99,6 +99,34 @@ function registerLibraryIpc() {
   });
 }
 
+// ---- MIDI IPC (src/seven-midi.js; all SysEx stays in the main process) -----
+// Lazy like the library store: the native backend loads on first use, so a
+// missing/broken @julusian/midi can't stop the app from launching.
+let midiLayer = null;
+function getMidi() {
+  if (!midiLayer) {
+    const { SevenMidi } = require('./seven-midi');
+    midiLayer = new SevenMidi({ userDataDir: app.getPath('userData') });
+  }
+  return midiLayer;
+}
+
+function registerMidiIpc() {
+  ipcMain.handle('midi:connect', () => getMidi().connect());
+  ipcMain.handle('midi:disconnect', () => getMidi().disconnect());
+  ipcMain.handle('midi:status', () => getMidi().status());
+}
+
+// Decoded events (status, current-sound, program-change, sound-name) fan out
+// to every open window. No frame bytes cross this boundary.
+function forwardMidiEvents() {
+  getMidi().on('event', (ev) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('midi-event', ev);
+    }
+  });
+}
+
 // View menu: display-only toggles routed to the renderer. Expand/collapse and
 // raw-value visibility are view state — never written to patch data.
 function buildMenu(win) {
@@ -152,10 +180,21 @@ function createWindow() {
 
 app.whenReady().then(() => {
   registerLibraryIpc();
+  registerMidiIpc();
+  forwardMidiEvents();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// If this session changed the Send PC global, put it back before dying —
+// disconnect() restores the pending marker (and leaves it on disk for the
+// next startup if the device is already gone).
+app.on('before-quit', () => {
+  if (midiLayer && midiLayer.state === 'connected') {
+    midiLayer.disconnect().catch(() => {});
+  }
 });
 
 app.on('window-all-closed', () => {
