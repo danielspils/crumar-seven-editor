@@ -122,8 +122,9 @@ installed expansions — this unit reports 24 (8 modeled + 16 sampled).
 ### Current sound (`0x45`) — returns the active sound ID
 
 Reply to `0x44`. **Also broadcast unsolicited on every preset recall** — panel recall and
-incoming Program Change alike (captured live 2026-08-09, FW 1.37; raw frames in
-`captures/pc-recall-*.jsonl` and `captures/pc-receive-*.jsonl`):
+incoming Program Change alike — **and on every `0x46` sound change** (the latter without
+the CC burst; see the set-sound section below). Captured live 2026-08-09, FW 1.37; raw
+frames in `captures/pc-recall-*.jsonl` and `captures/pc-receive-*.jsonl`:
 
 ```
 F0 73 26 14 45 <soundId> <digit> F7
@@ -131,8 +132,9 @@ F0 73 26 14 45 <soundId> <digit> F7
 
 - `soundId` — binary sound ID of the recalled preset's sound. Verified: recalling three
   sampled presets emitted 22/20/19, and a `0x44` read immediately after returned 19.
-- `digit` — one ASCII character. Across all 23 captured frames it equals the **first
-  decimal digit of `soundId`** ('0'–'3' for ids 0–3, '1' for 10/19, '2' for 20/22/23).
+- `digit` — one ASCII character. Across all captured frames it equals the **first
+  decimal digit of `soundId`** ('0'–'3' for ids 0–3, '1' for 10/19, '2' for 20/22/23;
+  further confirmed on `0x46` sound changes — ids 21/22/23 all broadcast '2').
   Looks like a truncated ASCII rendering of the id; meaning not pinned. It is NOT the
   preset number (presets 6/7/8 emitted '2','2','1').
 - **Bank and preset number are NOT in the frame.** Preset 1 of banks 1, 2 and 3 produced
@@ -141,6 +143,37 @@ F0 73 26 14 45 <soundId> <digit> F7
 Each recall is immediately followed by a burst of the **22 fixed panel CCs** (`flag=1`
 set, ID order — CC 7, 12–16, 20–33, 91, 92) carrying the recalled preset's values, then a
 doubled `B0 01` (mod wheel) pair — unexplained. **No Program Change is emitted.**
+
+### Set sound (`0x46`) → confirmation `0x45` + name reply `0x47` — verified
+
+The last previously-unobserved opcode, captured 2026-08-09 from the editor's SELECT
+PIANO page (outbound frames in `captures/editor-tap-set-sound-2026-08-09-notes.md`,
+device replies in `captures/set-sound-2026-08-09T19-53-37.jsonl`):
+
+```
+→ F0 73 26 14 46 <soundId> F7
+← F0 73 26 14 45 <soundId> <digit> F7        same shape as a recall broadcast
+← F0 73 26 14 47 <soundId> <ascii name> F7   e.g. 47 15 "Venice Grand"
+```
+
+- `soundId` is **one binary byte, no `0x00` pad** — provably binary, because sound 0
+  arrived as `0x00` (ASCII '0' would be `0x30`); two-digit ids 21–23 fit the same
+  single byte. Captured for both modeled (0 Tine, 1 Reed) and sampled (21–23, the
+  three Venice sounds) — five ids total, names in the `0x47` replies matching the
+  interrogated sound table in `schema/seven-1.37.json` byte-for-byte.
+- `0x47` is the **sound name reply**: `<soundId>` then the plain-ASCII name, no
+  leading pad, no field separators.
+- **No CC burst.** A sound change answers with exactly the `0x45` + `0x47` pair —
+  unlike a preset recall, which follows `0x45` with the 22-CC panel dump. Clean
+  discriminator between "preset recalled" and "sound changed" for a passive listener.
+- **Engine parameters survive a sound change.** `rho_atk` (id 1) was written to 127,
+  the sound switched Tine→Reed→Tine via `0x46`, and a direct `0x22` read-back
+  returned `"1|rho_atk|127|127"` — the value held on the device. Transfer/audition
+  may therefore send `0x46` first, then the parameter writes, without the sound
+  change clobbering them.
+- The editor sends **no `0x22` re-sync sweep after `0x46`** (it does after recalls),
+  so its parameter display can go stale across a sound change. Our app reads back
+  instead of trusting a cached view.
 
 ### Preset recall via incoming Program Change (verified)
 
@@ -284,9 +317,9 @@ The July 2021 manual documents v1.22. On v1.37:
    holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
    with a current assignment, not an inconsistency — no contradiction with the `-1` seen on
    unassigned params. `ccUnverified` dropped from these three in the schema.
-3. `0x46` (set sound) remains the one named opcode whose payload is unobserved — it's a
-   write, so it only gets captured when the editor performs it (clicking a different sound
-   on the SELECT PIANO page while tapped). ~~`0x70`/`0x72` unobserved~~ **OBSERVED
+3. ~~`0x46` (set sound) unobserved~~ **CLOSED (2026-08-09).** Captured from the editor's
+   SELECT PIANO page for modeled and sampled sounds — see the set-sound section above.
+   **Every named opcode has now been observed on the wire.** ~~`0x70`/`0x72` unobserved~~ **OBSERVED
    2026-08-09, passively** — read-type uses captured from the editor's home-page load
    (string index 4 = firmware string; ACTION 0x0A = storage query; see the new section
    above). ACTION's write-type payloads (factory reset, firmware update) remain

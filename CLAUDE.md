@@ -158,7 +158,9 @@ hardware following. `0x70` STRING and `0x72` ACTION were observed passively
 space stays observe-only, always. The USB editor's own sync is plain 0x22
 sweeps — our backup read pattern is the reference behavior. See protocol.md;
 raw evidence in `captures/`; recorder is `tools/listen.js`, browser tap in
-`tools/capture-hook.js`. **The only unobserved opcode is `0x46` set-sound**
-(capture from the editor's SELECT PIANO page; Transfer needs it).
+`tools/capture-hook.js`. **`0x46` set-sound was captured 2026-08-09 — every
+named opcode has now been observed**: one binary byte, confirmed by `0x45` +
+a `0x47` name reply, no CC burst, and engine params survive the change
+(read-back verified) — Transfer/audition can send sound-then-params.
 **Next: wire real MIDI into `src/preload.js` for the first in-app backup**;
 the Library UI (built, uncommitted) awaits visual review.
