@@ -324,6 +324,26 @@
     'knob-amp-drive': { sw: 'amp_sw' },
     'knob-pad': { sw: 'pad_sw' },
   };
+  // The value each knob DISPLAYS (its default parameter — the one the
+  // hardware shows before any push-toggle). The manual's lighting scheme
+  // (DESIGN.md "Knob lighting"): colour encodes value, green at low running
+  // to red at high — confirmed live on the Volume knob. The Reverb Decay
+  // blue→red and pulsing FX Rate variants apply to the knobs' ALTERNATE
+  // parameters, which the strip doesn't render.
+  const KNOB_VALUE_PARAM = {
+    'knob-volume': 'veq_vol',
+    'knob-reverb': 'rev_lv',
+    'knob-bass-mid': 'veq_bas',
+    'knob-treble-midf': 'veq_trb',
+    'knob-fx1': 'fx1_dp',
+    'knob-fx2': 'fx2_dp',
+    'knob-amp-drive': 'amp_dr',
+    'knob-pad': 'pad_lv',
+  };
+  const KNOB_COLOR_VARS = [
+    '--k-glow-fill', '--k-bore-fill', '--k-bore-stroke', '--k-top-stroke',
+    '--k-mid-stroke', '--k-skirt-stroke', '--k-rib-stroke', '--k-shadow',
+  ];
   function updateKnobLit() {
     const patch = currentPatch();
     for (const [id, spec] of Object.entries(KNOB_LIT_SWITCH)) {
@@ -334,6 +354,24 @@
         (spec === null ||
           (spec.invert ? patch.params[spec.sw] === 0 : patch.params[spec.sw] === 1));
       el.classList.toggle('knob-lit', lit);
+      if (!lit) {
+        for (const v of KNOB_COLOR_VARS) el.style.removeProperty(v);
+        continue;
+      }
+      // Value → hue: green (120°) at 0 sweeping to red (0°) at max.
+      const key = KNOB_VALUE_PARAM[id];
+      const max = (schema.parameters.find((p) => p.key === key) || {}).max || 127;
+      const value = Math.max(0, Math.min(max, patch.params[key] ?? 0));
+      const hue = Math.round(120 * (1 - value / max));
+      const c = (l, a) => `hsla(${hue}, 90%, ${l}%, ${a})`;
+      el.style.setProperty('--k-glow-fill', c(55, 0.30));
+      el.style.setProperty('--k-bore-fill', c(72, 1));
+      el.style.setProperty('--k-bore-stroke', c(55, 1));
+      el.style.setProperty('--k-top-stroke', c(70, 0.65));
+      el.style.setProperty('--k-mid-stroke', c(65, 0.35));
+      el.style.setProperty('--k-skirt-stroke', c(65, 0.55));
+      el.style.setProperty('--k-rib-stroke', c(70, 0.4));
+      el.style.setProperty('--k-shadow', c(55, 0.45));
     }
   }
 

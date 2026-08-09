@@ -81,18 +81,12 @@
        EXPANDED (view state)        = accent OUTER RING only — never the face,
                                       so it can't be mistaken for amber. */
     /* Lit = the LED under the clear plastic is on: the whole knob glows from
-       the center out, brightest in the bore (like the hardware). Set via the
-       material custom properties — they inherit through the <use> boundary,
-       which class selectors cannot cross. */
-    #panel-strip .knob-lit {
-      --k-glow-fill: rgba(255, 157, 46, 0.30);
-      --k-bore-fill: #ffd9a0; --k-bore-stroke: #ff9d2e;
-      --k-top-stroke: rgba(255, 200, 120, 0.65);
-      --k-mid-stroke: rgba(255, 180, 90, 0.35);
-      --k-skirt-stroke: rgba(255, 180, 80, 0.55);
-      --k-rib-stroke: rgba(255, 190, 110, 0.4);
-    }
-    #panel-strip .knob-lit .knob-glass { filter: drop-shadow(0 0 6px rgba(255, 157, 46, 0.45)); }
+       the center out, brightest in the bore. The COLOR is the hardware's
+       value-encoding (manual; confirmed live on Volume): green at low values
+       sweeping to red at high. updateKnobLit() computes the hue and sets the
+       material custom properties inline — they inherit through the use-element
+       boundary, which class selectors cannot cross. */
+    #panel-strip .knob-lit .knob-glass { filter: drop-shadow(0 0 6px var(--k-shadow, rgba(255, 157, 46, 0.45))); }
     #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 
     /* 2. Connection row */

@@ -175,9 +175,14 @@ The hardware knobs are RGB and encode **value**, not just on/off (manual, FW
 1.2, Sep 2020): colour runs **green at low values toward red at high values**,
 and knobs turn off entirely at some values. Exceptions: **Reverb Decay** uses
 **blue→red**, and **FX1/FX2 Rate** show a **pulsing blue that blinks in sync
-with the effect's LFO**. This is the eventual target for knob rendering on the
-strip — richer and more faithful than a flat on/off treatment. **Not implemented
-yet**; the interim amber "effect is on" cue (above) stands in until this lands.
+with the effect's LFO**.
+
+**Implemented** for the knobs' default displayed parameters: `updateKnobLit`
+maps value→hue (green 120° at 0 sweeping to red 0° at max) onto the glass
+knobs' glow material; switch-off/bypassed knobs stay dark, matching the
+"off entirely" behaviour. The two exceptions belong to push-toggled ALTERNATE
+parameters (Decay, Rate) that the strip doesn't render — implement blue→red
+and the LFO-synced pulse if alternate knob views ever land.
 
 ## Planned
 
