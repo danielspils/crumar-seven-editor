@@ -78,9 +78,12 @@ label for enums and switches**. Pinned 2026-08-09 across two sessions' captures
 91|amp_mo|1|AC              enum: label
 ```
 
-**The device labels its own enum values** — the enum-labels open item is closable by
-sweeping each enum param through its range and reading the display back, no human
-transcription needed.
+**The device labels its own enum values** — and the enum-labels open item was CLOSED
+this way the same day: a snapshot/sweep/restore pass over all 20 params with `max <= 9`
+harvested every label (`captures/enum-label-sweep-2026-08-09-notes.md`; labels merged
+into the schema, no `valuesUnverified` flags remain). Notable corrections vs the old
+manual-derived guesses: `zd6_ab`/`zd6_cd` were inverted (0 = "B"/"D"), `amp_mo` 3 is
+"RJC", `fx2_md` labels carry no "Stereo" prefix.
 
 ## Payloads are ASCII
 

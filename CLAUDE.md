@@ -126,11 +126,14 @@ Two fences on the new code, in the spirit of Rule 2:
 
 The protocol is **known**: `docs/protocol.md` and `schema/seven-1.37.json` document
 FW 1.37 from live interrogation — frame format, 26 opcodes, 110 parameters, 24
-sounds, globals. `0x20` set-parameter and `0x30` set-global are verified. Of the
-prober's four open items three are closed (flag semantics, glb index addressing,
-pedal CC); the one left is **enum labels** for `fx1_md`, `fx2_md`, `pha_st`,
-`amp_mo` — cosmetic, and it needs a human reading labels off the editor. Other gaps
-stay flagged `UNKNOWN` in place (see the open-items list in `docs/protocol.md`).
+sounds, globals. `0x20` set-parameter and `0x30` set-global are verified. **All
+four of the prober's open items are closed** — the last (enum labels) fell on
+2026-08-09: the `0x23` reply's 4th field is the device's own display string, so
+a value sweep harvested every enum/switch label from the instrument itself
+(`captures/enum-label-sweep-2026-08-09-notes.md`; labels now in the schema with
+no `valuesUnverified` flags left, including corrections — the Clavi pickup
+switches were inverted). Other gaps stay flagged `UNKNOWN` in place (see the
+open-items list in `docs/protocol.md`).
 
 A runnable Electron shell exists (`npm start`): panel strip (inlined SVG with
 addressable ids, LEDs lit from state), connection row (hardcoded disconnected),

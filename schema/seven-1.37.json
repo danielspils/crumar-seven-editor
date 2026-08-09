@@ -49,7 +49,7 @@
     "pdl_exp": "Expression pedal"
   },
   "parameters": [
-    { "id": 0, "group": "pno_rho", "key": "rho_tp", "label": "Type", "cc": -1, "min": 0, "max": 8, "flag": 0 },
+    { "id": 0, "group": "pno_rho", "key": "rho_tp", "label": "Type", "cc": -1, "min": 0, "max": 8, "flag": 0, "values": ["Wurlish", "Piano Bass", "Sweet", "Prepared", "So dark", "Wanna-be-Dyno", "Hard tines", "Mellow tone", "Default e.piano"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 1, "group": "pno_rho", "key": "rho_atk", "label": "Attack Level", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 2, "group": "pno_rho", "key": "rho_rel", "label": "Release Level", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 3, "group": "pno_rho", "key": "rho_hrd", "label": "Hammer Hardness", "cc": -1, "min": 0, "max": 127, "flag": 0 },
@@ -81,18 +81,18 @@
     { "id": 27, "group": "pno_egp", "key": "egp_pnlv", "label": "Pedal Noise Level", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 28, "group": "pno_egp", "key": "egp_dyna", "label": "Dynamics", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
-    { "id": 29, "group": "pno_zd6", "key": "zd6_ab", "label": "Pickup A/B", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["A", "B"], "valuesUnverified": true, "note": "A = neck, B = bridge (or in-phase/out-of-phase when both pickups active), per manual; 0=A assumed, mapping unconfirmed against device" },
-    { "id": 30, "group": "pno_zd6", "key": "zd6_cd", "label": "Pickup C/D", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["C", "D"], "valuesUnverified": true, "note": "C = single pickup, D = both, per manual; 0=C assumed, mapping unconfirmed against device" },
-    { "id": 31, "group": "pno_zd6", "key": "zd6_sf", "label": "Filter Soft", "cc": -1, "min": 0, "max": 1, "flag": 0 },
-    { "id": 32, "group": "pno_zd6", "key": "zd6_md", "label": "Filter Medium", "cc": -1, "min": 0, "max": 1, "flag": 0 },
-    { "id": 33, "group": "pno_zd6", "key": "zd6_tr", "label": "Filter Treble", "cc": -1, "min": 0, "max": 1, "flag": 0 },
-    { "id": 34, "group": "pno_zd6", "key": "zd6_br", "label": "Filter Brilliant", "cc": -1, "min": 0, "max": 1, "flag": 0 },
+    { "id": 29, "group": "pno_zd6", "key": "zd6_ab", "label": "Pickup A/B", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["B", "A"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)", "note": "A = neck, B = bridge (or in-phase/out-of-phase when both pickups active), per manual; value order verified against device display (0 = B)" },
+    { "id": 30, "group": "pno_zd6", "key": "zd6_cd", "label": "Pickup C/D", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["D", "C"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)", "note": "C = single pickup, D = both, per manual; value order verified against device display (0 = D)" },
+    { "id": 31, "group": "pno_zd6", "key": "zd6_sf", "label": "Filter Soft", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
+    { "id": 32, "group": "pno_zd6", "key": "zd6_md", "label": "Filter Medium", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
+    { "id": 33, "group": "pno_zd6", "key": "zd6_tr", "label": "Filter Treble", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
+    { "id": 34, "group": "pno_zd6", "key": "zd6_br", "label": "Filter Brilliant", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 35, "group": "pno_zd6", "key": "zd6_lv", "label": "Damper Lever", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
-    { "id": 36, "group": "pno_dx7", "key": "dx7_tp", "label": "Variation", "cc": -1, "min": 0, "max": 8, "flag": 0 },
+    { "id": 36, "group": "pno_dx7", "key": "dx7_tp", "label": "Variation", "cc": -1, "min": 0, "max": 8, "flag": 0, "values": ["KP1 PM EPiano", "Brass", "Marimba", "Organ", "E.Bass", "Wurlish", "Crystal", "Suitcase", "Original EP"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 37, "group": "pno_mks", "key": "mks_dec", "label": "Decay Time", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
-    { "id": 38, "group": "pno_vib", "key": "vib_type", "label": "Decay Type", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["Keyboard", "Mallets"], "valuesUnverified": true, "note": "labels from manual; 0=Keyboard assumed, mapping unconfirmed against device" },
+    { "id": 38, "group": "pno_vib", "key": "vib_type", "label": "Decay Type", "cc": -1, "min": 0, "max": 1, "flag": 0, "values": ["Keyboard", "Mallets"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 39, "group": "pno_vib", "key": "vib_mlth", "label": "Mallet Hardness", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
     { "id": 40, "group": "pno_acp", "key": "acp_hcut", "label": "Hammer Cutoff", "cc": -1, "min": 0, "max": 127, "flag": 0 },
@@ -130,19 +130,19 @@
     { "id": 70, "group": "efx_veq", "key": "veq_trb", "label": "Treble", "cc": 13, "min": 0, "max": 127, "flag": 1 },
     { "id": 71, "group": "efx_veq", "key": "veq_mid", "label": "Middle", "cc": 14, "min": 0, "max": 127, "flag": 1 },
     { "id": 72, "group": "efx_veq", "key": "veq_mdf", "label": "Mid.freq.", "cc": 15, "min": 0, "max": 127, "flag": 1 },
-    { "id": 73, "group": "efx_veq", "key": "veq_byp", "label": "EQ Bypass", "cc": 16, "min": 0, "max": 1, "flag": 1 },
+    { "id": 73, "group": "efx_veq", "key": "veq_byp", "label": "EQ Bypass", "cc": 16, "min": 0, "max": 1, "flag": 1, "values": ["Bypass OFF", "Bypass ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
 
-    { "id": 74, "group": "efx_fx1", "key": "fx1_sw", "label": "Switch", "cc": 20, "min": 0, "max": 1, "flag": 1 },
-    { "id": 75, "group": "efx_fx1", "key": "fx1_md", "label": "Mode", "cc": 21, "min": 0, "max": 3, "flag": 1, "values": ["Mono Tremolo", "Stereo Auto-Panner", "LFO Wha-Wha", "Pedal Wha-Wha"], "valuesUnverified": true },
+    { "id": 74, "group": "efx_fx1", "key": "fx1_sw", "label": "Switch", "cc": 20, "min": 0, "max": 1, "flag": 1, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
+    { "id": 75, "group": "efx_fx1", "key": "fx1_md", "label": "Mode", "cc": 21, "min": 0, "max": 3, "flag": 1, "values": ["Mono Tremolo", "Stereo Panner", "LFO Wha-Wha", "Pedal Wha-Wha"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 76, "group": "efx_fx1", "key": "fx1_dp", "label": "Depth", "cc": 22, "min": 0, "max": 127, "flag": 1 },
     { "id": 77, "group": "efx_fx1", "key": "fx1_sp", "label": "Speed", "cc": 23, "min": 0, "max": 127, "flag": 1 },
 
-    { "id": 78, "group": "efx_fx2", "key": "fx2_sw", "label": "Switch", "cc": 24, "min": 0, "max": 1, "flag": 1 },
-    { "id": 79, "group": "efx_fx2", "key": "fx2_md", "label": "Mode", "cc": 25, "min": 0, "max": 3, "flag": 1, "values": ["Stereo Chorus", "Stereo Phaser", "Stereo Flanger", "Delay"], "valuesUnverified": true },
+    { "id": 78, "group": "efx_fx2", "key": "fx2_sw", "label": "Switch", "cc": 24, "min": 0, "max": 1, "flag": 1, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
+    { "id": 79, "group": "efx_fx2", "key": "fx2_md", "label": "Mode", "cc": 25, "min": 0, "max": 3, "flag": 1, "values": ["Chorus", "Phaser", "Flanger", "Delay"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 80, "group": "efx_fx2", "key": "fx2_dp", "label": "Depth", "cc": 26, "min": 0, "max": 127, "flag": 1 },
     { "id": 81, "group": "efx_fx2", "key": "fx2_sp", "label": "Speed", "cc": 27, "min": 0, "max": 127, "flag": 1, "note": "means Time when fx2_md selects Delay" },
 
-    { "id": 82, "group": "efx_pha", "key": "pha_st", "label": "Stages", "cc": -1, "min": 0, "max": 3, "flag": 0, "values": ["2", "4", "6", "8"], "valuesUnverified": true },
+    { "id": 82, "group": "efx_pha", "key": "pha_st", "label": "Stages", "cc": -1, "min": 0, "max": 3, "flag": 0, "values": ["2 STAGES", "4 STAGES", "6 STAGES", "8 STAGES"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 83, "group": "efx_pha", "key": "pha_of", "label": "Offset", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 84, "group": "efx_pha", "key": "pha_fb", "label": "Feedback", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 85, "group": "efx_pha", "key": "pha_mx", "label": "Phaser Mix", "cc": -1, "min": 0, "max": 127, "flag": 0, "note": "not in v1.22 manual" },
@@ -151,14 +151,14 @@
     { "id": 87, "group": "efx_dly", "key": "dly_ml", "label": "Max Level", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 88, "group": "efx_dly", "key": "dly_sp", "label": "Stereo Spread", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
-    { "id": 89, "group": "efx_amp", "key": "amp_sw", "label": "Switch", "cc": 28, "min": 0, "max": 1, "flag": 1 },
+    { "id": 89, "group": "efx_amp", "key": "amp_sw", "label": "Switch", "cc": 28, "min": 0, "max": 1, "flag": 1, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 90, "group": "efx_amp", "key": "amp_dr", "label": "Drive", "cc": 29, "min": 0, "max": 127, "flag": 1 },
-    { "id": 91, "group": "efx_amp", "key": "amp_mo", "label": "Model", "cc": -1, "min": 0, "max": 4, "flag": 0, "values": ["Twin", "AC30", "JCM", "Jazz Chorus", "Bass"], "valuesUnverified": true },
+    { "id": 91, "group": "efx_amp", "key": "amp_mo", "label": "Model", "cc": -1, "min": 0, "max": 4, "flag": 0, "values": ["TWIN", "AC", "JCM", "RJC", "BASS"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 92, "group": "efx_amp", "key": "amp_bs", "label": "EQ Bass", "cc": -1, "min": 0, "max": 127, "flag": 0, "note": "not documented in v1.22 manual" },
     { "id": 93, "group": "efx_amp", "key": "amp_md", "label": "EQ Mid", "cc": -1, "min": 0, "max": 127, "flag": 0, "note": "not documented in v1.22 manual" },
     { "id": 94, "group": "efx_amp", "key": "amp_tr", "label": "EQ Treble", "cc": -1, "min": 0, "max": 127, "flag": 0, "note": "not documented in v1.22 manual" },
 
-    { "id": 95, "group": "efx_rev", "key": "rev_sw", "label": "Switch", "cc": 30, "min": 0, "max": 1, "flag": 1 },
+    { "id": 95, "group": "efx_rev", "key": "rev_sw", "label": "Switch", "cc": 30, "min": 0, "max": 1, "flag": 1, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 96, "group": "efx_rev", "key": "rev_lv", "label": "Level", "cc": 91, "min": 0, "max": 127, "flag": 1 },
     { "id": 97, "group": "efx_rev", "key": "rev_dc", "label": "Decay", "cc": 92, "min": 0, "max": 127, "flag": 1 },
     { "id": 98, "group": "efx_rev", "key": "rev_dm", "label": "Damp", "cc": -1, "min": 0, "max": 127, "flag": 0 },
@@ -168,11 +168,11 @@
     { "id": 102, "group": "efx_rev", "key": "rev_hs", "label": "High Shelf", "cc": -1, "min": 0, "max": 127, "flag": 0 },
     { "id": 103, "group": "efx_rev", "key": "rev_ls", "label": "Low Shelf", "cc": -1, "min": 0, "max": 127, "flag": 0 },
 
-    { "id": 104, "group": "efx_pad", "key": "pad_sw", "label": "Switch", "cc": 31, "min": 0, "max": 1, "flag": 1 },
+    { "id": 104, "group": "efx_pad", "key": "pad_sw", "label": "Switch", "cc": 31, "min": 0, "max": 1, "flag": 1, "values": ["OFF", "ON"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)" },
     { "id": 105, "group": "efx_pad", "key": "pad_lv", "label": "Pad Level", "cc": 32, "min": 0, "max": 127, "flag": 1 },
     { "id": 106, "group": "efx_pad", "key": "pad_bl", "label": "Pad Blend", "cc": 33, "min": 0, "max": 127, "flag": 1 },
 
-    { "id": 107, "group": "pdl_exp", "key": "exp_fn", "label": "Function", "cc": 1, "min": 0, "max": 9, "flag": 0, "values": ["Volume", "FX1 Depth", "FX2 Depth", "FX1+2 Depth", "FX1 Rate", "FX2 Rate", "FX1+2 Rate", "Amp Drive", "Pad Level", "Pad Blend"], "valuesUnverified": true, "note": "cc is a current user assignment (flag=0 = assignable), not an anomaly; values order from the manual pedal-function list, index mapping unconfirmed against the device" },
+    { "id": 107, "group": "pdl_exp", "key": "exp_fn", "label": "Function", "cc": 1, "min": 0, "max": 9, "flag": 0, "values": ["Volume", "FX 1 Depth", "FX 2 Depth", "FX 1 + 2 Depth", "FX 1 Rate", "FX 2 Rate", "FX 1 + 2 Rate", "Amp Drive", "Pad Level", "Pad Blend"], "valuesSource": "device display sweep 2026-08-09 (0x23 field 4)", "note": "cc is a current user assignment (flag=0 = assignable), not an anomaly" },
     { "id": 108, "group": "pdl_exp", "key": "exp_mn", "label": "Range min.", "cc": 0, "min": 0, "max": 127, "flag": 0, "pairMax": "exp_mx", "note": "cc is a current user assignment (flag=0 = assignable), not an anomaly; forms one range with exp_mx — min greater than max reverses the pedal action (manual)" },
     { "id": 109, "group": "pdl_exp", "key": "exp_mx", "label": "Range max.", "cc": 1, "min": 0, "max": 127, "flag": 0, "note": "cc is a current user assignment (flag=0 = assignable), not an anomaly" }
   ],
