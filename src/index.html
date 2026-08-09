@@ -263,8 +263,8 @@
     /* When the user has dragged the split, app.js sets --lib-split (px) on
        #library; the list honors it up to the available space. */
     #library.lib-open .lib-list { max-height: var(--lib-split, 320px); }
-    .lib-set-chev { color: var(--text-dim); font-size: 15px; }
-    .lib-set-head {
+    .lib-setlist-chev { color: var(--text-dim); font-size: 15px; }
+    .lib-setlist-head {
       display: flex; align-items: center; gap: 8px;
       padding: 4px 2px 8px; color: var(--text-muted);
     }
@@ -274,7 +274,7 @@
       padding: 2px 8px; cursor: pointer;
     }
     .lib-back:hover { color: var(--text); border-color: var(--text-muted); }
-    .lib-set-name { font-weight: 600; color: var(--text); }
+    .lib-setlist-name { font-weight: 600; color: var(--text); }
     .lib-slot {
       display: grid; grid-template-columns: 24px 1fr 1fr auto auto;
       gap: 10px; align-items: center;

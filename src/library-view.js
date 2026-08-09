@@ -8,13 +8,13 @@
 // Data in (from app.js):
 //   { patches: [{ file, patchIndex, name, soundName, sampled, missing,
 //                 invalid?, params }],
-//     sets:    [{ name, slots: [file|null x8] }] }
+//     setlists: [{ name, slots: [file|null x8] }] }
 //
 // Events out (callbacks): onSelect(entry), onContextMenu(entry),
 //   onRename(entry, newName).
 //
 // Internal view state only (never persisted to patch data): active tab,
-// search text, selected set, selected patch file, in-progress rename.
+// search text, selected setlist, selected patch file, in-progress rename.
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -109,32 +109,32 @@
     return list.map((e) => renderPatchRow(e, state)).join('');
   }
 
-  function renderSetList(data, state) {
-    if (!data.sets.length) return `<div class="lib-empty">No sets yet — sets live in sets.json in the library folder.</div>`;
-    return data.sets
+  function renderSetlistList(data, state) {
+    if (!data.setlists.length) return `<div class="lib-empty">No setlists yet — setlists live in setlists.json in the library folder.</div>`;
+    return data.setlists
       .map((s, i) => {
         const filled = s.slots.filter(Boolean).length;
         // Users think in patches; the 8-slot capacity is visible in the slot
         // view itself. Note the empties only when there are any.
         const label = `${filled} patch${filled === 1 ? '' : 'es'}` + (filled < 8 ? ` · ${8 - filled} empty` : '');
         return (
-          `<button type="button" class="lib-row lib-set" data-set="${i}">` +
+          `<button type="button" class="lib-row lib-setlist" data-setlist="${i}">` +
           `<span class="patch-name">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
-          `<span class="lib-set-chev">›</span>` +
+          `<span class="lib-setlist-chev">›</span>` +
           `</button>`
         );
       })
       .join('');
   }
 
-  function renderSetSlots(data, state) {
-    const set = data.sets[state.setIndex];
-    if (!set) return renderSetList(data, state);
+  function renderSetlistSlots(data, state) {
+    const setlist = data.setlists[state.setlistIndex];
+    if (!setlist) return renderSetlistList(data, state);
     // First patch of a file represents it in a slot (slots reference files).
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
-    const rows = set.slots
+    const rows = setlist.slots
       .map((file, i) => {
         const num = `<span class="slot-num">${i + 1}</span>`;
         if (!file) {
@@ -159,9 +159,9 @@
       })
       .join('');
     return (
-      `<div class="lib-set-head">` +
-      `<button type="button" class="lib-back">‹ Sets</button>` +
-      `<span class="lib-set-name">${esc(set.name)}</span>` +
+      `<div class="lib-setlist-head">` +
+      `<button type="button" class="lib-back">‹ Setlists</button>` +
+      `<span class="lib-setlist-name">${esc(setlist.name)}</span>` +
       `</div>` +
       rows
     );
@@ -171,14 +171,14 @@
     const tab = (id, label) =>
       `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`;
     const listHtml =
-      state.tab === 'sets'
-        ? state.setIndex == null
-          ? renderSetList(data, state)
-          : renderSetSlots(data, state)
+      state.tab === 'setlists'
+        ? state.setlistIndex == null
+          ? renderSetlistList(data, state)
+          : renderSetlistSlots(data, state)
         : renderAllPatches(data, state);
     return (
       `<div class="lib-bar">` +
-      `<div class="lib-seg">${tab('patches', 'All Patches')}${tab('sets', 'Sets')}</div>` +
+      `<div class="lib-seg">${tab('patches', 'All Patches')}${tab('setlists', 'Setlists')}</div>` +
       `<input class="lib-search" type="search" placeholder="Search name or sound…" value="${esc(state.search)}">` +
       `</div>` +
       `<div class="lib-list">${listHtml}</div>`
@@ -187,8 +187,8 @@
 
   // Controller: owns view state, renders into `el`, wires delegated events.
   function createLibraryView({ el, on = {} }) {
-    const state = { tab: 'patches', search: '', setIndex: null, selected: null, renaming: null };
-    let data = { patches: [], sets: [] };
+    const state = { tab: 'patches', search: '', setlistIndex: null, selected: null, renaming: null };
+    let data = { patches: [], setlists: [] };
 
     const entryAt = (node) => {
       const file = node.dataset.file;
@@ -209,18 +209,18 @@
       const seg = e.target.closest('.seg-btn');
       if (seg) {
         state.tab = seg.dataset.tab;
-        state.setIndex = null;
+        state.setlistIndex = null;
         render();
         return;
       }
       if (e.target.closest('.lib-back')) {
-        state.setIndex = null;
+        state.setlistIndex = null;
         render();
         return;
       }
-      const set = e.target.closest('.lib-set');
-      if (set) {
-        state.setIndex = Number(set.dataset.set);
+      const setlistRow = e.target.closest('.lib-setlist');
+      if (setlistRow) {
+        state.setlistIndex = Number(setlistRow.dataset.setlist);
         render();
         return;
       }
@@ -252,10 +252,10 @@
         const list = el.querySelector('.lib-list');
         if (list) {
           list.innerHTML =
-            state.tab === 'sets'
-              ? state.setIndex == null
-                ? renderSetList(data, state)
-                : renderSetSlots(data, state)
+            state.tab === 'setlists'
+              ? state.setlistIndex == null
+                ? renderSetlistList(data, state)
+                : renderSetlistSlots(data, state)
               : renderAllPatches(data, state);
         }
       }

@@ -35,7 +35,7 @@ were searched in July 2026 — nothing for the Seven, Mojo 61, or GSi Gemini.
 ### Four goals, in priority order
 
 1. **Backup** — patches survive hardware failure.
-2. **Transfer** — load a patch set onto a different Seven (rented, second unit,
+2. **Transfer** — load a setlist onto a different Seven (rented, second unit,
    post-repair).
 3. **Editing** — a genuinely pleasant editor.
 4. **Visibility** — show installed sample expansions; flag patches needing

@@ -2,8 +2,9 @@
 
 // Main-process library store: the on-disk Library folder. One .sevenlib.json
 // per patch (single-patch containers — the format is one container for
-// everything, docs/FORMAT.md), plus sets.json for the lightweight "set"
-// concept (a name + 8 ordered slots referencing patch files).
+// everything, docs/FORMAT.md), plus setlists.json for the lightweight
+// "setlist" concept (a name + 8 ordered slots referencing patch files —
+// a bank's worth of patches, staged for a gig or a transfer).
 //
 // Data layer only: no MIDI, no DOM. The renderer reaches this through
 // preload.js IPC — the same seam everything else crosses.
@@ -26,7 +27,28 @@ class LibraryStore {
     this.soundByName = new Map(schema.sounds.map((s) => [s.name, s]));
   }
 
-  setsFile() { return path.join(this.dir, 'sets.json'); }
+  setlistsFile() { return path.join(this.dir, 'setlists.json'); }
+
+  // One-time migration from the pre-rename manifest: if setlists.json is
+  // absent and sets.json exists, convert it (key `sets` -> `setlists`) and
+  // leave the original in place.
+  migrateSetlists() {
+    const target = this.setlistsFile();
+    const legacy = path.join(this.dir, 'sets.json');
+    if (fs.existsSync(target) || !fs.existsSync(legacy)) return;
+    try {
+      const raw = JSON.parse(fs.readFileSync(legacy, 'utf8'));
+      const setlists = Array.isArray(raw.sets) ? raw.sets : [];
+      // The seeded demo name was data by the time of the rename — carry it
+      // across so no user-facing string still reads "set".
+      for (const s of setlists) {
+        if (s && s.name === 'Stage Set (demo)') s.name = 'Stage Setlist (demo)';
+      }
+      fs.writeFileSync(target, `${JSON.stringify({ setlists }, null, 2)}\n`);
+    } catch {
+      /* unreadable legacy manifest — start fresh rather than fail the app */
+    }
+  }
 
   // Unique filename for a new patch file.
   uniqueFile(name) {
@@ -76,18 +98,19 @@ class LibraryStore {
         files.push(file);
       }
     }
-    // One demo set: five filled slots, three left empty.
-    fs.writeFileSync(this.setsFile(), `${JSON.stringify({
-      sets: [{ name: 'Stage Set (demo)', slots: [...files.slice(0, 5), null, null, null] }],
+    // One demo setlist: five filled slots, three left empty.
+    fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({
+      setlists: [{ name: 'Stage Setlist (demo)', slots: [...files.slice(0, 5), null, null, null] }],
     }, null, 2)}\n`);
   }
 
-  readSets() {
+  readSetlists() {
+    this.migrateSetlists();
     try {
-      const raw = JSON.parse(fs.readFileSync(this.setsFile(), 'utf8'));
-      return Array.isArray(raw.sets)
-        ? raw.sets.map((s) => ({
-            name: String(s.name || 'Untitled set'),
+      const raw = JSON.parse(fs.readFileSync(this.setlistsFile(), 'utf8'));
+      return Array.isArray(raw.setlists)
+        ? raw.setlists.map((s) => ({
+            name: String(s.name || 'Untitled setlist'),
             slots: Array.from({ length: 8 }, (_, i) => (s.slots && s.slots[i]) || null),
           }))
         : [];
@@ -96,8 +119,8 @@ class LibraryStore {
     }
   }
 
-  writeSets(sets) {
-    fs.writeFileSync(this.setsFile(), `${JSON.stringify({ sets }, null, 2)}\n`);
+  writeSetlists(setlists) {
+    fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({ setlists }, null, 2)}\n`);
   }
 
   readFile(file) {
@@ -162,7 +185,7 @@ class LibraryStore {
         });
       });
     }
-    return { dir: this.dir, patches: entries, sets: this.readSets() };
+    return { dir: this.dir, patches: entries, setlists: this.readSetlists() };
   }
 
   rename(file, patchIndex, newName) {
@@ -182,10 +205,10 @@ class LibraryStore {
     fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
     if (target !== file) {
       fs.renameSync(path.join(this.dir, file), path.join(this.dir, target));
-      // Keep set references pointing at the renamed file.
-      const sets = this.readSets();
-      for (const s of sets) s.slots = s.slots.map((slot) => (slot === file ? target : slot));
-      this.writeSets(sets);
+      // Keep setlist references pointing at the renamed file.
+      const setlists = this.readSetlists();
+      for (const s of setlists) s.slots = s.slots.map((slot) => (slot === file ? target : slot));
+      this.writeSetlists(setlists);
     }
     return target;
   }
