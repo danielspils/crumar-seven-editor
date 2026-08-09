@@ -232,8 +232,22 @@
       return data.patches.find((e) => e.file === file && e.patchIndex === pi) || null;
     };
 
+    // Re-rendering replaces .lib-list, which would snap scroll back to the
+    // top on every selection click. Preserve scroll position — but only when
+    // the re-render shows the SAME view (tab + setlist); a genuine view
+    // change starts at the top.
+    let lastViewKey = null;
+
     function render() {
+      const viewKey = `${state.tab}:${state.setlistIndex}`;
+      const prevList = el.querySelector('.lib-list');
+      const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
       el.innerHTML = renderBody(data, state);
+      if (keepScroll != null) {
+        const list = el.querySelector('.lib-list');
+        if (list) list.scrollTop = keepScroll;
+      }
+      lastViewKey = viewKey;
       const input = el.querySelector('.lib-rename-input, .lib-autofocus');
       if (input) {
         input.focus();
