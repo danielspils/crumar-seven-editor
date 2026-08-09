@@ -248,7 +248,14 @@ The July 2021 manual documents v1.22. On v1.37:
    unassigned params. `ccUnverified` dropped from these three in the schema.
 3. `0x46` (set sound), `0x70`/`0x72` (string, action) are named but their payload formats are
    unobserved — all involve writes, so test deliberately. (`0x20` set-param and `0x30`
-   set-global are now verified — see above.)
+   set-global are now verified — see above.) **Negative evidence as of 2026-08-09**
+   (`captures/editor-tap-2026-08-09-notes.md`): none of the three appeared in the USB
+   editor's own traffic during patch browsing — the editor re-syncs after each recall with
+   plain per-parameter `0x22` sweeps of all 110 ids (~2ms per sweep), the same read pattern
+   planned for the app's backup. `0x72` may belong to the instrument-hosted Wi-Fi editor's
+   HTTP surface and never appear on USB-MIDI at all. The realistic capture opportunity left
+   for `0x46` is clicking a different sound on the USB editor's SELECT PIANO page while
+   tapped.
 4. ~~Whether the device pushes unsolicited notifications~~ **PARTIALLY RESOLVED
    (2026-08-09).** Preset recalls push an unsolicited `0x45` + a 22-CC panel dump (see the
    `0x45` section). Whether panel *encoder moves* push anything beyond their ordinary CC is
