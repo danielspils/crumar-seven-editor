@@ -580,16 +580,67 @@
     const connText = document.getElementById('connection-text');
     const connBtn = document.getElementById('conn-button');
     const backupBtn = document.getElementById('backup-button');
+    const soundsBtn = document.getElementById('sounds-button');
+    const soundsPanel = document.getElementById('sounds-panel');
     let backupRunning = false;
+
+    // Expansion visibility: the connected unit's own sound table. Ids are
+    // unit-specific (they shift with installed expansions), which is exactly
+    // why the panel shows them next to the names — and why backups reference
+    // the table fingerprint shown in the footer.
+    const renderSoundsPanel = (table) => {
+      const cols = soundsPanel.querySelector('.sounds-cols');
+      const foot = soundsPanel.querySelector('.sounds-foot');
+      const group = (title, sounds) => {
+        const div = document.createElement('div');
+        div.className = 'sounds-group';
+        const h = document.createElement('h4');
+        h.textContent = title;
+        div.appendChild(h);
+        for (const s of sounds) {
+          const row = document.createElement('div');
+          row.className = 'sound-row';
+          const id = document.createElement('span');
+          id.className = 'sound-id';
+          id.textContent = s.id;
+          const name = document.createElement('span');
+          name.textContent = s.name;
+          row.append(id, name);
+          div.appendChild(row);
+        }
+        return div;
+      };
+      cols.replaceChildren(
+        group('Modeled', table.sounds.filter((s) => !s.sampled)),
+        group('Sampled — GSP-01 expansions', table.sounds.filter((s) => s.sampled))
+      );
+      const when = new Date(table.readAt);
+      foot.textContent =
+        `Read from this unit at ${when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · fingerprint ${table.fingerprint} — backups reference this fingerprint so a patch can name a sound another Seven lacks.`;
+    };
+
+    const setSoundsOpen = (open) => {
+      soundsPanel.hidden = !open;
+      soundsBtn.classList.toggle('open', open);
+    };
+    soundsBtn.addEventListener('click', () => setSoundsOpen(soundsPanel.hidden));
+    document.addEventListener('click', (e) => {
+      if (!soundsPanel.hidden && !soundsPanel.contains(e.target) && e.target !== soundsBtn) {
+        setSoundsOpen(false);
+      }
+    });
 
     const showStatus = (s, error) => {
       connRow.className = s.state === 'connected' ? 'connected'
         : s.state === 'connecting' ? 'connecting'
         : error ? 'failed' : '';
       if (s.state === 'connected') {
-        const n = s.soundTable ? s.soundTable.sounds.length : 0;
-        connText.textContent = `Connected — ${s.firmware} · ${n} sounds`;
+        connText.textContent = `Connected — ${s.firmware}`;
         connBtn.textContent = 'Disconnect';
+        if (s.soundTable) {
+          soundsBtn.textContent = `${s.soundTable.sounds.length} sounds`;
+          renderSoundsPanel(s.soundTable);
+        }
       } else if (s.state === 'connecting') {
         connText.textContent = 'Connecting…';
       } else {
@@ -598,7 +649,8 @@
       }
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
-      if (s.state !== 'connected') backupRunning = false;
+      soundsBtn.hidden = s.state !== 'connected' || !s.soundTable;
+      if (s.state !== 'connected') { backupRunning = false; setSoundsOpen(false); }
     };
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;

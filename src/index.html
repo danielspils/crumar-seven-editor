@@ -114,6 +114,42 @@
     }
     #backup-button:hover { filter: brightness(1.2); }
     #backup-button + #conn-button { margin-left: 0; }
+    #sounds-button {
+      margin-left: auto;
+      background: none; border: 1px solid var(--line); border-radius: 10px;
+      color: var(--text-muted); font: inherit; font-size: 11px;
+      padding: 1px 9px; cursor: pointer;
+    }
+    #sounds-button:hover { color: var(--text); border-color: var(--text-dim); }
+    #sounds-button.open { color: var(--text); border-color: var(--text-dim); }
+    #sounds-button + #backup-button, #sounds-button + #conn-button { margin-left: 0; }
+    #connection-row { position: relative; }
+    #sounds-panel {
+      position: absolute; top: 100%; right: 12px; z-index: 30;
+      min-width: 460px; max-height: 60vh; overflow-y: auto;
+      background: var(--bg-raised); border: 1px solid var(--line);
+      border-top: none; border-radius: 0 0 6px 6px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+      padding: 12px 16px 10px;
+    }
+    #sounds-panel .sounds-cols { display: flex; gap: 28px; }
+    #sounds-panel .sounds-group { flex: 1; min-width: 0; }
+    #sounds-panel h4 {
+      margin: 0 0 6px; font-size: 10px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-dim); font-weight: 600;
+    }
+    #sounds-panel .sound-row {
+      display: flex; gap: 10px; padding: 2px 0; font-size: 12px;
+      color: var(--text); white-space: nowrap;
+    }
+    #sounds-panel .sound-id {
+      width: 20px; text-align: right; color: var(--text-dim);
+      font-variant-numeric: tabular-nums; flex: none;
+    }
+    #sounds-panel .sounds-foot {
+      margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+      font-size: 11px; color: var(--text-dim);
+    }
 
     /* Main area: library left, detail right */
     #main { flex: 1; display: flex; min-height: 0; }
@@ -597,8 +633,16 @@
   <div id="connection-row">
     <span class="conn-dot"></span>
     <span id="connection-text">No instrument connected</span>
+    <button id="sounds-button" type="button" hidden>24 sounds</button>
     <button id="backup-button" type="button" hidden>Back up instrument</button>
     <button id="conn-button" type="button">Connect</button>
+    <!-- Expansion visibility: what THIS unit has installed, per the sound
+         table read on connect. Sound ids are unit-specific; the fingerprint
+         is what backups reference. -->
+    <div id="sounds-panel" hidden>
+      <div class="sounds-cols"></div>
+      <div class="sounds-foot"></div>
+    </div>
   </div>
   <div id="main">
     <div id="library">

@@ -187,4 +187,8 @@ cancel/abort labels them "(partial)"); record-only globals snapshot
 finishes the slot in flight; prior-slot restore when Send PC is on (the
 device echoes received PCs, so the runner knows the prior slot). First real
 run: **32/32 in 48s** (~3,600 round trips); re-run 47s, "32 unchanged, 0
-new"; cancel verified at 13/32. **Next: Task 7 — expansion visibility.**
+new"; cancel verified at 13/32. **Expansion visibility is done** (the
+Visibility goal): the connection row's "24 sounds" chip opens the connected
+unit's own sound table — modeled and GSP-01 sampled columns with unit-specific
+ids, plus the table fingerprint and read time that backups reference.
+**Next: Task 8 — audition (params-only to the edit buffer).**
