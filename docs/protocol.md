@@ -257,9 +257,14 @@ The July 2021 manual documents v1.22. On v1.37:
 6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
    digit of the sound ID in all 23 captured frames — rendering quirk or something else?
    Also unexplained: the doubled `B0 01` pair closing every recall burst.
-7. `veq_vol` read 127 from the edit buffer right after a recall whose CC broadcast said
-   116 — does the physical volume knob override the recalled master volume? Check the knob
-   position hypothesis before trusting `veq_vol` in backups.
+7. ~~`veq_vol` override suspicion~~ **RESOLVED (2026-08-09,
+   `captures/vol-attribution-*` / `vol-recall-test-*`).** With the expression pedal parked
+   at 127 and the volume knob parked at 0, a PC recall read back the preset's own stored
+   value (116) at t+150ms, t+1s and t+3s — **no controller overrides a recall**. The
+   earlier 127 was a later pedal write, not a recall race: physical controllers write
+   into the edit buffer when *moved* (knob = CC 7; expression pedal = CC 11 on the wire
+   regardless of its assigned function — the pedal→volume mapping is internal). Backup
+   reads that follow the recall promptly are trustworthy for all 110 params.
 8. Recall-burst CC values for sub-127-max params look scaled to 0–127 (e.g. `fx1_md`,
    max 3, broadcast as 0x54): scaling law unverified — do not decode those CCs as raw
    parameter values until pinned.
