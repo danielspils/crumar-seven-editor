@@ -147,12 +147,18 @@ only, tested via `npm test`) — .sevenlib.json, one container for everything,
 params keyed by schema key, sound NAME authoritative, per-patch provenance,
 wfp serializer guard, non-mutating parse. Not wired into the renderer yet.
 
-**The PC-recall capture is DONE (2026-08-09, live device)** — the good outcome:
+**The hardware session of 2026-08-09 closed nearly every protocol question**:
 the Seven recalls on incoming Program Change (0-based global slots, all four
-banks), every recall broadcasts an unsolicited `0x45` + the 22 fixed panel CCs,
-and the edit buffer follows the recall (read-back verified). **Backup can be
-fully unattended.** See protocol.md `0x45` section + open items 6–8;
-raw evidence in `captures/pc-*.jsonl`; recorder is `tools/listen.js`.
-**Next: the 0x72 ACTION capture** (docs/CONTEXT.md §6 — capture and read only,
-never fuzz: that opcode space contains factory reset and firmware update), and
-wiring MIDI into `src/preload.js` for the first real in-app backup.
+banks); every recall broadcasts an unsolicited `0x45` + the 22 fixed panel CCs;
+the edit buffer follows the recall (read-back verified) — **backup can be
+fully unattended**. With the Send PC global ON (glb index 3, pinned by a
+captured write), panel recalls also emit `Cn <slot>` — slot-identified
+hardware following. `0x70` STRING and `0x72` ACTION were observed passively
+(string 4 = firmware string; ACTION 0x0A = storage query); ACTION's write
+space stays observe-only, always. The USB editor's own sync is plain 0x22
+sweeps — our backup read pattern is the reference behavior. See protocol.md;
+raw evidence in `captures/`; recorder is `tools/listen.js`, browser tap in
+`tools/capture-hook.js`. **The only unobserved opcode is `0x46` set-sound**
+(capture from the editor's SELECT PIANO page; Transfer needs it).
+**Next: wire real MIDI into `src/preload.js` for the first in-app backup**;
+the Library UI (built, uncommitted) awaits visual review.
