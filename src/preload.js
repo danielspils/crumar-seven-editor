@@ -46,4 +46,15 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // View-menu commands from the main process (Show raw values, Expand/Collapse
   // all). View state only — nothing here touches patch data.
   onViewCommand: (cb) => ipcRenderer.on('view-command', (_e, msg) => cb(msg)),
+  // On-disk Library folder (library-store.js in the main process). Display
+  // entries in, file operations out — the renderer never touches the disk.
+  library: {
+    list: () => ipcRenderer.invoke('library:list'),
+    rename: (file, patchIndex, newName) => ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
+    duplicate: (file, patchIndex) => ipcRenderer.invoke('library:duplicate', { file, patchIndex }),
+    trash: (file) => ipcRenderer.invoke('library:trash', { file }),
+    export: (file, suggestedName) => ipcRenderer.invoke('library:export', { file, suggestedName }),
+    reveal: () => ipcRenderer.invoke('library:reveal'),
+    contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
+  },
 });

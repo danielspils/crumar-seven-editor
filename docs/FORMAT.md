@@ -56,7 +56,12 @@ their original order, `params` keys sorted lexicographically.
 - **`patch.name` is a file-level label, NOT device truth.** The device is not
   known to store a preset name. Do not treat it as round-trippable to the
   instrument.
-- **`origin` is null when unknown.** Import must never assume it.
+- **`origin` records provenance explicitly, and is null when unknown.** Three
+  shapes: `{ "bank": B, "preset": P }` (captured from an instrument slot —
+  backups add `date`, `soundId` and a sound-table fingerprint), `{ "created":
+  "<iso>" }` (made by this app: seeding, in-app creation), or `null`. Import
+  must never assume it, and the UI must never infer "created" — a patch with
+  an absent or unrecognised origin displays as imported.
 - **Globals never go in this file.** The serializer throws if a key named
   `wfp` appears anywhere in the object graph being written (the globals reply
   carries the instrument's Wi-Fi password under that key — CLAUDE.md Rule 6).

@@ -4,8 +4,69 @@
 // window that renders the fixture library. The renderer never talks to a device;
 // data reaches it through preload.js (see there for the swap point).
 
-const { app, BrowserWindow, Menu, screen } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('electron');
+const fs = require('fs');
 const path = require('path');
+const { LibraryStore } = require('./library-store');
+
+// ---- Library IPC (the on-disk Library folder; see library-store.js) --------
+// Lazy so app.getPath is ready and a broken Library folder can't stop launch.
+let store = null;
+function getStore() {
+  if (!store) {
+    const root = path.join(__dirname, '..');
+    // SEVEN_LIBRARY_DIR: test-only override (e.g. pointing at an empty dir to
+    // exercise the empty state). An EXISTING empty dir is not re-seeded.
+    store = new LibraryStore(
+      process.env.SEVEN_LIBRARY_DIR || path.join(app.getPath('userData'), 'Library'),
+      JSON.parse(fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')),
+      JSON.parse(fs.readFileSync(path.join(root, 'fixtures', 'sample-library.json'), 'utf8'))
+    );
+  }
+  return store;
+}
+
+function registerLibraryIpc() {
+  ipcMain.handle('library:list', () => getStore().list());
+  ipcMain.handle('library:rename', (_e, { file, patchIndex, newName }) =>
+    getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled'));
+  ipcMain.handle('library:duplicate', (_e, { file, patchIndex }) =>
+    getStore().duplicate(file, patchIndex));
+  ipcMain.handle('library:trash', (_e, { file }) =>
+    shell.trashItem(getStore().absPath(file)));
+  ipcMain.handle('library:reveal', () => {
+    getStore().ensureSeeded();
+    shell.showItemInFolder(getStore().dir);
+  });
+  ipcMain.handle('library:export', async (e, { file, suggestedName }) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Export patch',
+      defaultPath: suggestedName || file,
+      filters: [{ name: 'Seven library', extensions: ['sevenlib.json', 'json'] }],
+    });
+    if (canceled || !filePath) return false;
+    fs.copyFileSync(getStore().absPath(file), filePath);
+    return true;
+  });
+  // Native context menu for a library row; resolves with the chosen action
+  // (or null when dismissed).
+  ipcMain.handle('library:contextMenu', (e) =>
+    new Promise((resolve) => {
+      let done = false;
+      const pick = (action) => () => { done = true; resolve(action); };
+      const menu = Menu.buildFromTemplate([
+        { label: 'Rename', click: pick('rename') },
+        { label: 'Duplicate', click: pick('duplicate') },
+        { type: 'separator' },
+        { label: 'Export…', click: pick('export') },
+        { type: 'separator' },
+        { label: 'Delete', click: pick('trash') },
+      ]);
+      menu.popup({ window: BrowserWindow.fromWebContents(e.sender) });
+      menu.on('menu-will-close', () => setTimeout(() => { if (!done) resolve(null); }, 120));
+    }));
+}
 
 // View menu: display-only toggles routed to the renderer. Expand/collapse and
 // raw-value visibility are view state — never written to patch data.
@@ -59,6 +120,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerLibraryIpc();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

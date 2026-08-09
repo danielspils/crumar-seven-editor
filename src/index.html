@@ -120,7 +120,9 @@
     .bank-tab-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
     .bank-tab.active { background: var(--bg-panel); color: var(--amber); }
     .bank-tab.active .bank-tab-label { border-bottom-color: var(--amber); }
-    #patch-list { flex: 1; overflow-y: auto; scrollbar-gutter: stable; }
+    /* The eight bank rows are always fully visible — they never scroll out of
+       view when the Library opens; the Library body scrolls internally. */
+    #patch-list { flex: none; }
     .patch-row {
       display: grid; grid-template-columns: 28px 1fr 1fr auto auto;
       gap: 10px; align-items: center;
@@ -142,6 +144,151 @@
     .badge-sampled { color: var(--sampled); border: 1px solid var(--sampled); }
     .badge-warn { color: #16130b; background: var(--warn); }
     .badge-gap { width: 0; }
+
+    /* 3a. Two-region model: "On the Seven" (banks) above, "On this computer"
+       (Library) below. The regions expand mutually exclusively — app.js
+       toggles .lib-open on #library — but the bank region is NEVER fully
+       hidden: it collapses to a one-line summary strip (current bank +
+       selected preset) so the instrument↔computer relationship stays on
+       screen, and transfer always has a visible target. */
+    .region-head {
+      font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--text-muted); padding: 8px 14px 4px;
+    }
+    #bank-strip {
+      display: none; /* visible only while the Library is expanded */
+      width: 100%; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: none; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text); font: inherit; text-align: left; cursor: pointer;
+    }
+    #bank-strip:hover { background: var(--bg-raised); }
+    #bank-strip .strip-chevron { transform: rotate(-90deg); }
+    #bank-strip-label { font-weight: 600; }
+    #library.lib-open #bank-tabs, #library.lib-open #patch-list { display: none; }
+    #library.lib-open #bank-strip { display: flex; }
+    /* Drag handle between the regions. Only meaningful while the Library is
+       open; the chosen split persists across launches (app.js). */
+    #split-divider { display: none; height: 5px; cursor: row-resize; flex: none; position: relative; }
+    #split-divider::after {
+      content: ''; position: absolute; left: 50%; top: 2px; width: 44px; height: 3px;
+      transform: translateX(-50%); border-radius: 2px; background: var(--line);
+    }
+    #split-divider:hover::after { background: var(--text-muted); }
+    #library.lib-open #split-divider { display: block; }
+
+    /* 3b. Library section — reuses the fx-section disclosure (chevron,
+       header hover, grid-rows collapse animation) but sits full-width in the
+       library column: no side borders, no radius, visually distinct from the
+       indented bank rows above. The dimming rule is NOT reused. */
+    #library-section {
+      margin: 0; border-left: none; border-right: none; border-radius: 0;
+      border-top: 1px solid var(--line);
+      padding: 8px 10px;
+      min-height: 0; overflow: hidden;
+    }
+    /* Expanded, the section flexes into the REMAINING column space and the
+       list scrolls inside whatever fits — the section must never run past
+       the window edge (that clipped the slot view to two visible rows).
+       Scoped to expanded so a collapsed section still shrinks to its header.
+       Tradeoff: the height half of the open animation is skipped for this
+       section (the body snaps to the flexed size; the opacity fade
+       remains). */
+    #library-section:not(.collapsed) { display: flex; flex-direction: column; flex: 0 1 auto; }
+    #library-section:not(.collapsed) .fx-head { flex: none; }
+    #library-section:not(.collapsed) .fx-body { flex: 0 1 auto; min-height: 0; }
+    #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+    #library-body .lib-bar { flex: none; }
+    #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
+    .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
+    .lib-reveal {
+      font: inherit; font-size: 11px; color: var(--text-muted);
+      background: transparent; border: 1px solid var(--line); border-radius: 4px;
+      padding: 2px 8px; cursor: pointer; flex: none;
+    }
+    .lib-reveal:hover { color: var(--text); border-color: var(--text-muted); }
+    .lib-bar { display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px; }
+    .lib-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; flex: none; }
+    .seg-btn {
+      font: inherit; font-size: 11px; font-weight: 600;
+      background: transparent; border: none; color: var(--text-muted);
+      padding: 3px 10px; cursor: pointer;
+    }
+    .seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+    .seg-btn.active { background: var(--bg-panel); color: var(--amber); }
+    .seg-btn:hover:not(.active) { color: var(--text); }
+    .lib-search {
+      flex: 1; min-width: 0; font: inherit; font-size: 12px;
+      background: var(--bg-panel); color: var(--text);
+      border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
+    }
+    .lib-search:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    /* The list is the internal scroller — fixed max height so the bank rows
+       above never leave the viewport. The scrollbar is ALWAYS visible
+       (custom-drawn, so macOS overlay hiding doesn't apply): without it, a
+       320px viewport over 32 rows silently reads as "11 patches, the end". */
+    .lib-list { max-height: 320px; overflow-y: auto; scrollbar-gutter: stable; }
+    .lib-list::-webkit-scrollbar { width: 10px; }
+    .lib-list::-webkit-scrollbar-track { background: transparent; }
+    .lib-list::-webkit-scrollbar-thumb {
+      background: var(--bar); border-radius: 5px;
+      border: 2px solid var(--bg); background-clip: padding-box;
+    }
+    .lib-list::-webkit-scrollbar-thumb:hover { background: var(--bar-fill); }
+    .lib-row {
+      display: grid; grid-template-columns: 1fr 1fr auto auto;
+      gap: 10px; align-items: center;
+      width: 100%; padding: 7px 6px;
+      background: none; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text); font: inherit; text-align: left; cursor: pointer;
+    }
+    .lib-row:hover { background: var(--bg-raised); }
+    /* Selected library patch wears the same red edge marker as a selected
+       bank row — one vocabulary for "selected patch" (docs/DESIGN.md). */
+    .lib-row.selected, .lib-slot-patch.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
+    .lib-row-invalid { opacity: .55; cursor: default; }
+    .lib-rename-input {
+      font: inherit; font-weight: 600; color: var(--text);
+      background: var(--bg); border: 1px solid var(--amber); border-radius: 3px;
+      padding: 1px 5px; min-width: 0;
+    }
+    .lib-empty { color: var(--text-dim); padding: 18px 8px; text-align: center; }
+    /* Stacked name + origin line in library rows. */
+    .name-cell { display: flex; flex-direction: column; min-width: 0; }
+    .name-cell .patch-name { min-width: 0; }
+    .lib-origin {
+      font-size: 11px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* When the user has dragged the split, app.js sets --lib-split (px) on
+       #library; the list honors it up to the available space. */
+    #library.lib-open .lib-list { max-height: var(--lib-split, 320px); }
+    .lib-set-chev { color: var(--text-dim); font-size: 15px; }
+    .lib-set-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 2px 8px; color: var(--text-muted);
+    }
+    .lib-back {
+      font: inherit; font-size: 11px; color: var(--text-muted);
+      background: transparent; border: 1px solid var(--line); border-radius: 4px;
+      padding: 2px 8px; cursor: pointer;
+    }
+    .lib-back:hover { color: var(--text); border-color: var(--text-muted); }
+    .lib-set-name { font-weight: 600; color: var(--text); }
+    .lib-slot {
+      display: grid; grid-template-columns: 24px 1fr 1fr auto auto;
+      gap: 10px; align-items: center;
+      width: 100%; padding: 7px 6px;
+      background: none; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text); font: inherit; text-align: left;
+    }
+    .lib-slot-patch { cursor: pointer; }
+    .lib-slot-patch:hover { background: var(--bg-raised); }
+    .slot-num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    /* Empty and missing-file slots are distinct at a glance: empty is quiet,
+       missing carries the warning treatment. */
+    .lib-slot-empty .slot-text { color: var(--text-dim); font-style: italic; }
+    .lib-slot-missing .slot-text { color: var(--warn); }
 
     /* 4. Detail */
     /* min-width 0 lets the column shrink instead of overflowing #main
@@ -405,13 +552,43 @@
   </div>
   <div id="main">
     <div id="library">
+      <!-- Two labelled regions teach the core relationship: the four banks
+           mirror what's ON THE SEVEN; the Library is files ON THIS COMPUTER.
+           Transfer means moving between them, so BOTH stay visible at all
+           times — when the Library expands, the bank rows collapse to a
+           one-line summary strip (never hidden). -->
+      <div class="region-head" id="seven-head">On the Seven</div>
       <div id="bank-tabs"></div>
       <div id="patch-list"></div>
+      <button type="button" id="bank-strip" title="Show the bank presets">
+        <span class="fx-chevron strip-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span id="bank-strip-label">Bank 1</span>
+      </button>
+      <!-- Drag handle between the regions; the split persists across
+           launches. Active only while the Library is expanded. -->
+      <div id="split-divider" title="Drag to resize the Library"></div>
+      <!-- Library: a collapsible section directly after the 8th bank row.
+           Reuses the effects-section disclosure component (fx-section /
+           fx-head / fx-body classes: same chevron, same animation) but NEVER
+           the bypass-dimming rule — bypass has no meaning here. Global: the
+           same Library renders under every bank. -->
+      <div id="library-section" class="fx-section collapsed">
+        <div class="fx-head" id="library-head" role="button" title="Toggle Library">
+          <span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="fx-title">On this computer</span>
+          <span id="library-count" class="lib-count"></span>
+          <button type="button" id="library-reveal" class="lib-reveal" title="Reveal the library folder in Finder">Reveal Library Folder</button>
+        </div>
+        <div class="fx-body"><div class="fx-body-inner">
+          <div id="library-body"></div>
+        </div></div>
+      </div>
     </div>
     <div id="detail"><div class="placeholder">Select a patch</div></div>
   </div>
   <script src="defaults.js"></script>
   <script src="renderer.js"></script>
+  <script src="library-view.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

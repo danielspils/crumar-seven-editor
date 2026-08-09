@@ -18,14 +18,26 @@
   const R = SevenRenderer.createRenderer(schema, SevenDefaults.defaultFor);
 
   // ---- UI state -------------------------------------------------------------
-  let bankIndex = 0;
-  let patchIndex = 0; // selected patch within the bank; -1 = none
+  // TWO independent selections, held side by side — setlist editing and
+  // transfer both need a source and a target selected simultaneously.
+  // Selecting in one region never clears the other; `lastTouched` decides
+  // which one the detail panel renders.
+  let bankIndex = 0; // which bank the list DISPLAYS — navigation, not selection
+  let deviceSel = { bank: 0, preset: 0 }; // the Seven boots at preset 1-1
+  let lastTouched = 'device'; // 'device' | 'library'
 
   // View state only — never written to a patch or the library.
   let showRaw = false;
   let collapsed = {}; // section group -> bool
 
-  const currentPatch = () => library.banks[bankIndex].patches[patchIndex] || null;
+  // The patch the detail panel renders: whichever region was touched last.
+  // libSelected/libToRendererPatch are declared in the library block below;
+  // this closure only runs at render time, after the IIFE has initialised.
+  const currentPatch = () => {
+    if (lastTouched === 'library' && libSelected) return libToRendererPatch(libSelected);
+    if (deviceSel) return library.banks[deviceSel.bank].patches[deviceSel.preset] || null;
+    return null;
+  };
 
   // ALL sections start collapsed regardless of switch state — the collapsed
   // header (name, summary, ON/OFF pill) is the resting view for the whole
@@ -133,8 +145,9 @@
     clearTimeout(bankReleaseTimer);
     g.classList.add('bank-pressed');
     bankPressedAt = performance.now();
+    // Navigation only — the device selection is untouched until a preset is
+    // pressed (mirrors the hardware's pending-bank behaviour loosely).
     bankIndex = (bankIndex + 1) % library.banks.length;
-    resetCollapsed();
     renderAll();
   });
   window.addEventListener('mouseup', () => {
@@ -158,7 +171,8 @@
     if (preset) {
       const n = Number(preset.id.replace('preset-', ''));
       if (n >= 1 && n <= 8) {
-        patchIndex = n - 1;
+        deviceSel = { bank: bankIndex, preset: n - 1 };
+        lastTouched = 'device';
         resetCollapsed();
         renderAll();
       }
@@ -171,12 +185,15 @@
   }
 
   function updatePanelLeds() {
+    // Preset LEDs follow the device selection, and only while its bank is
+    // the one displayed (same rule as the list rows).
+    const sel = deviceSel && deviceSel.bank === bankIndex ? deviceSel.preset : -1;
     for (let b = 1; b <= 4; b++) setLed(`led-bank-${b}`, b - 1 === bankIndex);
-    for (let p = 1; p <= 8; p++) setLed(`led-preset-${p}`, p - 1 === patchIndex);
+    for (let p = 1; p <= 8; p++) setLed(`led-preset-${p}`, p - 1 === sel);
     // Preset button fills follow the LEDs.
     for (let p = 1; p <= 8; p++) {
       const btn = panelStrip.querySelector(`#preset-${p} .btn`);
-      if (btn) btn.classList.toggle('on', p - 1 === patchIndex);
+      if (btn) btn.classList.toggle('on', p - 1 === sel);
     }
   }
 
@@ -198,21 +215,25 @@
   }
 
   function renderList() {
+    // The device selection shows only when its bank is the one displayed —
+    // and it shows even while a library patch is ALSO selected (intended).
     const bank = library.banks[bankIndex];
-    listEl.innerHTML = bank.patches
-      .map((p, i) => R.renderPatchRow(p, i, patchIndex))
-      .join('');
+    const sel = deviceSel && deviceSel.bank === bankIndex ? deviceSel.preset : -1;
+    listEl.innerHTML = bank.patches.map((p, i) => R.renderPatchRow(p, i, sel)).join('');
   }
 
   function renderDetail() {
     const patch = currentPatch();
+    // A library patch has no bank position — the pos line is omitted. A
+    // device patch shows ITS bank/preset (the selection's, not the tab's).
+    const pos =
+      lastTouched === 'library' && libSelected
+        ? {}
+        : deviceSel
+          ? { bankLabel: bankLabel(deviceSel.bank), patchNumber: deviceSel.preset + 1 }
+          : {};
     detailEl.innerHTML = patch
-      ? R.renderDetail(patch, {
-          showRaw,
-          collapsed,
-          bankLabel: bankLabel(bankIndex),
-          patchNumber: patchIndex + 1,
-        })
+      ? R.renderDetail(patch, { showRaw, collapsed, ...pos })
       : '<div class="placeholder">Select a patch</div>';
     updateKnobRings();
   }
@@ -269,21 +290,24 @@
     updatePanelLeds();
     updateKnobLit();
     updateClaviGroup();
+    // Function declaration in the library block below — hoisted, and
+    // renderAll only ever runs after the whole IIFE has initialised.
+    updateBankStrip();
   }
 
   tabsEl.addEventListener('click', (e) => {
     const tab = e.target.closest('.bank-tab');
     if (!tab) return;
+    // Navigation only — browsing banks never changes either selection.
     bankIndex = Number(tab.dataset.bank);
-    patchIndex = 0; // selecting a bank lands on its first patch
-    resetCollapsed();
     renderAll();
   });
 
   listEl.addEventListener('click', (e) => {
     const row = e.target.closest('.patch-row');
     if (!row) return;
-    patchIndex = Number(row.dataset.index);
+    deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
+    lastTouched = 'device';
     resetCollapsed();
     renderAll();
   });
@@ -350,6 +374,154 @@
     sel.blur();
     showDeviceNote(sel.closest('.param-value'));
   });
+
+  // ---- Library section (on-disk library; data via preload IPC) --------------
+  // Collapsible section below the bank rows. Reuses the fx-section disclosure
+  // classes; expanded/collapsed persists across launches (view state —
+  // localStorage, never patch data). The body is the self-contained
+  // SevenLibraryView component: data in, events out.
+  const libRoot = document.getElementById('library');
+  const libSection = document.getElementById('library-section');
+  const libHead = document.getElementById('library-head');
+  const libCount = document.getElementById('library-count');
+  const libReveal = document.getElementById('library-reveal');
+  const bankStrip = document.getElementById('bank-strip');
+  const bankStripLabel = document.getElementById('bank-strip-label');
+  const splitDivider = document.getElementById('split-divider');
+  const LIB_OPEN_KEY = 'seven.libraryOpen';
+  const LIB_SPLIT_KEY = 'seven.librarySplit';
+
+  // Library selection: when set, the detail view renders this entry instead of
+  // the bank patch. Bank/preset clicks clear it.
+  let libSelected = null;
+
+  const libToRendererPatch = (entry) => ({
+    name: entry.name,
+    soundName: entry.soundName,
+    sampled: entry.sampled,
+    params: entry.params,
+  });
+
+  const libView = SevenLibraryView.createLibraryView({
+    el: document.getElementById('library-body'),
+    on: {
+      select(entry) {
+        // Independent of the device selection — both stay set, both stay
+        // visibly selected; the detail panel follows the last touch.
+        libSelected = entry;
+        lastTouched = 'library';
+        resetCollapsed();
+        renderAll();
+      },
+      async contextMenu(entry) {
+        const action = await window.sevenAPI.library.contextMenu();
+        if (!action) return;
+        if (action === 'rename') {
+          libView.beginRename(entry);
+          return;
+        }
+        if (action === 'duplicate') await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex);
+        else if (action === 'trash') {
+          await window.sevenAPI.library.trash(entry.file);
+          if (libSelected && libSelected.file === entry.file) libSelected = null;
+        } else if (action === 'export') {
+          await window.sevenAPI.library.export(entry.file, `${entry.name}.sevenlib.json`);
+          return; // nothing on disk changed inside the library folder
+        }
+        await refreshLibrary();
+      },
+      async rename(entry, newName) {
+        const newFile = await window.sevenAPI.library.rename(entry.file, entry.patchIndex, newName);
+        if (libSelected && libSelected.file === entry.file) {
+          libSelected = { ...libSelected, file: newFile, name: newName };
+        }
+        await refreshLibrary();
+      },
+    },
+  });
+
+  async function refreshLibrary() {
+    const data = await window.sevenAPI.library.list();
+    libView.update(data);
+    const n = data.patches.filter((e) => !e.invalid).length;
+    libCount.textContent = `— ${n} patch${n === 1 ? '' : 'es'}`;
+    // Keep the detail in sync if the selected entry changed on disk.
+    if (libSelected) {
+      const fresh = data.patches.find(
+        (e) => e.file === libSelected.file && e.patchIndex === libSelected.patchIndex
+      );
+      if (fresh) {
+        libSelected = fresh;
+        libView.select(fresh);
+      } else {
+        libSelected = null;
+        // The library half of the split selection is gone; the detail panel
+        // falls back to the device selection.
+        if (lastTouched === 'library') lastTouched = 'device';
+      }
+      renderAll();
+    }
+  }
+
+  // The bank summary strip shown while the Library is expanded. It ALWAYS
+  // shows the device selection when one exists — regardless of what's
+  // selected in the library — and falls back to bank-only when no preset has
+  // been selected this session.
+  function updateBankStrip() {
+    if (deviceSel) {
+      const bank = library.banks[deviceSel.bank];
+      const patch = bank.patches[deviceSel.preset];
+      bankStripLabel.textContent = `Bank ${bank.name}${patch ? ` · ${patch.name}` : ''}`;
+    } else {
+      bankStripLabel.textContent = `Bank ${library.banks[bankIndex].name}`;
+    }
+  }
+
+  // The two regions expand mutually exclusively: opening the Library
+  // collapses the bank rows to the strip; re-expanding the banks collapses
+  // the Library back to its header. View state, persisted across launches.
+  function setLibraryOpen(open, opts = {}) {
+    libSection.classList.toggle('collapsed', !open);
+    libRoot.classList.toggle('lib-open', open);
+    updateBankStrip();
+    localStorage.setItem(LIB_OPEN_KEY, open ? '1' : '0');
+    // Never open below the fold.
+    if (open && opts.scroll !== false) libSection.scrollIntoView({ block: 'nearest' });
+  }
+  libHead.addEventListener('click', (e) => {
+    if (e.target.closest('#library-reveal')) return; // button, not a toggle
+    setLibraryOpen(libSection.classList.contains('collapsed'));
+  });
+  bankStrip.addEventListener('click', () => setLibraryOpen(false));
+  libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
+
+  // Divider drag: sets the Library list height (--lib-split), persisted.
+  const savedSplit = Number(localStorage.getItem(LIB_SPLIT_KEY));
+  if (savedSplit >= 80) libRoot.style.setProperty('--lib-split', `${savedSplit}px`);
+  splitDivider.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const list = document.querySelector('#library-body .lib-list');
+    if (!list) return;
+    const startY = e.clientY;
+    const startH = list.getBoundingClientRect().height;
+    const onMove = (ev) => {
+      // Dragging down gives the bank region more room, the Library less.
+      const h = Math.max(80, Math.round(startH - (ev.clientY - startY)));
+      libRoot.style.setProperty('--lib-split', `${h}px`);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      const h = parseInt(libRoot.style.getPropertyValue('--lib-split'), 10);
+      if (h >= 80) localStorage.setItem(LIB_SPLIT_KEY, String(h));
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  // Default: banks expanded, Library collapsed; persisted view state wins.
+  setLibraryOpen(localStorage.getItem(LIB_OPEN_KEY) === '1', { scroll: false });
+  refreshLibrary();
 
   // ---- View menu commands (main process → here) -----------------------------
   if (window.sevenAPI.onViewCommand) {
