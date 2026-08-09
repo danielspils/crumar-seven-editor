@@ -49,3 +49,62 @@ summary:
 > If you add manual excerpts to this file later, keep them clearly labelled as
 > v1.22 and never let them override the schema. Don't paste anything you can't
 > attribute to the manual.
+
+---
+
+## Additions from a full read of the Sep 2020 manual (FW 1.2) + Crumar KB — 2026-08-09
+
+Read end-to-end from `crumar.it/files/Crumar_Seven_Manual_ENG.pdf` (44 pp, "Last
+update: Sep 2020 – FW v.1.2" — an OLDER revision than the v1.22 notes above)
+plus the Crumar help-desk knowledge base. Same stale/unverified status.
+
+### TWO different editors — do not conflate them
+
+- **Wi-Fi editor** (manual ch. 10): served BY THE INSTRUMENT over its own
+  hotspot (`Seven-xxxxxxxx`, default password 00000000 → the `wfp` global) at
+  `http://192.168.1.1`. Speaks HTTP to the built-in web server. Home page has
+  the instrument-local operations: global options, **PRESETS EXPORT / IMPORT**,
+  wavetable expansion install/uninstall, Wi-Fi password, firmware update and
+  factory restore links. One client connection at a time.
+- **USB editor** (gsidsp.com, KB art. 21): GSi's browser app over the USB
+  cable, Chrome-only, **WebMIDI + SysEx** — the thing our captures tap. Its UI
+  mirrors the editing pages but NOT the instrument-local operations above; it
+  has no preset export (confirmed live on the page, 2026-08-09).
+
+### Preset export/import (manual §10.2) — never touches MIDI
+
+Wi-Fi editor buttons write/read **`Seven_x-y.bin` on the USB thumb drive in
+the instrument's SYSTEM USB port** (FAT32). Import loads the edit buffer and
+activates immediately but stores nothing until the physical 3-second preset
+hold. Consistent with the edit-buffer model in protocol.md.
+
+### Globals semantics the interrogation can't see (§10.1)
+
+- **Send PC**: "select YES to send Program Change messages whenever a new
+  preset is recalled." Ties directly to the 2026-08-09 captures: no PC was
+  observed on recall — consistent with this global being OFF on this unit. If
+  ON, a panel recall would carry the SLOT identity that the `0x45` broadcast
+  lacks. Candidate glb index untested.
+- **Volume Type**: "From Presets" (volume follows each recalled preset) vs
+  "Global" (knob is a global volume; recalls don't change it). This unit
+  behaves as From Presets (recall loaded the stored 116 — see protocol.md open
+  item 7). A unit set to Global would answer backups differently on `veq_vol`.
+- **Channel OFF** disables send AND receive entirely (except Local-off
+  sending) — a unit set this way would ignore our PC-driven recalls.
+
+### Smaller corroborations and curios
+
+- §10.4 fixed-CC table (FW 1.2) lists exactly the 22 CCs the device broadcast
+  on recall in the 2026-08-09 captures — three sources now agree (device flag
+  read, v1.22 manual, v1.2 manual).
+- Factory bank 1 = the 8 modeled engines in ID order (matches the controlled
+  capture: presets 1–4 → sounds 0–3). Banks 2–4 ship with factory content but
+  are user-overwritable; bank 1 is read-only.
+- Sampled sets may support the **mod wheel** (LFO rate/depth params) — a
+  possible lead on the unexplained doubled `B0 01` closing every recall burst.
+- USB host port (SYSTEM USB) also accepts class-compliant USB-MIDI devices as
+  INPUTS to the Seven (controllers, pedalboards).
+- Easter eggs: music demo = hold CLAVI TABS + push VOLUME (manual p.44);
+  **dark mode** = hold FX2 SELECT (KB art. 54). Recovery mode exists for
+  failed boots (KB art. 40). KB art. 25 discusses "strange behaviours" on
+  bank 1 preset 8 (modeled grand) — unfetched, pointer only.

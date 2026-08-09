@@ -263,10 +263,15 @@ frame:
    raw captures in `captures/pc-*.jsonl`. New open items: the volume-knob
    override suspicion on `veq_vol`, and the recall-burst CC scaling for
    sub-127-max params (protocol.md open items 7 and 8).
-2. What does 0x72 ACTION expose? Capture from the editor's EXPORT button.
-   Either confirms there's no remote store or overturns it. **Caution: that
-   opcode space also contains factory reset and firmware update. Capture and
-   read only — never fuzz it.**
+2. What does 0x72 ACTION expose? **PREMISE CORRECTED (9 Aug 2026): the
+   "editor's EXPORT button" does not exist in the USB editor.** Preset
+   export/import lives in the instrument-hosted Wi-Fi editor (manual §10.2)
+   and writes `Seven_x-y.bin` to the USB stick over HTTP — it never touches
+   MIDI (docs/manual-notes.md, "TWO different editors"). The remaining path
+   to observe 0x72 is passive: capture whatever the gsidsp.com USB editor
+   sends during its normal operations and see if 0x72 ever appears.
+   **Caution unchanged: that opcode space also contains factory reset and
+   firmware update. Capture and read only — never fuzz it.**
 
 **Still unanswered:** does a preset store state beyond the 110 parameters (a
 preset name?); does the .bin export layout match SysEx order; how to obtain
