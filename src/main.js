@@ -117,6 +117,58 @@ function registerMidiIpc() {
   ipcMain.handle('midi:status', () => getMidi().status());
 }
 
+// ---- Backup run (src/backup-runner.js) -------------------------------------
+let backupRunner = null;
+function getBackupRunner() {
+  if (!backupRunner) {
+    const { BackupRunner } = require('./backup-runner');
+    const root = path.join(__dirname, '..');
+    backupRunner = new BackupRunner({
+      midi: getMidi(),
+      store: getStore(),
+      schema: JSON.parse(fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')),
+    });
+    backupRunner.on('event', (ev) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('midi-event', ev);
+      }
+    });
+  }
+  return backupRunner;
+}
+
+function registerBackupIpc() {
+  // Confirm EVERY run — no "don't show again". The dialog states where the
+  // instrument will be left before anything is sent.
+  ipcMain.handle('backup:start', async (e) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { started: false };
+    const sendPcOn = midi.globals && midi.globals.glb[3] === 1;
+    const knowPrior = sendPcOn && midi.lastPanelProgram != null;
+    const endState = knowPrior
+      ? 'When it finishes, the Seven is returned to the preset that was selected before the run.'
+      : 'When it finishes, the Seven is left on Bank 4, Preset 8 (the last slot backed up).';
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['Back Up', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      message: 'Back up all 32 presets?',
+      detail: `This recalls all 32 presets on the Seven. Any unsaved edits on the instrument will be lost.\n\n${endState}`,
+    });
+    if (response !== 0) return { started: false };
+    const runner = getBackupRunner();
+    runner.run().catch((err) => {
+      for (const w of BrowserWindow.getAllWindows()) {
+        w.webContents.send('midi-event', { type: 'backup-done', ok: false, error: err.message });
+      }
+    });
+    return { started: true };
+  });
+  ipcMain.handle('backup:cancel', () => { getBackupRunner().cancel(); });
+}
+
 // Decoded events (status, current-sound, program-change, sound-name) fan out
 // to every open window. No frame bytes cross this boundary.
 function forwardMidiEvents() {
@@ -181,6 +233,7 @@ function createWindow() {
 app.whenReady().then(() => {
   registerLibraryIpc();
   registerMidiIpc();
+  registerBackupIpc();
   forwardMidiEvents();
   createWindow();
   app.on('activate', () => {

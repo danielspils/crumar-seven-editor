@@ -65,6 +65,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     disconnect: () => ipcRenderer.invoke('midi:disconnect'),
     status: () => ipcRenderer.invoke('midi:status'),
     onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
+    backup: () => ipcRenderer.invoke('backup:start'),
+    cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Setlist mutations (setlists.json; every mutation persists immediately).
   setlists: {

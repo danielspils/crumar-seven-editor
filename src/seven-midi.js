@@ -109,6 +109,7 @@ class SevenMidi extends EventEmitter {
     this.globals = null; // last parsed (wfp already redacted)
     this.sendPcOriginal = null; // glb[3] as found at connect
     this.soundTable = null; // { sounds, fingerprint, readAt }
+    this.lastPanelProgram = null; // last Program Change RECEIVED (Send PC on)
     this.input = null;
     this.output = null;
     this._pending = [];
@@ -216,6 +217,7 @@ class SevenMidi extends EventEmitter {
     this.globals = null;
     this.soundTable = null;
     this.sendPcOriginal = null;
+    this.lastPanelProgram = null;
     this._setState('disconnected');
     return this.status();
   }
@@ -304,6 +306,9 @@ class SevenMidi extends EventEmitter {
     const status = msg[0] & 0xf0;
     if (status === 0xc0) {
       // Program Change from the panel (Send PC on): 0-based global slot.
+      // Note: during a backup run the device may echo the PCs we send; the
+      // runner snapshots this BEFORE sending anything.
+      this.lastPanelProgram = msg[1];
       this.emit('event', {
         type: 'program-change',
         program: msg[1],

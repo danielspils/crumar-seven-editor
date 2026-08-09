@@ -176,5 +176,15 @@ per-id `0x42` enumeration. Reply matchers validate echoed ids — macOS delivers
 device replies to every client on the port, so opcode-only matching can be
 satisfied by the manufacturer editor's traffic. Live-tested end-to-end
 (connect 380ms; Connect/Disconnect wired in the connection row).
-**Next: Task 6 — the first in-app backup run**; the Library UI with setlist
-editing is committed and visually verified.
+**Backup works end-to-end** (`src/backup-runner.js`): confirm-every-run
+dialog stating where the instrument is left; PC 0..31 each gated on the
+unsolicited `0x45` (1500ms timeout aborts the whole run — never skip a slot);
+110 verified `0x22` reads per slot with two re-requests for dropped replies
+(the device drops the odd reply under a fast burst); dedupe by
+hash(sound+params) per slot; four dated setlists (same-day re-run replaces,
+cancel/abort labels them "(partial)"); record-only globals snapshot
+(`globals-YYYY-MM-DD.json`, wfp redacted upstream); working Cancel that
+finishes the slot in flight; prior-slot restore when Send PC is on (the
+device echoes received PCs, so the runner knows the prior slot). First real
+run: **32/32 in 48s** (~3,600 round trips); re-run 47s, "32 unchanged, 0
+new"; cancel verified at 13/32. **Next: Task 7 — expansion visibility.**

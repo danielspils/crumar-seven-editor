@@ -196,6 +196,40 @@ class LibraryStore {
     return parseLibrary(text, { schema: this.schema });
   }
 
+  // Write one backup patch as its own container file; returns the filename.
+  // Caller supplies the full patch (name, origin, sound, params, captured).
+  saveBackupPatch(patch) {
+    this.ensureSeeded();
+    const file = this.uniqueFile(patch.name);
+    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(this.singlePatchContainer(patch)));
+    return file;
+  }
+
+  // Backup setlists are date-named; a same-day re-run replaces the previous
+  // run's setlist of the same name instead of stacking duplicates.
+  createOrReplaceSetlist(name, slots) {
+    const setlists = this.readSetlists(); // returns the validated ARRAY
+    const padded = [...slots.slice(0, 8)];
+    while (padded.length < 8) padded.push(null);
+    const existing = setlists.findIndex((s) => s.name === name);
+    if (existing >= 0) setlists[existing].slots = padded;
+    else setlists.push({ name, slots: padded });
+    this.writeSetlists(setlists);
+  }
+
+  // Globals snapshot, record-only (no restore path). wfp arrives already
+  // redacted from the parse layer; the serializer guard would refuse a real
+  // value anyway. Not a .sevenlib.json, so list() never shows it.
+  writeGlobalsSnapshot(dateStr, globals) {
+    this.ensureSeeded();
+    const file = `globals-${dateStr}.json`;
+    fs.writeFileSync(
+      path.join(this.dir, file),
+      `${JSON.stringify({ captured: new Date().toISOString(), ...globals }, null, 2)}\n`
+    );
+    return file;
+  }
+
   // Display-ready entries: one per PATCH (a container may hold several).
   // `sampled`/`missing` derive from the schema sound list; a sound the schema
   // doesn't know is by definition not one of the built-in modeled engines, so

@@ -579,6 +579,8 @@
     const connRow = document.getElementById('connection-row');
     const connText = document.getElementById('connection-text');
     const connBtn = document.getElementById('conn-button');
+    const backupBtn = document.getElementById('backup-button');
+    let backupRunning = false;
 
     const showStatus = (s, error) => {
       connRow.className = s.state === 'connected' ? 'connected'
@@ -595,7 +597,44 @@
         connBtn.textContent = 'Connect';
       }
       connBtn.disabled = s.state === 'connecting';
+      backupBtn.hidden = s.state !== 'connected';
+      if (s.state !== 'connected') backupRunning = false;
     };
+
+    const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;
+
+    const showBackupDone = (ev) => {
+      backupRunning = false;
+      backupBtn.textContent = 'Back up instrument';
+      connBtn.disabled = false;
+      if (!ev.ok) {
+        connText.textContent = `Backup ${ev.slots ? `stopped after ${ev.slots}/32` : 'failed'} — ${ev.error || 'aborted'}`;
+        return;
+      }
+      const where = ev.restored
+        ? `returned to Bank ${ev.finalBank} · Preset ${ev.finalPreset}`
+        : `Bank ${ev.finalBank} · Preset ${ev.finalPreset} is loaded`;
+      const counts = `${ev.unchanged} unchanged, ${ev.created} new`;
+      connText.textContent = ev.cancelled
+        ? `Backup cancelled at ${ev.slots}/32 — ${counts} · ${where}`
+        : `Backed up 32/32 in ${fmtElapsed(ev.durationMs)} — ${counts} · ${where}`;
+      refreshLibrary();
+    };
+
+    backupBtn.addEventListener('click', async () => {
+      if (backupRunning) {
+        await window.sevenAPI.midi.cancelBackup();
+        backupBtn.textContent = 'Cancelling…';
+        return;
+      }
+      const { started } = await window.sevenAPI.midi.backup();
+      if (started) {
+        backupRunning = true;
+        backupBtn.textContent = 'Cancel backup';
+        connBtn.disabled = true;
+        connText.textContent = 'Backing up… starting';
+      }
+    });
 
     connBtn.addEventListener('click', async () => {
       const connected = connRow.classList.contains('connected');
@@ -610,8 +649,12 @@
 
     window.sevenAPI.midi.onEvent((ev) => {
       if (ev.type === 'status') showStatus(ev, ev.error);
-      // current-sound / program-change / sound-name events arrive here too;
-      // consumed by later tasks (backup progress, hardware following).
+      else if (ev.type === 'backup-progress') {
+        connText.textContent =
+          `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
+      } else if (ev.type === 'backup-done') showBackupDone(ev);
+      // current-sound / program-change events also arrive here; consumed by
+      // later tasks (hardware following).
     });
 
     window.sevenAPI.midi.status().then((s) => showStatus(s));

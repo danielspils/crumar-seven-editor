@@ -106,6 +106,14 @@
     }
     #conn-button:hover { color: var(--text); border-color: var(--text-dim); }
     #conn-button:disabled { opacity: 0.5; cursor: default; }
+    #backup-button {
+      margin-left: auto;
+      background: none; border: 1px solid var(--accent); border-radius: 4px;
+      color: var(--accent); font: inherit; font-size: 12px;
+      padding: 2px 10px; cursor: pointer;
+    }
+    #backup-button:hover { filter: brightness(1.2); }
+    #backup-button + #conn-button { margin-left: 0; }
 
     /* Main area: library left, detail right */
     #main { flex: 1; display: flex; min-height: 0; }
@@ -589,6 +597,7 @@
   <div id="connection-row">
     <span class="conn-dot"></span>
     <span id="connection-text">No instrument connected</span>
+    <button id="backup-button" type="button" hidden>Back up instrument</button>
     <button id="conn-button" type="button">Connect</button>
   </div>
   <div id="main">
