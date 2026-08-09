@@ -2,8 +2,8 @@
 
 // App glue: owns UI state (selected bank/patch + view state), injects the panel
 // SVG, and asks SevenRenderer for HTML. The ONLY data sources are the sevenAPI
-// getters — no view code touches a device, and swapping the fixture for real
-// MIDI changes preload.js alone.
+// getters and IPC namespaces — no view code touches a device. The bank region
+// derives from the on-disk library's backup patches; nothing renders fixtures.
 
 (function () {
   // Self-hosted fonts (Archivo for the panel strip, Inter for the UI) — must be
@@ -12,10 +12,48 @@
   fontStyle.textContent = window.sevenAPI.getFontCss();
   document.head.appendChild(fontStyle);
 
-  // ---- Data (single library object; swappable source) ----------------------
-  const library = window.sevenAPI.getLibrary();
+  // ---- Data -----------------------------------------------------------------
   const schema = window.sevenAPI.getSchema();
   const R = SevenRenderer.createRenderer(schema, SevenDefaults.defaultFor);
+
+  // Banks 1–4 mirror the INSTRUMENT, derived from the latest backup patch per
+  // slot (origin bank/preset) — never demo data. The Seven can't be asked
+  // what's in its banks (no read-slot opcode), so this view is honest about
+  // being "as of the last backup": banksAsOf feeds the region header, and a
+  // slot with no backup renders as unknown rather than pretending.
+  const emptyBanks = () =>
+    Array.from({ length: 4 }, (_, i) => ({ name: String(i + 1), patches: Array(8).fill(null) }));
+  let banks = emptyBanks();
+  let banksAsOf = null; // newest capture date across the mapped slots
+
+  function rebuildBanks(entries) {
+    banks = emptyBanks();
+    banksAsOf = null;
+    const latest = new Map(); // "bank:preset" -> newest backup entry
+    for (const e of entries) {
+      if (e.invalid || !e.origin || e.origin.kind !== 'backup') continue;
+      const b = e.origin.bank - 1;
+      const p = e.origin.preset - 1;
+      if (b < 0 || b > 3 || p < 0 || p > 7) continue;
+      const k = `${b}:${p}`;
+      const prev = latest.get(k);
+      if (!prev || String(e.origin.date || '') > String(prev.origin.date || '')) latest.set(k, e);
+    }
+    for (const [k, e] of latest) {
+      const [b, p] = k.split(':').map(Number);
+      banks[b].patches[p] = {
+        // Backup names embed their slot ("Bank 2 Preset 3 — Reed Piano");
+        // inside the bank row that prefix is noise, so strip it — a
+        // user-renamed patch shows its rename untouched.
+        name: e.name.replace(new RegExp(`^Bank ${b + 1} Preset ${p + 1}\\s*—\\s*`), ''),
+        soundName: e.soundName,
+        sampled: e.sampled,
+        params: e.params,
+        file: e.file,
+      };
+      if (e.origin.date && (!banksAsOf || e.origin.date > banksAsOf)) banksAsOf = e.origin.date;
+    }
+  }
 
   // ---- UI state -------------------------------------------------------------
   // TWO independent selections, held side by side — setlist editing and
@@ -35,7 +73,7 @@
   // this closure only runs at render time, after the IIFE has initialised.
   const currentPatch = () => {
     if (lastTouched === 'library' && libSelected) return libToRendererPatch(libSelected);
-    if (deviceSel) return library.banks[deviceSel.bank].patches[deviceSel.preset] || null;
+    if (deviceSel) return banks[deviceSel.bank].patches[deviceSel.preset] || null;
     return null;
   };
 
@@ -147,7 +185,7 @@
     bankPressedAt = performance.now();
     // Navigation only — the device selection is untouched until a preset is
     // pressed (mirrors the hardware's pending-bank behaviour loosely).
-    bankIndex = (bankIndex + 1) % library.banks.length;
+    bankIndex = (bankIndex + 1) % banks.length;
     renderAll();
   });
   window.addEventListener('mouseup', () => {
@@ -204,10 +242,10 @@
 
   // Bank labels match the hardware panel (banks are numbered 1-4). Restore
   // prompts will tell the user which physical button to press.
-  const bankLabel = (i) => `Bank ${library.banks[i].name}`;
+  const bankLabel = (i) => `Bank ${banks[i].name}`;
 
   function renderTabs() {
-    tabsEl.innerHTML = library.banks
+    tabsEl.innerHTML = banks
       .map((b, i) =>
         `<button class="bank-tab${i === bankIndex ? ' active' : ''}" data-bank="${i}" type="button"><span class="bank-tab-label">Bank ${b.name}</span></button>`
       )
@@ -217,9 +255,20 @@
   function renderList() {
     // The device selection shows only when its bank is the one displayed —
     // and it shows even while a library patch is ALSO selected (intended).
-    const bank = library.banks[bankIndex];
+    // A slot with no backup renders honestly unknown; it is still selectable
+    // (the selection is a POSITION on the hardware, not the patch data).
+    const bank = banks[bankIndex];
     const sel = deviceSel && deviceSel.bank === bankIndex ? deviceSel.preset : -1;
-    listEl.innerHTML = bank.patches.map((p, i) => R.renderPatchRow(p, i, sel)).join('');
+    listEl.innerHTML = bank.patches
+      .map((p, i) =>
+        p
+          ? R.renderPatchRow(p, i, sel)
+          : `<button class="patch-row empty-slot${i === sel ? ' selected' : ''}" data-index="${i}" type="button">` +
+            `<span class="patch-num">${i + 1}</span>` +
+            `<span class="patch-name">Not backed up</span>` +
+            `</button>`
+      )
+      .join('');
   }
 
   function renderDetail() {
@@ -232,10 +281,27 @@
         : deviceSel
           ? { bankLabel: bankLabel(deviceSel.bank), patchNumber: deviceSel.preset + 1 }
           : {};
+    const emptyMsg =
+      lastTouched === 'device' && deviceSel
+        ? `No backup of Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1} yet — connect the Seven and click “Back up instrument”.`
+        : 'Select a patch';
     detailEl.innerHTML = patch
       ? R.renderDetail(patch, { showRaw, collapsed, ...pos })
-      : '<div class="placeholder">Select a patch</div>';
+      : `<div class="placeholder">${emptyMsg}</div>`;
     updateKnobRings();
+  }
+
+  // Region header carries the honesty label: this view is what the LAST
+  // BACKUP saw, not a live read — the Seven has no read-slot opcode.
+  const sevenHead = document.getElementById('seven-head');
+  function updateSevenHead() {
+    const fmt = (iso) => {
+      const d = new Date(iso);
+      return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    };
+    sevenHead.innerHTML = banksAsOf
+      ? `On the Seven <span class="asof">as of last backup · ${fmt(banksAsOf)}</span>`
+      : `On the Seven <span class="asof">not yet backed up</span>`;
   }
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
@@ -478,6 +544,9 @@
     libView.update(data);
     const n = data.patches.filter((e) => !e.invalid).length;
     libCount.textContent = `— ${n} patch${n === 1 ? '' : 'es'}`;
+    // The bank region derives from the same list — one fetch feeds both.
+    rebuildBanks(data.patches);
+    updateSevenHead();
     // Keep the detail in sync if the selected entry changed on disk.
     if (libSelected) {
       const fresh = data.patches.find(
@@ -492,8 +561,8 @@
         // falls back to the device selection.
         if (lastTouched === 'library') lastTouched = 'device';
       }
-      renderAll();
     }
+    renderAll();
   }
 
   // The bank summary strip shown while the Library is expanded. It ALWAYS
@@ -502,11 +571,11 @@
   // been selected this session.
   function updateBankStrip() {
     if (deviceSel) {
-      const bank = library.banks[deviceSel.bank];
+      const bank = banks[deviceSel.bank];
       const patch = bank.patches[deviceSel.preset];
       bankStripLabel.textContent = `Bank ${bank.name}${patch ? ` · ${patch.name}` : ''}`;
     } else {
-      bankStripLabel.textContent = `Bank ${library.banks[bankIndex].name}`;
+      bankStripLabel.textContent = `Bank ${banks[bankIndex].name}`;
     }
   }
 
@@ -705,8 +774,18 @@
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
       } else if (ev.type === 'backup-done') showBackupDone(ev);
-      // current-sound / program-change events also arrive here; consumed by
-      // later tasks (hardware following).
+      else if (ev.type === 'program-change' && !backupRunning) {
+        // Send PC on: panel recalls are slot-identified, so the bank region
+        // follows the hardware. Suppressed during a backup run — those PCs
+        // are ours.
+        deviceSel = { bank: ev.bank - 1, preset: ev.preset - 1 };
+        bankIndex = ev.bank - 1;
+        lastTouched = 'device';
+        resetCollapsed();
+        renderAll();
+      }
+      // current-sound events also arrive here (recalls without Send PC give
+      // sound identity but not the slot — not enough to move the selection).
     });
 
     window.sevenAPI.midi.status().then((s) => showStatus(s));

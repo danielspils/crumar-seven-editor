@@ -1,9 +1,10 @@
 'use strict';
 
-// The one place that knows where the data comes from. Today it reads the fixture
-// files off disk. When real MIDI arrives, THIS is the only file that changes —
-// `getLibrary` would return a device-derived library object instead. The renderer
-// asks for `sevenAPI.getLibrary()` and never learns the difference.
+// The one place that knows where the data comes from. The swap this file was
+// built for has happened: the renderer's data is the on-disk library (IPC to
+// library-store) and the live device (IPC to seven-midi) — fixtures no longer
+// reach the renderer at all (they only seed a first-run demo library in the
+// main process).
 
 const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('fs');
@@ -14,8 +15,6 @@ const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8
 const readText = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
 contextBridge.exposeInMainWorld('sevenAPI', {
-  // The single library object all rendering reads from.
-  getLibrary: () => readJson('fixtures/sample-library.json'),
   // Static reference data (parameter map + panel artwork), not device state.
   getSchema: () => readJson('schema/seven-1.37.json'),
   // The SVG's internal @font-face uses a path relative to assets/ so the file
