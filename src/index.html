@@ -68,7 +68,7 @@
     #panel-strip .knob-hit { pointer-events: none; }
     #panel-strip .nav-knob .knob-hit { pointer-events: auto; cursor: pointer; }
     #panel-strip .nav-knob .knob-ring { transition: stroke .3s; }
-    #panel-strip .nav-knob .knob-face { transition: stroke .3s, fill .3s; }
+    #panel-strip .nav-knob .knob-glass { transition: filter .3s; }
     /* One treatment per annulus: the outer ring belongs to the FOCUSED knob
        only (its section expanded). At rest there is no ring at all; hover
        shows the same ring dimmed so clickability stays discoverable. The lit
@@ -80,8 +80,19 @@
                                       .knob-face rule can't override the fill.
        EXPANDED (view state)        = accent OUTER RING only — never the face,
                                       so it can't be mistaken for amber. */
-    #panel-strip .knob-lit .knob-face { fill: #ffd9a0; stroke: #ff9d2e; }
-    #panel-strip .knob-lit .knob-ptr { stroke: #1a1a1c; }
+    /* Lit = the LED under the clear plastic is on: the whole knob glows from
+       the center out, brightest in the bore (like the hardware). Set via the
+       material custom properties — they inherit through the <use> boundary,
+       which class selectors cannot cross. */
+    #panel-strip .knob-lit {
+      --k-glow-fill: rgba(255, 157, 46, 0.30);
+      --k-bore-fill: #ffd9a0; --k-bore-stroke: #ff9d2e;
+      --k-top-stroke: rgba(255, 200, 120, 0.65);
+      --k-mid-stroke: rgba(255, 180, 90, 0.35);
+      --k-skirt-stroke: rgba(255, 180, 80, 0.55);
+      --k-rib-stroke: rgba(255, 190, 110, 0.4);
+    }
+    #panel-strip .knob-lit .knob-glass { filter: drop-shadow(0 0 6px rgba(255, 157, 46, 0.45)); }
     #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 
     /* 2. Connection row */

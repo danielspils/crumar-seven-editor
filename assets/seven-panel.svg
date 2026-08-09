@@ -21,13 +21,29 @@
       font-display: swap;
     }
     .panel-bg  { fill: #2b2b2d; }
-    .knob-face { fill: #ececee; stroke: #a8a8ad; stroke-width: 2; }
+    /* Knob state is driven by custom properties: class selectors can't reach
+       inside a use-element shadow tree, but custom properties inherit through
+       it — the app restyles a knob (lit/unlit) by setting these vars on the
+       knob group. */
+    svg {
+      --k-glow-fill: transparent;
+      --k-skirt-stroke: rgba(255,255,255,0.28);
+      --k-rib-stroke: rgba(255,255,255,0.20);
+      --k-mid-stroke: rgba(255,255,255,0.16);
+      --k-top-stroke: rgba(255,255,255,0.32);
+      --k-bore-fill: rgba(228,228,236,0.30); --k-bore-stroke: rgba(255,255,255,0.14);
+    }
+    /* Knob material lives as inline style attributes on the #knob-glass def
+       elements — class rules cannot match use-element shadow clones, but
+       style attributes clone with the element and their var() references
+       resolve through the use site, which is how the lit state tints a knob.
+       (No angle brackets in these comments: SVG style content is markup.) */
+    use.knob-glass { pointer-events: none; }
     /* Ring circles are geometry only — unstroked at rest. The app strokes them
        for hover/focus states. Deliberate departure from the instrument, which
        rings every knob (docs/DESIGN.md: fidelity traded for a legible focus
        state). */
     .knob-ring { fill: none; stroke: none; stroke-width: 3; }
-    .knob-ptr  { stroke: #232325; stroke-width: 2.5; stroke-linecap: round; }
     /* Shared button component: FX1/FX2 SELECT, transpose, CLAVI TABS all use
        .btn so they stay consistent (presets add .btn-face on top). */
     .btn       { fill: #232325; stroke: #6d6d72; stroke-width: 1.5; rx: 3; transition: fill .15s; }
@@ -86,17 +102,40 @@
        text-anchor="start" (LED labels, bank numerals) over class defaults. */
     text[text-anchor="start"] { text-anchor: start; }
     .divider   { stroke: #46464a; stroke-width: 1; }
-    .readonly .btn, .readonly .knob-face { cursor: default; pointer-events: none; }
+    .readonly .btn { cursor: default; pointer-events: none; }
   </style>
+  <defs>
+    <radialGradient id="kg-body" cx="0.5" cy="0.4" r="0.65">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#e8e8ee" stop-opacity="0.16"/>
+      <stop offset="0.85" stop-color="#cfcfd8" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#9a9aa4" stop-opacity="0.24"/>
+    </radialGradient>
+    <radialGradient id="kg-top" cx="0.5" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.7" stop-color="#e6e6ec" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#b9b9c2" stop-opacity="0.32"/>
+    </radialGradient>
+    <!-- The real Seven knob: clear translucent plastic, a fluted skirt with
+         a raised clear cylinder on top, lit from beneath by an LED. Endless
+         encoders — no pointer line; only the glow carries state. -->
+    <g id="knob-glass">
+      <circle class="k-glow" r="27" style="fill: var(--k-glow-fill, transparent)"/>
+      <circle class="k-skirt" r="28" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.2"/>
+      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.6; stroke-linecap: round"><line x1="0.00" y1="-22.80" x2="0.00" y2="-27.30"/><line x1="4.74" y1="-22.30" x2="5.68" y2="-26.70"/><line x1="9.27" y1="-20.83" x2="11.10" y2="-24.94"/><line x1="13.40" y1="-18.45" x2="16.05" y2="-22.09"/><line x1="16.94" y1="-15.26" x2="20.29" y2="-18.27"/><line x1="19.75" y1="-11.40" x2="23.64" y2="-13.65"/><line x1="21.68" y1="-7.05" x2="25.96" y2="-8.44"/><line x1="22.68" y1="-2.38" x2="27.15" y2="-2.85"/><line x1="22.68" y1="2.38" x2="27.15" y2="2.85"/><line x1="21.68" y1="7.05" x2="25.96" y2="8.44"/><line x1="19.75" y1="11.40" x2="23.64" y2="13.65"/><line x1="16.94" y1="15.26" x2="20.29" y2="18.27"/><line x1="13.40" y1="18.45" x2="16.05" y2="22.09"/><line x1="9.27" y1="20.83" x2="11.10" y2="24.94"/><line x1="4.74" y1="22.30" x2="5.68" y2="26.70"/><line x1="0.00" y1="22.80" x2="0.00" y2="27.30"/><line x1="-4.74" y1="22.30" x2="-5.68" y2="26.70"/><line x1="-9.27" y1="20.83" x2="-11.10" y2="24.94"/><line x1="-13.40" y1="18.45" x2="-16.05" y2="22.09"/><line x1="-16.94" y1="15.26" x2="-20.29" y2="18.27"/><line x1="-19.75" y1="11.40" x2="-23.64" y2="13.65"/><line x1="-21.68" y1="7.05" x2="-25.96" y2="8.44"/><line x1="-22.68" y1="2.38" x2="-27.15" y2="2.85"/><line x1="-22.68" y1="-2.38" x2="-27.15" y2="-2.85"/><line x1="-21.68" y1="-7.05" x2="-25.96" y2="-8.44"/><line x1="-19.75" y1="-11.40" x2="-23.64" y2="-13.65"/><line x1="-16.94" y1="-15.26" x2="-20.29" y2="-18.27"/><line x1="-13.40" y1="-18.45" x2="-16.05" y2="-22.09"/><line x1="-9.27" y1="-20.83" x2="-11.10" y2="-24.94"/><line x1="-4.74" y1="-22.30" x2="-5.68" y2="-26.70"/></g>
+      <circle class="k-mid" r="21" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1"/>
+      <circle class="k-top" r="13.5" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.1"/>
+      <circle class="k-bore" r="6.5" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1"/>
+    </g>
+  </defs>
 
   <rect class="panel-bg" x="0" y="0" width="2160" height="210" rx="6"/>
 
   <g id="sec-volume">
     <text class="lbl" x="72" y="30">VOLUME</text>
     <g id="knob-volume">
-      <circle class="knob-face" cx="72" cy="105" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="72" y="105"/>
       <circle class="knob-ring" cx="72" cy="105" r="35"/>
-      <line class="knob-ptr" x1="72" y1="105" x2="72" y2="82"/>
       <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <!-- Silkscreened legend, not an indicator light. Local Off state is shown
@@ -110,9 +149,8 @@
   <g id="sec-reverb">
     <text class="lbl" x="196" y="30">REVERB</text>
     <g id="knob-reverb">
-      <circle class="knob-face" cx="196" cy="105" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
       <circle class="knob-ring" cx="196" cy="105" r="35"/>
-      <line class="knob-ptr" x1="196" y1="105" x2="196" y2="82"/>
       <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
@@ -123,18 +161,16 @@
 
   <g id="sec-eq">
     <g id="knob-bass-mid">
-      <circle class="knob-face" cx="380" cy="105" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="380" y="105"/>
       <circle class="knob-ring" cx="380" cy="105" r="35"/>
-      <line class="knob-ptr" x1="380" y1="105" x2="380" y2="82"/>
       <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="380" y="30">BASS</text>
     <text class="lbl-sm" x="380" y="46">MIDDLE</text>
 
     <g id="knob-treble-midf">
-      <circle class="knob-face" cx="500" cy="105" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
       <circle class="knob-ring" cx="500" cy="105" r="35"/>
-      <line class="knob-ptr" x1="500" y1="105" x2="500" y2="82"/>
       <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="500" y="30">TREBLE</text>
@@ -292,9 +328,8 @@
     <text class="lbl-sm" x="1596" y="142" text-anchor="start">P-WHA</text>
     <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
-      <circle class="knob-face" cx="1664" cy="110" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="1664" y="110"/>
       <circle class="knob-ring" cx="1664" cy="110" r="32"/>
-      <line class="knob-ptr" x1="1664" y1="110" x2="1664" y2="87"/>
       <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
     <text class="lbl-sm" x="1664" y="54">DEPTH</text>
@@ -304,9 +339,8 @@
   <g id="sec-amp">
     <text class="lbl" x="1758" y="34">AMP / DRIVE</text>
     <g id="knob-amp-drive">
-      <circle class="knob-face" cx="1758" cy="110" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="1758" y="110"/>
       <circle class="knob-ring" cx="1758" cy="110" r="35"/>
-      <line class="knob-ptr" x1="1758" y1="110" x2="1758" y2="87"/>
       <circle class="knob-hit" cx="1758" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
     </g>
   </g>
@@ -325,9 +359,8 @@
     <text class="lbl-sm lbl-fxled" x="1918" y="142" text-anchor="start">DELAY</text>
     <text class="lbl-fx" x="1859" y="152">FX2</text>
     <g id="knob-fx2">
-      <circle class="knob-face" cx="1988" cy="110" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="1988" y="110"/>
       <circle class="knob-ring" cx="1988" cy="110" r="32"/>
-      <line class="knob-ptr" x1="1988" y1="110" x2="1988" y2="87"/>
       <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
     <text class="lbl-sm" x="1988" y="54">DEPTH</text>
@@ -337,9 +370,8 @@
   <g id="sec-pad">
     <text class="lbl lbl-red" x="2080" y="34">PAD LEVEL</text>
     <g id="knob-pad">
-      <circle class="knob-face" cx="2080" cy="110" r="28"/>
+      <use class="knob-glass" href="#knob-glass" x="2080" y="110"/>
       <circle class="knob-ring" cx="2080" cy="110" r="35"/>
-      <line class="knob-ptr" x1="2080" y1="110" x2="2080" y2="87"/>
       <circle class="knob-hit" cx="2080" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
     </g>
     <circle class="led" id="led-pad-sw" cx="2080" cy="166" r="5"/>
