@@ -101,7 +101,6 @@
     /* CSS text-anchor overrides presentation attributes; honor authored
        text-anchor="start" (LED labels, bank numerals) over class defaults. */
     text[text-anchor="start"] { text-anchor: start; }
-    .divider   { stroke: #46464a; stroke-width: 1; }
     .readonly .btn { cursor: default; pointer-events: none; }
   </style>
   <defs>
@@ -170,6 +169,7 @@
     <g id="knob-reverb">
       <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
       <circle class="knob-ring" cx="196" cy="105" r="35"/>
+      <use href="#pwr-icon" x="218" y="143"/>
       <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
@@ -182,6 +182,7 @@
     <g id="knob-bass-mid">
       <use class="knob-glass" href="#knob-glass" x="380" y="105"/>
       <circle class="knob-ring" cx="380" cy="105" r="35"/>
+      <use href="#pwr-icon" x="402" y="143"/>
       <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="380" y="30">BASS</text>
@@ -190,13 +191,13 @@
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
       <circle class="knob-ring" cx="500" cy="105" r="35"/>
+      <use href="#pwr-icon" x="522" y="143"/>
       <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="500" y="30">TREBLE</text>
     <text class="lbl-sm" x="500" y="46">MID FREQ</text>
   </g>
 
-  <line class="divider" x1="562" y1="26" x2="562" y2="184"/>
 
   <g id="sec-clavi-tabs">
     <!-- Transpose: flat/sharp flank the switch; a single U-shaped line (open at
@@ -331,7 +332,6 @@
     <text class="lbl-alt" x="1256" y="157">A / B</text>
   </g>
 
-  <line class="divider" x1="1486" y1="26" x2="1486" y2="184"/>
 
   <g id="sec-fx1">
     <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
