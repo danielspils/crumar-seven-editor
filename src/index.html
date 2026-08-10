@@ -471,8 +471,9 @@
     .slot-assign:hover { background: rgba(255, 176, 32, .15); }
     .slot-assign:disabled { opacity: .35; cursor: default; }
     .slot-clear {
-      font: inherit; font-size: 12px; color: var(--text-dim);
-      background: transparent; border: none; padding: 2px 6px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--text-dim); background: transparent; border: none;
+      padding: 2px 4px; cursor: pointer;
     }
     .slot-clear:hover { color: var(--text); }
     /* Slot change feedback: the row settles into its new state rather than
@@ -494,15 +495,15 @@
     .lib-slot .patch-name, .lib-slot .slot-text { grid-column: 2; grid-row: 1; }
     .lib-slot .lib-badges { grid-column: 3; grid-row: 1; text-align: right; }
     .lib-slot .lib-origin { grid-column: 2; grid-row: 2; }
-    .lib-slot .patch-sound { grid-column: 3; grid-row: 2; text-align: right; }
+    .lib-slot .patch-sound { grid-column: 3 / -1; grid-row: 2; text-align: right; }
     /* Slot rows carry the sound's kind as a lettered dot next to the sound
        name rather than a pill in the corner — the corner belongs to Assign.
        Hover reveals "Modeled" / "Sampled". */
     .sound-tag { font-style: italic; color: var(--text-dim); }
     .sound-tag.is-warn { color: var(--warn); font-style: normal; }
     .lib-slot .slot-controls {
-      grid-column: 4; grid-row: 1 / span 2; align-self: center;
-      display: flex; align-items: center; gap: 6px; justify-content: flex-end;
+      grid-column: 4; grid-row: 1; align-self: center;
+      display: flex; align-items: center; gap: 3px; justify-content: flex-end;
     }
     .slot-undo { grid-column: auto; }
 

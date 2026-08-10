@@ -157,7 +157,12 @@
         ? `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Assign “${esc(sel.name)}” to slot ${i + 1}">Assign</button>`
         : `<button type="button" class="slot-assign" disabled title="Select a patch first — then Assign puts it in this slot">Assign</button>`;
     const clearBtn = (i) =>
-      `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">✕</button>`;
+      `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">` +
+      '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
+      '<path d="M4.2 4.3l.7 8.2a.9.9 0 0 0 .9.8h4.4a.9.9 0 0 0 .9-.8l.7-8.2"/>' +
+      '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg></button>';
     const clearedEntry = (i) =>
       (state.lastCleared && state.lastCleared.setlist === state.setlistIndex && state.lastCleared.slot === i
         && byFile.get(state.lastCleared.file)) || null;
