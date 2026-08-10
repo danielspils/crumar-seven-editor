@@ -170,7 +170,7 @@
   <rect x="6.5" y="6.5" width="2147" height="197" rx="4" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1"/>
 
   <g id="sec-volume">
-    <text class="lbl" x="72" y="30">VOLUME</text>
+    <text class="lbl" x="72" y="50">VOLUME</text>
     <g id="knob-volume">
       <use class="knob-glass" href="#knob-glass" x="72" y="105"/>
       <circle class="knob-ring" cx="72" cy="105" r="44"/>
@@ -185,7 +185,7 @@
   </g>
 
   <g id="sec-reverb">
-    <text class="lbl" x="196" y="30">REVERB</text>
+    <text class="lbl" x="196" y="50">REVERB</text>
     <g id="knob-reverb">
       <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
       <circle class="knob-ring" cx="196" cy="105" r="44"/>
@@ -205,10 +205,10 @@
       <use href="#pwr-icon" x="408" y="153"/>
       <circle class="knob-hit" cx="380" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="424" y="30" text-anchor="end">BASS</text>
-    <text class="lbl-sm" x="424" y="46" text-anchor="end">MIDDLE</text>
-    <circle class="led on" id="led-eq-top" cx="440" cy="26" r="5"/>
-    <circle class="led"    id="led-eq-bot" cx="440" cy="42" r="5"/>
+    <text class="lbl-sm" x="424" y="50" text-anchor="end">BASS</text>
+    <text class="lbl-sm" x="424" y="74" text-anchor="end">MIDDLE</text>
+    <circle class="led on" id="led-eq-top" cx="440" cy="46" r="5"/>
+    <circle class="led"    id="led-eq-bot" cx="440" cy="70" r="5"/>
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
@@ -216,8 +216,8 @@
       <use href="#pwr-icon" x="528" y="153"/>
       <circle class="knob-hit" cx="500" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="456" y="30" text-anchor="start">TREBLE</text>
-    <text class="lbl-sm" x="456" y="46" text-anchor="start">MID FREQ</text>
+    <text class="lbl-sm" x="456" y="50" text-anchor="start">TREBLE</text>
+    <text class="lbl-sm" x="456" y="74" text-anchor="start">MID FREQ</text>
   </g>
 
 
@@ -241,7 +241,7 @@
   </g>
 
   <g id="sec-bank">
-    <text class="lbl lbl-lg" x="713" y="30">BANK</text>
+    <text class="lbl lbl-lg" x="713" y="34">BANK</text>
     <!-- Always unselected: a bank is always current, so there is no selection
          for the button itself to indicate — the bank LEDs carry that. -->
     <rect class="btn-bezel" x="686" y="56" width="54" height="92" rx="3"/>
@@ -416,7 +416,7 @@
   </g>
 
   <g id="sec-amp">
-    <text class="lbl" x="1676" y="34">AMP / DRIVE</text>
+    <text class="lbl" x="1676" y="58">AMP / DRIVE</text>
     <g id="knob-amp-drive">
       <use class="knob-glass" href="#knob-glass" x="1676" y="110"/>
       <circle class="knob-ring" cx="1676" cy="110" r="44"/>
