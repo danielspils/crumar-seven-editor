@@ -23,6 +23,12 @@
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  const PENCIL =
+    '<span class="row-edit" data-edit role="button" aria-label="Rename" title="Rename">' +
+    '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+    '<path d="M11.4 1.9a1.3 1.3 0 0 1 1.8 0l.9.9a1.3 1.3 0 0 1 0 1.8l-7.3 7.3-3 .8.8-3z" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>';
+
   const rowKey = (e) => `${e.file} ${e.patchIndex}`;
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -78,7 +84,7 @@
     }
     return (
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-      `<span class="patch-name">${esc(entry.name)}</span>` +
+      `<span class="name-line"><span class="patch-name">${esc(entry.name)}</span>${PENCIL}</span>` +
       `<span class="lib-badges">${badge(entry)}</span>` +
       `<span class="lib-origin">${esc(originLine(entry))}</span>` +
       `<span class="patch-sound">${esc(entry.soundName)}</span>` +
@@ -124,7 +130,7 @@
         const label = `${filled} patch${filled === 1 ? '' : 'es'}` + (filled < 8 ? ` · ${8 - filled} empty` : '');
         return (
           `<button type="button" class="lib-row lib-setlist" data-setlist="${i}">` +
-          `<span class="patch-name">${esc(s.name)}</span>` +
+          `<span class="name-line"><span class="patch-name">${esc(s.name)}</span>${PENCIL}</span>` +
           `<span class="patch-sound">${label}</span>` +
           `<span class="lib-setlist-chev">›</span>` +
           `</button>`
@@ -255,6 +261,21 @@
     }
 
     el.addEventListener('click', (e) => {
+      const pencil = e.target.closest('[data-edit]');
+      if (pencil) {
+        e.preventDefault();
+        e.stopPropagation();
+        const setlistRow = pencil.closest('[data-setlist]');
+        if (setlistRow) {
+          state.renamingSetlist = Number(setlistRow.dataset.setlist);
+        } else {
+          const row = pencil.closest('[data-file]');
+          const entry = row && entryAt(row);
+          if (entry) state.renaming = rowKey(entry);
+        }
+        render();
+        return;
+      }
       const seg = e.target.closest('.seg-btn');
       if (seg) {
         state.tab = seg.dataset.tab;

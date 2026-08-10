@@ -28,6 +28,7 @@
       --shade: rgba(255, 255, 255, .05);   /* hover */
       --shade-hard: rgba(255, 255, 255, .08);
       --card-border: transparent;
+      --range-fill: #6f6f78;
     }
     /* Antiqued white: warm paper, not grey. Accents darken rather than
        change hue, so the two themes stay recognisably the same UI. */
@@ -51,6 +52,7 @@
       --shade: rgba(0, 0, 0, .045);
       --shade-hard: rgba(0, 0, 0, .075);
       --card-border: #ddd5c4;
+      --range-fill: #b3a68c;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* The window itself never scrolls: the panel strip is a fixed reference at
@@ -378,6 +380,18 @@
     }
     .lib-row.lib-patch .patch-sound,
     .lib-row.lib-patch .lib-badges { text-align: right; }
+    /* Rename affordance: quiet until the row is hovered or selected, so a
+       list at rest stays a list. */
+    .name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .name-line .patch-name { min-width: 0; }
+    .row-edit {
+      flex: none; display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; border-radius: 4px;
+      color: var(--text-muted); opacity: 0; cursor: pointer;
+      transition: opacity .12s, color .12s, background .12s;
+    }
+    .lib-row:hover .row-edit, .lib-row.selected .row-edit { opacity: 1; }
+    .row-edit:hover { color: var(--text); background: var(--shade-hard); }
     .lib-origin {
       font-size: 12px; color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -608,10 +622,11 @@
       grid-column: 2; position: relative; height: 6px; border-radius: 3px;
       background: var(--bar); pointer-events: none;
     }
-    .range-fill { position: absolute; top: 0; height: 100%; background: var(--bar-fill); }
+    .range-fill { position: absolute; top: 0; height: 100%; background: var(--range-fill); }
     .range-handle {
       position: absolute; top: -3px; width: 4px; height: 12px; border-radius: 2px;
-      background: var(--bar-fill-changed); transform: translateX(-50%);
+      background: var(--text); transform: translateX(-50%);
+      box-shadow: 0 0 0 1px var(--bg-raised);
     }
     .param-value.range-reversed { color: var(--amber); font-weight: 600; }
     /* Inert parameters: dimmed with the reason inline; section-level override
