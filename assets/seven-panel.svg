@@ -88,9 +88,9 @@
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }
-    .led       { fill: #4a1416; stroke: #1a1a1c; stroke-width: .5; }
+    .led       { fill: #7d2b26; stroke: #1a1a1c; stroke-width: .5; }
     .led.on    { fill: #ff3b30; }
-    .led.amber { fill: #4a3a14; }
+    .led.amber { fill: #7d6524; }
     .led.amber.on { fill: #ffb020; }
     .transpose-border { fill: none; stroke: #6d6d72; stroke-width: 1; }
     .kbd-icon  { fill: none; stroke: #6d6d72; stroke-width: 1; }
@@ -109,6 +109,7 @@
     /* CSS text-anchor overrides presentation attributes; honor authored
        text-anchor="start" (LED labels, bank numerals) over class defaults. */
     text[text-anchor="start"] { text-anchor: start; }
+    text[text-anchor="end"] { text-anchor: end; }
     .readonly .btn { cursor: default; pointer-events: none; }
   </style>
   <defs>
@@ -191,10 +192,10 @@
       <use href="#pwr-icon" x="218" y="143"/>
       <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
-    <circle class="led on" id="led-rev-level" cx="252" cy="46" r="5"/>
-    <text class="lbl-sm" x="292" y="50" text-anchor="start">LEVEL</text>
-    <circle class="led" id="led-rev-decay" cx="252" cy="70" r="5"/>
-    <text class="lbl-sm" x="292" y="74" text-anchor="start">DECAY</text>
+    <circle class="led on" id="led-rev-level" cx="244" cy="46" r="5"/>
+    <text class="lbl-sm" x="260" y="50" text-anchor="start">LEVEL</text>
+    <circle class="led" id="led-rev-decay" cx="244" cy="70" r="5"/>
+    <text class="lbl-sm" x="260" y="74" text-anchor="start">DECAY</text>
   </g>
 
   <g id="sec-eq">
@@ -204,8 +205,10 @@
       <use href="#pwr-icon" x="402" y="143"/>
       <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="380" y="30">BASS</text>
-    <text class="lbl-sm" x="380" y="46">MIDDLE</text>
+    <text class="lbl-sm" x="424" y="30" text-anchor="end">BASS</text>
+    <text class="lbl-sm" x="424" y="46" text-anchor="end">MIDDLE</text>
+    <circle class="led on" id="led-eq-top" cx="440" cy="26" r="5"/>
+    <circle class="led"    id="led-eq-bot" cx="440" cy="42" r="5"/>
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
@@ -213,8 +216,8 @@
       <use href="#pwr-icon" x="522" y="143"/>
       <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="500" y="30">TREBLE</text>
-    <text class="lbl-sm" x="500" y="46">MID FREQ</text>
+    <text class="lbl-sm" x="456" y="30" text-anchor="start">TREBLE</text>
+    <text class="lbl-sm" x="456" y="46" text-anchor="start">MID FREQ</text>
   </g>
 
 
