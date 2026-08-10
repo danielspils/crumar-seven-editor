@@ -205,7 +205,7 @@
     .patch-row.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
     .patch-num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
     .patch-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .patch-sound { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .patch-sound { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .badge {
       font-size: 10px; font-weight: 700; letter-spacing: .06em;
@@ -215,6 +215,15 @@
     .badge-sampled { color: var(--sampled); border: 1px solid var(--sampled); }
     .badge-warn { color: #16130b; background: var(--warn); }
     .badge-gap { width: 0; }
+
+    /* TYPE SCALE below the panel — four tiers, nothing else:
+         hero      17px/700  --text          detail sound name
+         primary   13px/600  --text          item names, param rows
+         metadata  11px/400  --text-muted    origin, sound, position, counts,
+                                             summaries — every secondary fact
+         header    11px/700  .12em caps      region/section/FX titles
+         pill      10px/700                  badges and state chips
+       Add a role to a tier rather than inventing a new size. */
 
     /* 3a. Two-region model: "On the Seven" (banks) above, "On this computer"
        (Library) below. The regions expand mutually exclusively — app.js
@@ -276,7 +285,7 @@
     #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; }
     #library-body .lib-bar { flex: none; }
     #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
-    .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
+    .lib-count { flex: 1; color: var(--text-muted); font-size: 11px; }
     .lib-reveal {
       font: inherit; font-size: 11px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
@@ -422,8 +431,8 @@
     .engine-sound { font-size: 17px; font-weight: 700; }
     .engine-sound .badge { vertical-align: 3px; margin-left: 6px; }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-    .engine-group { color: var(--text-muted); font-size: 12px; }
-    .engine-pos { color: var(--text-dim); font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .engine-group { color: var(--text-muted); font-size: 11px; }
+    .engine-pos { color: var(--text-muted); font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .warn-banner {
       margin-top: 10px; padding: 8px 10px; border-radius: 4px;
       background: rgba(217, 161, 59, .12); border: 1px solid var(--warn);
@@ -477,14 +486,14 @@
       .fx-section.nav-flash { animation: none; }
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
-    .fx-title { font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 11px; }
+    .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
     /* The summary is the header's flex-grow middle slot in BOTH states —
        visibility (not display) hides its text when expanded, so the slot keeps
        filling and the ON/OFF pill stays anchored hard right regardless of
        whether a summary exists or how long it is. */
     .fx-summary {
       flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-      color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
+      color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums;
       visibility: hidden;
     }
     .fx-section.collapsed .fx-summary { visibility: visible; }
