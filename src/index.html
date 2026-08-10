@@ -11,8 +11,8 @@
       --bg-panel: #232326;
       --line: #2e2e33;
       --text: #e8e8ea;
-      --text-muted: #77777d;
-      --text-dim: #4c4c52;
+      --text-muted: #8b8b93;
+      --text-dim: #5e5e66;
       --accent: #ff3b30;      /* panel LED red */
       --amber: #ffb020;
       --warn: #d9a13b;
@@ -134,7 +134,7 @@
     #sounds-button {
       margin-left: auto;
       background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 10px;
-      color: #26262a; font: inherit; font-size: 11px;
+      color: #26262a; font: inherit; font-size: 12px;
       padding: 1px 9px; cursor: pointer;
     }
     #sounds-button:hover, #sounds-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
@@ -164,7 +164,7 @@
     }
     #sounds-panel .sounds-foot {
       margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
-      font-size: 11px; color: var(--text-dim);
+      font-size: 12px; color: var(--text-dim);
     }
 
     /* Main area: library left, detail right */
@@ -205,11 +205,11 @@
     .patch-row.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
     .patch-num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
     .patch-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .patch-sound { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .patch-sound { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .badge {
       font-size: 10px; font-weight: 700; letter-spacing: .06em;
-      padding: 2px 7px; border-radius: 9px; white-space: nowrap;
+      padding: 1px 6px; border-radius: 7px; white-space: nowrap;
     }
     .badge-modeled { color: var(--modeled); border: 1px solid var(--modeled); }
     .badge-sampled { color: var(--sampled); border: 1px solid var(--sampled); }
@@ -219,9 +219,9 @@
     /* TYPE SCALE below the panel — four tiers, nothing else:
          hero      17px/700  --text          detail sound name
          primary   13px/600  --text          item names, param rows
-         metadata  11px/400  --text-muted    origin, sound, position, counts,
+         metadata  12px/400  --text-muted    origin, sound, position, counts,
                                              summaries — every secondary fact
-         header    11px/700  .12em caps      region/section/FX titles
+         header    12px/700  .12em caps      region/section/FX titles
          pill      10px/700                  badges and state chips
        Add a role to a tier rather than inventing a new size. */
 
@@ -232,7 +232,7 @@
        selected preset) so the instrument↔computer relationship stays on
        screen, and transfer always has a visible target. */
     .region-head {
-      font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted); padding: 8px 14px 4px;
     }
     .region-head .asof {
@@ -285,9 +285,9 @@
     #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; }
     #library-body .lib-bar { flex: none; }
     #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
-    .lib-count { flex: 1; color: var(--text-muted); font-size: 11px; }
+    .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
     .lib-reveal {
-      font: inherit; font-size: 11px; color: var(--text-muted);
+      font: inherit; font-size: 12px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
       padding: 2px 8px; cursor: pointer; flex: none;
     }
@@ -295,7 +295,7 @@
     .lib-bar { display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px; }
     .lib-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; flex: none; }
     .seg-btn {
-      font: inherit; font-size: 11px; font-weight: 600;
+      font: inherit; font-size: 12px; font-weight: 600;
       background: transparent; border: none; color: var(--text-muted);
       padding: 3px 10px; cursor: pointer;
     }
@@ -345,12 +345,12 @@
        e.g. "Venice Upright U1 Felt", which crowded a side-by-side layout). */
     .lib-row.lib-patch {
       grid-template-columns: 1fr auto;
-      row-gap: 1px; align-items: baseline;
+      row-gap: 3px; align-items: baseline;
     }
     .lib-row.lib-patch .patch-sound,
     .lib-row.lib-patch .lib-badges { text-align: right; }
     .lib-origin {
-      font-size: 11px; color: var(--text-muted);
+      font-size: 12px; color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     /* When the user has dragged the split, app.js sets --lib-split (px) on
@@ -362,7 +362,7 @@
       padding: 4px 2px 8px; color: var(--text-muted);
     }
     .lib-back {
-      font: inherit; font-size: 11px; color: var(--text-muted);
+      font: inherit; font-size: 12px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
       padding: 2px 8px; cursor: pointer;
     }
@@ -403,7 +403,7 @@
     }
     .slot-assign:hover { background: rgba(255, 176, 32, .15); }
     .slot-clear {
-      font: inherit; font-size: 11px; color: var(--text-dim);
+      font: inherit; font-size: 12px; color: var(--text-dim);
       background: transparent; border: none; padding: 2px 6px; cursor: pointer;
     }
     .slot-clear:hover { color: var(--text); }
@@ -420,7 +420,7 @@
     #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
     .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
     .col-title {
-      font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 10px;
       /* Centered over each column's own width (bank tabs stay left-aligned —
          they're a tab strip, not a column header). */
@@ -431,8 +431,8 @@
     .engine-sound { font-size: 17px; font-weight: 700; }
     .engine-sound .badge { vertical-align: 3px; margin-left: 6px; }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-    .engine-group { color: var(--text-muted); font-size: 11px; }
-    .engine-pos { color: var(--text-muted); font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .engine-group { color: var(--text-muted); font-size: 12px; }
+    .engine-pos { color: var(--text-muted); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .warn-banner {
       margin-top: 10px; padding: 8px 10px; border-radius: 4px;
       background: rgba(217, 161, 59, .12); border: 1px solid var(--warn);
@@ -486,14 +486,14 @@
       .fx-section.nav-flash { animation: none; }
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
-    .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
+    .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
     /* The summary is the header's flex-grow middle slot in BOTH states —
        visibility (not display) hides its text when expanded, so the slot keeps
        filling and the ON/OFF pill stays anchored hard right regardless of
        whether a summary exists or how long it is. */
     .fx-summary {
       flex: 1; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-      color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums;
+      color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums;
       visibility: hidden;
     }
     .fx-section.collapsed .fx-summary { visibility: visible; }
@@ -599,7 +599,7 @@
     .param-seg { grid-column: 2; display: flex; gap: 2px; align-items: center; pointer-events: none; }
     .param-seg .seg { flex: 1; max-width: 14px; height: 6px; border-radius: 2px; background: var(--bar); }
     .param-seg .seg.cur { background: var(--bar-fill-changed); }
-    .device-note { color: var(--text-muted); font-size: 11px; flex: none; }
+    .device-note { color: var(--text-muted); font-size: 12px; flex: none; }
     /* In enum rows the note overlays below the control (tooltip-like) so it
        never squeezes the select or shifts the row. */
     .param-enum .param-value { position: relative; }
