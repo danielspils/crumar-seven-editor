@@ -23,12 +23,6 @@
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  const PENCIL =
-    '<span class="row-edit" data-edit role="button" aria-label="Rename" title="Rename">' +
-    '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
-    '<path d="M11.4 1.9a1.3 1.3 0 0 1 1.8 0l.9.9a1.3 1.3 0 0 1 0 1.8l-7.3 7.3-3 .8.8-3z" ' +
-    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>';
-
   const rowKey = (e) => `${e.file} ${e.patchIndex}`;
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -84,7 +78,7 @@
     }
     return (
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-      `<span class="name-line"><span class="patch-name">${esc(entry.name)}</span>${PENCIL}</span>` +
+      `<span class="patch-name">${esc(entry.name)}</span>` +
       `<span class="lib-badges">${badge(entry)}</span>` +
       `<span class="lib-origin">${esc(originLine(entry))}</span>` +
       `<span class="patch-sound">${esc(entry.soundName)}</span>` +
@@ -130,7 +124,7 @@
         const label = `${filled} patch${filled === 1 ? '' : 'es'}` + (filled < 8 ? ` · ${8 - filled} empty` : '');
         return (
           `<button type="button" class="lib-row lib-setlist" data-setlist="${i}">` +
-          `<span class="name-line"><span class="patch-name">${esc(s.name)}</span>${PENCIL}</span>` +
+          `<span class="patch-name">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
           `<span class="lib-setlist-chev">›</span>` +
           `</button>`
@@ -260,22 +254,32 @@
       }
     }
 
+    // Double-click a name to rename. Tracked by row key with a timer, not via
+    // the dblclick event: the first click re-renders the list, so the second
+    // click would land on a fresh node and never pair up.
+    let lastNameClick = { key: null, t: 0 };
+
     el.addEventListener('click', (e) => {
-      const pencil = e.target.closest('[data-edit]');
-      if (pencil) {
-        e.preventDefault();
-        e.stopPropagation();
-        const setlistRow = pencil.closest('[data-setlist]');
-        if (setlistRow) {
-          state.renamingSetlist = Number(setlistRow.dataset.setlist);
-        } else {
-          const row = pencil.closest('[data-file]');
-          const entry = row && entryAt(row);
-          if (entry) state.renaming = rowKey(entry);
+      const nameEl = e.target.closest('.patch-name');
+      if (nameEl) {
+        const setlistRow = nameEl.closest('[data-setlist]');
+        const patchRow = nameEl.closest('[data-file]');
+        const key = setlistRow ? `s${setlistRow.dataset.setlist}`
+          : patchRow ? `p${patchRow.dataset.file}:${patchRow.dataset.pi}` : null;
+        const now = Date.now();
+        if (key && lastNameClick.key === key && now - lastNameClick.t < 450) {
+          lastNameClick = { key: null, t: 0 };
+          if (setlistRow) state.renamingSetlist = Number(setlistRow.dataset.setlist);
+          else {
+            const entry = entryAt(patchRow);
+            if (entry) state.renaming = rowKey(entry);
+          }
+          render();
+          return;
         }
-        render();
-        return;
+        lastNameClick = { key, t: now };
       }
+
       const seg = e.target.closest('.seg-btn');
       if (seg) {
         state.tab = seg.dataset.tab;

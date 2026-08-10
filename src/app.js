@@ -282,7 +282,15 @@
     const sel = deviceSel && deviceSel.bank === bankIndex ? deviceSel.preset : -1;
     listEl.innerHTML = bank.patches
       .map((p, i) =>
-        p
+        p && i === bankRenaming
+          // The input carries the FULL stored name, not the display form the
+          // row strips the slot prefix from — you edit what actually exists.
+          ? `<div class="patch-row selected" data-index="${i}">` +
+            `<span class="patch-num">${i + 1}</span>` +
+            `<input class="lib-rename-input bank-rename" type="text" spellcheck="false" ` +
+            `value="${String(libEntries.find((x) => x.file === p.file)?.name ?? p.name).replace(/"/g, '&quot;')}">` +
+            `</div>`
+          : p
           ? R.renderPatchRow(p, i, sel)
           : `<button class="patch-row empty-slot${i === sel ? ' selected' : ''}" data-index="${i}" type="button">` +
             `<span class="patch-num">${i + 1}</span>` +
@@ -411,6 +419,8 @@
   function renderAll() {
     renderTabs();
     renderList();
+    const renameField = listEl.querySelector('.bank-rename');
+    if (renameField) { renameField.focus(); renameField.select(); }
     renderDetail();
     updatePanelLeds();
     updateKnobLit();
@@ -428,28 +438,54 @@
     renderAll();
   });
 
+  // Same paired-click rename as the library (see library-view.js for why a
+  // dblclick listener can't work here).
+  let lastSlotClick = { key: null, t: 0 };
+
   listEl.addEventListener('click', (e) => {
     const row = e.target.closest('.patch-row');
     if (!row) return;
+    if (e.target.closest('.patch-name') && banks[bankIndex].patches[Number(row.dataset.index)]) {
+      const key = `${bankIndex}:${row.dataset.index}`;
+      const now = Date.now();
+      if (lastSlotClick.key === key && now - lastSlotClick.t < 450) {
+        lastSlotClick = { key: null, t: 0 };
+        bankRenaming = Number(row.dataset.index);
+        renderAll();
+        return;
+      }
+      lastSlotClick = { key, t: now };
+    }
     // A slot's name IS its backup patch's name — the Seven stores none. The
     // pencil therefore renames that library file; both regions then show the
     // new name, because both read the same file.
-    if (e.target.closest('[data-slot-edit]')) {
-      e.stopPropagation();
-      const patch = banks[bankIndex].patches[Number(row.dataset.index)];
-      const entry = patch && libEntries.find((x) => x.file === patch.file);
-      if (entry) {
-        setLibraryOpen(true, { scroll: true });
-        libView.select(entry);
-        libSelected = entry;
-        libView.beginRename(entry);
-      }
-      return;
-    }
+
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     lastTouched = 'device';
     resetCollapsed();
     renderAll();
+  });
+
+  async function commitBankRename(value) {
+    const i = bankRenaming;
+    bankRenaming = null;
+    const patch = banks[bankIndex].patches[i];
+    const entry = patch && libEntries.find((x) => x.file === patch.file);
+    const name = String(value).trim();
+    if (!entry || !name || name === entry.name) { renderAll(); return; }
+    await window.sevenAPI.library.rename(entry.file, entry.patchIndex, name);
+    await refreshLibrary();
+  }
+
+  listEl.addEventListener('keydown', (e) => {
+    if (!e.target.classList.contains('bank-rename')) return;
+    if (e.key === 'Enter') commitBankRename(e.target.value);
+    else if (e.key === 'Escape') { bankRenaming = null; renderAll(); }
+  });
+  listEl.addEventListener('focusout', (e) => {
+    if (e.target.classList.contains('bank-rename') && bankRenaming != null) {
+      commitBankRename(e.target.value);
+    }
   });
 
   // Transient inline note next to a device-state control that can't act yet.
@@ -535,6 +571,7 @@
   // the bank patch. Bank/preset clicks clear it.
   let libSelected = null;
   let libEntries = [];
+  let bankRenaming = null; // preset index being renamed in the bank list
 
   const libToRendererPatch = (entry) => ({
     name: entry.name,

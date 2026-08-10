@@ -397,19 +397,6 @@
     }
     .lib-row.lib-patch .patch-sound,
     .lib-row.lib-patch .lib-badges { text-align: right; }
-    /* Rename affordance: quiet until the row is hovered or selected, so a
-       list at rest stays a list. */
-    .name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
-    .name-line .patch-name { min-width: 0; }
-    .row-edit {
-      flex: none; display: inline-flex; align-items: center; justify-content: center;
-      width: 20px; height: 20px; border-radius: 4px;
-      color: var(--text-muted); opacity: 0; cursor: pointer;
-      transition: opacity .12s, color .12s, background .12s;
-    }
-    .lib-row:hover .row-edit, .lib-row.selected .row-edit { opacity: 1; }
-    .patch-row:hover .row-edit, .patch-row.selected .row-edit { opacity: 1; }
-    .row-edit:hover { color: var(--text); background: var(--shade-hard); }
     .lib-origin {
       font-size: 12px; color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
