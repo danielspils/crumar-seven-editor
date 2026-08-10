@@ -381,7 +381,7 @@
 
   <g id="clavi-group">
     <rect class="btn" x="596" y="108" width="46" height="34"/>
-    <text class="lbl-alt lbl-alt-lg" x="673" y="164">CLAVI TABS</text>
+    <text class="lbl-alt lbl-alt-lg" x="673" y="177">CLAVI TABS</text>
     <path id="clavi-group-line" class="clavi-line" d="M619 142 V169 Q619 172 622 172 H628 M718 172 H1272"/>
     <text class="lbl-alt" x="836" y="168">BRILLIANT</text>
     <text class="lbl-alt" x="920" y="168">TREBLE</text>
