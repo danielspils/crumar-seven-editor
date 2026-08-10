@@ -89,44 +89,51 @@
     #panel-strip .knob-lit .knob-glass { filter: drop-shadow(0 0 6px var(--k-shadow, rgba(255, 157, 46, 0.45))); }
     #panel-strip .nav-ring .knob-ring { stroke: var(--accent); stroke-width: 3; }
 
-    /* 2. Connection row */
+    /* 2. Connection row — styled after the hardware's brushed-aluminum
+       divider strip, with the red-felt keybed line as its bottom edge. */
     #connection-row {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 16px;
-      background: var(--bg-raised); border-bottom: 1px solid var(--line);
-      color: var(--text-muted); font-size: 12px;
+      background:
+        repeating-linear-gradient(90deg,
+          rgba(255, 255, 255, 0.05) 0 1px, rgba(0, 0, 0, 0.035) 1px 3px),
+        linear-gradient(180deg,
+          #c9c9ce 0%, #ababb1 42%, #bcbcc2 55%, #8b8b92 100%);
+      border-bottom: 4px solid #8f2420; /* the felt */
+      color: #26262a; font-size: 12px;
     }
+    #connection-row #connection-text { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
     #connection-row .conn-dot {
       width: 8px; height: 8px; border-radius: 50%;
-      background: var(--text-dim);
+      background: #66666d;
     }
-    #connection-row.connected .conn-dot { background: #4caf6d; }
+    #connection-row.connected .conn-dot { background: #2e7d43; }
     #connection-row.connecting .conn-dot { background: var(--accent); }
-    #connection-row.failed .conn-dot { background: #d9534f; }
+    #connection-row.failed .conn-dot { background: #a8221c; }
     #conn-button {
       margin-left: auto;
-      background: none; border: 1px solid var(--line); border-radius: 4px;
-      color: var(--text-muted); font: inherit; font-size: 12px;
+      background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 4px;
+      color: #26262a; font: inherit; font-size: 12px;
       padding: 2px 10px; cursor: pointer;
     }
-    #conn-button:hover { color: var(--text); border-color: var(--text-dim); }
+    #conn-button:hover { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #conn-button:disabled { opacity: 0.5; cursor: default; }
+    /* Backup: the row's one call to action wears the felt red. */
     #backup-button {
       margin-left: auto;
-      background: none; border: 1px solid var(--accent); border-radius: 4px;
-      color: var(--accent); font: inherit; font-size: 12px;
+      background: none; border: 1px solid #8f2420; border-radius: 4px;
+      color: #8f2420; font: inherit; font-size: 12px; font-weight: 600;
       padding: 2px 10px; cursor: pointer;
     }
-    #backup-button:hover { filter: brightness(1.2); }
+    #backup-button:hover { color: #6e1a17; border-color: #6e1a17; }
     #backup-button + #conn-button { margin-left: 0; }
     #sounds-button {
       margin-left: auto;
-      background: none; border: 1px solid var(--line); border-radius: 10px;
-      color: var(--text-muted); font: inherit; font-size: 11px;
+      background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 10px;
+      color: #26262a; font: inherit; font-size: 11px;
       padding: 1px 9px; cursor: pointer;
     }
-    #sounds-button:hover { color: var(--text); border-color: var(--text-dim); }
-    #sounds-button.open { color: var(--text); border-color: var(--text-dim); }
+    #sounds-button:hover, #sounds-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #sounds-button + #backup-button, #sounds-button + #conn-button { margin-left: 0; }
     #connection-row { position: relative; }
     #sounds-panel {
