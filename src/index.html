@@ -29,6 +29,8 @@
       --shade-hard: rgba(255, 255, 255, .08);
       --card-border: transparent;
       --range-fill: #6f6f78;
+      --d6-frame-bg: #101012;
+      --d6-frame-border: #000;
     }
     /* Antiqued white: warm paper, not grey. Accents darken rather than
        change hue, so the two themes stay recognisably the same UI. */
@@ -53,6 +55,8 @@
       --shade-hard: rgba(0, 0, 0, .075);
       --card-border: #ddd5c4;
       --range-fill: #b3a68c;
+      --d6-frame-bg: transparent;
+      --d6-frame-border: transparent;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* The window itself never scrolls: the panel strip is a fixed reference at
@@ -570,7 +574,7 @@
     .param-switch .param-pill-cell { grid-column: 2; justify-self: start; }
     .d6-frame {
       display: inline-flex; pointer-events: none;
-      background: #101012; border: 1px solid #000; border-radius: 3px;
+      background: var(--d6-frame-bg); border: 1px solid var(--d6-frame-border); border-radius: 3px;
       padding: 3px;
     }
     .param-switch:has(+ .param-switch) .d6-frame {
