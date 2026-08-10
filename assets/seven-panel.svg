@@ -241,7 +241,14 @@
     <rect class="kbd-icon" x="606.5" y="30" width="25" height="15"/>
     <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
     <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
-    <rect class="btn" id="btn-transpose" x="596" y="52" width="46" height="34"/>
+    <rect class="btn-bezel" x="593" y="56" width="52" height="26" rx="3"/>
+    <rect class="btn btn-face" id="btn-transpose" x="596" y="59" width="46" height="20"/>
+    <polygon class="btn-facet-t" points="596,65 642,65 639,68 599,68"/>
+    <polygon class="btn-facet-l" points="596,65 599,68 599,76 596,79"/>
+    <polygon class="btn-facet-r" points="642,65 642,79 639,76 639,68"/>
+    <polygon class="btn-facet-b" points="596,79 599,76 639,76 642,79"/>
+    <rect class="btn-plateau" x="599" y="68" width="40" height="8"/>
+    <path class="btn-edge" d="M596 79 L642 79 L642 59"/>
     <circle class="led" id="led-transpose" cx="619" cy="99" r="4"/>
   </g>
 
@@ -385,9 +392,16 @@
   </g>
 
   <g id="clavi-group">
-    <rect class="btn" x="596" y="108" width="46" height="34"/>
+    <rect class="btn-bezel" x="593" y="112" width="52" height="26" rx="3"/>
+    <rect class="btn btn-face" x="596" y="115" width="46" height="20"/>
+    <polygon class="btn-facet-t" points="596,121 642,121 639,124 599,124"/>
+    <polygon class="btn-facet-l" points="596,121 599,124 599,132 596,135"/>
+    <polygon class="btn-facet-r" points="642,121 642,135 639,132 639,124"/>
+    <polygon class="btn-facet-b" points="596,135 599,132 639,132 642,135"/>
+    <rect class="btn-plateau" x="599" y="124" width="40" height="8"/>
+    <path class="btn-edge" d="M596 135 L642 135 L642 115"/>
     <text class="lbl-alt lbl-alt-lg" x="673" y="177">CLAVI TABS</text>
-    <path id="clavi-group-line" class="clavi-line" d="M619 142 V169 Q619 172 622 172 H628 M718 172 H1200"/>
+    <path id="clavi-group-line" class="clavi-line" d="M619 138 V169 Q619 172 622 172 H628 M718 172 H1200"/>
     <text class="lbl-alt" x="859" y="168">BRILLIANT</text>
     <text class="lbl-alt" x="920" y="168">TREBLE</text>
     <text class="lbl-alt" x="981" y="168">MEDIUM</text>
@@ -400,7 +414,14 @@
   <g id="sec-fx1">
     <rect x="1347" y="21" width="265" height="159" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1396" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx1-select" x="1372" y="72" width="46" height="34"/>
+    <rect class="btn-bezel" x="1369" y="76" width="52" height="26" rx="3"/>
+    <rect class="btn btn-face" id="btn-fx1-select" x="1372" y="79" width="46" height="20"/>
+    <polygon class="btn-facet-t" points="1372,85 1418,85 1415,88 1375,88"/>
+    <polygon class="btn-facet-l" points="1372,85 1375,88 1375,96 1372,99"/>
+    <polygon class="btn-facet-r" points="1418,85 1418,99 1415,96 1415,88"/>
+    <polygon class="btn-facet-b" points="1372,99 1375,96 1415,96 1418,99"/>
+    <rect class="btn-plateau" x="1375" y="88" width="40" height="8"/>
+    <path class="btn-edge" d="M1372 99 L1418 99 L1418 79"/>
     <circle class="led on" id="led-fx1-0" cx="1437" cy="72" r="4.5"/>
     <text class="lbl-sm" x="1456" y="76" text-anchor="start">TREM</text>
     <circle class="led" id="led-fx1-1" cx="1437" cy="94" r="4.5"/>
@@ -433,7 +454,14 @@
   <g id="sec-fx2">
     <rect x="1740" y="21" width="250" height="159" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1774" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx2-select" x="1750" y="72" width="46" height="34"/>
+    <rect class="btn-bezel" x="1747" y="76" width="52" height="26" rx="3"/>
+    <rect class="btn btn-face" id="btn-fx2-select" x="1750" y="79" width="46" height="20"/>
+    <polygon class="btn-facet-t" points="1750,85 1796,85 1793,88 1753,88"/>
+    <polygon class="btn-facet-l" points="1750,85 1753,88 1753,96 1750,99"/>
+    <polygon class="btn-facet-r" points="1796,85 1796,99 1793,96 1793,88"/>
+    <polygon class="btn-facet-b" points="1750,99 1753,96 1793,96 1796,99"/>
+    <rect class="btn-plateau" x="1753" y="88" width="40" height="8"/>
+    <path class="btn-edge" d="M1750 99 L1796 99 L1796 79"/>
     <circle class="led on" id="led-fx2-0" cx="1815" cy="72" r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1834" y="76" text-anchor="start">CHORUS</text>
     <circle class="led" id="led-fx2-1" cx="1815" cy="94" r="4.5"/>
