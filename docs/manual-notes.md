@@ -102,10 +102,11 @@ hold. Consistent with the edit-buffer model in protocol.md.
   are user-overwritable; bank 1 is read-only.
 - Sampled sets may support the **mod wheel** (LFO rate/depth params) — a
   possible lead on the unexplained doubled `B0 01` closing every recall burst.
-- **Two USB ports, different jobs.** The computer-facing device port is
-  **USB Type-B** (the tall squarish "printer" connector) — so a modern Mac
-  needs a C-to-B cable, an older one A-to-B. That is the port this app uses.
-  Confirmed by the instrument's owner, 2026-08-10; the manual doesn't say.
+- **Two USB ports, different jobs.** The computer-facing port is silkscreened
+  **USB MIDI IN-OUT** and is a **USB Type-B** socket (the tall squarish
+  "printer" connector) — so a modern Mac needs a C-to-B cable, an older one
+  A-to-B. That is the port this app uses. Confirmed from a photo of the rear
+  panel, 2026-08-10; the manual doesn't say.
 - USB host port (SYSTEM USB) also accepts class-compliant USB-MIDI devices as
   INPUTS to the Seven (controllers, pedalboards).
 - Easter eggs: music demo = hold CLAVI TABS + push VOLUME (manual p.44);
