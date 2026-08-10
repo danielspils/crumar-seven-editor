@@ -424,9 +424,12 @@
     }
     .lib-back:hover { color: var(--text); border-color: var(--text-muted); }
     .lib-setlist-name { font-weight: 600; color: var(--text); }
+    /* Same hierarchy as a library row — name + badge, then provenance +
+       sound — with the slot controls in their own column so both text rows
+       stop short of the ✕. */
     .lib-slot {
-      display: grid; grid-template-columns: 24px 1fr 1fr auto auto;
-      gap: 10px; align-items: center;
+      display: grid; grid-template-columns: 24px 1fr auto auto;
+      column-gap: 10px; row-gap: 3px; align-items: baseline;
       width: 100%; padding: 7px 6px;
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left;
@@ -471,10 +474,31 @@
       background: transparent; border: none; padding: 2px 6px; cursor: pointer;
     }
     .slot-clear:hover { color: var(--text); }
+    /* Slot change feedback: the row settles into its new state rather than
+       snapping, so a clear reads as a removal and an undo as a return. */
+    @keyframes slot-cleared {
+      from { background: var(--shade-hard); opacity: .35; transform: translateY(-3px); }
+      to { background: transparent; opacity: 1; transform: none; }
+    }
+    @keyframes slot-restored {
+      from { background: rgba(63, 185, 80, .16); opacity: .35; transform: translateY(4px); }
+      to { background: transparent; opacity: 1; transform: none; }
+    }
+    .lib-slot.slot-cleared { animation: slot-cleared 340ms ease-in-out; }
+    .lib-slot.slot-restored { animation: slot-restored 340ms ease-in-out; }
     /* Drop feedback while dragging a patch or a slot over a target slot. */
     .lib-slot.drop-target { outline: 1px dashed var(--amber); outline-offset: -2px; background: rgba(255, 176, 32, .06); }
     /* Slot rows grew controls; make room without breaking the grid. */
-    .lib-slot { grid-template-columns: 24px 1fr 1fr auto auto auto auto; }
+    .lib-slot .slot-num { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+    .lib-slot .patch-name, .lib-slot .slot-text { grid-column: 2; grid-row: 1; }
+    .lib-slot .lib-badges { grid-column: 3; grid-row: 1; text-align: right; }
+    .lib-slot .lib-origin { grid-column: 2; grid-row: 2; }
+    .lib-slot .patch-sound { grid-column: 3; grid-row: 2; text-align: right; }
+    .lib-slot .slot-controls {
+      grid-column: 4; grid-row: 1 / span 2; align-self: center;
+      display: flex; align-items: center; gap: 2px; justify-content: flex-end;
+    }
+    .slot-undo { grid-column: auto; }
 
     /* 4. Detail */
     /* min-width 0 lets the column shrink instead of overflowing #main
@@ -548,6 +572,7 @@
     @media (prefers-reduced-motion: reduce) {
       .fx-body, .fx-body-inner, .fx-chevron { transition: none !important; }
       .fx-section.nav-flash { animation: none; }
+      .lib-slot.slot-cleared, .lib-slot.slot-restored { animation: none; }
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }

@@ -171,15 +171,19 @@
           '</svg></button>'
         : '';
 
+    const pulse = (i) =>
+      state.slotPulse && state.slotPulse.slot === i ? ` slot-${state.slotPulse.kind}` : '';
+
     const rows = setlist.slots
       .map((file, i) => {
         const num = `<span class="slot-num">${i + 1}</span>`;
         if (!file) {
           return (
-            `<div class="lib-slot lib-slot-empty" data-slot="${i}">` +
-            `${num}<span class="name-cell"><span class="slot-text">Empty</span>${
-              clearedEntry(i) ? `<span class="lib-origin">${esc(originLine(clearedEntry(i)))}</span>` : ''
-            }</span>${assignBtn(i)}${undoBtn(i)}</div>`
+            `<div class="lib-slot lib-slot-empty${pulse(i)}" data-slot="${i}">` +
+            `${num}<span class="slot-text">Empty</span><span class="lib-badges"></span>` +
+            `<span class="lib-origin">${clearedEntry(i) ? esc(originLine(clearedEntry(i))) : ''}</span>` +
+            `<span class="patch-sound"></span>` +
+            `<span class="slot-controls">${assignBtn(i)}${undoBtn(i)}</span></div>`
           );
         }
         const entry = byFile.get(file);
@@ -187,19 +191,23 @@
           return (
             `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Referenced file is not in the library folder">` +
             `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
-            `<span class="badge badge-warn">⚠</span>${assignBtn(i)}${clearBtn(i)}</div>`
+            `<span class="lib-badges"><span class="badge badge-warn">⚠</span></span>` +
+            `<span class="lib-origin"></span><span class="patch-sound"></span>` +
+            `<span class="slot-controls">${assignBtn(i)}${clearBtn(i)}</span></div>`
           );
         }
         const selected = state.selected === rowKey(entry);
         return (
-          `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-          `${num}<span class="name-cell"><span class="patch-name">${esc(entry.name)}</span><span class="lib-origin">${esc(originLine(entry))}</span></span>` +
+          `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
+          `${num}<span class="patch-name">${esc(entry.name)}</span>` +
+          `<span class="lib-badges">${badge(entry)}</span>` +
+          `<span class="lib-origin">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}</span>` +
-          badge(entry) +
-          `${assignBtn(i)}${clearBtn(i)}</div>`
+          `<span class="slot-controls">${assignBtn(i)}${clearBtn(i)}</span></div>`
         );
       })
       .join('');
+    state.slotPulse = null; // consumed
     return (
       `<div class="lib-setlist-head">` +
       `<button type="button" class="lib-back">‹ Setlists</button>` +
@@ -238,6 +246,7 @@
       renamingSetlist: null,
       creatingSetlist: false,
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
+      slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
     };
     let data = { patches: [], setlists: [] };
 
@@ -336,6 +345,7 @@
       if (undo) {
         const u = state.lastCleared;
         state.lastCleared = null;
+        if (u) state.slotPulse = { slot: u.slot, kind: 'restored' };
         if (u && on.assignSlot) on.assignSlot(u.setlist, u.slot, u.file);
         return;
       }
@@ -348,6 +358,7 @@
         state.lastCleared = setlist
           ? { setlist: state.setlistIndex, slot, file: setlist.slots[slot] }
           : null;
+        state.slotPulse = { slot, kind: 'cleared' };
         if (on.clearSlot) on.clearSlot(state.setlistIndex, slot);
         return;
       }
