@@ -79,6 +79,7 @@
     .lbl-lg     { font-size: 18px; }
     .lbl-preset { font-size: 15px; }
     .lbl-num    { font-size: 12px; }
+    .lbl-bank-num { font-size: 14px; fill: #e8e8ea; }
     .clavi-line { stroke: #d9c24a; stroke-width: 1; fill: none; }
     /* Clavi tabs only act on the modeled Clavi engine (pno_zd6); the app dims
        the whole group when any other sound is selected. */
@@ -250,14 +251,14 @@
     <path class="btn-edge" d="M674 144 L726 144 L726 60"/>
     <rect class="btn-hit" data-hit="bank" x="670" y="56" width="60" height="92" role="button" aria-label="Cycle preset bank"/>
     <path d="M748 51 L748 44 L802 44" fill="none" stroke="#c8c8cc" stroke-width="1"/>
-    <circle class="led amber on" id="led-bank-1" cx="748" cy="56" r="5"/>
-    <text class="lbl-sm" x="766" y="60" text-anchor="start">1</text>
-    <circle class="led amber"    id="led-bank-2" cx="748" cy="78" r="5"/>
-    <text class="lbl-sm" x="766" y="82" text-anchor="start">2</text>
-    <circle class="led amber"    id="led-bank-3" cx="748" cy="100" r="5"/>
-    <text class="lbl-sm" x="766" y="104" text-anchor="start">3</text>
-    <circle class="led amber"    id="led-bank-4" cx="748" cy="122" r="5"/>
-    <text class="lbl-sm" x="766" y="126" text-anchor="start">4</text>
+    <circle class="led amber on" id="led-bank-1" cx="748" cy="64" r="5"/>
+    <text class="lbl-sm lbl-bank-num" x="768" y="69" text-anchor="start">1</text>
+    <circle class="led amber"    id="led-bank-2" cx="748" cy="88" r="5"/>
+    <text class="lbl-sm lbl-bank-num" x="768" y="93" text-anchor="start">2</text>
+    <circle class="led amber"    id="led-bank-3" cx="748" cy="112" r="5"/>
+    <text class="lbl-sm lbl-bank-num" x="768" y="117" text-anchor="start">3</text>
+    <circle class="led amber"    id="led-bank-4" cx="748" cy="136" r="5"/>
+    <text class="lbl-sm lbl-bank-num" x="768" y="141" text-anchor="start">4</text>
   </g>
 
   <g id="sec-presets">
