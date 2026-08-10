@@ -244,15 +244,15 @@
     <text class="lbl lbl-lg" x="700" y="30">BANK</text>
     <!-- Always unselected: a bank is always current, so there is no selection
          for the button itself to indicate — the bank LEDs carry that. -->
-    <rect class="btn-bezel" x="677" y="56" width="46" height="92" rx="3"/>
+    <rect class="btn-bezel" x="673" y="56" width="54" height="92" rx="3"/>
     <rect class="btn btn-face" id="btn-bank" x="681" y="60" width="38" height="84"/>
-    <polygon class="btn-facet-t" points="681,92 719,92 715,96 685,96"/>
-    <polygon class="btn-facet-l" points="681,92 685,96 685,140 681,144"/>
-    <polygon class="btn-facet-r" points="719,92 719,144 715,140 715,96"/>
-    <polygon class="btn-facet-b" points="681,144 685,140 715,140 719,144"/>
-    <rect class="btn-plateau" x="685" y="96" width="30" height="44"/>
-    <path class="btn-edge" d="M681 144 L719 144 L719 60"/>
-    <rect class="btn-hit" data-hit="bank" x="677" y="56" width="46" height="92" role="button" aria-label="Cycle preset bank"/>
+    <polygon class="btn-facet-t" points="677,92 723,92 719,96 681,96"/>
+    <polygon class="btn-facet-l" points="677,92 681,96 681,140 677,144"/>
+    <polygon class="btn-facet-r" points="723,92 723,144 719,140 719,96"/>
+    <polygon class="btn-facet-b" points="677,144 681,140 719,140 723,144"/>
+    <rect class="btn-plateau" x="681" y="96" width="38" height="44"/>
+    <path class="btn-edge" d="M677 144 L723 144 L723 60"/>
+    <rect class="btn-hit" data-hit="bank" x="673" y="56" width="54" height="92" role="button" aria-label="Cycle preset bank"/>
     <path d="M748 51 L748 44 L802 44" fill="none" stroke="#c8c8cc" stroke-width="1"/>
     <circle class="led amber on" id="led-bank-1" cx="748" cy="64" r="5"/>
     <text class="lbl-sm lbl-bank-num" x="768" y="69" text-anchor="start">1</text>
@@ -268,114 +268,114 @@
     <g id="preset-1">
       <text class="lbl-sm lbl-num" x="836" y="30">1</text>
       <text class="lbl lbl-preset" x="836" y="48">TINES</text>
-      <rect class="btn-bezel" x="813" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face on" x="817" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="817,92 855,92 851,96 821,96"/>
-      <polygon class="btn-facet-l" points="817,92 821,96 821,140 817,144"/>
-      <polygon class="btn-facet-r" points="855,92 855,144 851,140 851,96"/>
-      <polygon class="btn-facet-b" points="817,144 821,140 851,140 855,144"/>
-      <rect class="btn-plateau" x="821" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M817 144 L855 144 L855 60"/>
+      <rect class="btn-bezel" x="809" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face on" x="813" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="813,92 859,92 855,96 817,96"/>
+      <polygon class="btn-facet-l" points="813,92 817,96 817,140 813,144"/>
+      <polygon class="btn-facet-r" points="859,92 859,144 855,140 855,96"/>
+      <polygon class="btn-facet-b" points="813,144 817,140 855,140 859,144"/>
+      <rect class="btn-plateau" x="817" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M813 144 L859 144 L859 60"/>
       <circle class="led on" id="led-preset-1" cx="836" cy="76" r="5"/>
-      <rect class="btn-hit" x="813" y="56" width="46" height="92" role="button" aria-label="Select preset 1 (Tines)"/>
+      <rect class="btn-hit" x="809" y="56" width="54" height="92" role="button" aria-label="Select preset 1 (Tines)"/>
     </g>
     <g id="preset-2">
       <text class="lbl-sm lbl-num" x="900" y="30">2</text>
       <text class="lbl lbl-preset" x="900" y="48">REEDS</text>
-      <rect class="btn-bezel" x="877" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="881" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="881,92 919,92 915,96 885,96"/>
-      <polygon class="btn-facet-l" points="881,92 885,96 885,140 881,144"/>
-      <polygon class="btn-facet-r" points="919,92 919,144 915,140 915,96"/>
-      <polygon class="btn-facet-b" points="881,144 885,140 915,140 919,144"/>
-      <rect class="btn-plateau" x="885" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M881 144 L919 144 L919 60"/>
+      <rect class="btn-bezel" x="873" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="877" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="877,92 923,92 919,96 881,96"/>
+      <polygon class="btn-facet-l" points="877,92 881,96 881,140 877,144"/>
+      <polygon class="btn-facet-r" points="923,92 923,144 919,140 919,96"/>
+      <polygon class="btn-facet-b" points="877,144 881,140 919,140 923,144"/>
+      <rect class="btn-plateau" x="881" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M877 144 L923 144 L923 60"/>
       <circle class="led" id="led-preset-2" cx="900" cy="76" r="5"/>
-      <rect class="btn-hit" x="877" y="56" width="46" height="92" role="button" aria-label="Select preset 2 (Reeds)"/>
+      <rect class="btn-hit" x="873" y="56" width="54" height="92" role="button" aria-label="Select preset 2 (Reeds)"/>
     </g>
     <g id="preset-3">
       <text class="lbl-sm lbl-num" x="964" y="30">3</text>
       <text class="lbl lbl-preset" x="964" y="48">EGRAND</text>
-      <rect class="btn-bezel" x="941" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="945" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="945,92 983,92 979,96 949,96"/>
-      <polygon class="btn-facet-l" points="945,92 949,96 949,140 945,144"/>
-      <polygon class="btn-facet-r" points="983,92 983,144 979,140 979,96"/>
-      <polygon class="btn-facet-b" points="945,144 949,140 979,140 983,144"/>
-      <rect class="btn-plateau" x="949" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M945 144 L983 144 L983 60"/>
+      <rect class="btn-bezel" x="937" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="941" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="941,92 987,92 983,96 945,96"/>
+      <polygon class="btn-facet-l" points="941,92 945,96 945,140 941,144"/>
+      <polygon class="btn-facet-r" points="987,92 987,144 983,140 983,96"/>
+      <polygon class="btn-facet-b" points="941,144 945,140 983,140 987,144"/>
+      <rect class="btn-plateau" x="945" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M941 144 L987 144 L987 60"/>
       <circle class="led" id="led-preset-3" cx="964" cy="76" r="5"/>
-      <rect class="btn-hit" x="941" y="56" width="46" height="92" role="button" aria-label="Select preset 3 (EGrand)"/>
+      <rect class="btn-hit" x="937" y="56" width="54" height="92" role="button" aria-label="Select preset 3 (EGrand)"/>
     </g>
     <g id="preset-4">
       <text class="lbl-sm lbl-num" x="1028" y="30">4</text>
       <text class="lbl lbl-preset" x="1028" y="48">CLAVI</text>
-      <rect class="btn-bezel" x="1005" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1009" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="1009,92 1047,92 1043,96 1013,96"/>
-      <polygon class="btn-facet-l" points="1009,92 1013,96 1013,140 1009,144"/>
-      <polygon class="btn-facet-r" points="1047,92 1047,144 1043,140 1043,96"/>
-      <polygon class="btn-facet-b" points="1009,144 1013,140 1043,140 1047,144"/>
-      <rect class="btn-plateau" x="1013" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M1009 144 L1047 144 L1047 60"/>
+      <rect class="btn-bezel" x="1001" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1005" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="1005,92 1051,92 1047,96 1009,96"/>
+      <polygon class="btn-facet-l" points="1005,92 1009,96 1009,140 1005,144"/>
+      <polygon class="btn-facet-r" points="1051,92 1051,144 1047,140 1047,96"/>
+      <polygon class="btn-facet-b" points="1005,144 1009,140 1047,140 1051,144"/>
+      <rect class="btn-plateau" x="1009" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M1005 144 L1051 144 L1051 60"/>
       <circle class="led" id="led-preset-4" cx="1028" cy="76" r="5"/>
-      <rect class="btn-hit" x="1005" y="56" width="46" height="92" role="button" aria-label="Select preset 4 (Clavi)"/>
+      <rect class="btn-hit" x="1001" y="56" width="54" height="92" role="button" aria-label="Select preset 4 (Clavi)"/>
     </g>
     <g id="preset-5">
       <text class="lbl-sm lbl-num" x="1092" y="30">5</text>
       <text class="lbl lbl-preset" x="1092" y="48">DX EP</text>
-      <rect class="btn-bezel" x="1069" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1073" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="1073,92 1111,92 1107,96 1077,96"/>
-      <polygon class="btn-facet-l" points="1073,92 1077,96 1077,140 1073,144"/>
-      <polygon class="btn-facet-r" points="1111,92 1111,144 1107,140 1107,96"/>
-      <polygon class="btn-facet-b" points="1073,144 1077,140 1107,140 1111,144"/>
-      <rect class="btn-plateau" x="1077" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M1073 144 L1111 144 L1111 60"/>
+      <rect class="btn-bezel" x="1065" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1069" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="1069,92 1115,92 1111,96 1073,96"/>
+      <polygon class="btn-facet-l" points="1069,92 1073,96 1073,140 1069,144"/>
+      <polygon class="btn-facet-r" points="1115,92 1115,144 1111,140 1111,96"/>
+      <polygon class="btn-facet-b" points="1069,144 1073,140 1111,140 1115,144"/>
+      <rect class="btn-plateau" x="1073" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M1069 144 L1115 144 L1115 60"/>
       <circle class="led" id="led-preset-5" cx="1092" cy="76" r="5"/>
-      <rect class="btn-hit" x="1069" y="56" width="46" height="92" role="button" aria-label="Select preset 5 (DX EP)"/>
+      <rect class="btn-hit" x="1065" y="56" width="54" height="92" role="button" aria-label="Select preset 5 (DX EP)"/>
     </g>
     <g id="preset-6">
       <text class="lbl-sm lbl-num" x="1156" y="30">6</text>
       <text class="lbl lbl-preset" x="1156" y="48">MKS EP</text>
-      <rect class="btn-bezel" x="1133" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1137" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="1137,92 1175,92 1171,96 1141,96"/>
-      <polygon class="btn-facet-l" points="1137,92 1141,96 1141,140 1137,144"/>
-      <polygon class="btn-facet-r" points="1175,92 1175,144 1171,140 1171,96"/>
-      <polygon class="btn-facet-b" points="1137,144 1141,140 1171,140 1175,144"/>
-      <rect class="btn-plateau" x="1141" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M1137 144 L1175 144 L1175 60"/>
+      <rect class="btn-bezel" x="1129" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1133" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="1133,92 1179,92 1175,96 1137,96"/>
+      <polygon class="btn-facet-l" points="1133,92 1137,96 1137,140 1133,144"/>
+      <polygon class="btn-facet-r" points="1179,92 1179,144 1175,140 1175,96"/>
+      <polygon class="btn-facet-b" points="1133,144 1137,140 1175,140 1179,144"/>
+      <rect class="btn-plateau" x="1137" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M1133 144 L1179 144 L1179 60"/>
       <circle class="led" id="led-preset-6" cx="1156" cy="76" r="5"/>
-      <rect class="btn-hit" x="1133" y="56" width="46" height="92" role="button" aria-label="Select preset 6 (MKS EP)"/>
+      <rect class="btn-hit" x="1129" y="56" width="54" height="92" role="button" aria-label="Select preset 6 (MKS EP)"/>
     </g>
     <g id="preset-7">
       <text class="lbl-sm lbl-num" x="1220" y="30">7</text>
       <text class="lbl lbl-preset" x="1220" y="48">VIBES</text>
-      <rect class="btn-bezel" x="1197" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1201" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="1201,92 1239,92 1235,96 1205,96"/>
-      <polygon class="btn-facet-l" points="1201,92 1205,96 1205,140 1201,144"/>
-      <polygon class="btn-facet-r" points="1239,92 1239,144 1235,140 1235,96"/>
-      <polygon class="btn-facet-b" points="1201,144 1205,140 1235,140 1239,144"/>
-      <rect class="btn-plateau" x="1205" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M1201 144 L1239 144 L1239 60"/>
+      <rect class="btn-bezel" x="1193" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1197" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="1197,92 1243,92 1239,96 1201,96"/>
+      <polygon class="btn-facet-l" points="1197,92 1201,96 1201,140 1197,144"/>
+      <polygon class="btn-facet-r" points="1243,92 1243,144 1239,140 1239,96"/>
+      <polygon class="btn-facet-b" points="1197,144 1201,140 1239,140 1243,144"/>
+      <rect class="btn-plateau" x="1201" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M1197 144 L1243 144 L1243 60"/>
       <circle class="led" id="led-preset-7" cx="1220" cy="76" r="5"/>
-      <rect class="btn-hit" x="1197" y="56" width="46" height="92" role="button" aria-label="Select preset 7 (Vibes)"/>
+      <rect class="btn-hit" x="1193" y="56" width="54" height="92" role="button" aria-label="Select preset 7 (Vibes)"/>
     </g>
     <g id="preset-8">
       <text class="lbl-sm lbl-num" x="1284" y="30">8</text>
       <text class="lbl lbl-preset" x="1284" y="48">GRAND</text>
-      <rect class="btn-bezel" x="1261" y="56" width="46" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1265" y="60" width="38" height="84"/>
-      <polygon class="btn-facet-t" points="1265,92 1303,92 1299,96 1269,96"/>
-      <polygon class="btn-facet-l" points="1265,92 1269,96 1269,140 1265,144"/>
-      <polygon class="btn-facet-r" points="1303,92 1303,144 1299,140 1299,96"/>
-      <polygon class="btn-facet-b" points="1265,144 1269,140 1299,140 1303,144"/>
-      <rect class="btn-plateau" x="1269" y="96" width="30" height="44"/>
-      <path class="btn-edge" d="M1265 144 L1303 144 L1303 60"/>
+      <rect class="btn-bezel" x="1257" y="56" width="54" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1261" y="60" width="46" height="84"/>
+      <polygon class="btn-facet-t" points="1261,92 1307,92 1303,96 1265,96"/>
+      <polygon class="btn-facet-l" points="1261,92 1265,96 1265,140 1261,144"/>
+      <polygon class="btn-facet-r" points="1307,92 1307,144 1303,140 1303,96"/>
+      <polygon class="btn-facet-b" points="1261,144 1265,140 1303,140 1307,144"/>
+      <rect class="btn-plateau" x="1265" y="96" width="38" height="44"/>
+      <path class="btn-edge" d="M1261 144 L1307 144 L1307 60"/>
       <circle class="led" id="led-preset-8" cx="1284" cy="76" r="5"/>
-      <rect class="btn-hit" x="1261" y="56" width="46" height="92" role="button" aria-label="Select preset 8 (Grand)"/>
+      <rect class="btn-hit" x="1257" y="56" width="54" height="92" role="button" aria-label="Select preset 8 (Grand)"/>
     </g>
   </g>
 
