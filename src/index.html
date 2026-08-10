@@ -399,6 +399,10 @@
       grid-template-columns: 1fr auto;
       row-gap: 3px; align-items: baseline;
     }
+    /* Slot rows stack name over provenance in one cell (they keep the
+       single-line grid the slot controls need). */
+    .name-cell { display: flex; flex-direction: column; min-width: 0; }
+    .name-cell .patch-name { min-width: 0; }
     .lib-row.lib-patch .patch-sound,
     .lib-row.lib-patch .lib-badges { text-align: right; }
     .lib-origin {

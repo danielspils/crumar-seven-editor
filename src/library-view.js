@@ -178,7 +178,7 @@
         const selected = state.selected === rowKey(entry);
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-          `${num}${nameCell(entry)}` +
+          `${num}<span class="name-cell"><span class="patch-name">${esc(entry.name)}</span><span class="lib-origin">${esc(originLine(entry))}</span></span>` +
           `<span class="patch-sound">${esc(entry.soundName)}</span>` +
           badge(entry) +
           `${assignBtn(i)}${clearBtn(i)}</div>`
@@ -258,6 +258,7 @@
     // the dblclick event: the first click re-renders the list, so the second
     // click would land on a fresh node and never pair up.
     let lastNameClick = { key: null, t: 0 };
+    let openTimer = null;
 
     el.addEventListener('click', (e) => {
       const nameEl = e.target.closest('.patch-name');
@@ -268,6 +269,7 @@
           : patchRow ? `p${patchRow.dataset.file}:${patchRow.dataset.pi}` : null;
         const now = Date.now();
         if (key && lastNameClick.key === key && now - lastNameClick.t < 450) {
+          clearTimeout(openTimer);
           lastNameClick = { key: null, t: 0 };
           if (setlistRow) state.renamingSetlist = Number(setlistRow.dataset.setlist);
           else {
@@ -278,6 +280,15 @@
           return;
         }
         lastNameClick = { key, t: now };
+        if (setlistRow && setlistRow.classList.contains('lib-setlist')) {
+          const index = Number(setlistRow.dataset.setlist);
+          clearTimeout(openTimer);
+          openTimer = setTimeout(() => {
+            state.setlistIndex = index;
+            render();
+          }, 260);
+          return;
+        }
       }
 
       const seg = e.target.closest('.seg-btn');
