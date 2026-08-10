@@ -238,7 +238,6 @@
 
   <g id="sec-bank">
     <text class="lbl lbl-lg" x="700" y="30">BANK</text>
-    <rect class="btn-bezel" x="676" y="48" width="48" height="68" rx="3"/>
     <!-- Always unselected: a bank is always current, so there is no selection
          for the button itself to indicate — the bank LEDs carry that. -->
     <rect class="btn-bezel" x="670" y="56" width="60" height="92" rx="3"/>
