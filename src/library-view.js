@@ -45,9 +45,6 @@
     return `Imported · ${entry.file}`;
   }
 
-  const nameCell = (entry) =>
-    `<span class="name-cell"><span class="patch-name">${esc(entry.name)}</span>` +
-    `<span class="lib-origin">${esc(originLine(entry))}</span></span>`;
 
   function badge(entry) {
     return (
@@ -71,18 +68,20 @@
     const selected = state.selected === rowKey(entry);
     if (state.renaming === rowKey(entry)) {
       return (
-        `<div class="lib-row selected lib-row-renaming" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
+        `<div class="lib-row lib-patch selected lib-row-renaming" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
         `<input class="lib-rename-input" type="text" value="${esc(entry.name)}" spellcheck="false">` +
+        `<span class="lib-badges">${badge(entry)}</span>` +
+        `<span class="lib-origin">${esc(originLine(entry))}</span>` +
         `<span class="patch-sound">${esc(entry.soundName)}</span>` +
-        badge(entry) +
         `</div>`
       );
     }
     return (
-      `<button type="button" class="lib-row${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-      nameCell(entry) +
+      `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
+      `<span class="patch-name">${esc(entry.name)}</span>` +
+      `<span class="lib-badges">${badge(entry)}</span>` +
+      `<span class="lib-origin">${esc(originLine(entry))}</span>` +
       `<span class="patch-sound">${esc(entry.soundName)}</span>` +
-      badge(entry) +
       `</button>`
     );
   }

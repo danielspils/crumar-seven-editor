@@ -330,8 +330,15 @@
     }
     .lib-empty { color: var(--text-dim); padding: 18px 8px; text-align: center; }
     /* Stacked name + origin line in library rows. */
-    .name-cell { display: flex; flex-direction: column; min-width: 0; }
-    .name-cell .patch-name { min-width: 0; }
+    /* Patch rows read as two lines: the name and its badge on top, then the
+       provenance and the sound it uses beneath — related facts paired, and
+       the name free to run the width of the row (sound names reach 22 chars,
+       e.g. "Venice Upright U1 Felt", which crowded a side-by-side layout). */
+    .lib-row.lib-patch {
+      grid-template-columns: 1fr auto;
+      row-gap: 1px; align-items: baseline;
+    }
+    .lib-row.lib-patch .patch-sound { text-align: right; }
     .lib-origin {
       font-size: 11px; color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
