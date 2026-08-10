@@ -398,7 +398,7 @@
 
 
   <g id="sec-fx1">
-    <rect x="1347" y="40" width="265" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <rect x="1347" y="28" width="265" height="152" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1396" y="62">SELECT</text>
     <rect class="btn" id="btn-fx1-select" x="1372" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx1-0" cx="1437" cy="72" r="4.5"/>
@@ -431,7 +431,7 @@
   </g>
 
   <g id="sec-fx2">
-    <rect x="1740" y="40" width="250" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <rect x="1740" y="28" width="250" height="152" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
     <text class="lbl-sm" x="1774" y="62">SELECT</text>
     <rect class="btn" id="btn-fx2-select" x="1750" y="72" width="46" height="34"/>
     <circle class="led on" id="led-fx2-0" cx="1815" cy="72" r="4.5"/>
