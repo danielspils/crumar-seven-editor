@@ -68,7 +68,7 @@
        face so condensed+bold doesn't crowd. Panel strip only. */
     .lbl       { fill: #e8e8ea; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 13px; letter-spacing: .05em; text-anchor: middle; }
     .lbl-sm    { fill: #c8c8cc; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 10px; letter-spacing: .04em; text-anchor: middle; }
-    .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 19px; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
+    .lbl-fx    { fill: #e8e8ea; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 600; font-style: italic; letter-spacing: .08em; text-anchor: middle; }
     .lbl-alt   { fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif; font-weight: bold; font-style: italic; font-size: 14px; letter-spacing: .03em; text-anchor: middle; }
     .lbl-alt-lg { font-size: 16px; }
     .transpose-sym { font-size: 17px; }
@@ -409,7 +409,7 @@
     <text class="lbl-sm" x="1456" y="120" text-anchor="start">A-WHA</text>
     <circle class="led" id="led-fx1-3" cx="1437" cy="138" r="4.5"/>
     <text class="lbl-sm" x="1456" y="142" text-anchor="start">P-WHA</text>
-    <text class="lbl-fx" x="1395" y="152">FX1</text>
+    <text class="lbl-fx" x="1395" y="152" transform="translate(0,152) scale(1,1.18) translate(0,-152)">FX1</text>
     <g id="knob-fx1">
       <use class="knob-glass" href="#knob-glass" x="1548" y="110"/>
       <circle class="knob-ring" cx="1548" cy="110" r="44"/>
@@ -442,7 +442,7 @@
     <text class="lbl-sm lbl-fxled" x="1834" y="120" text-anchor="start">FLANGER</text>
     <circle class="led" id="led-fx2-3" cx="1815" cy="138" r="4.5"/>
     <text class="lbl-sm lbl-fxled" x="1834" y="142" text-anchor="start">DELAY</text>
-    <text class="lbl-fx" x="1773" y="152">FX2</text>
+    <text class="lbl-fx" x="1773" y="152" transform="translate(0,152) scale(1,1.18) translate(0,-152)">FX2</text>
     <g id="knob-fx2">
       <use class="knob-glass" href="#knob-glass" x="1926" y="110"/>
       <circle class="knob-ring" cx="1926" cy="110" r="44"/>
