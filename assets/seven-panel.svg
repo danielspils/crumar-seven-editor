@@ -89,6 +89,10 @@
     .lbl-cyan  { fill: #4fc3d9; }
     .lbl-red   { fill: #d9534f; }
     .lbl-blue  { fill: #5b8fd9; }
+    .lbl-green { fill: #4fb96a; }
+    /* The coloured legends (RATE, LEVEL) are tracked noticeably wider than
+       the white ones on the instrument. */
+    .lbl-wide  { letter-spacing: .18em; }
     .led       { fill: #7d2b26; stroke: #1a1a1c; stroke-width: .5; }
     .led.on    { fill: #ff3b30; }
     .led.amber { fill: #7d6524; }
@@ -412,8 +416,8 @@
       <use href="#pwr-icon" x="1576" y="158"/>
       <circle class="knob-hit" cx="1548" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
-    <text class="lbl-sm" x="1548" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1548" y="68">RATE</text>
+    <text class="lbl lbl-sect lbl-green" x="1548" y="54">DEPTH</text>
+    <text class="lbl lbl-sect lbl-cyan lbl-wide" x="1548" y="70">RATE</text>
   </g>
 
   <g id="sec-amp">
@@ -445,15 +449,15 @@
       <use href="#pwr-icon" x="1954" y="158"/>
       <circle class="knob-hit" cx="1926" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
-    <text class="lbl-sm" x="1926" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1926" y="68">RATE</text>
+    <text class="lbl lbl-sect lbl-green" x="1926" y="54">DEPTH</text>
+    <text class="lbl lbl-sect lbl-cyan lbl-wide" x="1926" y="70">RATE</text>
   </g>
 
   <g id="sec-pad">
     <!-- Hardware layout: PAD over LEVEL stacked tight above the knob (PAD in
          panel white, LEVEL in red), BLEND tucked right below it. -->
-    <text class="lbl" x="2060" y="52">PAD</text>
-    <text class="lbl lbl-red" x="2060" y="68">LEVEL</text>
+    <text class="lbl lbl-sect" x="2060" y="52">PAD</text>
+    <text class="lbl lbl-sect lbl-red lbl-wide" x="2060" y="70">LEVEL</text>
     <g id="knob-pad">
       <use class="knob-glass" href="#knob-glass" x="2060" y="110"/>
       <circle class="knob-ring" cx="2060" cy="110" r="44"/>
