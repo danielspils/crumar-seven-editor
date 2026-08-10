@@ -105,6 +105,17 @@
     .readonly .btn { cursor: default; pointer-events: none; }
   </style>
   <defs>
+    <!-- Chrome edge trim: vertical silver banding, bright at the top bevel,
+         dark toward the bottom — reads as the polished metal frame around
+         the real front panel. -->
+    <linearGradient id="chrome-edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f4f7"/>
+      <stop offset="0.18" stop-color="#b9b9c1"/>
+      <stop offset="0.45" stop-color="#84848c"/>
+      <stop offset="0.62" stop-color="#d5d5db"/>
+      <stop offset="0.85" stop-color="#77777f"/>
+      <stop offset="1" stop-color="#4c4c53"/>
+    </linearGradient>
     <radialGradient id="kg-body" cx="0.5" cy="0.4" r="0.65">
       <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
       <stop offset="0.55" stop-color="#e8e8ee" stop-opacity="0.16"/>
@@ -119,6 +130,10 @@
     <!-- The real Seven knob: clear translucent plastic, a fluted skirt with
          a raised clear cylinder on top, lit from beneath by an LED. Endless
          encoders — no pointer line; only the glow carries state. -->
+    <g id="pwr-icon" style="stroke: #97979d; stroke-width: 1.7; stroke-linecap: round; fill: none">
+      <path d="M -3.4 -4.4 A 5.6 5.6 0 1 0 3.4 -4.4"/>
+      <line x1="0" y1="-7" x2="0" y2="-1.2"/>
+    </g>
     <g id="knob-glass">
       <circle class="k-glow" r="27" style="fill: var(--k-glow-fill, transparent)"/>
       <circle class="k-skirt" r="28" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.2"/>
@@ -130,6 +145,10 @@
   </defs>
 
   <rect class="panel-bg" x="0" y="0" width="2160" height="210" rx="6"/>
+  <!-- Chrome frame: stroke sits fully inside the artwork, a hairline dark
+       seam between metal and panel face keeps the edge crisp. -->
+  <rect x="3" y="3" width="2154" height="204" rx="5" fill="none" stroke="url(#chrome-edge)" stroke-width="6"/>
+  <rect x="6.5" y="6.5" width="2147" height="197" rx="4" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1"/>
 
   <g id="sec-volume">
     <text class="lbl" x="72" y="30">VOLUME</text>
@@ -330,6 +349,7 @@
     <g id="knob-fx1">
       <use class="knob-glass" href="#knob-glass" x="1664" y="110"/>
       <circle class="knob-ring" cx="1664" cy="110" r="32"/>
+      <use href="#pwr-icon" x="1686" y="148"/>
       <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
     <text class="lbl-sm" x="1664" y="54">DEPTH</text>
@@ -341,6 +361,7 @@
     <g id="knob-amp-drive">
       <use class="knob-glass" href="#knob-glass" x="1758" y="110"/>
       <circle class="knob-ring" cx="1758" cy="110" r="35"/>
+      <use href="#pwr-icon" x="1780" y="148"/>
       <circle class="knob-hit" cx="1758" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
     </g>
   </g>
@@ -361,6 +382,7 @@
     <g id="knob-fx2">
       <use class="knob-glass" href="#knob-glass" x="1988" y="110"/>
       <circle class="knob-ring" cx="1988" cy="110" r="32"/>
+      <use href="#pwr-icon" x="2010" y="148"/>
       <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
     <text class="lbl-sm" x="1988" y="54">DEPTH</text>
@@ -368,13 +390,17 @@
   </g>
 
   <g id="sec-pad">
-    <text class="lbl lbl-red" x="2080" y="34">PAD LEVEL</text>
+    <!-- Hardware layout: PAD over LEVEL stacked tight above the knob (PAD in
+         panel white, LEVEL in red), BLEND tucked right below it. -->
+    <text class="lbl" x="2080" y="52">PAD</text>
+    <text class="lbl lbl-red" x="2080" y="68">LEVEL</text>
     <g id="knob-pad">
       <use class="knob-glass" href="#knob-glass" x="2080" y="110"/>
       <circle class="knob-ring" cx="2080" cy="110" r="35"/>
+      <use href="#pwr-icon" x="2102" y="148"/>
       <circle class="knob-hit" cx="2080" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
     </g>
-    <circle class="led" id="led-pad-sw" cx="2080" cy="166" r="5"/>
-    <text class="lbl-sm lbl-blue" x="2080" y="186">BLEND</text>
+    <circle class="led" id="led-pad-sw" cx="2080" cy="152" r="5"/>
+    <text class="lbl-sm lbl-blue" x="2080" y="170">BLEND</text>
   </g>
 </svg>
