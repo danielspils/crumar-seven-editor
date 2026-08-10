@@ -155,7 +155,7 @@
     const assignBtn = (i) =>
       sel
         ? `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Assign “${esc(sel.name)}” to slot ${i + 1}">Assign</button>`
-        : '';
+        : `<button type="button" class="slot-assign" disabled title="Select a patch first — then Assign puts it in this slot">Assign</button>`;
     const clearBtn = (i) =>
       `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">✕</button>`;
     const clearedEntry = (i) =>
