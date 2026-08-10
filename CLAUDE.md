@@ -135,20 +135,32 @@ no `valuesUnverified` flags left, including corrections — the Clavi pickup
 switches were inverted). Other gaps stay flagged `UNKNOWN` in place (see the
 open-items list in `docs/protocol.md`).
 
-A runnable Electron shell exists (`npm start`): panel strip (inlined SVG with
-addressable ids, LEDs lit from state), connection row (hardcoded disconnected),
-four-bank library list with modeled/sampled and missing-sound badges, and a
+The app runs against the real instrument (`npm start`). Two labelled regions:
+"On the Seven" — four bank tabs whose slots render the newest **backup** patch
+claiming each slot (never fixtures), headed by an honesty label ("as of last
+backup · <date>") because the Seven has no read-slot opcode; un-backed-up slots
+say so plainly. "On this computer" — the on-disk library with setlists. Plus
+the panel strip (inlined SVG, addressable ids), a live connection row, and a
 two-column detail view (engine group + effects chain, switch-driven dimming,
-default-muted values, FX2-conditional sub-params). **Everything renders from
-`fixtures/sample-library.json` — there is no MIDI in the app**; when real MIDI
-arrives, only `src/preload.js` changes. Dev note: Electron must be ≥ a current
-major — macOS XProtect flags outdated Electron binaries as malware and trashes
-them (this bit us on v31; fixed on v43).
+default-muted values, FX2-conditional sub-params). **Fixtures no longer reach
+the renderer** — `getLibrary` is gone from preload; fixture data only seeds a
+first-run demo library in the main process. Dev note: Electron must be ≥ a
+current major — macOS XProtect flags outdated Electron binaries as malware and
+trashes them (this bit us on v31; fixed on v43).
 
-**The patch file format is built** (docs/FORMAT.md + src/format/, data layer
-only, tested via `npm test`) — .sevenlib.json, one container for everything,
-params keyed by schema key, sound NAME authoritative, per-patch provenance,
-wfp serializer guard, non-mutating parse. Not wired into the renderer yet.
+Panel-strip artwork is drawn from hardware photos (2026-08-09): translucent
+fluted knobs lit from beneath, glowing with the instrument's **value-encoding**
+(green at low → red at high; DESIGN.md), buttons with raised bottom caps and
+pyramid-slanted sides, chrome frame, and a brushed-aluminum connection row
+edged in keybed-felt red. Two SVG traps are documented in the file itself: CSS
+comments inside `<style>` must not contain angle brackets (markup parsing
+truncates the stylesheet), and class rules can't cross a `use`-element shadow
+boundary — knob state rides on custom properties and inline styles instead.
+
+**The patch file format is built and in use** (docs/FORMAT.md + src/format/,
+tested via `npm test`) — .sevenlib.json, one container for everything, params
+keyed by schema key, sound NAME authoritative, per-patch provenance, wfp
+serializer guard, non-mutating parse. Every backup patch is one of these files.
 
 **The hardware session of 2026-08-09 closed nearly every protocol question**:
 the Seven recalls on incoming Program Change (0-based global slots, all four
@@ -191,4 +203,28 @@ new"; cancel verified at 13/32. **Expansion visibility is done** (the
 Visibility goal): the connection row's "24 sounds" chip opens the connected
 unit's own sound table — modeled and GSP-01 sampled columns with unit-specific
 ids, plus the table fingerprint and read time that backups reference.
-**Next: Task 8 — audition (params-only to the edit buffer).**
+Daniel's own 32 presets are backed up and the seeded demo patches were
+trashed — the library is real data only.
+
+## Next
+
+Two of the four goals are live (Backup, Visibility). The remaining arc is
+**editing and sending**, in this order — every protocol primitive it needs is
+already verified, so this is app work, not reverse-engineering:
+
+1. **Task 8 — Audition.** "Audition on the Seven" for a library patch: send
+   `0x46` sound, then the 110 params, to the edit buffer. Nothing is stored;
+   the user keeps it with a panel hold. This is the write path everything
+   below reuses.
+2. **Live editing core** (added ahead of Transfer, agreed 2026-08-09): detail
+   controls become interactive while connected — each drag/toggle sends its
+   `0x20`, with read-back, a dirty marker, and "Save to library". This closes
+   the loop: edit live → save → audition → panel-hold to store.
+3. **Task 10 — Sound selection UI**, fed by the live sound table.
+4. **Task 9 — Transfer**: walk a setlist's slots, loading each and prompting
+   the three-second panel hold. Bank 1 blocked outright.
+5. **A/B compare and undo** — edit-buffer snapshots; the two things the
+   manufacturer's editor lacks.
+
+**Storing is always a physical three-second panel hold** — no store opcode
+exists. The UI says so plainly rather than pretending to work around it.
