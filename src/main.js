@@ -169,6 +169,42 @@ function registerBackupIpc() {
   ipcMain.handle('backup:cancel', () => { getBackupRunner().cancel(); });
 }
 
+// ---- Notes pointer (thissevengoestoeleven.com) ----------------------------
+// The only network call the app makes, and the renderer can trigger it but
+// never aim it: the URL is fixed here. It returns the newest Notes entry;
+// the renderer compares it against what the user has already seen and shows
+// a one-line strip. Any failure returns {ok:false} and nothing is shown.
+const NOTES_FEED_URL = 'https://thissevengoestoeleven.com/feed.xml';
+const NOTES_SITE = 'https://thissevengoestoeleven.com/';
+
+function registerNotesIpc() {
+  ipcMain.handle('notes:latest', async () => {
+    try {
+      const res = await fetch(NOTES_FEED_URL, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) return { ok: false };
+      const xml = await res.text();
+      const entry = (xml.match(/<entry>[\s\S]*?<\/entry>/) || [])[0];
+      if (!entry) return { ok: false };
+      const title = (entry.match(/<title[^>]*>([\s\S]*?)<\/title>/) || [])[1] || '';
+      const url = (entry.match(/<link[^>]*href="([^"]+)"/) || [])[1] || '';
+      const published = (entry.match(/<published>([^<]+)<\/published>/) || [])[1] || '';
+      // Only ever hand back a link to the site itself.
+      if (!url.startsWith(NOTES_SITE)) return { ok: false };
+      const decode = (t) => t
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      return { ok: true, title: decode(title).trim(), url, published };
+    } catch {
+      return { ok: false };
+    }
+  });
+  // Opening is gated on the same prefix — a renderer bug can't launch
+  // arbitrary URLs.
+  ipcMain.handle('notes:open', (_e, url) => {
+    if (typeof url === 'string' && url.startsWith(NOTES_SITE)) shell.openExternal(url);
+  });
+}
+
 // Decoded events (status, current-sound, program-change, sound-name) fan out
 // to every open window. No frame bytes cross this boundary.
 function forwardMidiEvents() {
@@ -242,6 +278,7 @@ app.whenReady().then(() => {
   registerLibraryIpc();
   registerMidiIpc();
   registerBackupIpc();
+  registerNotesIpc();
   forwardMidiEvents();
   createWindow();
   app.on('activate', () => {

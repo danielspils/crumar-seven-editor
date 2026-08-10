@@ -67,6 +67,13 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     backup: () => ipcRenderer.invoke('backup:start'),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
+  // Newest post on thissevengoestoeleven.com, so the app can point at Notes
+  // rather than run a mailing list. Fetch and URL are fixed in the main
+  // process; this side can only ask.
+  notes: {
+    latest: () => ipcRenderer.invoke('notes:latest'),
+    open: (url) => ipcRenderer.invoke('notes:open', url),
+  },
   // Setlist mutations (setlists.json; every mutation persists immediately).
   setlists: {
     create: (name) => ipcRenderer.invoke('setlist:create', { name }),
