@@ -192,10 +192,10 @@
         if (!file) {
           return (
             `<div class="lib-slot lib-slot-empty${pulse(i)}" data-slot="${i}">` +
-            `${num}<span class="slot-text">Empty</span><span class="lib-badges">${assignBtn(i)}</span>` +
+            `${num}<span class="slot-text">Empty</span><span class="lib-badges"></span>` +
             `<span class="lib-origin">${clearedEntry(i) ? esc(originLine(clearedEntry(i))) : ''}</span>` +
             `<span class="patch-sound"></span>` +
-            `<span class="slot-controls">${undoBtn(i)}</span></div>`
+            `<span class="slot-controls">${undoBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
         const entry = byFile.get(file);
@@ -203,20 +203,20 @@
           return (
             `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Referenced file is not in the library folder">` +
             `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
-            `<span class="lib-badges">${assignBtn(i)}</span>` +
+            `<span class="lib-badges"></span>` +
             `<span class="lib-origin"></span>` +
             `<span class="patch-sound"><span class="sound-tag is-warn" title="Referenced file is missing">(missing)</span></span>` +
-            `<span class="slot-controls">${clearBtn(i)}</span></div>`
+            `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
         const selected = state.selected === rowKey(entry);
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name">${esc(entry.name)}</span>` +
-          `<span class="lib-badges">${assignBtn(i)}</span>` +
+          `<span class="lib-badges"></span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
-          `<span class="slot-controls">${clearBtn(i)}</span></div>`
+          `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
         );
       })
       .join('');
