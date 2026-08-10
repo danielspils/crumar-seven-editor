@@ -194,8 +194,8 @@
     </g>
     <circle class="led on" id="led-rev-level" cx="244" cy="46" r="5"/>
     <text class="lbl-sm" x="260" y="50" text-anchor="start">LEVEL</text>
-    <circle class="led" id="led-rev-decay" cx="244" cy="70" r="5"/>
-    <text class="lbl-sm" x="260" y="74" text-anchor="start">DECAY</text>
+    <circle class="led" id="led-rev-decay" cx="244" cy="62" r="5"/>
+    <text class="lbl-sm" x="260" y="66" text-anchor="start">DECAY</text>
   </g>
 
   <g id="sec-eq">
@@ -206,9 +206,9 @@
       <circle class="knob-hit" cx="380" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="424" y="50" text-anchor="end">BASS</text>
-    <text class="lbl-sm" x="424" y="74" text-anchor="end">MIDDLE</text>
+    <text class="lbl-sm" x="424" y="66" text-anchor="end">MIDDLE</text>
     <circle class="led on" id="led-eq-top" cx="440" cy="46" r="5"/>
-    <circle class="led"    id="led-eq-bot" cx="440" cy="70" r="5"/>
+    <circle class="led"    id="led-eq-bot" cx="440" cy="62" r="5"/>
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
@@ -217,7 +217,7 @@
       <circle class="knob-hit" cx="500" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="456" y="50" text-anchor="start">TREBLE</text>
-    <text class="lbl-sm" x="456" y="74" text-anchor="start">MID FREQ</text>
+    <text class="lbl-sm" x="456" y="66" text-anchor="start">MID FREQ</text>
   </g>
 
 
