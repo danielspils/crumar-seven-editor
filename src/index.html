@@ -48,8 +48,12 @@
        rule keeps suppressing the faces beneath. Hover brightens the face via
        :has() since the overlay sits above it. */
     #panel-strip .btn-hit { pointer-events: auto; cursor: pointer; }
-    #panel-strip g:has(.btn-hit:hover) .btn-face:not(.on) { fill: #2b2b2e; }
-    #panel-strip g:has(.btn-hit:hover) .btn-bezel { fill: #1e1e20; }
+    /* Child combinators, both sides: `g:has(.btn-hit:hover)` alone matches
+       every ANCESTOR group, so the shared `sec-presets` parent matched and
+       hovering one preset lit all eight. The hovered hit rect must be a
+       direct child, and only that group's own face/bezel respond. */
+    #panel-strip .btn-face:not(.on):has(~ .btn-hit:hover) { fill: #2b2b2e; }
+    #panel-strip .btn-bezel:has(~ .btn-hit:hover) { fill: #1e1e20; }
     /* Momentary press state — BANK only (presets have a persistent selected
        state instead). app.js drives .bank-pressed with a ~150ms minimum hold
        so a quick click still reads as intentional, then keeps it while held.
