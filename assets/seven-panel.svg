@@ -99,8 +99,11 @@
     .led.amber.on { fill: #ffb020; }
     .transpose-border { fill: none; stroke: #6d6d72; stroke-width: 1; }
     .kbd-icon  { fill: none; stroke: #6d6d72; stroke-width: 1; }
-    .kbd-white { fill: #c8c8cc; }
-    .kbd-black { fill: #141416; }
+    /* Transpose icon: the silkscreen reverses a keyboard's tones — naturals
+       print dark, accidentals light. Named by key, not by colour. */
+    .kbd-natural    { fill: #141416; }
+    .kbd-accidental { fill: #d4d4d8; }
+    .kbd-ground     { fill: #d4d4d8; }
     /* Transparent full-button hit targets (preset/bank), drawn last and sized
        to the bezel. Cursor set here; the app re-enables pointer events. */
     /* Raised cap bevel: the top two-thirds of a button sticks out with
@@ -233,12 +236,13 @@
          LED lights while transposition is active; transposition resets to zero
          at power-on, so it renders unlit. -->
     <path class="transpose-border" d="M580 79 V99 H611 M627 99 H658 V79"/>
-    <rect class="kbd-white" x="607.5" y="30.5" width="7" height="14"/>
-    <rect class="kbd-white" x="615.5" y="30.5" width="7" height="14"/>
-    <rect class="kbd-white" x="623.5" y="30.5" width="7" height="14"/>
-    <rect class="kbd-black" x="613" y="30.5" width="4" height="9"/>
-    <rect class="kbd-black" x="621" y="30.5" width="4" height="9"/>
-    <rect class="kbd-icon" x="606.5" y="30" width="25" height="15"/>
+    <rect class="kbd-ground" x="606.5" y="21" width="25" height="24"/>
+    <rect class="kbd-natural" x="607.5" y="22" width="7" height="22"/>
+    <rect class="kbd-natural" x="615.5" y="22" width="7" height="22"/>
+    <rect class="kbd-natural" x="623.5" y="22" width="7" height="22"/>
+    <rect class="kbd-accidental" x="613" y="22" width="4" height="14"/>
+    <rect class="kbd-accidental" x="621" y="22" width="4" height="14"/>
+    <rect class="kbd-icon" x="606.5" y="21" width="25" height="24"/>
     <text class="lbl-sm transpose-sym" x="580" y="76">♭</text>
     <text class="lbl-sm transpose-sym" x="658" y="76">♯</text>
     <rect class="btn-bezel" x="593" y="56" width="52" height="26" rx="3"/>
