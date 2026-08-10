@@ -154,12 +154,12 @@
       <line x1="0" y1="-7" x2="0" y2="-1.2"/>
     </g>
     <g id="knob-glass">
-      <circle class="k-glow" r="27" style="fill: var(--k-glow-fill, transparent)"/>
-      <circle class="k-skirt" r="28" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.2"/>
-      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.6; stroke-linecap: round"><line x1="0.00" y1="-22.80" x2="0.00" y2="-27.30"/><line x1="4.74" y1="-22.30" x2="5.68" y2="-26.70"/><line x1="9.27" y1="-20.83" x2="11.10" y2="-24.94"/><line x1="13.40" y1="-18.45" x2="16.05" y2="-22.09"/><line x1="16.94" y1="-15.26" x2="20.29" y2="-18.27"/><line x1="19.75" y1="-11.40" x2="23.64" y2="-13.65"/><line x1="21.68" y1="-7.05" x2="25.96" y2="-8.44"/><line x1="22.68" y1="-2.38" x2="27.15" y2="-2.85"/><line x1="22.68" y1="2.38" x2="27.15" y2="2.85"/><line x1="21.68" y1="7.05" x2="25.96" y2="8.44"/><line x1="19.75" y1="11.40" x2="23.64" y2="13.65"/><line x1="16.94" y1="15.26" x2="20.29" y2="18.27"/><line x1="13.40" y1="18.45" x2="16.05" y2="22.09"/><line x1="9.27" y1="20.83" x2="11.10" y2="24.94"/><line x1="4.74" y1="22.30" x2="5.68" y2="26.70"/><line x1="0.00" y1="22.80" x2="0.00" y2="27.30"/><line x1="-4.74" y1="22.30" x2="-5.68" y2="26.70"/><line x1="-9.27" y1="20.83" x2="-11.10" y2="24.94"/><line x1="-13.40" y1="18.45" x2="-16.05" y2="22.09"/><line x1="-16.94" y1="15.26" x2="-20.29" y2="18.27"/><line x1="-19.75" y1="11.40" x2="-23.64" y2="13.65"/><line x1="-21.68" y1="7.05" x2="-25.96" y2="8.44"/><line x1="-22.68" y1="2.38" x2="-27.15" y2="2.85"/><line x1="-22.68" y1="-2.38" x2="-27.15" y2="-2.85"/><line x1="-21.68" y1="-7.05" x2="-25.96" y2="-8.44"/><line x1="-19.75" y1="-11.40" x2="-23.64" y2="-13.65"/><line x1="-16.94" y1="-15.26" x2="-20.29" y2="-18.27"/><line x1="-13.40" y1="-18.45" x2="-16.05" y2="-22.09"/><line x1="-9.27" y1="-20.83" x2="-11.10" y2="-24.94"/><line x1="-4.74" y1="-22.30" x2="-5.68" y2="-26.70"/></g>
-      <circle class="k-mid" r="21" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1"/>
-      <circle class="k-top" r="13.5" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.1"/>
-      <circle class="k-bore" r="6.5" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1"/>
+      <circle class="k-glow" r="34.71" style="fill: var(--k-glow-fill, transparent)"/>
+      <circle class="k-skirt" r="36.0" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.4"/>
+      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.9; stroke-linecap: round"><line x1="0.00" y1="-29.31" x2="0.00" y2="-35.10"/><line x1="6.09" y1="-28.67" x2="7.30" y2="-34.33"/><line x1="11.92" y1="-26.78" x2="14.28" y2="-32.07"/><line x1="17.23" y1="-23.71" x2="20.63" y2="-28.40"/><line x1="21.78" y1="-19.61" x2="26.08" y2="-23.49"/><line x1="25.38" y1="-14.66" x2="30.40" y2="-17.55"/><line x1="27.88" y1="-9.06" x2="33.38" y2="-10.85"/><line x1="29.15" y1="-3.06" x2="34.91" y2="-3.67"/><line x1="29.15" y1="3.06" x2="34.91" y2="3.67"/><line x1="27.88" y1="9.06" x2="33.38" y2="10.85"/><line x1="25.38" y1="14.65" x2="30.40" y2="17.55"/><line x1="21.78" y1="19.61" x2="26.08" y2="23.49"/><line x1="17.23" y1="23.71" x2="20.63" y2="28.40"/><line x1="11.92" y1="26.78" x2="14.28" y2="32.07"/><line x1="6.09" y1="28.67" x2="7.30" y2="34.33"/><line x1="0.00" y1="29.31" x2="0.00" y2="35.10"/><line x1="-6.09" y1="28.67" x2="-7.30" y2="34.33"/><line x1="-11.92" y1="26.78" x2="-14.28" y2="32.07"/><line x1="-17.23" y1="23.71" x2="-20.63" y2="28.40"/><line x1="-21.78" y1="19.61" x2="-26.08" y2="23.49"/><line x1="-25.38" y1="14.66" x2="-30.40" y2="17.55"/><line x1="-27.88" y1="9.06" x2="-33.38" y2="10.85"/><line x1="-29.15" y1="3.06" x2="-34.91" y2="3.67"/><line x1="-29.15" y1="-3.06" x2="-34.91" y2="-3.67"/><line x1="-27.88" y1="-9.06" x2="-33.38" y2="-10.85"/><line x1="-25.38" y1="-14.66" x2="-30.40" y2="-17.55"/><line x1="-21.78" y1="-19.61" x2="-26.08" y2="-23.49"/><line x1="-17.23" y1="-23.71" x2="-20.63" y2="-28.40"/><line x1="-11.92" y1="-26.78" x2="-14.28" y2="-32.07"/><line x1="-6.09" y1="-28.67" x2="-7.30" y2="-34.33"/></g>
+      <circle class="k-mid" r="27.0" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1.2"/>
+      <circle class="k-top" r="17.36" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.3"/>
+      <circle class="k-bore" r="8.36" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1.2"/>
     </g>
   </defs>
 
@@ -173,8 +173,8 @@
     <text class="lbl" x="72" y="30">VOLUME</text>
     <g id="knob-volume">
       <use class="knob-glass" href="#knob-glass" x="72" y="105"/>
-      <circle class="knob-ring" cx="72" cy="105" r="35"/>
-      <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="72" cy="105" r="44"/>
+      <circle class="knob-hit" cx="72" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <!-- Silkscreened legend, not an indicator light. Local Off state is shown
          by the volume knob turning BLUE (slow push ≥100ms toggles it); that cue
@@ -188,9 +188,9 @@
     <text class="lbl" x="196" y="30">REVERB</text>
     <g id="knob-reverb">
       <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
-      <circle class="knob-ring" cx="196" cy="105" r="35"/>
-      <use href="#pwr-icon" x="218" y="143"/>
-      <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
+      <circle class="knob-ring" cx="196" cy="105" r="44"/>
+      <use href="#pwr-icon" x="224" y="153"/>
+      <circle class="knob-hit" cx="196" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="244" cy="46" r="5"/>
     <text class="lbl-sm" x="260" y="50" text-anchor="start">LEVEL</text>
@@ -201,9 +201,9 @@
   <g id="sec-eq">
     <g id="knob-bass-mid">
       <use class="knob-glass" href="#knob-glass" x="380" y="105"/>
-      <circle class="knob-ring" cx="380" cy="105" r="35"/>
-      <use href="#pwr-icon" x="402" y="143"/>
-      <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="380" cy="105" r="44"/>
+      <use href="#pwr-icon" x="408" y="153"/>
+      <circle class="knob-hit" cx="380" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="424" y="30" text-anchor="end">BASS</text>
     <text class="lbl-sm" x="424" y="46" text-anchor="end">MIDDLE</text>
@@ -212,9 +212,9 @@
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
-      <circle class="knob-ring" cx="500" cy="105" r="35"/>
-      <use href="#pwr-icon" x="522" y="143"/>
-      <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="500" cy="105" r="44"/>
+      <use href="#pwr-icon" x="528" y="153"/>
+      <circle class="knob-hit" cx="500" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="456" y="30" text-anchor="start">TREBLE</text>
     <text class="lbl-sm" x="456" y="46" text-anchor="start">MID FREQ</text>
@@ -406,22 +406,22 @@
     <text class="lbl-sm" x="1596" y="142" text-anchor="start">P-WHA</text>
     <text class="lbl-fx" x="1535" y="152">FX1</text>
     <g id="knob-fx1">
-      <use class="knob-glass" href="#knob-glass" x="1664" y="110"/>
-      <circle class="knob-ring" cx="1664" cy="110" r="32"/>
-      <use href="#pwr-icon" x="1686" y="148"/>
-      <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
+      <use class="knob-glass" href="#knob-glass" x="1650" y="110"/>
+      <circle class="knob-ring" cx="1650" cy="110" r="41"/>
+      <use href="#pwr-icon" x="1678" y="158"/>
+      <circle class="knob-hit" cx="1650" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
-    <text class="lbl-sm" x="1664" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1664" y="68">RATE</text>
+    <text class="lbl-sm" x="1650" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1650" y="68">RATE</text>
   </g>
 
   <g id="sec-amp">
     <text class="lbl" x="1758" y="34">AMP / DRIVE</text>
     <g id="knob-amp-drive">
       <use class="knob-glass" href="#knob-glass" x="1758" y="110"/>
-      <circle class="knob-ring" cx="1758" cy="110" r="35"/>
-      <use href="#pwr-icon" x="1780" y="148"/>
-      <circle class="knob-hit" cx="1758" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
+      <circle class="knob-ring" cx="1758" cy="110" r="44"/>
+      <use href="#pwr-icon" x="1786" y="158"/>
+      <circle class="knob-hit" cx="1758" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
     </g>
   </g>
 
@@ -439,13 +439,13 @@
     <text class="lbl-sm lbl-fxled" x="1918" y="142" text-anchor="start">DELAY</text>
     <text class="lbl-fx" x="1859" y="152">FX2</text>
     <g id="knob-fx2">
-      <use class="knob-glass" href="#knob-glass" x="1988" y="110"/>
-      <circle class="knob-ring" cx="1988" cy="110" r="32"/>
-      <use href="#pwr-icon" x="2010" y="148"/>
-      <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
+      <use class="knob-glass" href="#knob-glass" x="1974" y="110"/>
+      <circle class="knob-ring" cx="1974" cy="110" r="41"/>
+      <use href="#pwr-icon" x="2002" y="158"/>
+      <circle class="knob-hit" cx="1974" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
-    <text class="lbl-sm" x="1988" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1988" y="68">RATE</text>
+    <text class="lbl-sm" x="1974" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1974" y="68">RATE</text>
   </g>
 
   <g id="sec-pad">
@@ -455,9 +455,9 @@
     <text class="lbl lbl-red" x="2080" y="68">LEVEL</text>
     <g id="knob-pad">
       <use class="knob-glass" href="#knob-glass" x="2080" y="110"/>
-      <circle class="knob-ring" cx="2080" cy="110" r="35"/>
-      <use href="#pwr-icon" x="2102" y="148"/>
-      <circle class="knob-hit" cx="2080" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
+      <circle class="knob-ring" cx="2080" cy="110" r="44"/>
+      <use href="#pwr-icon" x="2108" y="158"/>
+      <circle class="knob-hit" cx="2080" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
     </g>
     <circle class="led" id="led-pad-sw" cx="2080" cy="152" r="5"/>
     <text class="lbl-sm lbl-blue" x="2080" y="170">BLEND</text>
