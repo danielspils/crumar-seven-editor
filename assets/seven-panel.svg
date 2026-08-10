@@ -154,12 +154,12 @@
       <line x1="0" y1="-7" x2="0" y2="-1.2"/>
     </g>
     <g id="knob-glass">
-      <circle class="k-glow" r="27" style="fill: var(--k-glow-fill, transparent)"/>
-      <circle class="k-skirt" r="28" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.2"/>
-      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.6; stroke-linecap: round"><line x1="0.00" y1="-22.80" x2="0.00" y2="-27.30"/><line x1="4.74" y1="-22.30" x2="5.68" y2="-26.70"/><line x1="9.27" y1="-20.83" x2="11.10" y2="-24.94"/><line x1="13.40" y1="-18.45" x2="16.05" y2="-22.09"/><line x1="16.94" y1="-15.26" x2="20.29" y2="-18.27"/><line x1="19.75" y1="-11.40" x2="23.64" y2="-13.65"/><line x1="21.68" y1="-7.05" x2="25.96" y2="-8.44"/><line x1="22.68" y1="-2.38" x2="27.15" y2="-2.85"/><line x1="22.68" y1="2.38" x2="27.15" y2="2.85"/><line x1="21.68" y1="7.05" x2="25.96" y2="8.44"/><line x1="19.75" y1="11.40" x2="23.64" y2="13.65"/><line x1="16.94" y1="15.26" x2="20.29" y2="18.27"/><line x1="13.40" y1="18.45" x2="16.05" y2="22.09"/><line x1="9.27" y1="20.83" x2="11.10" y2="24.94"/><line x1="4.74" y1="22.30" x2="5.68" y2="26.70"/><line x1="0.00" y1="22.80" x2="0.00" y2="27.30"/><line x1="-4.74" y1="22.30" x2="-5.68" y2="26.70"/><line x1="-9.27" y1="20.83" x2="-11.10" y2="24.94"/><line x1="-13.40" y1="18.45" x2="-16.05" y2="22.09"/><line x1="-16.94" y1="15.26" x2="-20.29" y2="18.27"/><line x1="-19.75" y1="11.40" x2="-23.64" y2="13.65"/><line x1="-21.68" y1="7.05" x2="-25.96" y2="8.44"/><line x1="-22.68" y1="2.38" x2="-27.15" y2="2.85"/><line x1="-22.68" y1="-2.38" x2="-27.15" y2="-2.85"/><line x1="-21.68" y1="-7.05" x2="-25.96" y2="-8.44"/><line x1="-19.75" y1="-11.40" x2="-23.64" y2="-13.65"/><line x1="-16.94" y1="-15.26" x2="-20.29" y2="-18.27"/><line x1="-13.40" y1="-18.45" x2="-16.05" y2="-22.09"/><line x1="-9.27" y1="-20.83" x2="-11.10" y2="-24.94"/><line x1="-4.74" y1="-22.30" x2="-5.68" y2="-26.70"/></g>
-      <circle class="k-mid" r="21" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1"/>
-      <circle class="k-top" r="13.5" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.1"/>
-      <circle class="k-bore" r="6.5" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1"/>
+      <circle class="k-glow" r="34.71" style="fill: var(--k-glow-fill, transparent)"/>
+      <circle class="k-skirt" r="36.0" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.4"/>
+      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.9; stroke-linecap: round"><line x1="0.00" y1="-29.31" x2="0.00" y2="-35.10"/><line x1="6.09" y1="-28.67" x2="7.30" y2="-34.33"/><line x1="11.92" y1="-26.78" x2="14.28" y2="-32.07"/><line x1="17.23" y1="-23.71" x2="20.63" y2="-28.40"/><line x1="21.78" y1="-19.61" x2="26.08" y2="-23.49"/><line x1="25.38" y1="-14.66" x2="30.40" y2="-17.55"/><line x1="27.88" y1="-9.06" x2="33.38" y2="-10.85"/><line x1="29.15" y1="-3.06" x2="34.91" y2="-3.67"/><line x1="29.15" y1="3.06" x2="34.91" y2="3.67"/><line x1="27.88" y1="9.06" x2="33.38" y2="10.85"/><line x1="25.38" y1="14.65" x2="30.40" y2="17.55"/><line x1="21.78" y1="19.61" x2="26.08" y2="23.49"/><line x1="17.23" y1="23.71" x2="20.63" y2="28.40"/><line x1="11.92" y1="26.78" x2="14.28" y2="32.07"/><line x1="6.09" y1="28.67" x2="7.30" y2="34.33"/><line x1="0.00" y1="29.31" x2="0.00" y2="35.10"/><line x1="-6.09" y1="28.67" x2="-7.30" y2="34.33"/><line x1="-11.92" y1="26.78" x2="-14.28" y2="32.07"/><line x1="-17.23" y1="23.71" x2="-20.63" y2="28.40"/><line x1="-21.78" y1="19.61" x2="-26.08" y2="23.49"/><line x1="-25.38" y1="14.66" x2="-30.40" y2="17.55"/><line x1="-27.88" y1="9.06" x2="-33.38" y2="10.85"/><line x1="-29.15" y1="3.06" x2="-34.91" y2="3.67"/><line x1="-29.15" y1="-3.06" x2="-34.91" y2="-3.67"/><line x1="-27.88" y1="-9.06" x2="-33.38" y2="-10.85"/><line x1="-25.38" y1="-14.66" x2="-30.40" y2="-17.55"/><line x1="-21.78" y1="-19.61" x2="-26.08" y2="-23.49"/><line x1="-17.23" y1="-23.71" x2="-20.63" y2="-28.40"/><line x1="-11.92" y1="-26.78" x2="-14.28" y2="-32.07"/><line x1="-6.09" y1="-28.67" x2="-7.30" y2="-34.33"/></g>
+      <circle class="k-mid" r="27.0" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1.2"/>
+      <circle class="k-top" r="17.36" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.3"/>
+      <circle class="k-bore" r="8.36" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1.2"/>
     </g>
   </defs>
 
@@ -173,8 +173,8 @@
     <text class="lbl" x="72" y="30">VOLUME</text>
     <g id="knob-volume">
       <use class="knob-glass" href="#knob-glass" x="72" y="105"/>
-      <circle class="knob-ring" cx="72" cy="105" r="35"/>
-      <circle class="knob-hit" cx="72" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="72" cy="105" r="44"/>
+      <circle class="knob-hit" cx="72" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <!-- Silkscreened legend, not an indicator light. Local Off state is shown
          by the volume knob turning BLUE (slow push ≥100ms toggles it); that cue
@@ -188,9 +188,9 @@
     <text class="lbl" x="196" y="30">REVERB</text>
     <g id="knob-reverb">
       <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
-      <circle class="knob-ring" cx="196" cy="105" r="35"/>
-      <use href="#pwr-icon" x="218" y="143"/>
-      <circle class="knob-hit" cx="196" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
+      <circle class="knob-ring" cx="196" cy="105" r="44"/>
+      <use href="#pwr-icon" x="224" y="153"/>
+      <circle class="knob-hit" cx="196" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
     <circle class="led on" id="led-rev-level" cx="244" cy="46" r="5"/>
     <text class="lbl-sm" x="260" y="50" text-anchor="start">LEVEL</text>
@@ -201,9 +201,9 @@
   <g id="sec-eq">
     <g id="knob-bass-mid">
       <use class="knob-glass" href="#knob-glass" x="380" y="105"/>
-      <circle class="knob-ring" cx="380" cy="105" r="35"/>
-      <use href="#pwr-icon" x="402" y="143"/>
-      <circle class="knob-hit" cx="380" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="380" cy="105" r="44"/>
+      <use href="#pwr-icon" x="408" y="153"/>
+      <circle class="knob-hit" cx="380" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="424" y="30" text-anchor="end">BASS</text>
     <text class="lbl-sm" x="424" y="46" text-anchor="end">MIDDLE</text>
@@ -212,9 +212,9 @@
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
-      <circle class="knob-ring" cx="500" cy="105" r="35"/>
-      <use href="#pwr-icon" x="522" y="143"/>
-      <circle class="knob-hit" cx="500" cy="105" r="35" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
+      <circle class="knob-ring" cx="500" cy="105" r="44"/>
+      <use href="#pwr-icon" x="528" y="153"/>
+      <circle class="knob-hit" cx="500" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
     <text class="lbl-sm" x="456" y="30" text-anchor="start">TREBLE</text>
     <text class="lbl-sm" x="456" y="46" text-anchor="start">MID FREQ</text>
@@ -268,198 +268,198 @@
     <g id="preset-1">
       <text class="lbl-sm lbl-num" x="836" y="30">1</text>
       <text class="lbl lbl-preset" x="836" y="48">TINES</text>
-      <rect class="btn-bezel" x="806" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face on" x="810" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="810,92 862,92 857,97 815,97"/>
-      <polygon class="btn-facet-l" points="810,92 815,97 815,139 810,144"/>
-      <polygon class="btn-facet-r" points="862,92 862,144 857,139 857,97"/>
-      <polygon class="btn-facet-b" points="810,144 815,139 857,139 862,144"/>
-      <rect class="btn-plateau" x="815" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M810 144 L862 144 L862 60"/>
+      <rect class="btn-bezel" x="813" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face on" x="817" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="817,92 855,92 851,96 821,96"/>
+      <polygon class="btn-facet-l" points="817,92 821,96 821,140 817,144"/>
+      <polygon class="btn-facet-r" points="855,92 855,144 851,140 851,96"/>
+      <polygon class="btn-facet-b" points="817,144 821,140 851,140 855,144"/>
+      <rect class="btn-plateau" x="821" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M817 144 L855 144 L855 60"/>
       <circle class="led on" id="led-preset-1" cx="836" cy="76" r="5"/>
-      <rect class="btn-hit" x="806" y="56" width="60" height="92" role="button" aria-label="Select preset 1 (Tines)"/>
+      <rect class="btn-hit" x="813" y="56" width="46" height="92" role="button" aria-label="Select preset 1 (Tines)"/>
     </g>
     <g id="preset-2">
-      <text class="lbl-sm lbl-num" x="920" y="30">2</text>
-      <text class="lbl lbl-preset" x="920" y="48">REEDS</text>
-      <rect class="btn-bezel" x="890" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="894" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="894,92 946,92 941,97 899,97"/>
-      <polygon class="btn-facet-l" points="894,92 899,97 899,139 894,144"/>
-      <polygon class="btn-facet-r" points="946,92 946,144 941,139 941,97"/>
-      <polygon class="btn-facet-b" points="894,144 899,139 941,139 946,144"/>
-      <rect class="btn-plateau" x="899" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M894 144 L946 144 L946 60"/>
-      <circle class="led" id="led-preset-2" cx="920" cy="76" r="5"/>
-      <rect class="btn-hit" x="890" y="56" width="60" height="92" role="button" aria-label="Select preset 2 (Reeds)"/>
+      <text class="lbl-sm lbl-num" x="900" y="30">2</text>
+      <text class="lbl lbl-preset" x="900" y="48">REEDS</text>
+      <rect class="btn-bezel" x="877" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="881" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="881,92 919,92 915,96 885,96"/>
+      <polygon class="btn-facet-l" points="881,92 885,96 885,140 881,144"/>
+      <polygon class="btn-facet-r" points="919,92 919,144 915,140 915,96"/>
+      <polygon class="btn-facet-b" points="881,144 885,140 915,140 919,144"/>
+      <rect class="btn-plateau" x="885" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M881 144 L919 144 L919 60"/>
+      <circle class="led" id="led-preset-2" cx="900" cy="76" r="5"/>
+      <rect class="btn-hit" x="877" y="56" width="46" height="92" role="button" aria-label="Select preset 2 (Reeds)"/>
     </g>
     <g id="preset-3">
-      <text class="lbl-sm lbl-num" x="1004" y="30">3</text>
-      <text class="lbl lbl-preset" x="1004" y="48">EGRAND</text>
-      <rect class="btn-bezel" x="974" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="978" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="978,92 1030,92 1025,97 983,97"/>
-      <polygon class="btn-facet-l" points="978,92 983,97 983,139 978,144"/>
-      <polygon class="btn-facet-r" points="1030,92 1030,144 1025,139 1025,97"/>
-      <polygon class="btn-facet-b" points="978,144 983,139 1025,139 1030,144"/>
-      <rect class="btn-plateau" x="983" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M978 144 L1030 144 L1030 60"/>
-      <circle class="led" id="led-preset-3" cx="1004" cy="76" r="5"/>
-      <rect class="btn-hit" x="974" y="56" width="60" height="92" role="button" aria-label="Select preset 3 (EGrand)"/>
+      <text class="lbl-sm lbl-num" x="964" y="30">3</text>
+      <text class="lbl lbl-preset" x="964" y="48">EGRAND</text>
+      <rect class="btn-bezel" x="941" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="945" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="945,92 983,92 979,96 949,96"/>
+      <polygon class="btn-facet-l" points="945,92 949,96 949,140 945,144"/>
+      <polygon class="btn-facet-r" points="983,92 983,144 979,140 979,96"/>
+      <polygon class="btn-facet-b" points="945,144 949,140 979,140 983,144"/>
+      <rect class="btn-plateau" x="949" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M945 144 L983 144 L983 60"/>
+      <circle class="led" id="led-preset-3" cx="964" cy="76" r="5"/>
+      <rect class="btn-hit" x="941" y="56" width="46" height="92" role="button" aria-label="Select preset 3 (EGrand)"/>
     </g>
     <g id="preset-4">
-      <text class="lbl-sm lbl-num" x="1088" y="30">4</text>
-      <text class="lbl lbl-preset" x="1088" y="48">CLAVI</text>
-      <rect class="btn-bezel" x="1058" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1062" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="1062,92 1114,92 1109,97 1067,97"/>
-      <polygon class="btn-facet-l" points="1062,92 1067,97 1067,139 1062,144"/>
-      <polygon class="btn-facet-r" points="1114,92 1114,144 1109,139 1109,97"/>
-      <polygon class="btn-facet-b" points="1062,144 1067,139 1109,139 1114,144"/>
-      <rect class="btn-plateau" x="1067" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M1062 144 L1114 144 L1114 60"/>
-      <circle class="led" id="led-preset-4" cx="1088" cy="76" r="5"/>
-      <rect class="btn-hit" x="1058" y="56" width="60" height="92" role="button" aria-label="Select preset 4 (Clavi)"/>
+      <text class="lbl-sm lbl-num" x="1028" y="30">4</text>
+      <text class="lbl lbl-preset" x="1028" y="48">CLAVI</text>
+      <rect class="btn-bezel" x="1005" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1009" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="1009,92 1047,92 1043,96 1013,96"/>
+      <polygon class="btn-facet-l" points="1009,92 1013,96 1013,140 1009,144"/>
+      <polygon class="btn-facet-r" points="1047,92 1047,144 1043,140 1043,96"/>
+      <polygon class="btn-facet-b" points="1009,144 1013,140 1043,140 1047,144"/>
+      <rect class="btn-plateau" x="1013" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M1009 144 L1047 144 L1047 60"/>
+      <circle class="led" id="led-preset-4" cx="1028" cy="76" r="5"/>
+      <rect class="btn-hit" x="1005" y="56" width="46" height="92" role="button" aria-label="Select preset 4 (Clavi)"/>
     </g>
     <g id="preset-5">
-      <text class="lbl-sm lbl-num" x="1172" y="30">5</text>
-      <text class="lbl lbl-preset" x="1172" y="48">DX EP</text>
-      <rect class="btn-bezel" x="1142" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1146" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="1146,92 1198,92 1193,97 1151,97"/>
-      <polygon class="btn-facet-l" points="1146,92 1151,97 1151,139 1146,144"/>
-      <polygon class="btn-facet-r" points="1198,92 1198,144 1193,139 1193,97"/>
-      <polygon class="btn-facet-b" points="1146,144 1151,139 1193,139 1198,144"/>
-      <rect class="btn-plateau" x="1151" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M1146 144 L1198 144 L1198 60"/>
-      <circle class="led" id="led-preset-5" cx="1172" cy="76" r="5"/>
-      <rect class="btn-hit" x="1142" y="56" width="60" height="92" role="button" aria-label="Select preset 5 (DX EP)"/>
+      <text class="lbl-sm lbl-num" x="1092" y="30">5</text>
+      <text class="lbl lbl-preset" x="1092" y="48">DX EP</text>
+      <rect class="btn-bezel" x="1069" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1073" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="1073,92 1111,92 1107,96 1077,96"/>
+      <polygon class="btn-facet-l" points="1073,92 1077,96 1077,140 1073,144"/>
+      <polygon class="btn-facet-r" points="1111,92 1111,144 1107,140 1107,96"/>
+      <polygon class="btn-facet-b" points="1073,144 1077,140 1107,140 1111,144"/>
+      <rect class="btn-plateau" x="1077" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M1073 144 L1111 144 L1111 60"/>
+      <circle class="led" id="led-preset-5" cx="1092" cy="76" r="5"/>
+      <rect class="btn-hit" x="1069" y="56" width="46" height="92" role="button" aria-label="Select preset 5 (DX EP)"/>
     </g>
     <g id="preset-6">
-      <text class="lbl-sm lbl-num" x="1256" y="30">6</text>
-      <text class="lbl lbl-preset" x="1256" y="48">MKS EP</text>
-      <rect class="btn-bezel" x="1226" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1230" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="1230,92 1282,92 1277,97 1235,97"/>
-      <polygon class="btn-facet-l" points="1230,92 1235,97 1235,139 1230,144"/>
-      <polygon class="btn-facet-r" points="1282,92 1282,144 1277,139 1277,97"/>
-      <polygon class="btn-facet-b" points="1230,144 1235,139 1277,139 1282,144"/>
-      <rect class="btn-plateau" x="1235" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M1230 144 L1282 144 L1282 60"/>
-      <circle class="led" id="led-preset-6" cx="1256" cy="76" r="5"/>
-      <rect class="btn-hit" x="1226" y="56" width="60" height="92" role="button" aria-label="Select preset 6 (MKS EP)"/>
+      <text class="lbl-sm lbl-num" x="1156" y="30">6</text>
+      <text class="lbl lbl-preset" x="1156" y="48">MKS EP</text>
+      <rect class="btn-bezel" x="1133" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1137" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="1137,92 1175,92 1171,96 1141,96"/>
+      <polygon class="btn-facet-l" points="1137,92 1141,96 1141,140 1137,144"/>
+      <polygon class="btn-facet-r" points="1175,92 1175,144 1171,140 1171,96"/>
+      <polygon class="btn-facet-b" points="1137,144 1141,140 1171,140 1175,144"/>
+      <rect class="btn-plateau" x="1141" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M1137 144 L1175 144 L1175 60"/>
+      <circle class="led" id="led-preset-6" cx="1156" cy="76" r="5"/>
+      <rect class="btn-hit" x="1133" y="56" width="46" height="92" role="button" aria-label="Select preset 6 (MKS EP)"/>
     </g>
     <g id="preset-7">
-      <text class="lbl-sm lbl-num" x="1340" y="30">7</text>
-      <text class="lbl lbl-preset" x="1340" y="48">VIBES</text>
-      <rect class="btn-bezel" x="1310" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1314" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="1314,92 1366,92 1361,97 1319,97"/>
-      <polygon class="btn-facet-l" points="1314,92 1319,97 1319,139 1314,144"/>
-      <polygon class="btn-facet-r" points="1366,92 1366,144 1361,139 1361,97"/>
-      <polygon class="btn-facet-b" points="1314,144 1319,139 1361,139 1366,144"/>
-      <rect class="btn-plateau" x="1319" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M1314 144 L1366 144 L1366 60"/>
-      <circle class="led" id="led-preset-7" cx="1340" cy="76" r="5"/>
-      <rect class="btn-hit" x="1310" y="56" width="60" height="92" role="button" aria-label="Select preset 7 (Vibes)"/>
+      <text class="lbl-sm lbl-num" x="1220" y="30">7</text>
+      <text class="lbl lbl-preset" x="1220" y="48">VIBES</text>
+      <rect class="btn-bezel" x="1197" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1201" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="1201,92 1239,92 1235,96 1205,96"/>
+      <polygon class="btn-facet-l" points="1201,92 1205,96 1205,140 1201,144"/>
+      <polygon class="btn-facet-r" points="1239,92 1239,144 1235,140 1235,96"/>
+      <polygon class="btn-facet-b" points="1201,144 1205,140 1235,140 1239,144"/>
+      <rect class="btn-plateau" x="1205" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M1201 144 L1239 144 L1239 60"/>
+      <circle class="led" id="led-preset-7" cx="1220" cy="76" r="5"/>
+      <rect class="btn-hit" x="1197" y="56" width="46" height="92" role="button" aria-label="Select preset 7 (Vibes)"/>
     </g>
     <g id="preset-8">
-      <text class="lbl-sm lbl-num" x="1424" y="30">8</text>
-      <text class="lbl lbl-preset" x="1424" y="48">GRAND</text>
-      <rect class="btn-bezel" x="1394" y="56" width="60" height="92" rx="3"/>
-      <rect class="btn btn-face" x="1398" y="60" width="52" height="84"/>
-      <polygon class="btn-facet-t" points="1398,92 1450,92 1445,97 1403,97"/>
-      <polygon class="btn-facet-l" points="1398,92 1403,97 1403,139 1398,144"/>
-      <polygon class="btn-facet-r" points="1450,92 1450,144 1445,139 1445,97"/>
-      <polygon class="btn-facet-b" points="1398,144 1403,139 1445,139 1450,144"/>
-      <rect class="btn-plateau" x="1403" y="97" width="42" height="42"/>
-      <path class="btn-edge" d="M1398 144 L1450 144 L1450 60"/>
-      <circle class="led" id="led-preset-8" cx="1424" cy="76" r="5"/>
-      <rect class="btn-hit" x="1394" y="56" width="60" height="92" role="button" aria-label="Select preset 8 (Grand)"/>
+      <text class="lbl-sm lbl-num" x="1284" y="30">8</text>
+      <text class="lbl lbl-preset" x="1284" y="48">GRAND</text>
+      <rect class="btn-bezel" x="1261" y="56" width="46" height="92" rx="3"/>
+      <rect class="btn btn-face" x="1265" y="60" width="38" height="84"/>
+      <polygon class="btn-facet-t" points="1265,92 1303,92 1299,96 1269,96"/>
+      <polygon class="btn-facet-l" points="1265,92 1269,96 1269,140 1265,144"/>
+      <polygon class="btn-facet-r" points="1303,92 1303,144 1299,140 1299,96"/>
+      <polygon class="btn-facet-b" points="1265,144 1269,140 1299,140 1303,144"/>
+      <rect class="btn-plateau" x="1269" y="96" width="30" height="44"/>
+      <path class="btn-edge" d="M1265 144 L1303 144 L1303 60"/>
+      <circle class="led" id="led-preset-8" cx="1284" cy="76" r="5"/>
+      <rect class="btn-hit" x="1261" y="56" width="46" height="92" role="button" aria-label="Select preset 8 (Grand)"/>
     </g>
   </g>
 
   <g id="clavi-group">
     <rect class="btn" x="596" y="108" width="46" height="34"/>
     <text class="lbl-alt lbl-alt-lg" x="673" y="177">CLAVI TABS</text>
-    <path id="clavi-group-line" class="clavi-line" d="M619 142 V169 Q619 172 622 172 H628 M718 172 H1272"/>
+    <path id="clavi-group-line" class="clavi-line" d="M619 142 V169 Q619 172 622 172 H628 M718 172 H1200"/>
     <text class="lbl-alt" x="836" y="168">BRILLIANT</text>
-    <text class="lbl-alt" x="920" y="168">TREBLE</text>
-    <text class="lbl-alt" x="1004" y="168">MEDIUM</text>
-    <text class="lbl-alt" x="1088" y="168">SOFT</text>
-    <text class="lbl-alt" x="1172" y="168">C / D</text>
-    <text class="lbl-alt" x="1256" y="168">A / B</text>
+    <text class="lbl-alt" x="900" y="168">TREBLE</text>
+    <text class="lbl-alt" x="964" y="168">MEDIUM</text>
+    <text class="lbl-alt" x="1028" y="168">SOFT</text>
+    <text class="lbl-alt" x="1092" y="168">C / D</text>
+    <text class="lbl-alt" x="1156" y="168">A / B</text>
   </g>
 
 
   <g id="sec-fx1">
-    <rect x="1502" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
-    <text class="lbl-sm" x="1536" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx1-select" x="1512" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx1-0" cx="1577" cy="72"  r="4.5"/>
-    <text class="lbl-sm" x="1596" y="76" text-anchor="start">TREM</text>
-    <circle class="led"    id="led-fx1-1" cx="1577" cy="94"  r="4.5"/>
-    <text class="lbl-sm" x="1596" y="98" text-anchor="start">PAN</text>
-    <circle class="led"    id="led-fx1-2" cx="1577" cy="116" r="4.5"/>
-    <text class="lbl-sm" x="1596" y="120" text-anchor="start">A-WHA</text>
-    <circle class="led"    id="led-fx1-3" cx="1577" cy="138" r="4.5"/>
-    <text class="lbl-sm" x="1596" y="142" text-anchor="start">P-WHA</text>
-    <text class="lbl-fx" x="1535" y="152">FX1</text>
+    <rect x="1362" y="40" width="250" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <text class="lbl-sm" x="1396" y="62">SELECT</text>
+    <rect class="btn" id="btn-fx1-select" x="1372" y="72" width="46" height="34"/>
+    <circle class="led on" id="led-fx1-0" cx="1437" cy="72" r="4.5"/>
+    <text class="lbl-sm" x="1456" y="76" text-anchor="start">TREM</text>
+    <circle class="led" id="led-fx1-1" cx="1437" cy="94" r="4.5"/>
+    <text class="lbl-sm" x="1456" y="98" text-anchor="start">PAN</text>
+    <circle class="led" id="led-fx1-2" cx="1437" cy="116" r="4.5"/>
+    <text class="lbl-sm" x="1456" y="120" text-anchor="start">A-WHA</text>
+    <circle class="led" id="led-fx1-3" cx="1437" cy="138" r="4.5"/>
+    <text class="lbl-sm" x="1456" y="142" text-anchor="start">P-WHA</text>
+    <text class="lbl-fx" x="1395" y="152">FX1</text>
     <g id="knob-fx1">
-      <use class="knob-glass" href="#knob-glass" x="1664" y="110"/>
-      <circle class="knob-ring" cx="1664" cy="110" r="32"/>
-      <use href="#pwr-icon" x="1686" y="148"/>
-      <circle class="knob-hit" cx="1664" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
+      <use class="knob-glass" href="#knob-glass" x="1548" y="110"/>
+      <circle class="knob-ring" cx="1548" cy="110" r="44"/>
+      <use href="#pwr-icon" x="1576" y="158"/>
+      <circle class="knob-hit" cx="1548" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX1 section"/>
     </g>
-    <text class="lbl-sm" x="1664" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1664" y="68">RATE</text>
+    <text class="lbl-sm" x="1548" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1548" y="68">RATE</text>
   </g>
 
   <g id="sec-amp">
-    <text class="lbl" x="1758" y="34">AMP / DRIVE</text>
+    <text class="lbl" x="1676" y="34">AMP / DRIVE</text>
     <g id="knob-amp-drive">
-      <use class="knob-glass" href="#knob-glass" x="1758" y="110"/>
-      <circle class="knob-ring" cx="1758" cy="110" r="35"/>
-      <use href="#pwr-icon" x="1780" y="148"/>
-      <circle class="knob-hit" cx="1758" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
+      <use class="knob-glass" href="#knob-glass" x="1676" y="110"/>
+      <circle class="knob-ring" cx="1676" cy="110" r="44"/>
+      <use href="#pwr-icon" x="1704" y="158"/>
+      <circle class="knob-hit" cx="1676" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle Amp Simulator section"/>
     </g>
   </g>
 
   <g id="sec-fx2">
-    <rect x="1826" y="40" width="196" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
-    <text class="lbl-sm" x="1860" y="62">SELECT</text>
-    <rect class="btn" id="btn-fx2-select" x="1836" y="72" width="46" height="34"/>
-    <circle class="led on" id="led-fx2-0" cx="1900" cy="72"  r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1918" y="76" text-anchor="start">CHORUS</text>
-    <circle class="led"    id="led-fx2-1" cx="1900" cy="94"  r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1918" y="98" text-anchor="start">PHASER</text>
-    <circle class="led"    id="led-fx2-2" cx="1900" cy="116" r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1918" y="120" text-anchor="start">FLANGER</text>
-    <circle class="led"    id="led-fx2-3" cx="1900" cy="138" r="4.5"/>
-    <text class="lbl-sm lbl-fxled" x="1918" y="142" text-anchor="start">DELAY</text>
-    <text class="lbl-fx" x="1859" y="152">FX2</text>
+    <rect x="1740" y="40" width="250" height="140" rx="6" fill="none" stroke="#46464a" stroke-width="1"/>
+    <text class="lbl-sm" x="1774" y="62">SELECT</text>
+    <rect class="btn" id="btn-fx2-select" x="1750" y="72" width="46" height="34"/>
+    <circle class="led on" id="led-fx2-0" cx="1815" cy="72" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1834" y="76" text-anchor="start">CHORUS</text>
+    <circle class="led" id="led-fx2-1" cx="1815" cy="94" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1834" y="98" text-anchor="start">PHASER</text>
+    <circle class="led" id="led-fx2-2" cx="1815" cy="116" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1834" y="120" text-anchor="start">FLANGER</text>
+    <circle class="led" id="led-fx2-3" cx="1815" cy="138" r="4.5"/>
+    <text class="lbl-sm lbl-fxled" x="1834" y="142" text-anchor="start">DELAY</text>
+    <text class="lbl-fx" x="1773" y="152">FX2</text>
     <g id="knob-fx2">
-      <use class="knob-glass" href="#knob-glass" x="1988" y="110"/>
-      <circle class="knob-ring" cx="1988" cy="110" r="32"/>
-      <use href="#pwr-icon" x="2010" y="148"/>
-      <circle class="knob-hit" cx="1988" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
+      <use class="knob-glass" href="#knob-glass" x="1926" y="110"/>
+      <circle class="knob-ring" cx="1926" cy="110" r="44"/>
+      <use href="#pwr-icon" x="1954" y="158"/>
+      <circle class="knob-hit" cx="1926" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle FX2 section"/>
     </g>
-    <text class="lbl-sm" x="1988" y="54">DEPTH</text>
-    <text class="lbl-sm lbl-cyan" x="1988" y="68">RATE</text>
+    <text class="lbl-sm" x="1926" y="54">DEPTH</text>
+    <text class="lbl-sm lbl-cyan" x="1926" y="68">RATE</text>
   </g>
 
   <g id="sec-pad">
     <!-- Hardware layout: PAD over LEVEL stacked tight above the knob (PAD in
          panel white, LEVEL in red), BLEND tucked right below it. -->
-    <text class="lbl" x="2080" y="52">PAD</text>
-    <text class="lbl lbl-red" x="2080" y="68">LEVEL</text>
+    <text class="lbl" x="2060" y="52">PAD</text>
+    <text class="lbl lbl-red" x="2060" y="68">LEVEL</text>
     <g id="knob-pad">
-      <use class="knob-glass" href="#knob-glass" x="2080" y="110"/>
-      <circle class="knob-ring" cx="2080" cy="110" r="35"/>
-      <use href="#pwr-icon" x="2102" y="148"/>
-      <circle class="knob-hit" cx="2080" cy="110" r="35" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
+      <use class="knob-glass" href="#knob-glass" x="2060" y="110"/>
+      <circle class="knob-ring" cx="2060" cy="110" r="44"/>
+      <use href="#pwr-icon" x="2088" y="158"/>
+      <circle class="knob-hit" cx="2060" cy="110" r="44" fill="transparent" role="button" aria-label="Toggle Synth Pad section"/>
     </g>
-    <circle class="led" id="led-pad-sw" cx="2080" cy="152" r="5"/>
-    <text class="lbl-sm lbl-blue" x="2080" y="170">BLEND</text>
+    <circle class="led" id="led-pad-sw" cx="2060" cy="152" r="5"/>
+    <text class="lbl-sm lbl-blue" x="2060" y="170">BLEND</text>
   </g>
 </svg>
