@@ -171,6 +171,17 @@
           '</svg></button>'
         : '';
 
+    const soundTag = (entry) => {
+      const kind = entry.sampled ? 'Sampled' : 'Modeled';
+      return (
+        `<span class="sound-tag ${entry.sampled ? 'is-sampled' : 'is-modeled'}" title="${kind}" aria-label="${kind}">` +
+        `${entry.sampled ? 'S' : 'M'}</span>` +
+        (entry.missing
+          ? '<span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">!</span>'
+          : '')
+      );
+    };
+
     const pulse = (i) =>
       state.slotPulse && state.slotPulse.slot === i ? ` slot-${state.slotPulse.kind}` : '';
 
@@ -180,10 +191,10 @@
         if (!file) {
           return (
             `<div class="lib-slot lib-slot-empty${pulse(i)}" data-slot="${i}">` +
-            `${num}<span class="slot-text">Empty</span><span class="lib-badges"></span>` +
+            `${num}<span class="slot-text">Empty</span><span class="lib-badges">${assignBtn(i)}</span>` +
             `<span class="lib-origin">${clearedEntry(i) ? esc(originLine(clearedEntry(i))) : ''}</span>` +
             `<span class="patch-sound"></span>` +
-            `<span class="slot-controls">${assignBtn(i)}${undoBtn(i)}</span></div>`
+            `<span class="slot-controls">${undoBtn(i)}</span></div>`
           );
         }
         const entry = byFile.get(file);
@@ -191,19 +202,20 @@
           return (
             `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Referenced file is not in the library folder">` +
             `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
-            `<span class="lib-badges"><span class="badge badge-warn">⚠</span></span>` +
-            `<span class="lib-origin"></span><span class="patch-sound"></span>` +
-            `<span class="slot-controls">${assignBtn(i)}${clearBtn(i)}</span></div>`
+            `<span class="lib-badges">${assignBtn(i)}</span>` +
+            `<span class="lib-origin"></span>` +
+            `<span class="patch-sound"><span class="sound-tag is-warn" title="Referenced file is missing">!</span></span>` +
+            `<span class="slot-controls">${clearBtn(i)}</span></div>`
           );
         }
         const selected = state.selected === rowKey(entry);
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name">${esc(entry.name)}</span>` +
-          `<span class="lib-badges">${badge(entry)}</span>` +
+          `<span class="lib-badges">${assignBtn(i)}</span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
-          `<span class="patch-sound">${esc(entry.soundName)}</span>` +
-          `<span class="slot-controls">${assignBtn(i)}${clearBtn(i)}</span></div>`
+          `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
+          `<span class="slot-controls">${clearBtn(i)}</span></div>`
         );
       })
       .join('');
