@@ -171,6 +171,23 @@
     #sounds-button:hover, #sounds-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #sounds-button + #backup-button, #sounds-button + #conn-button { margin-left: 0; }
     #connection-row { position: relative; }
+    #theme-toggle {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      display: flex; border: 1px solid rgba(0, 0, 0, .3); border-radius: 5px;
+      overflow: hidden; background: rgba(0, 0, 0, .06);
+    }
+    #theme-toggle button {
+      font: inherit; font-size: 12px; padding: 2px 14px;
+      background: none; border: none; color: #4a4a50; cursor: pointer;
+    }
+    #theme-toggle button + button { border-left: 1px solid rgba(0, 0, 0, .22); }
+    #theme-toggle button:hover { color: #000; }
+    /* Selected reads as the raised half of a two-way switch. */
+    #theme-toggle button[aria-pressed="true"] {
+      background: linear-gradient(180deg, #fbfaf7, #e4e2dd);
+      color: #16161a; font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+    }
     #sounds-panel {
       position: absolute; top: 100%; right: 12px; z-index: 30;
       min-width: 460px; max-height: 60vh; overflow-y: auto;
@@ -391,6 +408,7 @@
       transition: opacity .12s, color .12s, background .12s;
     }
     .lib-row:hover .row-edit, .lib-row.selected .row-edit { opacity: 1; }
+    .patch-row:hover .row-edit, .patch-row.selected .row-edit { opacity: 1; }
     .row-edit:hover { color: var(--text); background: var(--shade-hard); }
     .lib-origin {
       font-size: 12px; color: var(--text-muted);
@@ -715,6 +733,12 @@
   <div id="connection-row">
     <span class="conn-dot"></span>
     <span id="connection-text">No instrument connected</span>
+    <!-- Appearance sits on the divider itself: it belongs to neither region,
+         and the aluminium strip is the seam between them. -->
+    <div id="theme-toggle" role="group" aria-label="Appearance">
+      <button type="button" data-theme-set="light">light</button>
+      <button type="button" data-theme-set="dark">dark</button>
+    </div>
     <button id="sounds-button" type="button" hidden>24 sounds</button>
     <button id="backup-button" type="button" hidden>Back up instrument</button>
     <button id="conn-button" type="button">Connect</button>

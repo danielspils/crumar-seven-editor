@@ -374,7 +374,14 @@
       return (
         `<button class="patch-row${index === selectedIndex ? ' selected' : ''}" data-index="${index}" type="button">` +
         `<span class="patch-num">${index + 1}</span>` +
-        `<span class="patch-name">${esc(patch.name)}</span>` +
+        `<span class="name-line"><span class="patch-name">${esc(patch.name)}</span>` +
+        (patch.file
+          ? '<span class="row-edit" data-slot-edit role="button" aria-label="Rename" title="Rename this patch in the library">' +
+            '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+            '<path d="M11.4 1.9a1.3 1.3 0 0 1 1.8 0l.9.9a1.3 1.3 0 0 1 0 1.8l-7.3 7.3-3 .8.8-3z" ' +
+            'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>'
+          : '') +
+        `</span>` +
         `<span class="patch-sound">${esc(patch.soundName)}</span>` +
         `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">${patch.sampled ? 'Sampled' : 'Modeled'}</span>` +
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +

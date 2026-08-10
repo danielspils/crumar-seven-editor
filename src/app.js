@@ -11,10 +11,21 @@
   // state — never patch data.
   const THEME_KEY = 'seven.theme';
   const applyTheme = (name) => {
-    document.documentElement.dataset.theme = name === 'light' ? 'light' : 'dark';
-    localStorage.setItem(THEME_KEY, name);
+    const theme = name === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+    // Keep the divider's switch in step whichever route set the theme.
+    for (const b of document.querySelectorAll('[data-theme-set]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.themeSet === theme));
+    }
   };
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+  document.addEventListener('DOMContentLoaded', () =>
+    applyTheme(localStorage.getItem(THEME_KEY) || 'dark'));
+  document.addEventListener('click', (e) => {
+    const pick = e.target.closest('[data-theme-set]');
+    if (pick) applyTheme(pick.dataset.themeSet);
+  });
 
   // Self-hosted fonts (Archivo for the panel strip, Inter for the UI) — must be
   // registered before any rendering so nothing flashes in a fallback face.
@@ -420,6 +431,21 @@
   listEl.addEventListener('click', (e) => {
     const row = e.target.closest('.patch-row');
     if (!row) return;
+    // A slot's name IS its backup patch's name — the Seven stores none. The
+    // pencil therefore renames that library file; both regions then show the
+    // new name, because both read the same file.
+    if (e.target.closest('[data-slot-edit]')) {
+      e.stopPropagation();
+      const patch = banks[bankIndex].patches[Number(row.dataset.index)];
+      const entry = patch && libEntries.find((x) => x.file === patch.file);
+      if (entry) {
+        setLibraryOpen(true, { scroll: true });
+        libView.select(entry);
+        libSelected = entry;
+        libView.beginRename(entry);
+      }
+      return;
+    }
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     lastTouched = 'device';
     resetCollapsed();
@@ -508,6 +534,7 @@
   // Library selection: when set, the detail view renders this entry instead of
   // the bank patch. Bank/preset clicks clear it.
   let libSelected = null;
+  let libEntries = [];
 
   const libToRendererPatch = (entry) => ({
     name: entry.name,
@@ -589,6 +616,7 @@
 
   async function refreshLibrary() {
     const data = await window.sevenAPI.library.list();
+    libEntries = data.patches;
     libView.update(data);
     const n = data.patches.filter((e) => !e.invalid).length;
     libCount.textContent = `— ${n} patch${n === 1 ? '' : 'es'}`;
