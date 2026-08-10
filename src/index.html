@@ -497,15 +497,8 @@
     /* Slot rows carry the sound's kind as a lettered dot next to the sound
        name rather than a pill in the corner — the corner belongs to Assign.
        Hover reveals "Modeled" / "Sampled". */
-    .sound-tag {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 15px; height: 15px; margin-left: 6px; border-radius: 50%;
-      border: 1px solid currentColor; font-size: 9px; font-weight: 700;
-      line-height: 1; vertical-align: -2px; cursor: help;
-    }
-    .sound-tag.is-modeled { color: var(--modeled); }
-    .sound-tag.is-sampled { color: var(--sampled); }
-    .sound-tag.is-warn { color: var(--warn); }
+    .sound-tag { font-style: italic; color: var(--text-dim); cursor: help; }
+    .sound-tag.is-warn { color: var(--warn); font-style: normal; }
     .lib-slot .slot-controls {
       grid-column: 4; grid-row: 1 / span 2; align-self: center;
       display: flex; align-items: center; gap: 2px; justify-content: flex-end;

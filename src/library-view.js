@@ -171,13 +171,14 @@
           '</svg></button>'
         : '';
 
+    // Kind reads as a quiet parenthetical after the sound name — "(m)" for
+    // modeled, "(s)" for sampled — with the full word on hover.
     const soundTag = (entry) => {
       const kind = entry.sampled ? 'Sampled' : 'Modeled';
       return (
-        `<span class="sound-tag ${entry.sampled ? 'is-sampled' : 'is-modeled'}" title="${kind}" aria-label="${kind}">` +
-        `${entry.sampled ? 'S' : 'M'}</span>` +
+        ` <span class="sound-tag" title="${kind}" aria-label="${kind}">(${entry.sampled ? 's' : 'm'})</span>` +
         (entry.missing
-          ? '<span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">!</span>'
+          ? ' <span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">(!)</span>'
           : '')
       );
     };
@@ -204,7 +205,7 @@
             `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
             `<span class="lib-badges">${assignBtn(i)}</span>` +
             `<span class="lib-origin"></span>` +
-            `<span class="patch-sound"><span class="sound-tag is-warn" title="Referenced file is missing">!</span></span>` +
+            `<span class="patch-sound"><span class="sound-tag is-warn" title="Referenced file is missing">(missing)</span></span>` +
             `<span class="slot-controls">${clearBtn(i)}</span></div>`
           );
         }
