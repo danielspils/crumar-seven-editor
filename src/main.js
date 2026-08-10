@@ -196,6 +196,14 @@ function buildMenu(win) {
           click: (item) => send({ type: 'showRaw', value: item.checked }),
         },
         { type: 'separator' },
+        {
+          label: 'Appearance',
+          submenu: [
+            { label: 'Dark', click: () => send({ type: 'theme', value: 'dark' }) },
+            { label: 'Light', click: () => send({ type: 'theme', value: 'light' }) },
+          ],
+        },
+        { type: 'separator' },
         { label: 'Expand all sections', click: () => send({ type: 'expandAll' }) },
         { label: 'Collapse all sections', click: () => send({ type: 'collapseAll' }) },
         { type: 'separator' },

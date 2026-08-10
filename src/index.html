@@ -5,6 +5,9 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;">
   <title>Crumar Seven Editor</title>
   <style>
+    /* Two themes, one variable set. Everything below the aluminium divider
+       reads from these; the panel strip is artwork and stays as it is in
+       both — the instrument should be the darkest thing on screen. */
     :root {
       --bg: #141416;
       --bg-raised: #1c1c1f;
@@ -22,6 +25,32 @@
       --bar-fill: #8e8e96;
       --bar-fill-changed: #d9d9de;
       --ok: #3fb950;
+      --shade: rgba(255, 255, 255, .05);   /* hover */
+      --shade-hard: rgba(255, 255, 255, .08);
+      --card-border: transparent;
+    }
+    /* Antiqued white: warm paper, not grey. Accents darken rather than
+       change hue, so the two themes stay recognisably the same UI. */
+    :root[data-theme="light"] {
+      --bg: #f0ebe0;
+      --bg-raised: #f8f5ed;
+      --bg-panel: #e4ddcd;
+      --line: #d2c9b6;
+      --text: #26231f;
+      --text-muted: #6a6355;
+      --text-dim: #8a8375;
+      --accent: #b8362b;
+      --amber: #8a5d00;
+      --warn: #7d5a10;
+      --sampled: #17636f;
+      --modeled: #4c4291;
+      --bar: #d8d0be;
+      --bar-fill: #6a6355;
+      --bar-fill-changed: #26231f;
+      --ok: #2c7139;
+      --shade: rgba(0, 0, 0, .045);
+      --shade-hard: rgba(0, 0, 0, .075);
+      --card-border: #ddd5c4;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* The window itself never scrolls: the panel strip is a fixed reference at
@@ -459,7 +488,7 @@
       display: flex; align-items: center; gap: 8px; margin-bottom: 0;
       cursor: pointer; border-radius: 4px; padding: 2px 4px; margin-left: -4px; margin-right: -4px;
     }
-    .fx-head:hover { background: rgba(255, 255, 255, .045); }
+    .fx-head:hover { background: var(--shade); }
     /* Flex-centred box around a geometric SVG chevron: vertically centred on
        the header text's midline in both states (a font glyph's ink sat below
        centre regardless of box alignment). */
@@ -591,7 +620,7 @@
     .inert-note { font-style: italic; color: var(--text-muted); font-weight: 400; }
     .fx-inert-banner {
       grid-column: 1 / -1; margin: 8px 0 2px; padding: 6px 10px; border-radius: 4px;
-      background: rgba(255, 255, 255, .04); color: var(--text-muted); font-size: 12px;
+      background: var(--shade); color: var(--text-muted); font-size: 12px;
     }
     /* Discrete selector (unnamed N-position params): segmented control in the
        bar column, current position filled; value cell shows 1-based pos/total.

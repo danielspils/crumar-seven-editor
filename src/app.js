@@ -6,6 +6,16 @@
 // derives from the on-disk library's backup patches; nothing renders fixtures.
 
 (function () {
+  // Appearance: dark (default) or the antiqued-light theme. Applied before
+  // anything renders so there is no flash, and persisted like the other UI
+  // state — never patch data.
+  const THEME_KEY = 'seven.theme';
+  const applyTheme = (name) => {
+    document.documentElement.dataset.theme = name === 'light' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, name);
+  };
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
   // Self-hosted fonts (Archivo for the panel strip, Inter for the UI) — must be
   // registered before any rendering so nothing flashes in a fallback face.
   const fontStyle = document.createElement('style');
@@ -666,7 +676,9 @@
   // ---- View menu commands (main process → here) -----------------------------
   if (window.sevenAPI.onViewCommand) {
     window.sevenAPI.onViewCommand((msg) => {
-      if (msg.type === 'showRaw') {
+      if (msg.type === 'theme') {
+        applyTheme(msg.value);
+      } else if (msg.type === 'showRaw') {
         showRaw = !!msg.value;
         renderDetail();
       } else if (msg.type === 'expandAll') {
