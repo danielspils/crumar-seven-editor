@@ -158,13 +158,28 @@
         : '';
     const clearBtn = (i) =>
       `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">✕</button>`;
+    const clearedEntry = (i) =>
+      (state.lastCleared && state.lastCleared.setlist === state.setlistIndex && state.lastCleared.slot === i
+        && byFile.get(state.lastCleared.file)) || null;
+
+    const undoBtn = (i) =>
+      state.lastCleared && state.lastCleared.setlist === state.setlistIndex && state.lastCleared.slot === i
+        ? `<button type="button" class="slot-undo" data-slot-undo="${i}" title="Put the patch back in slot ${i + 1}">` +
+          '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
+          '<path d="M3.5 8a4.5 4.5 0 1 1 1.4 3.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+          '<path d="M3.2 4.6v3.1h3.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '</svg></button>'
+        : '';
+
     const rows = setlist.slots
       .map((file, i) => {
         const num = `<span class="slot-num">${i + 1}</span>`;
         if (!file) {
           return (
             `<div class="lib-slot lib-slot-empty" data-slot="${i}">` +
-            `${num}<span class="slot-text">Empty</span>${assignBtn(i)}</div>`
+            `${num}<span class="name-cell"><span class="slot-text">Empty</span>${
+              clearedEntry(i) ? `<span class="lib-origin">${esc(originLine(clearedEntry(i)))}</span>` : ''
+            }</span>${assignBtn(i)}${undoBtn(i)}</div>`
           );
         }
         const entry = byFile.get(file);
@@ -222,6 +237,7 @@
       renaming: null,
       renamingSetlist: null,
       creatingSetlist: false,
+      lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
     };
     let data = { patches: [], setlists: [] };
 
@@ -300,6 +316,7 @@
       }
       if (e.target.closest('.lib-back')) {
         state.setlistIndex = null;
+        state.lastCleared = null;
         render();
         return;
       }
@@ -315,9 +332,23 @@
         if (sel && on.assignSlot) on.assignSlot(state.setlistIndex, Number(assign.dataset.slotAssign), sel.file);
         return;
       }
+      const undo = e.target.closest('[data-slot-undo]');
+      if (undo) {
+        const u = state.lastCleared;
+        state.lastCleared = null;
+        if (u && on.assignSlot) on.assignSlot(u.setlist, u.slot, u.file);
+        return;
+      }
       const clear = e.target.closest('[data-slot-clear]');
       if (clear) {
-        if (on.clearSlot) on.clearSlot(state.setlistIndex, Number(clear.dataset.slotClear));
+        const slot = Number(clear.dataset.slotClear);
+        const setlist = data.setlists[state.setlistIndex];
+        // Clearing a slot is one click and easy to do by accident; hold what
+        // it removed so the empty slot can offer it straight back.
+        state.lastCleared = setlist
+          ? { setlist: state.setlistIndex, slot, file: setlist.slots[slot] }
+          : null;
+        if (on.clearSlot) on.clearSlot(state.setlistIndex, slot);
         return;
       }
       const setlistRow = e.target.closest('.lib-setlist');

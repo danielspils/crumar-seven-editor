@@ -437,6 +437,14 @@
     /* Empty and missing-file slots are distinct at a glance: empty is quiet,
        missing carries the warning treatment. */
     .lib-slot-empty .slot-text { color: var(--text-dim); font-style: italic; }
+    /* Sits in the cleared row's trailing control cell — where the ✕ that
+       emptied it was. */
+    .slot-undo {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: none; border: none; padding: 2px 6px; cursor: pointer;
+      color: var(--amber); grid-column: 6;
+    }
+    .slot-undo:hover { color: var(--text); }
     .lib-slot-missing .slot-text { color: var(--warn); }
     /* Setlist editing */
     .lib-new-setlist {
