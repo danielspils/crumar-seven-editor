@@ -77,6 +77,7 @@
        largest legends on the instrument; preset numbers/labels sit between it
        and the small captions. */
     .lbl-lg     { font-size: 18px; }
+    .lbl-sect   { font-size: 16px; }
     .lbl-preset { font-size: 15px; }
     .lbl-num    { font-size: 12px; }
     .lbl-bank-num { font-size: 14px; fill: #e8e8ea; }
@@ -170,7 +171,7 @@
   <rect x="6.5" y="6.5" width="2147" height="197" rx="4" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1"/>
 
   <g id="sec-volume">
-    <text class="lbl" x="72" y="50">VOLUME</text>
+    <text class="lbl lbl-sect" x="72" y="46">VOLUME</text>
     <g id="knob-volume">
       <use class="knob-glass" href="#knob-glass" x="72" y="105"/>
       <circle class="knob-ring" cx="72" cy="105" r="44"/>
@@ -185,17 +186,17 @@
   </g>
 
   <g id="sec-reverb">
-    <text class="lbl" x="196" y="50">REVERB</text>
+    <text class="lbl lbl-sect" x="196" y="46">REVERB</text>
     <g id="knob-reverb">
       <use class="knob-glass" href="#knob-glass" x="196" y="105"/>
       <circle class="knob-ring" cx="196" cy="105" r="44"/>
       <use href="#pwr-icon" x="224" y="153"/>
       <circle class="knob-hit" cx="196" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Reverb section"/>
     </g>
-    <circle class="led on" id="led-rev-level" cx="244" cy="46" r="5"/>
-    <text class="lbl-sm" x="260" y="50" text-anchor="start">LEVEL</text>
-    <circle class="led" id="led-rev-decay" cx="244" cy="62" r="5"/>
-    <text class="lbl-sm" x="260" y="66" text-anchor="start">DECAY</text>
+    <circle class="led on" id="led-rev-level" cx="244" cy="42" r="5"/>
+    <text class="lbl-sm" x="260" y="46" text-anchor="start">LEVEL</text>
+    <circle class="led" id="led-rev-decay" cx="244" cy="58" r="5"/>
+    <text class="lbl-sm" x="260" y="62" text-anchor="start">DECAY</text>
   </g>
 
   <g id="sec-eq">
@@ -205,10 +206,10 @@
       <use href="#pwr-icon" x="408" y="153"/>
       <circle class="knob-hit" cx="380" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="424" y="50" text-anchor="end">BASS</text>
-    <text class="lbl-sm" x="424" y="66" text-anchor="end">MIDDLE</text>
-    <circle class="led on" id="led-eq-top" cx="440" cy="46" r="5"/>
-    <circle class="led"    id="led-eq-bot" cx="440" cy="62" r="5"/>
+    <text class="lbl-sm" x="424" y="46" text-anchor="end">BASS</text>
+    <text class="lbl-sm" x="424" y="62" text-anchor="end">MIDDLE</text>
+    <circle class="led on" id="led-eq-top" cx="440" cy="42" r="5"/>
+    <circle class="led"    id="led-eq-bot" cx="440" cy="58" r="5"/>
 
     <g id="knob-treble-midf">
       <use class="knob-glass" href="#knob-glass" x="500" y="105"/>
@@ -216,8 +217,8 @@
       <use href="#pwr-icon" x="528" y="153"/>
       <circle class="knob-hit" cx="500" cy="105" r="44" fill="transparent" role="button" aria-label="Toggle Master Volume / EQ section"/>
     </g>
-    <text class="lbl-sm" x="456" y="50" text-anchor="start">TREBLE</text>
-    <text class="lbl-sm" x="456" y="66" text-anchor="start">MID FREQ</text>
+    <text class="lbl-sm" x="456" y="46" text-anchor="start">TREBLE</text>
+    <text class="lbl-sm" x="456" y="62" text-anchor="start">MID FREQ</text>
   </g>
 
 
