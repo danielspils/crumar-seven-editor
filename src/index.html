@@ -746,6 +746,7 @@
        of the detail panel as you scroll, and the panel wears an amber edge. */
     .audition-bar.is-live {
       position: sticky; top: -16px; z-index: 5;
+      padding-right: 48px; /* keeps the wrapped line clear of the close control */
       margin: -16px -20px 16px; padding: 10px 20px;
       background: var(--bg); border-bottom: 2px solid var(--amber);
       box-shadow: 0 6px 12px -8px rgba(0, 0, 0, .45);
@@ -765,8 +766,11 @@
     /* Leaving audition mode is a close control at the bar's right edge, the
        same affordance the modal uses — not a button beside Save. */
     #done-live-btn {
+      /* Pinned to the bar's top-right corner rather than floated to the end of
+         the row, so it stays put as the line below it wraps. */
+      position: absolute; top: 8px; right: 14px;
       display: flex; align-items: center; justify-content: center;
-      width: 24px; height: 24px; padding: 0; flex: none; margin-left: auto;
+      width: 24px; height: 24px; padding: 0;
       background: none; border: none; border-radius: 4px;
       color: var(--text-dim); cursor: pointer;
     }
