@@ -846,7 +846,14 @@
         : s.state === 'connecting' ? 'connecting'
         : error ? 'failed' : '';
       if (s.state === 'connected') {
-        connText.textContent = `Connected — ${s.firmware}`;
+        // "Pronto" — ready, and what an Italian says answering the phone:
+        // the instrument has just spoken for the first time. Crumar was built
+        // in Castelfidardo; this is the one place the app nods to that.
+        // Firmware stays visible beside it — every protocol fact in this
+        // project is version-gated, so the version is never decoration.
+        connText.innerHTML =
+          `Pronto · <span class="conn-name">Crumar Seven</span>` +
+          `<span class="conn-fw">${String(s.firmware).replace(/[&<>"]/g, '')}</span>`;
         connBtn.textContent = 'Disconnect';
         if (s.soundTable) {
           soundsBtn.textContent = `${s.soundTable.sounds.length} sounds`;
