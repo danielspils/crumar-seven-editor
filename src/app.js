@@ -458,6 +458,7 @@
   // what the instrument actually did.
   let sendInFlight = false;
   let pendingSend = null;
+  let auditionInFlight = false;
 
   async function sendEdit(key, value) {
     if (!isLive()) return;
@@ -624,7 +625,18 @@
     const btn = e.target.closest('#audition-btn');
     btn.disabled = true;
     btn.textContent = 'Sending…';
-    const r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
+    auditionInFlight = true;
+    let r;
+    try {
+      r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
+    } catch (err) {
+      // An IPC that rejects (rather than returning {ok:false}) used to strand
+      // the button mid-send: disabled, reading "Sending…", with no path back
+      // except restarting the app.
+      r = { ok: false, error: `The send failed: ${err && err.message}` };
+    } finally {
+      auditionInFlight = false;
+    }
     if (!r.ok) {
       auditionNote = { kind: 'is-error', text: r.error, file: target.file };
     } else {
@@ -1295,12 +1307,22 @@
         // A recall replaces the edit buffer wholesale, so anything we were
         // holding there is gone. Say so instead of leaving controls that look
         // live but are editing a different preset.
-        if (liveEdit) {
+        // Our own audition traffic can look like this; only a PC that arrives
+        // outside a send is the user recalling a preset.
+        if (liveEdit && !auditionInFlight) {
+          const file = liveEdit.file;
           const stale = liveEdit.dirty;
           liveEdit = null;
-          auditionNote = stale
-            ? { kind: 'is-error', text: 'The Seven recalled a preset — your unsaved edits are gone.' }
-            : null;
+          // The note MUST carry the file: the bar only shows a note belonging
+          // to the patch on screen, so a fileless one is set and never seen.
+          auditionNote = {
+            kind: 'is-error',
+            file,
+            text: stale
+              ? 'The Seven recalled a preset — your unsaved edits are gone.'
+              : 'The Seven recalled a preset, so audition mode ended.',
+          };
+          renderDetail();
         }
         // Send PC on: panel recalls are slot-identified, so the bank region
         // follows the hardware. Suppressed during a backup run — those PCs
