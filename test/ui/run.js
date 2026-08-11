@@ -10,17 +10,38 @@
 
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..', '..');
 const dir = path.join(__dirname, 'scenarios');
 const only = process.argv[2];
 
-function runScenario(file) {
+// Scenarios edit patches and save them — that is the point of the save test —
+// so they must never run against the real library. Each run gets a scratch
+// copy: real content, so the bank rows and sounds are what the app actually
+// sees, but nothing the user owns can be changed.
+function makeScratchLibrary() {
+  const source = process.env.SEVEN_REAL_LIBRARY ||
+    path.join(os.homedir(), 'Library', 'Application Support', 'Crumar Seven Editor', 'Library');
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'seven-ui-lib-'));
+  if (fs.existsSync(source)) {
+    for (const f of fs.readdirSync(source)) {
+      if (f.endsWith('.json')) fs.copyFileSync(path.join(source, f), path.join(scratch, f));
+    }
+  }
+  return scratch;
+}
+
+function runScenario(file, libraryDir) {
   return new Promise((resolve) => {
     const child = spawn('npx', ['electron', '.'], {
       cwd: root,
-      env: { ...process.env, SEVEN_UI_TEST: path.join(dir, file) },
+      env: {
+        ...process.env,
+        SEVEN_UI_TEST: path.join(dir, file),
+        SEVEN_LIBRARY_DIR: libraryDir,
+      },
     });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
@@ -39,10 +60,14 @@ function runScenario(file) {
 
 (async () => {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.js') && (!only || f.includes(only))).sort();
+  const scratch = makeScratchLibrary();
+  console.log(`library: ${scratch} (a copy — the real one is never touched)\n`);
   let failed = 0;
   let skipped = 0;
   for (const file of files) {
-    const r = await runScenario(file);
+    // A fresh copy per scenario, so one cannot leave state for the next.
+    const lib = makeScratchLibrary();
+    const r = await runScenario(file, lib);
     if (r.skipped) {
       skipped++;
       console.log(`- ${file} — skipped (${r.skipped})`);
@@ -58,5 +83,6 @@ function runScenario(file) {
     }
   }
   console.log(`\n${files.length - failed - skipped} passed, ${failed} failed, ${skipped} skipped`);
+  fs.rmSync(scratch, { recursive: true, force: true });
   process.exit(failed ? 1 : 0);
 })();

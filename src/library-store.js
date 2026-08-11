@@ -138,6 +138,10 @@ class LibraryStore {
   }
 
   writeSetlists(setlists) {
+    // The folder may not exist yet: nothing guarantees a list() came first,
+    // and a setlist write into a missing directory throws ENOENT. Found by
+    // test/library-store.test.js, which starts from an empty machine.
+    this.ensureSeeded();
     fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({ setlists }, null, 2)}\n`);
   }
 
@@ -277,7 +281,15 @@ class LibraryStore {
             captured: p.captured || null,
           };
         } else if (p.origin && p.origin.created) {
-          origin = { kind: 'created', date: p.origin.created };
+          // `verified` wins here too. A patch made in the app, then edited
+          // live and saved, would otherwise show its creation date forever —
+          // the row's date answers "how fresh is this?", not "when was it
+          // born". The creation date is still carried alongside.
+          origin = {
+            kind: 'created',
+            date: p.verified || p.origin.created,
+            created: p.origin.created,
+          };
         } else {
           origin = { kind: 'imported' }; // absent or unrecognised — never "Created"
         }
