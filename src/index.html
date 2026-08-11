@@ -507,9 +507,16 @@
       opacity: 0; transition: opacity .15s ease, transform .15s ease;
     }
     #undo-toast.shown { opacity: 1; transform: translate(-50%, 0); }
-    /* Work in progress rather than a result: amber edge on both sides and a
-       quiet pulse, so it reads as "hold on" instead of "done". */
-    #undo-toast.is-busy { border-left-color: var(--amber); border-right: 3px solid var(--amber); }
+    /* Work in progress rather than a result: centred in the window where the
+       eye already is, with an amber edge on both sides and a quiet pulse, so
+       it reads as "hold on" instead of "done". Results stay at the bottom —
+       they are worth noticing, not worth interrupting for. */
+    #undo-toast.is-busy {
+      top: 50%; bottom: auto; transform: translate(-50%, calc(-50% + 8px));
+      padding: 14px 24px; font-size: 13px;
+      border-left-color: var(--amber); border-right: 3px solid var(--amber);
+    }
+    #undo-toast.is-busy.shown { transform: translate(-50%, -50%); }
     #undo-toast.is-busy::after {
       content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px;
       border-radius: 50%; background: var(--amber); vertical-align: middle;
