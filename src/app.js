@@ -1567,6 +1567,10 @@
 
     connBtn.addEventListener('click', async () => {
       const connected = connRow.classList.contains('connected');
+      // Disconnecting BY HAND means "leave it alone" — auto-connect stays off
+      // until this session asks again, or the app is relaunched. Anything else
+      // would fight the user.
+      autoConnectSuspended = connected;
       try {
         if (connected) await window.sevenAPI.midi.disconnect();
         else await window.sevenAPI.midi.connect();
@@ -1575,6 +1579,40 @@
         showStatus({ state: 'disconnected' }, err.message.replace(/^.*Error: /, ''));
       }
     });
+
+    // ---- Auto-connect ------------------------------------------------------
+    // Connecting is not passive: it probes for life, reads the sound table and
+    // pins the Send PC global (restoring it on disconnect). So this only fires
+    // when a Seven is actually on the bus, never speculatively, and it backs
+    // off after a failure until the port comes and goes again — a device that
+    // refuses to answer should not be poked every three seconds forever.
+    let autoConnectSuspended = false;
+    let lastPresence = false;
+    let failedWhilePresent = false;
+
+    async function autoConnectTick() {
+      if (autoConnectSuspended) return;
+      if (connRow.classList.contains('connected') || connRow.classList.contains('connecting')) return;
+      const present = await window.sevenAPI.midi.present();
+      if (!present) {
+        // Unplugged: forget the earlier failure, so replugging tries again.
+        lastPresence = false;
+        failedWhilePresent = false;
+        return;
+      }
+      const justAppeared = !lastPresence;
+      lastPresence = true;
+      if (failedWhilePresent && !justAppeared) return;
+      try {
+        await window.sevenAPI.midi.connect();
+      } catch (err) {
+        failedWhilePresent = true;
+        showStatus({ state: 'disconnected' }, err.message.replace(/^.*Error: /, ''));
+      }
+    }
+
+    autoConnectTick();
+    setInterval(autoConnectTick, 3000);
 
     window.sevenAPI.midi.onEvent((ev) => {
       if (ev.type === 'status') showStatus(ev, ev.error);

@@ -136,6 +136,15 @@ function registerMidiIpc() {
   ipcMain.handle('midi:connect', () => getMidi().connect());
   ipcMain.handle('midi:disconnect', () => getMidi().disconnect());
   ipcMain.handle('midi:status', () => getMidi().status());
+  // "Is one plugged in?" — port names only, nothing opened or sent, so the
+  // renderer can ask on a timer while disconnected.
+  ipcMain.handle('midi:present', () => {
+    try {
+      return getMidi().portPresent();
+    } catch {
+      return false;
+    }
+  });
 }
 
 // ---- Backup run (src/backup-runner.js) -------------------------------------

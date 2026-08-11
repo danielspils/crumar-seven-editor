@@ -143,6 +143,26 @@ class SevenMidi extends EventEmitter {
     return -1;
   }
 
+  // Is a Seven on the bus? Opens nothing and sends nothing — port names only,
+  // so it is safe to ask repeatedly while disconnected. A name match is not
+  // proof the instrument is alive; connect()'s liveness probe is what decides
+  // that. This only answers "is it worth trying?".
+  portPresent() {
+    if (!this.midi) return false;
+    let input = null;
+    let output = null;
+    try {
+      input = new this.midi.Input();
+      output = new this.midi.Output();
+      return this._findPort(input) >= 0 && this._findPort(output) >= 0;
+    } catch {
+      return false;
+    } finally {
+      try { if (input) input.closePort(); } catch { /* not open */ }
+      try { if (output) output.closePort(); } catch { /* not open */ }
+    }
+  }
+
   _openPorts() {
     this.input = new this.midi.Input();
     this.output = new this.midi.Output();
