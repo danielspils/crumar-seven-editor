@@ -311,6 +311,8 @@
       .join('');
   }
 
+  let lastDetailKey = null;
+
   function renderDetail() {
     const patch = currentPatch();
     // A library patch has no bank position — the pos line is omitted. A
@@ -329,9 +331,17 @@
     // instrument currently holds, including edits not yet saved to disk.
     const live = isLive();
     const shown = live ? { ...patch, params: liveEdit.params } : patch;
+    // Every live edit re-renders this panel, and replacing its contents resets
+    // its scroll — so editing a parameter halfway down threw the view back to
+    // the top on every change. Hold the position across the swap; a genuine
+    // change of patch starts at the top, which is what detailKey tracks.
+    const key = `${lastTouched}:${(auditionTarget() || {}).file || ''}:${patch && patch.name}`;
+    const keepScroll = key === lastDetailKey ? detailEl.scrollTop : 0;
     detailEl.innerHTML = patch
       ? renderAuditionBar(patch, live) + R.renderDetail(shown, { showRaw, collapsed, live, ...pos })
       : `<div class="placeholder">${emptyMsg}</div>`;
+    detailEl.scrollTop = keepScroll;
+    lastDetailKey = key;
     updateKnobRings();
   }
 
@@ -378,15 +388,34 @@
     const note = mine
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
       : `<span class="audition-note">${hint}</span>`;
-    const save =
-      live && liveEdit.dirty
-        ? `<button type="button" id="save-live-btn">Save to library</button>`
-        : '';
+
+    // Audition mode is a STATE, not an interruption — so it wears persistent
+    // chrome (a sticky amber-edged header that follows you down the panel)
+    // rather than a modal. A modal big enough for 110 parameters would cover
+    // the lists you pick the next patch from, and would have to be dismissed
+    // before every edit.
+    if (live) {
+      const actions = liveEdit.dirty
+        ? `<button type="button" id="save-live-btn">Save to library</button>` +
+          `<button type="button" id="discard-live-btn">Discard</button>`
+        : `<button type="button" id="done-live-btn">Done</button>`;
+      return (
+        `<div class="audition-bar is-live">` +
+        `<span class="audition-mode">Audition mode</span>` +
+        `<span class="audition-patch">${esc(patch.name)}` +
+        `${liveEdit.dirty ? '<span class="audition-dirty" title="Edited since it was sent">•</span>' : ''}` +
+        `</span>` +
+        // It re-reads the patch FROM DISK and sends those values, so with live
+      // edits pending it is a reset, not a repeat. Name the consequence.
+      `<button type="button" id="audition-btn" class="is-secondary">Reset to saved</button>` +
+        actions +
+        note +
+        `</div>`
+      );
+    }
     return (
-      `<div class="audition-bar${live ? ' is-live' : ''}">` +
-      `<button type="button" id="audition-btn">` +
-      `${live ? 'Re-send' : 'Audition'} “${esc(patch.name)}”</button>` +
-      save +
+      `<div class="audition-bar">` +
+      `<button type="button" id="audition-btn">Audition “${esc(patch.name)}”</button>` +
       note +
       `</div>`
     );
@@ -502,6 +531,25 @@
   });
 
   detailEl.addEventListener('click', async (e) => {
+    if (e.target.closest('#done-live-btn')) {
+      // Nothing unsaved, so this only stops the app speaking for the buffer.
+      // What the instrument holds is untouched — recalling a preset clears it.
+      liveEdit = null;
+      auditionNote = null;
+      renderDetail();
+      return;
+    }
+    if (e.target.closest('#discard-live-btn')) {
+      const target = auditionTarget();
+      liveEdit = null;
+      auditionNote = {
+        kind: 'is-error',
+        text: 'Edits discarded. The Seven still holds them until you recall a preset.',
+        file: target && target.file,
+      };
+      renderDetail();
+      return;
+    }
     if (e.target.closest('#save-live-btn')) {
       const btn = e.target.closest('#save-live-btn');
       btn.disabled = true;
@@ -516,6 +564,19 @@
     if (!e.target.closest('#audition-btn')) return;
     const target = auditionTarget();
     if (!target) return;
+    // Explain the rule once, the first time ever — an edit buffer that loses
+    // your work on the next preset recall is not something to discover later.
+    const EXPLAINED = 'seven.auditionExplained';
+    if (!localStorage.getItem(EXPLAINED)) {
+      const ok = await window.sevenAPI.midi.explainAudition();
+      localStorage.setItem(EXPLAINED, '1');
+      if (!ok) return;
+    }
+    // Resetting while there are unsaved edits destroys them — ask first.
+    if (isLive() && liveEdit.dirty) {
+      const go = await window.sevenAPI.midi.confirmReset();
+      if (!go) return;
+    }
     const btn = e.target.closest('#audition-btn');
     btn.disabled = true;
     btn.textContent = 'Sending…';

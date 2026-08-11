@@ -74,6 +74,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // One live parameter write to the edit buffer; resolves to the value the
     // instrument actually took.
     setParam: (key, value) => ipcRenderer.invoke('edit:param', { key, value }),
+    explainAudition: () => ipcRenderer.invoke('audition:explain'),
+    confirmReset: () => ipcRenderer.invoke('audition:confirmReset'),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes
