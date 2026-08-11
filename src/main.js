@@ -240,6 +240,21 @@ function buildMenu(win) {
           ],
         },
         { type: 'separator' },
+        // Captures the live window — whatever state it is in — at native
+        // resolution. Used for release and website screenshots; the OS
+        // screenshot tools need screen-recording permission, this doesn't.
+        {
+          label: 'Capture Window…',
+          accelerator: 'Shift+CmdOrCtrl+S',
+          click: async () => {
+            const image = await win.webContents.capturePage();
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const file = path.join(app.getPath('desktop'), `crumar-seven-${stamp}.png`);
+            fs.writeFileSync(file, image.toPNG());
+            console.log(`captured ${file}`);
+          },
+        },
+        { type: 'separator' },
         { label: 'Expand all sections', click: () => send({ type: 'expandAll' }) },
         { label: 'Collapse all sections', click: () => send({ type: 'collapseAll' }) },
         { type: 'separator' },
