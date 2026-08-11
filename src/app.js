@@ -670,7 +670,6 @@
   // row is still not live — so a second click on the control (or on another
   // one) used to open a second copy of the same modal.
   let offering = false;
-  let offeredFor = null;
   let ourRecall = null; // { program, until } — the echo of a recall we sent // patch file the modal has already been shown for
 
   async function offerAudition() {
@@ -681,11 +680,11 @@
     // pressing the button that now reads "Reset sound", which asks about
     // discarding the very edits the user was in the middle of making.
     if (isLive()) return;
-    // Offer once per patch. If the send fails, or the user declines, clicking
-    // another control should not put the same modal up again and again — the
-    // Audition button is still there for a deliberate retry.
-    const t = auditionTarget();
-    if (t && offeredFor === t.file) return;
+    // No cooldown and no once-per-patch memory: reaching for a control IS the
+    // request to edit, so it asks every time. The modal-on-every-touch loop
+    // this once guarded against was the recall echo ending live sessions, and
+    // that is fixed at the source — suppressing the offer only left someone
+    // who dismissed it with controls that did nothing at all.
     if (!isConnected()) {
       toast('Connect the Seven to edit sounds');
       return;
@@ -695,7 +694,6 @@
     try {
       const ok = await explainAuditionModal();
       localStorage.setItem('seven.auditionExplained', '1');
-      offeredFor = (auditionTarget() || {}).file || null;
       if (!ok) return;
       // Say it is happening where the eye already is — the button says
       // "Sending…", but the click was down among the controls.
@@ -1013,7 +1011,6 @@
 
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     lastTouched = 'device';
-    offeredFor = null;
     resetCollapsed();
     renderAll();
     // The Seven already moves the app when you press a preset button; this is
