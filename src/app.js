@@ -1009,6 +1009,14 @@
       if (!go) return;
     }
     await window.sevenAPI.midi.recall(bank, preset);
+    // The buffer has just been replaced on purpose, so the live session is
+    // over. Without this the app kept asking about edits the FIRST recall had
+    // already discarded — a warning about work that no longer existed, once
+    // per click.
+    if (liveEdit) {
+      liveEdit = null;
+      renderDetail();
+    }
   }
 
   async function commitBankRename(value) {
