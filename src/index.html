@@ -507,6 +507,15 @@
       opacity: 0; transition: opacity .15s ease, transform .15s ease;
     }
     #undo-toast.shown { opacity: 1; transform: translate(-50%, 0); }
+    /* Work in progress rather than a result: amber edge on both sides and a
+       quiet pulse, so it reads as "hold on" instead of "done". */
+    #undo-toast.is-busy { border-left-color: var(--amber); border-right: 3px solid var(--amber); }
+    #undo-toast.is-busy::after {
+      content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px;
+      border-radius: 50%; background: var(--amber); vertical-align: middle;
+      animation: toast-pulse 1s ease-in-out infinite;
+    }
+    @keyframes toast-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
 
     /* In-app modal (src/modal.js): the app's own voice for moments that are
        about how the instrument behaves, rather than the OS asking a question. */

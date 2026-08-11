@@ -122,7 +122,7 @@
   let libData = { patches: [], setlists: [] };
   const undoStack = SevenUndo.createUndoStack();
 
-  function toast(text) {
+  function toast(text, { sticky = false } = {}) {
     let el = document.getElementById('undo-toast');
     if (!el) {
       el = document.createElement('div');
@@ -131,8 +131,16 @@
     }
     el.textContent = text;
     el.classList.add('shown');
+    el.classList.toggle('is-busy', sticky);
     clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.classList.remove('shown'), 2200);
+    // Sticky waits for hideToast(): it is reporting work in progress, and a
+    // timer would clear it while the work was still running.
+    if (!sticky) el._timer = setTimeout(() => el.classList.remove('shown'), 2200);
+  }
+
+  function hideToast() {
+    const el = document.getElementById('undo-toast');
+    if (el) { clearTimeout(el._timer); el.classList.remove('shown', 'is-busy'); }
   }
 
   async function runUndo() {
@@ -692,12 +700,12 @@
     if (!auditionTarget()) return;
     offering = true;
     try {
-      const ok = await explainAuditionModal();
+      // No modal on this path. Touching a control is already the request, so
+      // asking again only added a step to dismiss — and a modal that can
+      // reappear is a modal that can trap you. What the rule is gets taught
+      // once by the Audition button, and stated permanently in the bar.
       localStorage.setItem('seven.auditionExplained', '1');
-      if (!ok) return;
-      // Say it is happening where the eye already is — the button says
-      // "Sending…", but the click was down among the controls.
-      toast('Loading this patch onto the Seven…');
+      toast('Entering audition mode…', { sticky: true });
       const btn = document.getElementById('audition-btn');
       if (btn) btn.click();
     } finally {
@@ -835,6 +843,7 @@
       r = { ok: false, error: `The send failed: ${err && err.message}` };
     } finally {
       auditionInFlight = false;
+      hideToast();
     }
     if (!r.ok) {
       auditionNote = { kind: 'is-error', text: r.error, file: target.file };
