@@ -14,6 +14,7 @@
       --bg-panel: #232326;
       --line: #2e2e33;
       --text: #e8e8ea;
+      --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%23e8e8ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
       --text-muted: #8b8b93;
       --text-dim: #5e5e66;
       --accent: #ff3b30;      /* panel LED red */
@@ -40,6 +41,7 @@
       --bg-panel: #e4ddcd;
       --line: #d2c9b6;
       --text: #26231f;
+      --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%2326231f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
       --text-muted: #6a6355;
       --text-dim: #8a8375;
       --accent: #b8362b;
@@ -988,8 +990,11 @@
       appearance: none; -webkit-appearance: none;
       background-color: var(--bg-panel); color: var(--text);
       /* Same chevron as the section headers: 14x9, 2px stroke, text colour —
-         one chevron style app-wide. Inside the control at its right edge. */
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%23e8e8ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+         one chevron style app-wide. Inside the control at its right edge.
+         The stroke is baked into the data URI, so it needs a colour per
+         theme: --chevron carries it, and both palettes set it alongside
+         --text. A single hardcoded light stroke was invisible in light mode. */
+      background-image: var(--select-chevron);
       background-repeat: no-repeat; background-position: right 8px center;
       border: 1px solid var(--line); border-radius: 4px;
       font: inherit; font-size: 12px; line-height: 1.3;
