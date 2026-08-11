@@ -15,7 +15,7 @@
 // assertion makes the mistake loud instead of silent.
 
 const TOP_ORDER = ['format', 'formatVersion', 'created', 'source', 'patches'];
-const PATCH_ORDER = ['name', 'origin', 'sound', 'params', 'source', 'captured'];
+const PATCH_ORDER = ['name', 'origin', 'sound', 'params', 'source', 'captured', 'verified'];
 const SOURCE_ORDER = ['app', 'firmware', 'firmwareBuild', 'schema', 'soundList'];
 
 function assertNoWfp(node, path, seen) {

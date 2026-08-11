@@ -30,7 +30,8 @@ their original order, `params` keys sorted lexicographically.
       "sound": { "name": "Venice Grand CB1898", "id": 18 },
       "params": { "acp_body": 64, "acp_cbpr": 70 },
       "source": {},
-      "captured": "2026-08-02T18:59:12Z"
+      "captured": "2026-08-02T18:59:12Z",
+      "verified": "2026-08-09T16:20:17Z"
     }
   ]
 }
@@ -62,6 +63,13 @@ their original order, `params` keys sorted lexicographically.
   "<iso>" }` (made by this app: seeding, in-app creation), or `null`. Import
   must never assume it, and the UI must never infer "created" — a patch with
   an absent or unrecognised origin displays as imported.
+- **`captured` and `verified` are different questions.** `captured` is when
+  these VALUES were first read off an instrument. `verified` is when an
+  instrument last confirmed the slot still holds them — written by a backup
+  run for every slot it reads, including slots whose contents were unchanged
+  (those get a new `verified` and keep their original `captured`). The UI
+  shows `verified` where it shows one date, because "how fresh is this?" is
+  the question a backup answers. Both are optional; absent means unknown.
 - **Globals never go in this file.** The serializer throws if a key named
   `wfp` appears anywhere in the object graph being written (the globals reply
   carries the instrument's Wi-Fi password under that key — CLAUDE.md Rule 6).

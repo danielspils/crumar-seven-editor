@@ -650,6 +650,14 @@
         await window.sevenAPI.setlists.rename(index, name);
         await refreshLibrary();
       },
+      // Shared by the trash icon and the context menu's Delete — one confirm,
+      // one path. Deleting a setlist never touches the patches it references.
+      async deleteSetlist(index, name) {
+        if (await window.sevenAPI.setlists.confirmDelete(name)) {
+          await window.sevenAPI.setlists.delete(index);
+          await refreshLibrary();
+        }
+      },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();
         if (action === 'rename') {
@@ -740,9 +748,29 @@
   bankStrip.addEventListener('click', () => setLibraryOpen(false));
   libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
 
-  // Divider drag: sets the Library list height (--lib-split), persisted.
-  const savedSplit = Number(localStorage.getItem(LIB_SPLIT_KEY));
-  if (savedSplit >= 80) libRoot.style.setProperty('--lib-split', `${savedSplit}px`);
+  // Divider drag: sets the Library list height (--lib-split), persisted as a
+  // FRACTION of the region rather than pixels. A pixel split saved on a tall
+  // window left dead space under the list on a short one and clipped it on a
+  // taller one; a fraction scales with whatever window the app opens in.
+  let splitFraction = Number(localStorage.getItem(LIB_SPLIT_KEY)) || 0;
+  // Migrate the old pixel value: anything >= 1.5 was px, not a fraction.
+  if (splitFraction >= 1.5) {
+    splitFraction = libRoot.clientHeight ? splitFraction / libRoot.clientHeight : 0;
+    if (splitFraction > 0) localStorage.setItem(LIB_SPLIT_KEY, String(splitFraction));
+  }
+  splitFraction = splitFraction > 0.05 && splitFraction < 0.98 ? splitFraction : 0;
+
+  // No saved split means no cap at all — the list fills what the window gives.
+  function applySplit() {
+    if (!splitFraction) {
+      libRoot.style.removeProperty('--lib-split');
+      return;
+    }
+    const h = Math.max(80, Math.round(libRoot.clientHeight * splitFraction));
+    libRoot.style.setProperty('--lib-split', `${h}px`);
+  }
+  applySplit();
+  window.addEventListener('resize', applySplit);
   splitDivider.addEventListener('mousedown', (e) => {
     e.preventDefault();
     const list = document.querySelector('#library-body .lib-list');
@@ -758,7 +786,11 @@
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
       const h = parseInt(libRoot.style.getPropertyValue('--lib-split'), 10);
-      if (h >= 80) localStorage.setItem(LIB_SPLIT_KEY, String(h));
+      const total = libRoot.clientHeight;
+      if (h >= 80 && total) {
+        splitFraction = h / total;
+        localStorage.setItem(LIB_SPLIT_KEY, String(splitFraction));
+      }
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);

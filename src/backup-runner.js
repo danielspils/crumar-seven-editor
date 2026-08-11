@@ -130,11 +130,22 @@ class BackupRunner extends EventEmitter {
 
         const hash = patchHash(soundName, params, this.keyOrder);
         const dupKey = `${hash}:${bank}:${preset}`;
+        const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
         if (existing.has(dupKey)) {
-          slotFiles.push(existing.get(dupKey));
+          const file = existing.get(dupKey);
+          // Nothing to write about the VALUES, but the instrument just
+          // confirmed this slot still holds them — stamp it, or the library
+          // keeps reporting the date it was first read and looks stale after
+          // a run that actually checked all 32 slots.
+          try {
+            this.store.touchVerified(file, 0, now);
+          } catch (err) {
+            console.warn(`[backup] could not stamp ${file}: ${err.message}`);
+          }
+          slotFiles.push(file);
           unchanged++;
         } else {
-          const captured = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+          const captured = now;
           const file = this.store.saveBackupPatch({
             name: `Bank ${bank} Preset ${preset} — ${soundName}`,
             origin: {
@@ -145,6 +156,7 @@ class BackupRunner extends EventEmitter {
             sound: { name: soundName, id: soundId },
             params,
             captured,
+            verified: captured,
           });
           existing.set(dupKey, file);
           slotFiles.push(file);

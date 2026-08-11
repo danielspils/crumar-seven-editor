@@ -182,11 +182,23 @@
         // view itself. Note the empties only when there are any.
         const label = `${filled} patch${filled === 1 ? '' : 'es'}` + (filled < 8 ? ` · ${8 - filled} empty` : '');
         return (
-          `<button type="button" class="lib-row lib-setlist" data-setlist="${i}">` +
+          // Delete was reachable only by right-click, which nothing advertised.
+          // Same trash icon a slot uses — one vocabulary for "remove this".
+          // A row is a <button>, so the icon is a sibling, not a nested button.
+          `<div class="lib-row lib-setlist-row">` +
+          `<button type="button" class="lib-setlist" data-setlist="${i}">` +
           `<span class="patch-name">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
+          `</button>` +
+          `<button type="button" class="setlist-delete" data-setlist-delete="${i}" ` +
+          `title="Delete “${esc(s.name)}” (the patches stay in the library)">` +
+          '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
+          'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
+          '<path d="M4.2 4.3l.7 8.2a.9.9 0 0 0 .9.8h4.4a.9.9 0 0 0 .9-.8l.7-8.2"/>' +
+          '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg></button>' +
           `<span class="lib-setlist-chev">›</span>` +
-          `</button>`
+          `</div>`
         );
       })
       .join('');
@@ -578,6 +590,13 @@
         render();
         return;
       }
+      const del = e.target.closest('[data-setlist-delete]');
+      if (del) {
+        const i = Number(del.dataset.setlistDelete);
+        if (data.setlists[i] && on.deleteSetlist) on.deleteSetlist(i, data.setlists[i].name);
+        return;
+      }
+
       const mode = e.target.closest('[data-pick-mode]');
       if (mode) {
         state.pickMode = mode.dataset.pickMode;

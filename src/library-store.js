@@ -269,7 +269,12 @@ class LibraryStore {
             kind: 'backup',
             bank: p.origin.bank,
             preset: p.origin.preset,
-            date: p.captured || parsed.library.created || null,
+            // `captured` is when these VALUES were first read; `verified` is
+            // when the instrument last confirmed the slot still holds them. A
+            // backup that finds nothing changed writes only the latter, and
+            // the UI shows freshness, so it is preferred here.
+            date: p.verified || p.captured || parsed.library.created || null,
+            captured: p.captured || null,
           };
         } else if (p.origin && p.origin.created) {
           origin = { kind: 'created', date: p.origin.created };
@@ -316,6 +321,19 @@ class LibraryStore {
       this.writeSetlists(setlists);
     }
     return target;
+  }
+
+  // Stamp a patch as still-current without touching its values. Used by a
+  // backup run for slots that hashed identical to what is already on disk:
+  // nothing changed, but the instrument DID confirm it, and a library that
+  // says "9 Aug" after an 11 Aug run is lying by omission.
+  touchVerified(file, patchIndex, iso) {
+    const parsed = this.readFile(file);
+    if (!parsed.library) throw new Error('File is not readable');
+    const patch = parsed.library.patches[patchIndex];
+    if (!patch) throw new Error('No such patch in file');
+    patch.verified = iso;
+    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
   }
 
   duplicate(file, patchIndex) {

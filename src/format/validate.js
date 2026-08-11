@@ -15,7 +15,7 @@
 
 const FORMAT_NAME = 'crumar-seven-library';
 const KNOWN_TOP = new Set(['format', 'formatVersion', 'created', 'source', 'patches']);
-const KNOWN_PATCH = new Set(['name', 'origin', 'sound', 'params', 'source', 'captured']);
+const KNOWN_PATCH = new Set(['name', 'origin', 'sound', 'params', 'source', 'captured', 'verified']);
 
 function emptyReport() {
   return { errors: [], warnings: [], missingParams: [], outOfRange: [], unknownKeys: [] };
