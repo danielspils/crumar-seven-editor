@@ -73,12 +73,20 @@
       return p && p.values && p.values[value] != null ? p.values[value] : String(value);
     };
 
+    // Panel-owned: these six mirror physical Clavinet tabs — they follow the
+    // panel and announce nothing, so the app polls them while live. Whether a
+    // WRITE to them reaches the audio path is an OPEN question (docs/
+    // protocol.md), so they stay editable: locking them out would bake in the
+    // half of the finding that has not been tested.
+    const PANEL_OWNED = new Set(['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab']);
+
     function paramRow(p, rawValue, view, opts) {
       const value = rawValue == null ? 0 : rawValue;
       // Identity + range on every row, so the interaction layer can work from
       // the DOM without a second copy of the taxonomy. `live` is set only when
       // the instrument's edit buffer is known to hold THIS patch — otherwise a
       // drag would change whatever the Seven happens to be playing.
+      const panelOwned = PANEL_OWNED.has(p.key);
       const live = view && view.live && !(opts && opts.inertReason);
       const attrs = `data-key="${p.key}" data-max="${p.max}"`;
       const liveCls = live ? ' is-live' : '';
@@ -89,7 +97,12 @@
       // is inert rather than pretending it applies).
       const inertReason = opts && opts.inertReason;
       const inertCls = inertReason ? ' is-inert' : '';
-      const labelHtml = esc(p.label) + (inertReason ? ` <em class="inert-note">${esc(inertReason)}</em>` : '');
+      const panelNote =
+        panelOwned && view && view.live
+          ? ' <em class="inert-note">— also on the panel</em>'
+          : '';
+      const labelHtml =
+        esc(p.label) + (inertReason ? ` <em class="inert-note">${esc(inertReason)}</em>` : panelNote);
       // Raw numeric hidden by default on enum rows ("Pedal Wha-Wha", not
       // "Pedal Wha-Wha 3"). With showRaw on, the raw byte shows on every row —
       // for non-enums the displayed number already IS the raw value, so the

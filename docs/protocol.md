@@ -176,6 +176,55 @@ Each recall is immediately followed by a burst of the **22 fixed panel CCs** (`f
 set, ID order — CC 7, 12–16, 20–33, 91, 92) carrying the recalled preset's values, then a
 doubled `B0 01` (mod wheel) pair — unexplained. **No Program Change is emitted.**
 
+### Panel-owned parameters: the six Clavi tabs — verified 2026-08-11
+
+The Clavinet tab switches (`zd6_br` Brilliant, `zd6_tr` Treble, `zd6_md` Medium,
+`zd6_sf` Soft, `zd6_cd` Pickup C/D, `zd6_ab` Pickup A/B) behave differently from every
+other parameter. All six are `flag=0, cc=-1` in the schema — they are NOT among the 22
+fixed panel CCs — and two live tests pin down what that means:
+
+**They mirror the physical switches.** A 30-second poll of all six while the tabs were
+flipped by hand: every one tracked the panel, with no write from the app.
+
+```
+start zd6_br=1 zd6_tr=1 zd6_md=1 zd6_sf=1 zd6_cd=1 zd6_ab=1
++10.9s zd6_br: 1 -> 0        (all six switched off, in panel order)
++11.5s zd6_tr: 1 -> 0
++12.0s zd6_md: 1 -> 0
++12.4s zd6_sf: 1 -> 0
++12.9s zd6_cd: 1 -> 0
++13.2s zd6_ab: 1 -> 0
++13.8s zd6_ab: 0 -> 1        (and back on, in reverse order)
+...
++15.9s zd6_br: 0 -> 1
+```
+
+The ~0.5s spacing is the poll cycle (six reads at ~90ms each), not the device.
+
+**A write is accepted and sticks, but the sound follows the tab.** Writing `zd6_br=0`
+while the tab is physically on: the `0x23` echoes 0, a read returns 0, and it is still 0
+after 900ms — the panel does not overwrite it. But the instrument keeps sounding as the
+tab says. A normal engine parameter (`rho_atk`) and the Clavi damper lever (`zd6_lv`)
+behave conventionally under the same test.
+
+`zd6_lv` (Damper Lever) is NOT one of them: it takes a write normally.
+
+**What is established:** these six mirror the panel, and nothing announces them — so the
+app can only follow them by polling.
+
+**OPEN — does a software write to these six change the SOUND?** Unknown. The value
+changes and holds; whether the audio path honours it or reads the physical switch
+directly has not been tested. The first report from the instrument's owner was that the
+software controls "don't work", but at that moment the UI had a separate defect (clicking
+the lit half of a choice tab sent the value already in place, so some clicks sent
+nothing), which makes that report unreliable evidence about the audio.
+
+A decisive test exists and needs a listener: the manual states that with all four filter
+tabs off the Clavinet produces NO SOUND. Setting `zd6_br/tr/md/sf` to 0 over SysEx while
+the tabs are physically on either silences the instrument — proving the write reaches the
+audio path — or does not, proving it doesn't. Silence is unambiguous; no timbre
+judgement required.
+
 ### Set sound (`0x46`) → confirmation `0x45` + name reply `0x47` — verified
 
 The last previously-unobserved opcode, captured 2026-08-09 from the editor's SELECT

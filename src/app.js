@@ -448,6 +448,7 @@
   // one, and dropping them silently would lose work. The bar stays visible
   // with a Save button and says the connection is gone.
   window.__sevenClearLive = () => {
+    stopPanelPoll();
     if (!liveEdit) return;
     if (!liveEdit.dirty) liveEdit = null;
     renderDetail();
@@ -509,6 +510,37 @@
         renderDetail();
       }
     }, 80));
+  }
+
+  // The six panel-owned Clavi tabs announce nothing (flag=0, cc=-1), so the
+  // only way to follow them is to look. While a Clavi patch is live, poll them
+  // about once a second — six reads, well inside what the port carries (a
+  // backup does ~75 a second). Any other engine polls nothing.
+  const PANEL_OWNED = ['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab'];
+  let panelPoll = null;
+
+  function startPanelPoll() {
+    stopPanelPoll();
+    panelPoll = setInterval(async () => {
+      if (!isLive()) return stopPanelPoll();
+      if (!PANEL_OWNED.some((k) => k in liveEdit.params)) return stopPanelPoll();
+      let changed = false;
+      for (const key of PANEL_OWNED) {
+        const r = await window.sevenAPI.midi.readParam(key);
+        if (r && r.ok && liveEdit && liveEdit.params[key] !== r.value) {
+          liveEdit.params[key] = r.value;
+          changed = true;
+        }
+      }
+      // A tab move is the PLAYER's edit, not ours — it makes the buffer differ
+      // from the saved patch, so it counts as unsaved work like any other.
+      if (changed) { liveEdit.dirty = true; renderDetail(); }
+    }, 1000);
+  }
+
+  function stopPanelPoll() {
+    clearInterval(panelPoll);
+    panelPoll = null;
   }
 
   const rowKeyOf = (el) => {
@@ -662,6 +694,7 @@
         params: { ...(currentPatch() || {}).params },
         dirty: false,
       };
+      startPanelPoll();
     }
     renderDetail();
   });
