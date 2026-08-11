@@ -299,7 +299,8 @@ function createWindow() {
         // that normally takes clicks to reach.
         if (process.env.SEVEN_SHOT_JS) {
           try {
-            await win.webContents.executeJavaScript(process.env.SEVEN_SHOT_JS);
+            const result = await win.webContents.executeJavaScript(process.env.SEVEN_SHOT_JS);
+            if (result !== undefined) console.log('[shot-js]', JSON.stringify(result));
             await new Promise((r) => setTimeout(r, 400));
           } catch (err) {
             console.error('SEVEN_SHOT_JS failed:', err.message);

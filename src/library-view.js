@@ -813,19 +813,32 @@
         render();
       }
     });
-    // Clicking away cancels any in-progress inline edit.
+    // Clicking away COMMITS an in-progress inline edit. It used to discard it
+    // silently, which read as "the rename didn't stick" — you only got your
+    // name if you happened to press Enter. Escape still cancels: it clears the
+    // renaming state before the input goes away, so the guards below are false
+    // by the time blur fires. Enter is likewise already committed and guarded.
     el.addEventListener(
       'blur',
       (e) => {
         const cls = e.target.classList;
         if (!cls) return;
+        const value = String(e.target.value || '').trim();
         if (cls.contains('lib-rename-input') && state.renaming != null) {
+          const row = e.target.closest('[data-file]');
+          const entry = row ? entryAt(row) : null;
           state.renaming = null;
-          render();
+          if (entry && value && value !== displayName(entry) && on.rename) on.rename(entry, value);
+          else render();
         } else if (cls.contains('setlist-input') && (state.creatingSetlist || state.renamingSetlist != null)) {
+          const creating = e.target.dataset.setlistCreate !== undefined;
+          const index = Number(e.target.dataset.setlistRename);
           state.creatingSetlist = false;
           state.renamingSetlist = null;
-          render();
+          if (!value) render();
+          else if (creating && on.createSetlist) on.createSetlist(value);
+          else if (!creating && on.renameSetlist) on.renameSetlist(index, value);
+          else render();
         }
       },
       true
