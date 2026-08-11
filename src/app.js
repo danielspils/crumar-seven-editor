@@ -599,8 +599,6 @@
   const libView = SevenLibraryView.createLibraryView({
     el: document.getElementById('library-body'),
     on: {
-      // Engine family per patch — the picker colours its tiles with it.
-      engineOf: (entry) => R.engineGroupFor(entry),
       // Every sound the schema knows (read off the instrument, FW 1.37) —
       // the picker's Instruments tab. Sound-only slots reference these by NAME,
       // never by id: ids are not portable across units (schema soundsNote).

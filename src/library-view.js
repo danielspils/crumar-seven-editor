@@ -58,13 +58,6 @@
     return (entry.name || '').replace(re, '');
   }
 
-  function soundCell(entry) {
-    const shown = displayName(entry);
-    return shown.trim().toLowerCase() === (entry.soundName || '').trim().toLowerCase()
-      ? ''
-      : esc(entry.soundName);
-  }
-
   function badge(entry) {
     return (
       `<span class="badge ${entry.sampled ? 'badge-sampled' : 'badge-modeled'}">${entry.sampled ? 'Sampled' : 'Modeled'}</span>` +
@@ -209,13 +202,20 @@
   const selectedEntry = (data, state) =>
     (state.selected && data.patches.find((e) => state.selected === rowKey(e))) || null;
 
-  // Engine colours: a patch's family, readable at tile size where the name
-  // may be truncated. Passed in by app.js (the view stays schema-free).
+  // Tile colours key off the SAME family the artwork uses (sound-art.js), so
+  // the stripe and the drawing can never disagree. Deliberately not the
+  // renderer's engine group: that one folds every sampled sound into a single
+  // "sample player" family, which painted the whole Sampled section one colour
+  // while the icons underneath varied. Modeled vs sampled is already carried
+  // by the section headings and the (m)/(s) tag.
   const TILE_COLOUR = {
-    pno_rho: '#e0a03a', pno_wur: '#d9744f', pno_egp: '#5b8fd9', pno_zd6: '#a279d9',
-    pno_dx7: '#4fc3d9', pno_mks: '#4bb39b', pno_vib: '#6fbf5f', pno_acp: '#9aa3b2',
-    pno_rom: '#4caf6d',
+    tine: '#e0a03a', reed: '#d9744f', grandLegs: '#5b8fd9', clavi: '#a279d9',
+    synth: '#4fc3d9', rack: '#4bb39b', vibes: '#6fbf5f', grand: '#9aa3b2',
+    wave: '#4caf6d', keys: '#8b8b93',
   };
+
+  const tileColour = (name, sampled) =>
+    TILE_COLOUR[window.SevenSoundArt.artKeyFor(name, sampled)] || '#8b8b93';
 
   // Group patches the way the user thinks of them: which backup, which bank.
   // Browsing beats searching when you can't recall a name.
@@ -238,7 +238,7 @@
   // The instrument grid: every sound the schema knows, illustrated. Choosing
   // one assigns the SOUND, not a patch — see SOUND_REF above for why that is
   // the only honest "unedited" option we can offer.
-  function renderSoundTiles(state, sounds, engineOfName) {
+  function renderSoundTiles(state, sounds) {
     const q = (state.pickSearch || '').trim().toLowerCase();
     const list = sounds.filter((s) => !q || s.name.toLowerCase().includes(q));
     if (!list.length) return `<div class="lib-empty">No instrument matches “${esc(q)}”.</div>`;
@@ -247,7 +247,7 @@
         ? `<div class="pick-group"><div class="pick-group-title">${title}</div>` +
           `<div class="pick-grid pick-grid-art">` +
           rows.map((s) => {
-            const colour = TILE_COLOUR[engineOfName(s)] || '#8b8b93';
+            const colour = tileColour(s.name, s.sampled);
             return (
               `<button type="button" class="pick-tile pick-tile-art" data-pick-sound="${esc(s.name)}" ` +
               `style="--tile:${colour}" title="${esc(s.name)} — selects this sound and leaves the settings alone">` +
@@ -265,7 +265,7 @@
     );
   }
 
-  function renderPicker(data, state, engineOf, sounds, allSounds) {
+  function renderPicker(data, state, sounds, allSounds) {
     const slot = state.picking;
     const q = state.pickSearch || '';
     const list = data.patches.filter((e) => !e.invalid && matches(e, q));
@@ -275,7 +275,7 @@
           `<div class="pick-group"><div class="pick-group-title">${esc(title)}</div>` +
           `<div class="pick-grid">` +
           rows.map((e) => {
-            const colour = TILE_COLOUR[engineOf ? engineOf(e) : ''] || '#8b8b93';
+            const colour = tileColour(e.soundName, e.sampled);
             return (
               `<button type="button" class="pick-tile" data-pick-file="${esc(e.file)}" ` +
               `style="--tile:${colour}" title="${esc(e.name)} — ${esc(e.soundName)}">` +
@@ -287,10 +287,8 @@
           }).join('') +
           `</div></div>`).join('')
       : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
-    const engineOfName = (spec) =>
-      engineOf ? engineOf({ soundName: spec.name, sampled: spec.sampled }) : '';
     const shown = sounds
-      ? renderSoundTiles(state, allSounds || [], engineOfName)
+      ? renderSoundTiles(state, allSounds || [])
       : body;
     return (
       `<div class="pick-overlay">` +
@@ -418,14 +416,14 @@
           `${num}<span class="patch-name">${esc(displayName(entry))}</span>` +
           `<span class="lib-badges"></span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
-          `<span class="patch-sound">${soundCell(entry)}${soundTag(entry)}</span>` +
+          `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
         );
       })
       .join('');
     state.slotPulse = null; // consumed
     const overlay = state.picking != null
-      ? renderPicker(data, state, opts.engineOf, state.pickMode === 'sounds', opts.sounds)
+      ? renderPicker(data, state, state.pickMode === 'sounds', opts.sounds)
       : '';
     return (
       overlay +
@@ -437,14 +435,14 @@
     );
   }
 
-  function renderBody(data, state, engineOf, sounds) {
+  function renderBody(data, state, sounds) {
     const tab = (id, label) =>
       `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`;
     const listHtml =
       state.tab === 'setlists'
         ? state.setlistIndex == null
           ? renderSetlistList(data, state)
-          : renderSetlistSlots(data, state, { engineOf, sounds })
+          : renderSetlistSlots(data, state, { sounds })
         : renderAllPatches(data, state);
     return (
       `<div class="lib-bar">` +
@@ -497,7 +495,7 @@
       const viewKey = `${state.tab}:${state.setlistIndex}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
-      el.innerHTML = renderBody(data, state, on.engineOf, on.sounds);
+      el.innerHTML = renderBody(data, state, on.sounds);
       if (keepScroll != null) {
         const list = el.querySelector('.lib-list');
         if (list) list.scrollTop = keepScroll;
@@ -740,7 +738,7 @@
         const overlay = el.querySelector('.pick-overlay');
         if (overlay) {
           overlay.outerHTML =
-            renderPicker(data, state, on.engineOf, state.pickMode === 'sounds', on.sounds);
+            renderPicker(data, state, state.pickMode === 'sounds', on.sounds);
         }
         const field = el.querySelector('[data-pick-search]');
         if (field) { field.focus(); field.setSelectionRange(field.value.length, field.value.length); }
@@ -754,7 +752,7 @@
             state.tab === 'setlists'
               ? state.setlistIndex == null
                 ? renderSetlistList(data, state)
-                : renderSetlistSlots(data, state, { engineOf: on.engineOf, sounds: on.sounds })
+                : renderSetlistSlots(data, state, { sounds: on.sounds })
               : renderAllPatches(data, state);
         }
       }
