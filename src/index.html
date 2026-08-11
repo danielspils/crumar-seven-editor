@@ -655,6 +655,22 @@
     /* min-width 0 lets the column shrink instead of overflowing #main
        horizontally; the stable gutter keeps content width constant whether or
        not a classic scrollbar is showing. */
+    /* Audition bar: only rendered while an instrument is connected. */
+    .audition-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin: -4px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    }
+    #audition-btn {
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--text);
+      background: var(--bg-raised); border: 1px solid var(--line);
+      border-radius: 5px; padding: 5px 12px; cursor: pointer; flex: none;
+    }
+    #audition-btn:hover:not(:disabled) { border-color: var(--text-muted); }
+    #audition-btn:disabled { opacity: .6; cursor: default; }
+    .audition-note { font-size: 12px; color: var(--text-muted); flex: 1; min-width: 12rem; }
+    .audition-note.is-ok { color: var(--modeled); }
+    .audition-note.is-error { color: var(--warn-text, #c0392b); }
+
     #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
     #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
     .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }

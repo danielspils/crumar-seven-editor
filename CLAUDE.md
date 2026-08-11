@@ -212,10 +212,16 @@ Two of the four goals are live (Backup, Visibility). The remaining arc is
 **editing and sending**, in this order — every protocol primitive it needs is
 already verified, so this is app work, not reverse-engineering:
 
-1. **Task 8 — Audition.** "Audition on the Seven" for a library patch: send
-   `0x46` sound, then the 110 params, to the edit buffer. Nothing is stored;
-   the user keeps it with a panel hold. This is the write path everything
-   below reuses.
+1. ~~**Task 8 — Audition.**~~ **DONE.** `src/patch-sender.js` sends a patch to
+   the edit buffer: sound first (`0x46`), then every parameter (`0x20`), each
+   write verified against the `0x23` the device echoes back. The sound is
+   resolved by NAME against the connected unit's own table and the send is
+   REFUSED if that unit lacks it — a guessed id would load the wrong sound
+   silently. Values are clamped to the schema max, dropped replies retried
+   three times, and a value the device wouldn't take is reported rather than
+   ignored. A patch with no params is legal: that's the "sound only" case.
+   Nothing is stored — the UI says the panel hold is the only way to keep it.
+   Covered by `test/patch-sender.test.js` against a fake instrument (9 tests).
 2. **Live editing core** (added ahead of Transfer, agreed 2026-08-09): detail
    controls become interactive while connected — each drag/toggle sends its
    `0x20`, with read-back, a dirty marker, and "Save to library". This closes

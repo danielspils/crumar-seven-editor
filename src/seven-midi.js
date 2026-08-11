@@ -33,6 +33,7 @@ const HEADER = [0xf0, 0x73, 0x26, 0x14];
 const SYSEX_END = 0xf7;
 
 const OP = {
+  SET_PARAM: 0x20, SET_SOUND: 0x46,
   GET_PARAM: 0x22, PARAM_VALUE: 0x23,
   SET_GLOBAL: 0x30, ACK_GLOBAL: 0x31,
   GET_GLOBALS: 0x32, GLOBALS: 0x33,
@@ -353,6 +354,45 @@ class SevenMidi extends EventEmitter {
     );
     const f = payloadText(msg).split('|');
     return { id, key: f[1], value: Number(f[2]) };
+  }
+
+  // --- Writes to the EDIT BUFFER --------------------------------------------
+  // Neither of these stores anything. The Seven has no store opcode: keeping
+  // what you hear needs a three-second panel hold, by the user, on the
+  // instrument. Every caller must say so rather than implying otherwise.
+
+  // F0 .. 20 00 <idHi> <idLo> <value> F7 — same addressing as a read, then a
+  // single value byte (protocol.md, verified against a full 0-127 drag). The
+  // device answers with a 0x23 carrying the value it actually took, so the
+  // write verifies itself; the caller compares and decides what a mismatch
+  // means. Values are clamped to 7 bits HERE because a byte over 0x7F would
+  // corrupt the frame itself — range clamping against a parameter's real max
+  // is the schema's job, upstream.
+  async setParamValue(id, value) {
+    if (!Number.isInteger(id) || id < 0 || id > MAX_VALID_PARAM_ID) {
+      throw new Error(`param id out of range: ${id}`);
+    }
+    if (!Number.isInteger(value)) throw new Error(`param ${id}: value must be an integer`);
+    const v = Math.max(0, Math.min(127, value));
+    const msg = await this._request(
+      OP.SET_PARAM, [0x00, (id >> 7) & 0x7f, id & 0x7f, v], OP.PARAM_VALUE,
+      (m) => Number(payloadText(m).split('|')[0]) === id
+    );
+    const f = payloadText(msg).split('|');
+    return { id, key: f[1], value: Number(f[2]), requested: v };
+  }
+
+  // F0 .. 46 <soundId> F7 — ONE binary byte, no pad (unlike a parameter).
+  // Confirmed by the 0x45 the device broadcasts back. Engine parameters
+  // survive a sound change, which is why a sound can be sent on its own.
+  async setSound(id) {
+    if (!Number.isInteger(id) || id < 0 || id > 127) {
+      throw new Error(`sound id out of range: ${id}`);
+    }
+    await this._request(
+      OP.SET_SOUND, [id & 0x7f], OP.CURRENT_SOUND, (m) => m[5] === (id & 0x7f)
+    );
+    return id;
   }
 
   async currentSound() {

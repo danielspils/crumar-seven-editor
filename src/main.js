@@ -156,6 +156,52 @@ function getBackupRunner() {
   return backupRunner;
 }
 
+let patchSender = null;
+function getPatchSender() {
+  if (!patchSender) {
+    const { PatchSender } = require('./patch-sender');
+    const root = path.join(__dirname, '..');
+    patchSender = new PatchSender({
+      midi: getMidi(),
+      schema: JSON.parse(fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')),
+    });
+  }
+  return patchSender;
+}
+
+// Audition: put a library patch in the edit buffer so it can be HEARD. It
+// stores nothing — the panel hold is the only way to keep it, and the UI says
+// so. The patch is read from disk here rather than accepted from the renderer:
+// the file on disk is the single source of truth for what gets sent.
+function registerAuditionIpc() {
+  ipcMain.handle('audition:send', async (_e, { file, patchIndex }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    try {
+      const parsed = getStore().readFile(file);
+      if (!parsed.library) throw new Error('That patch file is not readable.');
+      const patch = parsed.library.patches[patchIndex || 0];
+      if (!patch) throw new Error('No such patch in that file.');
+      const result = await getPatchSender().send(patch);
+      return { ok: true, name: patch.name, ...result };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  // A sound with no parameters — the picker's "sound only" case.
+  ipcMain.handle('audition:sound', async (_e, { name }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    try {
+      const result = await getPatchSender().send({ sound: { name }, params: {} });
+      return { ok: true, name, ...result };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+}
+
 function registerBackupIpc() {
   // Confirm EVERY run — no "don't show again". The dialog states where the
   // instrument will be left before anything is sent.
@@ -338,6 +384,7 @@ app.whenReady().then(() => {
   registerLibraryIpc();
   registerMidiIpc();
   registerBackupIpc();
+  registerAuditionIpc();
   registerNotesIpc();
   forwardMidiEvents();
   createWindow();

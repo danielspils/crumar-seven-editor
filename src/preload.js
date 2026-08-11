@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     status: () => ipcRenderer.invoke('midi:status'),
     onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
     backup: () => ipcRenderer.invoke('backup:start'),
+    // Audition: load a patch (or a bare sound) into the edit buffer so it can
+    // be heard. Stores nothing — keeping it needs a three-second panel hold.
+    audition: (file, patchIndex) => ipcRenderer.invoke('audition:send', { file, patchIndex }),
+    auditionSound: (name) => ipcRenderer.invoke('audition:sound', { name }),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes

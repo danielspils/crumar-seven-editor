@@ -326,10 +326,68 @@
         ? `No backup of Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1} yet — connect the Seven and click “Back up instrument”.`
         : 'Select a patch';
     detailEl.innerHTML = patch
-      ? R.renderDetail(patch, { showRaw, collapsed, ...pos })
+      ? renderAuditionBar(patch) + R.renderDetail(patch, { showRaw, collapsed, ...pos })
       : `<div class="placeholder">${emptyMsg}</div>`;
     updateKnobRings();
   }
+
+  const esc = (v) =>
+    String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Audition: hear the selected patch on the instrument. The bar exists only
+  // while connected — offering it otherwise would be a button that can't work.
+  // The wording never implies the patch is SAVED: it isn't, and can't be
+  // without a three-second panel hold (no store opcode exists).
+  // {kind, text, file} — a result belongs to the patch it came from, so it is
+  // shown only while that patch is still the selected one.
+  let auditionNote = null;
+
+  function auditionTarget() {
+    if (lastTouched === 'library' && libSelected) {
+      return { file: libSelected.file, patchIndex: libSelected.patchIndex || 0 };
+    }
+    const p = deviceSel && banks[deviceSel.bank].patches[deviceSel.preset];
+    return p && p.file ? { file: p.file, patchIndex: 0 } : null;
+  }
+
+  function renderAuditionBar(patch) {
+    const row = document.getElementById('connection-row');
+    if (!row || !row.classList.contains('connected')) return '';
+    if (!auditionTarget()) return '';
+    const mine = auditionNote && auditionNote.file === auditionTarget().file;
+    const note = mine
+      ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
+      : `<span class="audition-note">Loads it into the edit buffer — hold a preset button ` +
+        `on the Seven for three seconds to keep it.</span>`;
+    return (
+      `<div class="audition-bar">` +
+      `<button type="button" id="audition-btn">Audition “${esc(patch.name)}”</button>` +
+      note +
+      `</div>`
+    );
+  }
+
+  detailEl.addEventListener('click', async (e) => {
+    if (!e.target.closest('#audition-btn')) return;
+    const target = auditionTarget();
+    if (!target) return;
+    const btn = e.target.closest('#audition-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    const r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
+    if (!r.ok) {
+      auditionNote = { kind: 'is-error', text: r.error, file: target.file };
+    } else {
+      // Say exactly what happened, including anything the device refused.
+      const parts = [`Sent ${r.sent} settings · ${r.soundName}`];
+      if (r.mismatches && r.mismatches.length) {
+        parts.push(`${r.mismatches.length} value${r.mismatches.length === 1 ? '' : 's'} the Seven adjusted`);
+      }
+      parts.push('hold a preset button for 3s to keep it');
+      auditionNote = { kind: 'is-ok', text: `${parts.join(' · ')}.`, file: target.file };
+    }
+    renderDetail();
+  });
 
   // Region header carries the honesty label: this view is what the LAST
   // BACKUP saw, not a live read — the Seven has no read-slot opcode.
