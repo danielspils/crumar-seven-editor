@@ -583,6 +583,8 @@
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+    #library-head .fx-title { color: var(--text-muted); transition: color .15s; }
+    #library-head:hover .fx-title { color: var(--text); }
     /* The summary is the header's flex-grow middle slot in BOTH states —
        visibility (not display) hides its text when expanded, so the slot keeps
        filling and the ON/OFF pill stays anchored hard right regardless of
