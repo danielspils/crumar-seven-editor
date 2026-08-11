@@ -721,7 +721,17 @@
        anywhere along, and switches/selectors respond to a click. */
     .param.is-live .param-bar { cursor: ew-resize; }
     .param.is-live .param-bar:hover { box-shadow: 0 0 0 1px var(--text-dim); }
-    .param.is-live .d6-tab, .param.is-live .seg, .param.is-live .d6-half { cursor: pointer; }
+    /* Only the side that would CHANGE something is a target: the lit half is
+       already the current value, so it gets no pointer and no hover. */
+    .param.is-live .d6-half:not(.pressed),
+    .param.is-live .d6-toggle,
+    .param.is-live .seg { cursor: pointer; }
+    .param.is-live .d6-half:not(.pressed):hover {
+      background: var(--shade-hard); color: var(--text);
+      box-shadow: inset 0 0 0 1px var(--amber);
+    }
+    .param.is-live .d6-toggle:hover { box-shadow: inset 0 0 0 1px var(--amber); }
+    .param.is-live .seg:hover { background: var(--amber); }
     .param.is-live .param-seg:hover .seg { background: var(--text-dim); }
     /* Audition mode reads as a state you are IN: the header sticks to the top
        of the detail panel as you scroll, and the panel wears an amber edge. */

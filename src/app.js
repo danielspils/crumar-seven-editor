@@ -548,7 +548,14 @@
     const hit = e.target.closest('.param.is-live [data-set]');
     if (!hit) return;
     const info = rowKeyOf(hit);
-    if (info) sendEdit(info.key, Number(hit.dataset.set));
+    if (!info) return;
+    const want = Number(hit.dataset.set);
+    // Each half of a choice tab carries ITS OWN value, so clicking the lit
+    // side asks for the value already in place. Don't spend a write on it —
+    // and don't let the silence read as a broken control: the hover styling
+    // now marks the side that would actually change something.
+    if (liveEdit.params[info.key] === want) return;
+    sendEdit(info.key, want);
   });
 
   detailEl.addEventListener('change', (e) => {
