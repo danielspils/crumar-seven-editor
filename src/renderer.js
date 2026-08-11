@@ -87,6 +87,13 @@
       // the instrument's edit buffer is known to hold THIS patch — otherwise a
       // drag would change whatever the Seven happens to be playing.
       const panelOwned = PANEL_OWNED.has(p.key);
+      // These six also live on the panel as physical tabs. Saying so in the
+      // label widened the column enough to push the controls off screen, so
+      // the row carries it as a title. Declared HERE, above `attrs`, which
+      // interpolates it — as a `const` further down it was a use-before-
+      // declaration that threw on every row and left the detail panel frozen
+      // on whatever it had rendered last.
+      const panelTitle = panelOwned ? ' title="Also a tab on the Seven\u2019s panel"' : '';
       const live = view && view.live && !(opts && opts.inertReason);
       const attrs = `data-key="${p.key}" data-max="${p.max}"${panelTitle}`;
       const liveCls = live ? ' is-live' : '';
@@ -97,11 +104,6 @@
       // is inert rather than pretending it applies).
       const inertReason = opts && opts.inertReason;
       const inertCls = inertReason ? ' is-inert' : '';
-      // These six also live on the panel as physical tabs; that used to be said
-      // in the label, but it widened the column enough to push the controls
-      // off. The row carries it as a title instead — the poll keeps the
-      // control itself truthful, which is what actually matters.
-      const panelTitle = panelOwned ? ' title="Also a tab on the Seven\u2019s panel"' : '';
       const labelHtml =
         esc(p.label) + (inertReason ? ` <em class="inert-note">${esc(inertReason)}</em>` : '');
       // Raw numeric hidden by default on enum rows ("Pedal Wha-Wha", not
