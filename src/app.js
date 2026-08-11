@@ -664,17 +664,31 @@
   // Reaching for a control while not in audition mode IS the request to edit,
   // so it offers the way in rather than explaining why nothing happened. The
   // modal is the door: Start Audition walks through it, the X declines.
+  // Guarded against re-entry: the send takes a moment, and until it lands the
+  // row is still not live — so a second click on the control (or on another
+  // one) used to open a second copy of the same modal.
+  let offering = false;
+
   async function offerAudition() {
+    if (offering || auditionInFlight) return;
     if (!isConnected()) {
       toast('Connect the Seven to edit sounds');
       return;
     }
     if (!auditionTarget()) return;
-    const ok = await explainAuditionModal();
-    localStorage.setItem('seven.auditionExplained', '1');
-    if (!ok) return;
-    const btn = document.getElementById('audition-btn');
-    if (btn) btn.click();
+    offering = true;
+    try {
+      const ok = await explainAuditionModal();
+      localStorage.setItem('seven.auditionExplained', '1');
+      if (!ok) return;
+      // Say it is happening where the eye already is — the button says
+      // "Sending…", but the click was down among the controls.
+      toast('Loading this patch onto the Seven…');
+      const btn = document.getElementById('audition-btn');
+      if (btn) btn.click();
+    } finally {
+      offering = false;
+    }
   }
 
   const rowKeyOf = (el) => {
