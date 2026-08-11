@@ -441,6 +441,37 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
   buildMenu(win);
 
+  // UI scenario runner (test/ui). Loads the harness, runs one scenario against
+  // the real app, prints a single machine-readable line and exits. Kept beside
+  // the screenshot hook because it is the same idea grown up: drive the actual
+  // interface rather than reason about what it probably does.
+  if (process.env.SEVEN_UI_TEST) {
+    win.webContents.once('did-finish-load', async () => {
+      const report = (payload) => {
+        console.log(`[ui-test]${JSON.stringify(payload)}`);
+        app.exit(0);
+      };
+      try {
+        const root = path.join(__dirname, '..');
+        // executeJavaScript resolves with the script's LAST expression, and it
+        // has to survive structured cloning. The harness ends by building an
+        // object full of functions, so end on a primitive instead.
+        await win.webContents.executeJavaScript(
+          `${fs.readFileSync(path.join(root, 'test', 'ui', 'harness.js'), 'utf8')}\n;true;`
+        );
+        const outcome = await win.webContents.executeJavaScript(
+          `Promise.resolve(${fs.readFileSync(process.env.SEVEN_UI_TEST, 'utf8')})` +
+            '.then((r) => (r && r.skipped ? { skipped: String(r.skipped) } : null))'
+        );
+        if (outcome && outcome.skipped) return report(outcome);
+        report(await win.webContents.executeJavaScript('window.ui.result()'));
+      } catch (err) {
+        report({ failures: [`scenario threw: ${err && err.message}`], notes: [] });
+      }
+    });
+    return;
+  }
+
   // Dev tooling: SEVEN_SHOT=<path> captures the window once it has settled and
   // exits. Used for release/website screenshots — the app renders itself at
   // native resolution, which the OS screenshot tools can't do without

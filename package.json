@@ -14,7 +14,8 @@
     "probe": "node tools/probe.js",
     "probe:open-items": "node tools/probe.js open-items",
     "fixtures:roundtrip": "node fixtures/generate-roundtrip.js",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "test:ui": "node test/ui/run.js"
   },
   "engines": {
     "node": ">=18"
