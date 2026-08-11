@@ -496,6 +496,18 @@
     /* Same hierarchy as a library row — name + badge, then provenance +
        sound — with the slot controls in their own column so both text rows
        stop short of the ✕. */
+    /* Undo feedback: says what was put back, then gets out of the way. */
+    #undo-toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 8px);
+      z-index: 80; pointer-events: none;
+      background: var(--bg-panel); color: var(--text);
+      border: 1px solid var(--line); border-left: 3px solid var(--amber);
+      border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
+      opacity: 0; transition: opacity .15s ease, transform .15s ease;
+    }
+    #undo-toast.shown { opacity: 1; transform: translate(-50%, 0); }
+
     /* In-app modal (src/modal.js): the app's own voice for moments that are
        about how the instrument behaves, rather than the OS asking a question. */
     .seven-modal-overlay {
@@ -1099,7 +1111,8 @@
   </div>
   <script src="defaults.js"></script>
   <script src="renderer.js"></script>
-  <script src="scroll-fade.js"></script>
+  <script src="undo.js"></script>
+    <script src="scroll-fade.js"></script>
     <script src="modal.js"></script>
     <script src="sound-art.js"></script>
     <script src="library-view.js"></script>

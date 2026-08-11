@@ -114,6 +114,52 @@
   window.SevenScrollFade.watch(document.getElementById('detail'));
   window.SevenScrollFade.watch(document.getElementById('sounds-panel'));
 
+  // ---- Undo -----------------------------------------------------------------
+  // One stack for the whole app. Each action registers how to put itself back
+  // at the moment it happens, which is the only moment the previous state is
+  // known for certain. What can't be undone says so rather than pretending
+  // (see src/undo.js for the list and why).
+  let libData = { patches: [], setlists: [] };
+  const undoStack = SevenUndo.createUndoStack();
+
+  function toast(text) {
+    let el = document.getElementById('undo-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'undo-toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add('shown');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('shown'), 2200);
+  }
+
+  async function runUndo() {
+    if (!undoStack.depth) return toast('Nothing to undo');
+    try {
+      const label = await undoStack.undo();
+      toast(`Undid: ${label}`);
+    } catch (err) {
+      toast(`Couldn’t undo: ${err.message}`);
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'z' && e.key !== 'Z') return;
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+    // Inside a text field the platform's own undo is the right one — a rename
+    // in progress should undo characters, not the last thing the app did.
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    e.preventDefault();
+    runUndo();
+  });
+
+  window.sevenAPI.onViewCommand((msg) => {
+    if (msg && msg.type === 'undo') runUndo();
+  });
+
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
   const panelStrip = document.getElementById('panel-strip');
   panelStrip.innerHTML = window.sevenAPI.getPanelSvg(); // keeps class="readonly"
@@ -870,7 +916,29 @@
     lastTouched = 'device';
     resetCollapsed();
     renderAll();
+    // The Seven already moves the app when you press a preset button; this is
+    // the other direction. Only the bank region does it — those rows ARE the
+    // instrument's slots, while a library patch is a file with no slot to
+    // recall. A recall replaces the edit buffer, so unsaved live edits get a
+    // say first.
+    recallOnDevice(deviceSel.bank, deviceSel.preset);
   });
+
+  async function recallOnDevice(bank, preset) {
+    if (!isConnected()) return;
+    if (liveEdit && liveEdit.dirty) {
+      const go = await SevenModal.confirm({
+        title: 'Recall this preset on the Seven?',
+        body:
+          'Recalling replaces what is in the edit buffer, so the changes you have ' +
+          'not saved to the library will be gone.',
+        confirmLabel: 'Recall',
+        tone: 'is-warning',
+      });
+      if (!go) return;
+    }
+    await window.sevenAPI.midi.recall(bank, preset);
+  }
 
   async function commitBankRename(value) {
     const i = bankRenaming;
@@ -1025,7 +1093,13 @@
         await refreshLibrary();
       },
       async rename(entry, newName) {
+        const oldName = entry.name;
         const newFile = await window.sevenAPI.library.rename(entry.file, entry.patchIndex, newName);
+        // Renaming moves the FILE too, so the undo has to address the new one.
+        undoStack.push(`rename to “${newName}”`, async () => {
+          await window.sevenAPI.library.rename(newFile, entry.patchIndex, oldName);
+          await refreshLibrary();
+        });
         if (libSelected && libSelected.file === entry.file) {
           libSelected = { ...libSelected, file: newFile, name: newName };
         }
@@ -1038,17 +1112,43 @@
       async createSetlist(name) {
         await window.sevenAPI.setlists.create(name);
         await refreshLibrary();
+        undoStack.push(`new setlist “${name}”`, async () => {
+          // Find it by name at undo time: indexes shift as setlists come and go.
+          const i = libData.setlists.findIndex((x) => x.name === name);
+          if (i >= 0) await window.sevenAPI.setlists.delete(i);
+          await refreshLibrary();
+        });
       },
       async renameSetlist(index, name) {
+        const oldName = (libData.setlists[index] || {}).name;
         await window.sevenAPI.setlists.rename(index, name);
         await refreshLibrary();
+        undoStack.push(`rename setlist to “${name}”`, async () => {
+          const i = libData.setlists.findIndex((x) => x.name === name);
+          if (i >= 0) await window.sevenAPI.setlists.rename(i, oldName);
+          await refreshLibrary();
+        });
       },
       // Shared by the trash icon and the context menu's Delete — one confirm,
       // one path. Deleting a setlist never touches the patches it references.
       async deleteSetlist(index, name) {
         if (await window.sevenAPI.setlists.confirmDelete(name)) {
+          // Keep the whole thing — a setlist is a name and eight references,
+          // so putting it back is exact, not approximate.
+          const gone = JSON.parse(JSON.stringify(libData.setlists[index] || { name, slots: [] }));
           await window.sevenAPI.setlists.delete(index);
           await refreshLibrary();
+          undoStack.push(`delete setlist “${name}”`, async () => {
+            await window.sevenAPI.setlists.create(gone.name);
+            await refreshLibrary();
+            const i = libData.setlists.findIndex((x) => x.name === gone.name);
+            if (i >= 0) {
+              for (let slot = 0; slot < gone.slots.length; slot++) {
+                if (gone.slots[slot]) await window.sevenAPI.setlists.assign(i, slot, gone.slots[slot]);
+              }
+            }
+            await refreshLibrary();
+          });
         }
       },
       async setlistMenu(index, name) {
@@ -1064,22 +1164,40 @@
         }
       },
       async assignSlot(index, slot, file) {
+        const prev = ((libData.setlists[index] || {}).slots || [])[slot] || null;
         await window.sevenAPI.setlists.assign(index, slot, file);
         await refreshLibrary();
+        undoStack.push(`fill slot ${slot + 1}`, async () => {
+          if (prev) await window.sevenAPI.setlists.assign(index, slot, prev);
+          else await window.sevenAPI.setlists.clear(index, slot);
+          await refreshLibrary();
+        });
       },
       async clearSlot(index, slot) {
+        const prev = ((libData.setlists[index] || {}).slots || [])[slot] || null;
         await window.sevenAPI.setlists.clear(index, slot);
         await refreshLibrary();
+        if (prev) {
+          undoStack.push(`clear slot ${slot + 1}`, async () => {
+            await window.sevenAPI.setlists.assign(index, slot, prev);
+            await refreshLibrary();
+          });
+        }
       },
       async moveSlot(index, from, to) {
         await window.sevenAPI.setlists.move(index, from, to);
         await refreshLibrary();
+        undoStack.push(`move slot ${from + 1} to ${to + 1}`, async () => {
+          await window.sevenAPI.setlists.move(index, to, from);
+          await refreshLibrary();
+        });
       },
     },
   });
 
   async function refreshLibrary() {
     const data = await window.sevenAPI.library.list();
+    libData = data; // last known state — undo steps capture from it
     libEntries = data.patches;
     libView.update(data);
     const n = data.patches.filter((e) => !e.invalid).length;

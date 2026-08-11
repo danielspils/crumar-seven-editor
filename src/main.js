@@ -255,6 +255,20 @@ function registerEditIpc() {
     for (const p of getSchema().parameters) if (p.cc >= 0) map[p.cc] = p.key;
     return map;
   });
+
+  // Recall a preset ON THE INSTRUMENT. The bank region mirrors hardware, so
+  // clicking a slot there should move the hardware — the library region never
+  // does this, because a file is not a slot.
+  ipcMain.handle('midi:recall', async (_e, { bank, preset }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false };
+    try {
+      midi.sendProgramChange(bank * 8 + preset); // 0-based global slot
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
 }
 
 function registerBackupIpc() {

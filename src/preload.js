@@ -76,6 +76,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     setParam: (key, value) => ipcRenderer.invoke('edit:param', { key, value }),
     readParam: (key) => ipcRenderer.invoke('edit:read', { key }),
     ccMap: () => ipcRenderer.invoke('edit:ccMap'),
+    // Recall a slot on the instrument (bank/preset are 0-based).
+    recall: (bank, preset) => ipcRenderer.invoke('midi:recall', { bank, preset }),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes
