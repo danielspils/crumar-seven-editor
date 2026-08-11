@@ -331,6 +331,14 @@
   // Region header carries the honesty label: this view is what the LAST
   // BACKUP saw, not a live read — the Seven has no read-slot opcode.
   const sevenHead = document.getElementById('seven-head');
+  // Shared by the expanded header and the collapsed strip, so the two can
+  // never drift or depend on each other's render order.
+  function asOfText() {
+    const d = banksAsOf ? new Date(banksAsOf) : null;
+    if (!d || isNaN(d)) return '';
+    return `as of last backup · ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
+  }
+
   function updateSevenHead() {
     const fmt = (iso) => {
       const d = new Date(iso);
@@ -703,10 +711,14 @@
     if (deviceSel) {
       const bank = banks[deviceSel.bank];
       const patch = bank.patches[deviceSel.preset];
-      bankStripLabel.textContent = `Bank ${bank.name}${patch ? ` · ${patch.name}` : ''}`;
+      bankStripLabel.textContent = `— Bank ${bank.name}${patch ? ` · ${patch.name}` : ''}`;
     } else {
-      bankStripLabel.textContent = `Bank ${banks[bankIndex].name}`;
+      bankStripLabel.textContent = `— Bank ${banks[bankIndex].name}`;
     }
+    // The honesty label rides along, so collapsing the region never hides the
+    // fact that this view is only as fresh as the last backup.
+    const asof = document.getElementById('bank-strip-asof');
+    if (asof) asof.textContent = asOfText();
   }
 
   // The two regions expand mutually exclusively: opening the Library

@@ -304,7 +304,11 @@
     }
     #bank-strip:hover { background: var(--bg-raised); }
     #bank-strip .strip-chevron { transform: rotate(-90deg); }
-    #bank-strip-label { font-weight: 600; }
+    #bank-strip .fx-title { flex: none; }
+    #bank-strip-label { flex: 1; }
+    .strip-asof { font-size: 12px; color: var(--text-dim); flex: none; }
+    /* One title line only: while the strip is showing, it IS the header. */
+    #library.lib-open #seven-head { display: none; }
     #library.lib-open #bank-tabs, #library.lib-open #patch-list { display: none; }
     #library.lib-open #bank-strip { display: flex; }
     /* Drag handle between the regions. Only meaningful while the Library is
@@ -419,15 +423,30 @@
        provenance and the sound it uses beneath — related facts paired, and
        the name free to run the width of the row (sound names reach 22 chars,
        e.g. "Venice Upright U1 Felt", which crowded a side-by-side layout). */
+    /* One line per patch, grouped by bank: slot number, name, then the sound
+       and its badge on the right — the same right-hand pairing the bank rows
+       use. Bank and capture date sit in the group header, not on every row. */
     .lib-row.lib-patch {
-      grid-template-columns: 1fr auto;
-      row-gap: 3px; align-items: baseline;
+      grid-template-columns: 22px 1fr auto auto auto;
+      row-gap: 0; align-items: center;
+    }
+    .lib-row.lib-patch .patch-num {
+      color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums;
+    }
+    .lib-group + .lib-group { margin-top: 4px; }
+    .lib-group-title {
+      position: sticky; top: 0; z-index: 1;
+      background: var(--bg); padding: 7px 6px 5px;
+      font-size: 12px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--text-muted);
+      border-bottom: 1px solid var(--line);
     }
     /* Slot rows stack name over provenance in one cell (they keep the
        single-line grid the slot controls need). */
     .name-cell { display: flex; flex-direction: column; min-width: 0; }
     .name-cell .patch-name { min-width: 0; }
     .lib-row.lib-patch .patch-sound,
+    .lib-row.lib-patch .lib-origin,
     .lib-row.lib-patch .lib-badges { text-align: right; }
     .lib-origin {
       font-size: 12px; color: var(--text-muted);
@@ -898,9 +917,14 @@
       <div class="region-head" id="seven-head">On the Seven</div>
       <div id="bank-tabs"></div>
       <div id="patch-list"></div>
+      <!-- Collapsed, the bank region reads exactly like the collapsed library
+           header: chevron, region name, then its one-line summary. Its own
+           region-head is hidden so there is only ever one title line. -->
       <button type="button" id="bank-strip" title="Show the bank presets">
         <span class="fx-chevron strip-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span id="bank-strip-label">Bank 1</span>
+        <span class="fx-title">On the Seven</span>
+        <span id="bank-strip-label" class="lib-count"></span>
+        <span id="bank-strip-asof" class="strip-asof"></span>
       </button>
       <!-- Drag handle between the regions; the split persists across
            launches. Active only while the Library is expanded. -->

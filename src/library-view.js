@@ -88,19 +88,27 @@
     if (state.renaming === rowKey(entry)) {
       return (
         `<div class="lib-row lib-patch selected lib-row-renaming" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
+        `<span class="patch-num">${(entry.origin || {}).kind === 'backup' ? entry.origin.preset : ''}</span>` +
         `<input class="lib-rename-input" type="text" value="${esc(entry.name)}" spellcheck="false">` +
-        `<span class="lib-badges">${badge(entry)}</span>` +
-        `<span class="lib-origin">${esc(originLine(entry))}</span>` +
+        `<span class="lib-origin"></span>` +
         `<span class="patch-sound">${esc(entry.soundName)}</span>` +
+        `<span class="lib-badges">${badge(entry)}</span>` +
         `</div>`
       );
     }
+    const o = entry.origin || {};
+    // Bank and date live in the group header, so the row carries only what is
+    // its own: which preset slot, what it is called, what sound it uses. A
+    // patch with no slot (created or imported here) shows its date instead.
+    const lead = o.kind === 'backup' ? String(o.preset) : '';
+    const context = o.kind === 'backup' ? '' : originLine(entry);
     return (
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
+      `<span class="patch-num">${lead}</span>` +
       `<span class="patch-name">${esc(displayName(entry))}</span>` +
+      `<span class="lib-origin">${esc(context)}</span>` +
+      `<span class="patch-sound">${esc(entry.soundName)}</span>` +
       `<span class="lib-badges">${badge(entry)}</span>` +
-      `<span class="lib-origin">${esc(originLine(entry))}</span>` +
-      `<span class="patch-sound">${soundCell(entry)}</span>` +
       `</button>`
     );
   }
@@ -114,17 +122,56 @@
     );
   }
 
+  // Grouped by where a patch came from, ordered the way the instrument is:
+  // Bank 1..4 by preset, then anything made or imported here. Alphabetical
+  // reads as random once most rows are backups — two "Combo Piano"s from
+  // different banks land together and Bank 3 sorts above Bank 2. Bank and
+  // capture date belong to the whole group, so they are stated once in its
+  // header rather than on all 32 rows.
+  function libraryGroups(list) {
+    const banks = new Map(); // bank number -> entries
+    const made = [];
+    const imported = [];
+    for (const e of list) {
+      const o = e.origin || {};
+      if (e.invalid) imported.push(e);
+      else if (o.kind === 'backup') {
+        if (!banks.has(o.bank)) banks.set(o.bank, []);
+        banks.get(o.bank).push(e);
+      } else if (o.kind === 'created') made.push(e);
+      else imported.push(e);
+    }
+    const groups = [];
+    for (const bank of [...banks.keys()].sort((a, b) => a - b)) {
+      const rows = banks.get(bank).sort((a, b) => a.origin.preset - b.origin.preset);
+      // Slots can come from different runs, so the header only claims a date
+      // when they genuinely all share one. Compared by DAY: every patch in a
+      // run carries its own second-resolution capture stamp, so comparing the
+      // raw timestamps would never find two alike.
+      const days = [...new Set(rows.map((e) => String(e.origin.date || '').slice(0, 10)).filter(Boolean))];
+      const when = days.length === 1 ? ` · backed up ${fmtDate(days[0])}` : '';
+      groups.push({ title: `Bank ${bank}${when}`, rows });
+    }
+    if (made.length) groups.push({ title: 'Created here', rows: made });
+    if (imported.length) groups.push({ title: 'Imported', rows: imported });
+    return groups;
+  }
+
   function renderAllPatches(data, state) {
-    const list = data.patches
-      .filter((e) => matches(e, state.search))
-      .slice()
-      .sort((a, b) => displayName(a).localeCompare(displayName(b)));
+    const list = data.patches.filter((e) => matches(e, state.search));
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
         ? 'No patches match the search.'
-        : 'Patches you back up or import live here. They’re files on your computer, not slots on the instrument.'}</div>`;
+        : 'Patches you back up or import live here. They\u2019re files on your computer, not slots on the instrument.'}</div>`;
     }
-    return list.map((e) => renderPatchRow(e, state)).join('');
+    return libraryGroups(list)
+      .map(
+        (g) =>
+          `<div class="lib-group"><div class="lib-group-title">${esc(g.title)}</div>` +
+          g.rows.map((e) => renderPatchRow(e, state)).join('') +
+          `</div>`
+      )
+      .join('');
   }
 
   function renderSetlistList(data, state) {

@@ -162,8 +162,10 @@ class BackupRunner extends EventEmitter {
     for (let b = 0; b < 4; b++) {
       const slots = slotFiles.slice(b * 8, b * 8 + 8);
       if (!slots.length) continue;
-      const suffix = partial ? ' (partial)' : '';
-      this.store.createOrReplaceSetlist(`Backup ${dateStr} — Bank ${b + 1}${suffix}`, slots);
+      // "Bank 1 setlist (2026-08-09)" — what it is first, when second. The
+      // date stays ISO so a year of these sorts correctly by name.
+      const suffix = partial ? ', partial' : '';
+      this.store.createOrReplaceSetlist(`Bank ${b + 1} setlist (${dateStr}${suffix})`, slots);
     }
 
     // Globals snapshot alongside the setlists — record only, no restore path.
