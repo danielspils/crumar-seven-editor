@@ -1123,7 +1123,11 @@
   // never forks, the FX2-mode-conditional sub-parameters (phaser at 1, delay
   // at 3) always read the same patch.params value the select shows.
   detailEl.addEventListener('change', (e) => {
-    const sel = e.target.closest('.param-select');
+    // A LIVE row is handled above: the change is sent and the value the device
+    // echoes is what sticks. This path is only for a row that isn't live, and
+    // it used to run for both — reverting the select immediately after the
+    // live handler had legitimately changed it.
+    const sel = e.target.closest('.param:not(.is-live) .param-select');
     if (!sel) return;
     // TODO(device): when MIDI lands, this becomes:
     //   1. send set-parameter (0x20) for the param behind sel.dataset.key with
