@@ -602,6 +602,35 @@
     panelPoll = null;
   }
 
+  const explainAuditionModal = () =>
+    SevenModal.confirm({
+      title: 'AUDITION MODE',
+      body:
+        'Your tweaks change the sound of the Crumar Seven. But it\u2019s all in a ' +
+        'buffer. Your saved sounds are safe.\n\n' +
+        'To save your new sound to the SEVEN, hold a preset button for three ' +
+        'seconds (just like you normally do to save patches).\n\n' +
+        'Click the \u201CSave to Library\u201D button to save your new sound to ' +
+        'the computer.',
+      confirmLabel: 'Start Audition',
+    });
+
+  // Reaching for a control while not in audition mode IS the request to edit,
+  // so it offers the way in rather than explaining why nothing happened. The
+  // modal is the door: Start Audition walks through it, the X declines.
+  async function offerAudition() {
+    if (!isConnected()) {
+      toast('Connect the Seven to edit sounds');
+      return;
+    }
+    if (!auditionTarget()) return;
+    const ok = await explainAuditionModal();
+    localStorage.setItem('seven.auditionExplained', '1');
+    if (!ok) return;
+    const btn = document.getElementById('audition-btn');
+    if (btn) btn.click();
+  }
+
   const rowKeyOf = (el) => {
     const row = el.closest('.param.is-live');
     return row ? { key: row.dataset.key, max: Number(row.dataset.max) } : null;
@@ -612,6 +641,7 @@
   detailEl.addEventListener('pointerdown', (e) => {
     const bar = e.target.closest('.param.is-live .param-bar');
     if (!bar) return;
+    e.preventDefault();
     const info = rowKeyOf(bar);
     if (!info) return;
     e.preventDefault();
@@ -636,6 +666,9 @@
 
   // Switches, choice tabs and segmented selectors all carry their target value.
   detailEl.addEventListener('click', (e) => {
+    // Not live yet: any reach for a control offers audition mode.
+    const idle = e.target.closest('.param:not(.is-live) [data-set], .param:not(.is-live) .param-bar');
+    if (idle) { offerAudition(); return; }
     const hit = e.target.closest('.param.is-live [data-set]');
     if (!hit) return;
     const info = rowKeyOf(hit);
@@ -696,21 +729,12 @@
     if (!e.target.closest('#audition-btn')) return;
     const target = auditionTarget();
     if (!target) return;
-    // Explain the rule once, the first time ever — an edit buffer that loses
-    // your work on the next preset recall is not something to discover later.
+    // Explain the rule once from the BUTTON — you already said what you wanted
+    // by pressing it. Reaching for a control instead is a different case: see
+    // offerAudition().
     const EXPLAINED = 'seven.auditionExplained';
     if (!localStorage.getItem(EXPLAINED)) {
-      const ok = await SevenModal.confirm({
-        title: 'AUDITION MODE',
-        body:
-          'Your tweaks change the sound of the Crumar Seven. But it\u2019s all in a ' +
-          'buffer. Your saved sounds are safe.\n\n' +
-          'To save your new sound to the SEVEN, hold a preset button for three ' +
-          'seconds (just like you normally do to save patches).\n\n' +
-          'Click the \u201CSave to Library\u201D button to save your new sound to ' +
-          'the computer.',
-        confirmLabel: 'Start Audition',
-      });
+      const ok = await explainAuditionModal();
       localStorage.setItem(EXPLAINED, '1');
       if (!ok) return;
     }
@@ -963,18 +987,6 @@
   });
 
   // Transient inline note next to a device-state control that can't act yet.
-  function showDeviceNote(host, text) {
-    let note = host.querySelector('.device-note');
-    if (!note) {
-      note = document.createElement('span');
-      note.className = 'device-note';
-      host.appendChild(note);
-    }
-    note.textContent = text || 'No instrument connected.';
-    clearTimeout(note._timer);
-    note._timer = setTimeout(() => note.remove(), 1800);
-  }
-
   // The state pill reflects DEVICE state only — it never flips from a click
   // alone (docs/DESIGN.md). In audition mode it CAN act: the write goes out,
   // and the pill re-renders from the value the instrument echoed back. The
@@ -988,9 +1000,7 @@
       sendEdit(key, current === 1 ? 0 : 1); // raw flip; `invert` is a display rule
       return;
     }
-    showDeviceNote(pill.parentElement, isConnected()
-      ? 'Audition this patch to edit it live.'
-      : 'Connect the Seven to edit.');
+    offerAudition();
   }
 
   // Clicking a section header toggles it regardless of switch state — values in
@@ -1022,13 +1032,14 @@
     //   2. await the device reply,
     //   3. re-render from the value the DEVICE reports (which also refreshes
     //      any mode-conditional sub-parameters).
-    // Until then: revert the select — the control reflects device state only.
+    // Not live: put the select back where the patch says it is, and offer the
+    // way in. The control reflects device state, so it must not fork.
     const patch = currentPatch();
     if (patch) sel.value = String(patch.params[sel.dataset.key] ?? 0);
     // Chromium keeps :focus-visible on selects after mouse interaction; drop
     // focus so the accent ring doesn't linger as a false selected state.
     sel.blur();
-    showDeviceNote(sel.closest('.param-value'));
+    offerAudition();
   });
 
   // ---- Library section (on-disk library; data via preload IPC) --------------
