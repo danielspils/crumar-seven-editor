@@ -407,7 +407,7 @@
         `</span>` +
         // It re-reads the patch FROM DISK and sends those values, so with live
       // edits pending it is a reset, not a repeat. Name the consequence.
-      `<button type="button" id="audition-btn" class="is-secondary">Reset to saved</button>` +
+      `<button type="button" id="audition-btn" class="is-secondary">Reset sound</button>` +
         actions +
         note +
         `</div>`
@@ -589,7 +589,7 @@
         body:
           'This sends the patch as it is saved on this computer, replacing what is ' +
           'in the Seven’s edit buffer. Edits you have not saved to the library are lost.',
-        confirmLabel: 'Reset to Saved',
+        confirmLabel: 'Reset Sound',
         tone: 'is-warning',
       });
       if (!go) return;

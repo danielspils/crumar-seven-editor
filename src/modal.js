@@ -22,16 +22,23 @@
       .join('');
 
   // Resolves true (confirmed) or false (cancelled, escaped, backdrop).
-  function confirm({ title, body, confirmLabel = 'OK', cancelLabel = 'Cancel', tone = '' }) {
+  function confirm({ title, body, confirmLabel = 'OK', cancelLabel = 'Close', tone = '' }) {
     return new Promise((resolve) => {
       const host = document.createElement('div');
       host.className = 'seven-modal-overlay';
+      // Dismiss is a close control in the corner, not a button competing with
+      // the action — so the affirmative one stands alone, centred. cancelLabel
+      // survives as the close control's accessible name.
       host.innerHTML =
         `<div class="seven-modal ${tone}" role="dialog" aria-modal="true" aria-label="${esc(title)}">` +
+        `<button type="button" class="seven-modal-cancel" aria-label="${esc(cancelLabel)}" ` +
+        `title="${esc(cancelLabel)}">` +
+        '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
         `<div class="seven-modal-title">${esc(title)}</div>` +
         `<div class="seven-modal-body">${paragraphs(body)}</div>` +
         `<div class="seven-modal-actions">` +
-        `<button type="button" class="seven-modal-cancel">${esc(cancelLabel)}</button>` +
         `<button type="button" class="seven-modal-ok">${esc(confirmLabel)}</button>` +
         `</div></div>`;
 
