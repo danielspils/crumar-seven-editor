@@ -385,14 +385,17 @@
     // different heights — so making the first edit rewrote the sentence and
     // shifted the row, which read as the app warning you about something.
     // Only a genuine problem may replace it.
-    const hint = live
-      ? 'Nothing is saved until you hold a preset button on the Seven, or save to the library.'
-      : 'Loads it into the edit buffer — hold a preset button on the Seven for three ' +
-        'seconds to keep it.';
+    // Before you are in audition mode the button says what it does, so the
+    // sentence beside it only repeated itself; the rule it carried is what the
+    // modal explains. Live, the line is constant (see below). Either way, a
+    // real problem still replaces it.
     const showNote = mine && (!live || auditionNote.kind === 'is-error');
     const note = showNote
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
-      : `<span class="audition-note">${hint}</span>`;
+      : live
+        ? '<span class="audition-note">Nothing is saved until you hold a preset button ' +
+          'on the Seven, or save to the library.</span>'
+        : '';
 
     // Audition mode is a STATE, not an interruption — so it wears persistent
     // chrome (a sticky amber-edged header that follows you down the panel)
