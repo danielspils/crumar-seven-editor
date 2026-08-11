@@ -763,13 +763,7 @@
     .param.is-live .param-bar:hover .param-bar-knob { box-shadow: 0 0 0 3px var(--shade-hard); }
     /* Only the side that would CHANGE something is a target: the lit half is
        already the current value, so it gets no pointer and no hover. */
-    /* These controls were display-only, so their frames were taken out of hit
-       testing entirely (.d6-frame and .param-seg carry pointer-events:none).
-       A live row has to put them back, or a real mouse click never reaches the
-       handler — synthetic clicks in a test script would still pass, because
-       dispatchEvent ignores pointer-events. */
-    .param.is-live .d6-frame,
-    .param.is-live .param-seg { pointer-events: auto; }
+
     .param.is-live .d6-half:not(.pressed),
     .param.is-live .d6-toggle,
     .param.is-live .seg { cursor: pointer; }
@@ -926,8 +920,12 @@
        the tab tips toward the active side; neither side is "off". */
     .param-switch { padding: 2px 0; }
     .param-switch .param-pill-cell { grid-column: 2; justify-self: start; }
+    /* No pointer-events:none here. It was correct when these were read-only
+       readouts, but a later rule trying to switch it back on lost the cascade
+       — same specificity, earlier in the file — so the switches stayed
+       unclickable and could not even be used to enter audition mode. */
     .d6-frame {
-      display: inline-flex; pointer-events: none;
+      display: inline-flex;
       background: var(--d6-frame-bg); border: 1px solid var(--d6-frame-border); border-radius: 3px;
       padding: 3px;
     }
@@ -1003,7 +1001,7 @@
     /* Discrete selector (unnamed N-position params): segmented control in the
        bar column, current position filled; value cell shows 1-based pos/total.
        Non-interactive. */
-    .param-seg { grid-column: 2; display: flex; gap: 2px; align-items: center; pointer-events: none; }
+    .param-seg { grid-column: 2; display: flex; gap: 2px; align-items: center; }
     .param-seg .seg { flex: 1; max-width: 14px; height: 6px; border-radius: 2px; background: var(--bar); }
     .param-seg .seg.cur { background: var(--bar-fill-changed); }
     .device-note { color: var(--text-muted); font-size: 12px; flex: none; }
