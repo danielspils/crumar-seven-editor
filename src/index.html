@@ -773,7 +773,11 @@
     #audition-btn.is-secondary { font-weight: 400; color: var(--text-muted); }
     /* The note's height is reserved, so swapping its text (hint, result,
        error) never reflows the row beneath it. */
-    .audition-bar.is-live .audition-note { min-height: 1.4em; }
+    /* The line belongs UNDER the controls, not squeezed into the gap beside
+       them — it was taking whatever width was left and wrapping to three. */
+    .audition-bar.is-live .audition-note {
+      flex: 0 0 100%; min-width: 0; min-height: 1.4em; margin-top: 2px;
+    }
     #save-live-btn:disabled { opacity: .45; cursor: default; background: var(--line); border-color: var(--line); color: var(--text-muted); }
     /* Leaving audition mode is a close control at the bar's right edge, the
        same affordance the modal uses — not a button beside Save. */

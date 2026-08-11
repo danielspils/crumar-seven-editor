@@ -435,7 +435,10 @@
     // sentence beside it only repeated itself; the rule it carried is what the
     // modal explains. Live, the line is constant (see below). Either way, a
     // real problem still replaces it.
-    const showNote = mine && (!live || auditionNote.kind === 'is-error');
+    // Notes are shown while live too. That used to reflow the controls, which
+    // is why they were suppressed; now the line sits on its own full-width row
+    // beneath them, so its text can change without moving anything.
+    const showNote = mine;
     const note = showNote
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
       : live
@@ -528,6 +531,7 @@
       const r = await window.sevenAPI.midi.setParam(key, value);
       if (r.ok) {
         liveEdit.params[key] = r.value;
+        liveEdit.touched.add(key);
         liveEdit.dirty = true;
         auditionNote = null;
       } else {
@@ -600,6 +604,48 @@
   function stopPanelPoll() {
     clearInterval(panelPoll);
     panelPoll = null;
+  }
+
+  // Reads back the parameters this session changed and compares them with the
+  // working copy. Still ours -> the buffer survived, so stay live. Changed ->
+  // a genuine recall replaced it, so end the session and say so.
+  async function checkBufferAfterRecall(ev) {
+    const keys = [...(liveEdit.touched || [])].slice(0, 8);
+    const file = liveEdit.file;
+    if (!keys.length) {
+      // Nothing was edited, so there is nothing to lose either way — follow
+      // the instrument quietly.
+      liveEdit = null;
+      renderDetail();
+      return;
+    }
+    let intact = true;
+    for (const key of keys) {
+      const r = await window.sevenAPI.midi.readParam(key);
+      if (!r || !r.ok || r.value !== liveEdit.params[key]) { intact = false; break; }
+    }
+    if (intact) {
+      // The edit buffer still holds what we sent. Most often that means the
+      // user just stored it on the panel — say where, without claiming more
+      // than the instrument has actually told us.
+      auditionNote = {
+        kind: 'is-ok',
+        file,
+        text: `The Seven is on Bank ${ev.bank} · Preset ${ev.preset}, still holding these settings. ` +
+          'If you held the button to store it, it is saved there — Save to Library keeps a copy here.',
+      };
+    } else {
+      const stale = liveEdit.dirty;
+      liveEdit = null;
+      auditionNote = {
+        kind: 'is-error',
+        file,
+        text: stale
+          ? 'The Seven recalled a different preset — your unsaved edits are gone.'
+          : 'The Seven recalled a preset, so audition mode ended.',
+      };
+    }
+    renderDetail();
   }
 
   const explainAuditionModal = () =>
@@ -781,6 +827,7 @@
         file: target.file,
         patchIndex: target.patchIndex,
         params: { ...(currentPatch() || {}).params },
+        touched: new Set(), // keys this session changed — evidence for the check below
         dirty: false,
       };
       startPanelPoll();
@@ -1495,23 +1542,13 @@
         // A recall replaces the edit buffer wholesale, so anything we were
         // holding there is gone. Say so instead of leaving controls that look
         // live but are editing a different preset.
-        // Our own audition traffic can look like this; only a PC that arrives
-        // outside a send is the user recalling a preset.
-        if (liveEdit && !auditionInFlight) {
-          const file = liveEdit.file;
-          const stale = liveEdit.dirty;
-          liveEdit = null;
-          // The note MUST carry the file: the bar only shows a note belonging
-          // to the patch on screen, so a fileless one is set and never seen.
-          auditionNote = {
-            kind: 'is-error',
-            file,
-            text: stale
-              ? 'The Seven recalled a preset — your unsaved edits are gone.'
-              : 'The Seven recalled a preset, so audition mode ended.',
-          };
-          renderDetail();
-        }
+        // A Program Change while live can mean two opposite things: the user
+        // recalled a different preset (the buffer is replaced, edits lost), or
+        // the user HELD a preset button to store what they just made (the
+        // buffer is intact and the edit is now permanent). Announcing loss for
+        // both told people their work was gone at the exact moment they saved
+        // it. So ask the instrument instead of guessing.
+        if (liveEdit && !auditionInFlight) checkBufferAfterRecall(ev);
         // Send PC on: panel recalls are slot-identified, so the bank region
         // follows the hardware. Suppressed during a backup run — those PCs
         // are ours.
