@@ -671,6 +671,12 @@
 
   async function offerAudition() {
     if (offering || auditionInFlight) return;
+    // Already live: this control simply isn't editable — an inert row, or a
+    // shape with no live handler yet (the pedal's range pair). Offering to
+    // start audition mode here walked the whole entry path and ended up
+    // pressing the button that now reads "Reset sound", which asks about
+    // discarding the very edits the user was in the middle of making.
+    if (isLive()) return;
     if (!isConnected()) {
       toast('Connect the Seven to edit sounds');
       return;
