@@ -166,6 +166,9 @@ class LibraryStore {
 
   // Assigning stores a filename reference — it never copies the file. The
   // same patch may appear in several setlists and more than once in one.
+  // A slot may also hold "sound:<name>" — a sound with no stored parameters,
+  // which sends 0x46 alone and leaves the engine settings untouched (the
+  // device's own behaviour). Sounds are referenced by name, never by id.
   assignSlot(index, slot, file) {
     const setlists = this.readSetlists();
     if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');

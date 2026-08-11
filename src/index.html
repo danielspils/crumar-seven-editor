@@ -246,8 +246,10 @@
     /* The eight bank rows are always fully visible — they never scroll out of
        view when the Library opens; the Library body scrolls internally. */
     #patch-list { flex: none; }
+    /* One line: number, name, then the sound and its badge together on the
+       right — the same right-hand pairing the library rows use. */
     .patch-row {
-      display: grid; grid-template-columns: 28px 1fr 1fr auto auto;
+      display: grid; grid-template-columns: 28px 1fr auto auto auto;
       gap: 10px; align-items: center;
       width: 100%; padding: 9px 14px;
       background: none; border: none; border-bottom: 1px solid var(--line);
@@ -256,6 +258,7 @@
     .patch-row:hover { background: var(--bg-raised); }
     .patch-row.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
     .patch-num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .patch-row .patch-sound { text-align: right; }
     .patch-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .patch-sound { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -334,7 +337,28 @@
     #library-section:not(.collapsed) { display: flex; flex-direction: column; flex: 0 1 auto; }
     #library-section:not(.collapsed) .fx-head { flex: none; }
     #library-section:not(.collapsed) .fx-body { flex: 0 1 auto; min-height: 0; }
-    #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+    /* The list scrolls inside a fixed height, so a cut-off row can look like
+       the end of the list. A fade over the bottom edge says otherwise; the
+       .at-end class removes it once there is nothing left to scroll to. */
+    #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; position: relative; }
+    #library-body::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none; opacity: 1; transition: opacity .15s ease;
+    }
+    #library-body.at-end::after { opacity: 0; }
+    /* Every other long scroller fades its own bottom edge with a mask — no
+       wrapper needed, and it blends to whatever is behind it. The library list
+       can't use this: a masked element becomes the containing block for its
+       position:fixed children, which would trap the patch picker inside the
+       list (src/scroll-fade.js). */
+    #detail, .pick-body, #sounds-panel {
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+      mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+    }
+    #detail.at-end, .pick-body.at-end, #sounds-panel.at-end {
+      -webkit-mask-image: none; mask-image: none;
+    }
     #library-body .lib-bar { flex: none; }
     #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
     .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
@@ -427,15 +451,82 @@
     /* Same hierarchy as a library row — name + badge, then provenance +
        sound — with the slot controls in their own column so both text rows
        stop short of the ✕. */
-    /* Patch picker (opened by a slot's Assign). Replaces the slot list while
-       open — one thing on screen at a time. */
-    .pick-head {
-      display: flex; align-items: center; gap: 10px;
-      padding: 4px 2px 8px; color: var(--text-muted);
+    /* Patch picker: a modal over the setlist, so the slots you're filling stay
+       visible behind it. Tiles rather than rows — the point is seeing many
+       options at once, and a row wastes the width. */
+    .pick-overlay {
+      position: fixed; inset: 0; z-index: 40;
+      background: rgba(0, 0, 0, .55);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
     }
-    .pick-head .lib-setlist-name { font-weight: 600; color: var(--text); }
-    .lib-list [data-pick-search] { width: 100%; margin-bottom: 6px; }
-    .pick-row { cursor: pointer; }
+    .pick-modal {
+      display: flex; flex-direction: column;
+      width: min(860px, 92vw); max-height: 82vh;
+      background: var(--bg-panel); border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+    }
+    .pick-modal-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .pick-title { font-weight: 600; flex: none; }
+    .pick-modal-head .lib-search { flex: 1; }
+    .pick-cancel {
+      font: inherit; font-size: 12px; color: var(--text-muted);
+      background: none; border: 1px solid var(--line); border-radius: 4px;
+      padding: 3px 10px; cursor: pointer;
+    }
+    .pick-cancel:hover { color: var(--text); border-color: var(--text-muted); }
+    .pick-body { overflow-y: auto; padding: 12px 14px 16px; }
+    .pick-group + .pick-group { margin-top: 16px; }
+    .pick-group-title {
+      position: sticky; top: -12px; z-index: 1;
+      background: var(--bg-panel); padding: 4px 0 6px;
+      font-size: 12px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .pick-grid {
+      display: grid; gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    /* Each tile carries its engine's colour as a top edge — family is legible
+       even when the name truncates. */
+    .pick-tile {
+      display: flex; flex-direction: column; gap: 2px; text-align: left;
+      padding: 8px 10px; border: 1px solid var(--line); border-top: 3px solid var(--tile);
+      border-radius: 5px; background: var(--bg-raised); color: var(--text);
+      font: inherit; cursor: pointer; min-width: 0;
+    }
+    .pick-tile:hover { background: var(--shade-hard); border-color: var(--text-dim); }
+    .pick-modes { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+    .pick-mode {
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: none; border: 0; padding: 4px 12px; cursor: pointer;
+    }
+    .pick-mode + .pick-mode { border-left: 1px solid var(--line); }
+    .pick-mode.on { background: var(--shade-hard); color: var(--text); }
+    /* Illustrated tiles are roomier than patch tiles — 24 instruments fit on a
+       screen at this size, so the art can be legible without costing overview. */
+    .pick-grid-art { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+    .pick-tile-art { align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px; }
+    .tile-art { color: var(--tile); display: block; line-height: 0; }
+    .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
+    .pick-note {
+      margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
+      font-size: 12px; color: var(--text-muted); max-width: 62ch;
+    }
+    /* A sound-only slot: no patch behind it, so its name reads as the sound. */
+    .lib-slot-sound .patch-name { font-style: italic; }
+
+    .tile-name {
+      font-weight: 600; font-size: 12px; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .tile-sound {
+      font-size: 12px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
 
     .lib-slot {
       display: grid; grid-template-columns: 24px 1fr auto auto;
@@ -835,7 +926,9 @@
   </div>
   <script src="defaults.js"></script>
   <script src="renderer.js"></script>
-  <script src="library-view.js"></script>
+  <script src="scroll-fade.js"></script>
+    <script src="sound-art.js"></script>
+    <script src="library-view.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

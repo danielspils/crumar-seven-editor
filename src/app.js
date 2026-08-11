@@ -71,6 +71,9 @@
         sampled: e.sampled,
         params: e.params,
         file: e.file,
+        // Per-slot, not per-region: slots can come from different backup runs,
+        // and the row says which one this slot is "as of".
+        date: e.origin.date || null,
       };
       if (e.origin.date && (!banksAsOf || e.origin.date > banksAsOf)) banksAsOf = e.origin.date;
     }
@@ -105,6 +108,11 @@
     collapsed = {};
     for (const s of R.FX_SECTIONS) collapsed[s.group] = true;
   }
+
+  // Long scrollers fade their bottom edge while there is more below. These two
+  // outlive every re-render, so they are watched once.
+  window.SevenScrollFade.watch(document.getElementById('detail'));
+  window.SevenScrollFade.watch(document.getElementById('sounds-panel'));
 
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
   const panelStrip = document.getElementById('panel-strip');
@@ -583,6 +591,12 @@
   const libView = SevenLibraryView.createLibraryView({
     el: document.getElementById('library-body'),
     on: {
+      // Engine family per patch — the picker colours its tiles with it.
+      engineOf: (entry) => R.engineGroupFor(entry),
+      // Every sound the schema knows (read off the instrument, FW 1.37) —
+      // the picker's Instruments tab. Sound-only slots reference these by NAME,
+      // never by id: ids are not portable across units (schema soundsNote).
+      sounds: schema.sounds,
       select(entry) {
         // Independent of the device selection — both stay set, both stay
         // visibly selected; the detail panel follows the last touch.
@@ -614,6 +628,9 @@
           libSelected = { ...libSelected, file: newFile, name: newName };
         }
         await refreshLibrary();
+        // The file is renamed too and the list is name-sorted, so the row has
+        // moved — follow it, otherwise the rename looks like it was discarded.
+        libView.reveal(newFile, entry.patchIndex);
       },
       // ---- setlist editing (every mutation persists via IPC, then re-syncs) --
       async createSetlist(name) {

@@ -295,6 +295,16 @@ function createWindow() {
   if (process.env.SEVEN_SHOT) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
+        // SEVEN_SHOT_JS runs in the page first — lets a capture show a state
+        // that normally takes clicks to reach.
+        if (process.env.SEVEN_SHOT_JS) {
+          try {
+            await win.webContents.executeJavaScript(process.env.SEVEN_SHOT_JS);
+            await new Promise((r) => setTimeout(r, 400));
+          } catch (err) {
+            console.error('SEVEN_SHOT_JS failed:', err.message);
+          }
+        }
         const image = await win.webContents.capturePage();
         fs.writeFileSync(process.env.SEVEN_SHOT, image.toPNG());
         console.log(`captured ${process.env.SEVEN_SHOT}`);

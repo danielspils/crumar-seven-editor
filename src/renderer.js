@@ -39,6 +39,13 @@
 
   // Sound → engine group. Any sampled sound (incl. a missing one) is the sample
   // player; modeled sounds map by name.
+  // Short day form ("9 Aug"), matching the library's origin lines.
+  function fmtDay(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
   function engineGroupFor(patch) {
     if (patch.sampled) return 'pno_rom';
     const n = patch.soundName || '';
@@ -369,10 +376,17 @@
       );
     }
 
-    function renderPatchRow(patch, index, selectedIndex) {
+    // One line per slot — eight slots have to stay reachable above the library
+    // region, so a second line is height the bank list can't spend. It borrows
+    // what the two-line library row does cheaply: the sound sits in the right
+    // column beside the badge, so both regions read the same way across.
+    // A slot older than the region header says so on hover, not in the row.
+    function renderPatchRow(patch, index, selectedIndex, asOf) {
       const missing = isMissing(patch);
+      const stale = patch.date && asOf && patch.date < asOf;
+      const title = stale ? ` title="Backed up ${esc(fmtDay(patch.date))} — older than the rest of this bank"` : '';
       return (
-        `<button class="patch-row${index === selectedIndex ? ' selected' : ''}" data-index="${index}" type="button">` +
+        `<button class="patch-row${index === selectedIndex ? ' selected' : ''}${stale ? ' is-stale' : ''}" data-index="${index}" type="button"${title}>` +
         `<span class="patch-num">${index + 1}</span>` +
         `<span class="patch-name">${esc(patch.name)}</span>` +
         `<span class="patch-sound">${esc(patch.soundName)}</span>` +

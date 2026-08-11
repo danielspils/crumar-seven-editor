@@ -46,6 +46,25 @@
   }
 
 
+  // Say each fact once. A backup patch is auto-named "Bank 1 Preset 7 —
+  // Vibraphone", which restates the origin line AND the sound cell beside it.
+  // The stored name is untouched (renaming still edits what actually exists,
+  // as in the bank list) — only the display drops the part its own row already
+  // states, and the sound cell goes quiet when it would echo the name.
+  function displayName(entry) {
+    const o = entry.origin;
+    if (!o || o.kind !== 'backup') return entry.name || '';
+    const re = new RegExp(`^Bank ${o.bank} Preset ${o.preset}\\s*—\\s*`);
+    return (entry.name || '').replace(re, '');
+  }
+
+  function soundCell(entry) {
+    const shown = displayName(entry);
+    return shown.trim().toLowerCase() === (entry.soundName || '').trim().toLowerCase()
+      ? ''
+      : esc(entry.soundName);
+  }
+
   function badge(entry) {
     return (
       `<span class="badge ${entry.sampled ? 'badge-sampled' : 'badge-modeled'}">${entry.sampled ? 'Sampled' : 'Modeled'}</span>` +
@@ -78,10 +97,10 @@
     }
     return (
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-      `<span class="patch-name">${esc(entry.name)}</span>` +
+      `<span class="patch-name">${esc(displayName(entry))}</span>` +
       `<span class="lib-badges">${badge(entry)}</span>` +
       `<span class="lib-origin">${esc(originLine(entry))}</span>` +
-      `<span class="patch-sound">${esc(entry.soundName)}</span>` +
+      `<span class="patch-sound">${soundCell(entry)}</span>` +
       `</button>`
     );
   }
@@ -99,7 +118,7 @@
     const list = data.patches
       .filter((e) => matches(e, state.search))
       .slice()
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      .sort((a, b) => displayName(a).localeCompare(displayName(b)));
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
         ? 'No patches match the search.'
@@ -143,37 +162,119 @@
   const selectedEntry = (data, state) =>
     (state.selected && data.patches.find((e) => state.selected === rowKey(e))) || null;
 
-  function renderPicker(data, state) {
-    const slot = state.picking;
-    const q = state.pickSearch || '';
-    const list = data.patches
-      .filter((e) => !e.invalid && matches(e, q))
-      .slice()
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const rows = list.length
-      ? list.map((e) =>
-          `<button type="button" class="lib-row lib-patch pick-row" data-pick-file="${esc(e.file)}">` +
-          `<span class="patch-name">${esc(e.name)}</span>` +
-          `<span class="lib-badges"></span>` +
-          `<span class="lib-origin">${esc(originLine(e))}</span>` +
-          `<span class="patch-sound">${esc(e.soundName)}</span>` +
-          `</button>`).join('')
-      : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
+  // Engine colours: a patch's family, readable at tile size where the name
+  // may be truncated. Passed in by app.js (the view stays schema-free).
+  const TILE_COLOUR = {
+    pno_rho: '#e0a03a', pno_wur: '#d9744f', pno_egp: '#5b8fd9', pno_zd6: '#a279d9',
+    pno_dx7: '#4fc3d9', pno_mks: '#4bb39b', pno_vib: '#6fbf5f', pno_acp: '#9aa3b2',
+    pno_rom: '#4caf6d',
+  };
+
+  // Group patches the way the user thinks of them: which backup, which bank.
+  // Browsing beats searching when you can't recall a name.
+  function pickGroups(list, fmt) {
+    const groups = new Map();
+    for (const e of list) {
+      const o = e.origin || {};
+      const key = o.kind === 'backup'
+        ? `${o.date ? fmt(o.date) : 'Backup'} · Bank ${o.bank}`
+        : o.kind === 'created' ? 'Created here' : 'Imported';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(e);
+    }
+    for (const rows of groups.values()) {
+      rows.sort((a, b) => ((a.origin || {}).preset || 0) - ((b.origin || {}).preset || 0));
+    }
+    return groups;
+  }
+
+  // The instrument grid: every sound the schema knows, illustrated. Choosing
+  // one assigns the SOUND, not a patch — see SOUND_REF above for why that is
+  // the only honest "unedited" option we can offer.
+  function renderSoundTiles(state, sounds, engineOfName) {
+    const q = (state.pickSearch || '').trim().toLowerCase();
+    const list = sounds.filter((s) => !q || s.name.toLowerCase().includes(q));
+    if (!list.length) return `<div class="lib-empty">No instrument matches “${esc(q)}”.</div>`;
+    const section = (title, rows) =>
+      rows.length
+        ? `<div class="pick-group"><div class="pick-group-title">${title}</div>` +
+          `<div class="pick-grid pick-grid-art">` +
+          rows.map((s) => {
+            const colour = TILE_COLOUR[engineOfName(s)] || '#8b8b93';
+            return (
+              `<button type="button" class="pick-tile pick-tile-art" data-pick-sound="${esc(s.name)}" ` +
+              `style="--tile:${colour}" title="${esc(s.name)} — selects this sound and leaves the settings alone">` +
+              `<span class="tile-art">${window.SevenSoundArt.iconFor(s.name, s.sampled)}</span>` +
+              `<span class="tile-name">${esc(s.name)}</span></button>`
+            );
+          }).join('') + `</div></div>`
+        : '';
     return (
-      `<div class="pick-head">` +
-      `<button type="button" class="lib-back pick-cancel">‹ Cancel</button>` +
-      `<span class="lib-setlist-name">Choose a patch for slot ${slot + 1}</span>` +
-      `</div>` +
-      `<input class="lib-search lib-autofocus" data-pick-search type="search" ` +
-      `placeholder="Search name or sound…" value="${esc(q)}">` +
-      rows
+      section('Modeled', list.filter((s) => !s.sampled)) +
+      section('Sampled', list.filter((s) => s.sampled)) +
+      `<div class="pick-note">Choosing an instrument sets the sound only — every ` +
+      `parameter keeps its current setting, which is what the Seven itself does ` +
+      `when the sound changes.</div>`
     );
   }
 
-  function renderSetlistSlots(data, state) {
+  function renderPicker(data, state, engineOf, sounds, allSounds) {
+    const slot = state.picking;
+    const q = state.pickSearch || '';
+    const list = data.patches.filter((e) => !e.invalid && matches(e, q));
+    const groups = pickGroups(list, fmtDate);
+    const body = list.length
+      ? [...groups.entries()].map(([title, rows]) =>
+          `<div class="pick-group"><div class="pick-group-title">${esc(title)}</div>` +
+          `<div class="pick-grid">` +
+          rows.map((e) => {
+            const colour = TILE_COLOUR[engineOf ? engineOf(e) : ''] || '#8b8b93';
+            return (
+              `<button type="button" class="pick-tile" data-pick-file="${esc(e.file)}" ` +
+              `style="--tile:${colour}" title="${esc(e.name)} — ${esc(e.soundName)}">` +
+              `<span class="tile-name">${esc(e.name)}</span>` +
+              `<span class="tile-sound">${esc(e.soundName)}<span class="sound-tag">` +
+              `${e.sampled ? ' (s)' : ' (m)'}</span></span>` +
+              `</button>`
+            );
+          }).join('') +
+          `</div></div>`).join('')
+      : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
+    const engineOfName = (spec) =>
+      engineOf ? engineOf({ soundName: spec.name, sampled: spec.sampled }) : '';
+    const shown = sounds
+      ? renderSoundTiles(state, allSounds || [], engineOfName)
+      : body;
+    return (
+      `<div class="pick-overlay">` +
+      `<div class="pick-modal" role="dialog" aria-label="Choose a patch">` +
+      `<div class="pick-modal-head">` +
+      `<span class="pick-title">Slot ${slot + 1}</span>` +
+      `<div class="pick-modes">` +
+      `<button type="button" class="pick-mode${sounds ? '' : ' on'}" data-pick-mode="patches">Patches</button>` +
+      `<button type="button" class="pick-mode${sounds ? ' on' : ''}" data-pick-mode="sounds">Instruments</button>` +
+      `</div>` +
+      `<input class="lib-search lib-autofocus" data-pick-search type="search" ` +
+      `placeholder="${sounds ? 'Search instruments…' : 'Search name or sound…'}" value="${esc(q)}">` +
+      `<button type="button" class="pick-cancel">Cancel</button>` +
+      `</div>` +
+      `<div class="pick-body">${shown}</div>` +
+      `</div></div>`
+    );
+  }
+
+  // A slot may hold a library file OR a bare sound, stored as "sound:<name>".
+  // Sound-only exists because the device supports it exactly: 0x46 changes the
+  // sound and leaves every engine parameter alone (verified 2026-08-09). No
+  // invented "factory default" values are involved — there are none to have.
+  const SOUND_REF = 'sound:';
+  const isSoundRef = (v) => typeof v === 'string' && v.startsWith(SOUND_REF);
+  const soundRefName = (v) => v.slice(SOUND_REF.length);
+
+  function renderSetlistSlots(data, state, opts = {}) {
     const setlist = data.setlists[state.setlistIndex];
     if (!setlist) return renderSetlistList(data, state);
-    if (state.picking != null) return renderPicker(data, state);
+
     // First patch of a file represents it in a slot (slots reference files).
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
@@ -229,6 +330,20 @@
             `<span class="slot-controls">${undoBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
+        if (isSoundRef(file)) {
+          const name = soundRefName(file);
+          const spec = (opts.sounds || []).find((x) => x.name === name);
+          return (
+            `<div class="lib-slot lib-slot-patch lib-slot-sound${pulse(i)}" data-slot="${i}">` +
+            `${num}<span class="patch-name">${esc(name)}</span>` +
+            `<span class="lib-badges"></span>` +
+            `<span class="lib-origin">Sound only · settings stay as they are</span>` +
+            `<span class="patch-sound">${esc(name)}` +
+            ` <span class="sound-tag" title="${spec && spec.sampled ? 'Sampled' : 'Modeled'}">` +
+            `(${spec && spec.sampled ? 's' : 'm'})</span></span>` +
+            `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
+          );
+        }
         const entry = byFile.get(file);
         if (!entry) {
           return (
@@ -253,16 +368,20 @@
         }
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-          `${num}<span class="patch-name">${esc(entry.name)}</span>` +
+          `${num}<span class="patch-name">${esc(displayName(entry))}</span>` +
           `<span class="lib-badges"></span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
-          `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
+          `<span class="patch-sound">${soundCell(entry)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
         );
       })
       .join('');
     state.slotPulse = null; // consumed
+    const overlay = state.picking != null
+      ? renderPicker(data, state, opts.engineOf, state.pickMode === 'sounds', opts.sounds)
+      : '';
     return (
+      overlay +
       `<div class="lib-setlist-head">` +
       `<button type="button" class="lib-back">‹ Setlists</button>` +
       `<span class="lib-setlist-name">${esc(setlist.name)}</span>` +
@@ -271,14 +390,14 @@
     );
   }
 
-  function renderBody(data, state) {
+  function renderBody(data, state, engineOf, sounds) {
     const tab = (id, label) =>
       `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`;
     const listHtml =
       state.tab === 'setlists'
         ? state.setlistIndex == null
           ? renderSetlistList(data, state)
-          : renderSetlistSlots(data, state)
+          : renderSetlistSlots(data, state, { engineOf, sounds })
         : renderAllPatches(data, state);
     return (
       `<div class="lib-bar">` +
@@ -300,6 +419,7 @@
       renamingSetlist: null,
       creatingSetlist: false,
       picking: null,     // slot index whose patch is being chosen
+      pickMode: 'patches', // 'patches' | 'sounds'
       pickSearch: '',
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
       slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
@@ -318,16 +438,30 @@
     // change starts at the top.
     let lastViewKey = null;
 
+    // Bottom-edge fades. Both scrollers here are rebuilt on every render, so
+    // they are watched by selector and refreshed after each one. The list puts
+    // its class on #library-body (its fade is a parent pseudo-element — see
+    // scroll-fade.js for why it can't be a mask); the picker wears its own.
+    const fadeList = window.SevenScrollFade.watchWithin(el, '.lib-list', el);
+    const fadePicker = window.SevenScrollFade.watchWithin(el, '.pick-body');
+    const updateFade = () => { fadeList(); fadePicker(); };
+
     function render() {
       const viewKey = `${state.tab}:${state.setlistIndex}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
-      el.innerHTML = renderBody(data, state);
+      el.innerHTML = renderBody(data, state, on.engineOf, on.sounds);
       if (keepScroll != null) {
         const list = el.querySelector('.lib-list');
         if (list) list.scrollTop = keepScroll;
       }
       lastViewKey = viewKey;
+      updateFade();
+      if (state.revealFile) {
+        const row = el.querySelector(`[data-file="${CSS.escape(state.revealFile)}"]`);
+        state.revealFile = null;
+        if (row) row.scrollIntoView({ block: 'nearest' });
+      }
       const input = el.querySelector('.lib-rename-input, .lib-autofocus');
       if (input) {
         input.focus();
@@ -399,6 +533,25 @@
         render();
         return;
       }
+      const mode = e.target.closest('[data-pick-mode]');
+      if (mode) {
+        state.pickMode = mode.dataset.pickMode;
+        state.pickSearch = '';
+        render();
+        return;
+      }
+
+      const pickSound = e.target.closest('[data-pick-sound]');
+      if (pickSound && state.picking != null) {
+        const slot = state.picking;
+        const name = pickSound.dataset.pickSound;
+        state.picking = null;
+        state.pickSearch = '';
+        state.slotPulse = { slot, kind: 'restored' };
+        on.assignSlot(state.setlistIndex, slot, `${SOUND_REF}${name}`);
+        return;
+      }
+
       const pick = e.target.closest('[data-pick-file]');
       if (pick) {
         const slot = state.picking;
@@ -407,7 +560,7 @@
         if (on.assignSlot) on.assignSlot(state.setlistIndex, slot, pick.dataset.pickFile);
         return;
       }
-      if (e.target.closest('.pick-cancel')) {
+      if (e.target.classList.contains('pick-overlay') || e.target.closest('.pick-cancel')) {
         state.picking = null;
         state.pickSearch = '';
         render();
@@ -537,8 +690,11 @@
     el.addEventListener('input', (e) => {
       if (e.target.dataset.pickSearch !== undefined) {
         state.pickSearch = e.target.value;
-        const list = el.querySelector('.lib-list');
-        if (list) list.innerHTML = renderPicker(data, state);
+        const overlay = el.querySelector('.pick-overlay');
+        if (overlay) {
+          overlay.outerHTML =
+            renderPicker(data, state, on.engineOf, state.pickMode === 'sounds', on.sounds);
+        }
         const field = el.querySelector('[data-pick-search]');
         if (field) { field.focus(); field.setSelectionRange(field.value.length, field.value.length); }
         return;
@@ -551,7 +707,7 @@
             state.tab === 'setlists'
               ? state.setlistIndex == null
                 ? renderSetlistList(data, state)
-                : renderSetlistSlots(data, state)
+                : renderSetlistSlots(data, state, { engineOf: on.engineOf, sounds: on.sounds })
               : renderAllPatches(data, state);
         }
       }
@@ -631,6 +787,12 @@
       beginSetlistRename(index) {
         state.tab = 'setlists';
         state.renamingSetlist = index;
+        render();
+      },
+      // Scroll a file's row into view on the next render, and select it.
+      reveal(file, patchIndex) {
+        state.revealFile = file;
+        state.selected = `${file} ${patchIndex || 0}`;
         render();
       },
       select(entry) {
