@@ -85,15 +85,34 @@ function registerLibraryIpc() {
       { label: 'Delete…', action: 'delete' },
     ]));
   // Deleting a setlist never deletes patches — the dialog says so.
+  // A backup run writes "Bank 2 setlist (2026-08-09)" — a dated RECORD of what
+  // the instrument held that day, not a set you built. Deleting one is a
+  // different act from deleting a gig setlist and the dialog says so: the
+  // record is the only thing that remembers that day's arrangement as a whole.
+  const BACKUP_SETLIST = /^Bank ([1-4]) setlist \((\d{4})-(\d{2})-(\d{2})(, partial)?\)$/;
+
   ipcMain.handle('setlist:confirmDelete', async (e, { name }) => {
     const win = BrowserWindow.fromWebContents(e.sender);
+    const m = BACKUP_SETLIST.exec(String(name));
+    const when = m
+      ? new Date(`${m[2]}-${m[3]}-${m[4]}T12:00:00Z`).toLocaleDateString([], {
+          day: 'numeric', month: 'long', year: 'numeric',
+        })
+      : null;
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning',
-      buttons: ['Delete Setlist', 'Cancel'],
+      buttons: [m ? 'Delete Backup Record' : 'Delete Setlist', 'Cancel'],
       defaultId: 1,
       cancelId: 1,
-      message: `Delete the setlist “${name}”?`,
-      detail: 'Only the setlist is deleted — the patches it references stay in the library.',
+      message: m
+        ? `Delete the backup record of Bank ${m[1]} from ${when}?`
+        : `Delete the setlist “${name}”?`,
+      detail: m
+        ? `This is what a backup run saw in Bank ${m[1]} on that date. Deleting it ` +
+          'removes the record of that day\u2019s arrangement — the eight patches ' +
+          'themselves stay in your library, and each one still records the slot it ' +
+          'came from.\n\nThis cannot be undone.'
+        : 'Only the setlist is deleted — the patches it references stay in the library.',
     });
     return response === 0;
   });
