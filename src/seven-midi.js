@@ -239,7 +239,21 @@ class SevenMidi extends EventEmitter {
     this.output.sendMessage([...HEADER, opcode, ...payload, SYSEX_END]);
   }
 
-  _request(opcode, payload, replyOpcode, validate, timeout = this.timeout) {
+  // ONE request at a time. Replies carry no request id: a 0x23 answering a
+  // READ and a 0x23 echoing a WRITE of the same parameter are byte-identical,
+  // so two overlapping requests can resolve each other's matcher and hand back
+  // the wrong value. (Live editing plus the Clavi tab poll did exactly that:
+  // a poll reply satisfied a pending write, the UI stored the pre-write value,
+  // and the control appeared not to move.) Serialising costs nothing here —
+  // every caller already awaits, and a backup issues ~3,600 of these in 48s.
+  _request(...args) {
+    const run = () => this._requestNow(...args);
+    // Failures must not poison the chain for everyone behind them.
+    this._chain = (this._chain || Promise.resolve()).then(run, run);
+    return this._chain;
+  }
+
+  _requestNow(opcode, payload, replyOpcode, validate, timeout = this.timeout) {
     return new Promise((resolve, reject) => {
       const p = {
         match: (m) => m[4] === replyOpcode && (!validate || validate(m)),
