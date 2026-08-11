@@ -1614,9 +1614,24 @@
     let failedWhilePresent = false;
 
     async function autoConnectTick() {
-      if (autoConnectSuspended) return;
-      if (connRow.classList.contains('connected') || connRow.classList.contains('connecting')) return;
+      if (connRow.classList.contains('connecting')) return;
+      const connected = connRow.classList.contains('connected');
       const present = await window.sevenAPI.midi.present();
+
+      // Unplugged while connected. Nothing tells us — MIDI has no hang-up — so
+      // the port simply stops existing and the app would otherwise keep saying
+      // Pronto to an instrument that left. Drop back to the manual state.
+      if (connected && !present) {
+        lastPresence = false;
+        failedWhilePresent = false;
+        try {
+          await window.sevenAPI.midi.disconnect();
+        } catch { /* already gone; the Send PC marker survives for next launch */ }
+        showStatus({ state: 'disconnected' }, 'The Seven was unplugged.');
+        return;
+      }
+      if (connected) return;
+      if (autoConnectSuspended) return;
       if (!present) {
         // Unplugged: forget the earlier failure, so replugging tries again.
         lastPresence = false;

@@ -1020,7 +1020,13 @@
       align-items: center; padding: 3px 0;
     }
     .param-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: visible; }
+    /* position:relative so the handle anchors to the TRACK. Without it the
+       handle resolved against whatever ancestor happened to be positioned and
+       floated well above the bar. */
+    .param-bar {
+      position: relative; height: 6px; border-radius: 3px;
+      background: var(--bar); overflow: visible;
+    }
     /* The mark sits ON the value, so a drag has something to aim at. It shows
        on hover only: at rest these rows are a readout, and 110 permanent dots
        would be noise. */
@@ -1033,10 +1039,11 @@
       pointer-events: none; /* the track owns the drag */
       opacity: 0; transition: opacity .12s ease, box-shadow .12s ease;
     }
-    .param.is-live:hover .param-bar-knob { opacity: 1; }
+    /* Shown on hover in every mode: live it is a drag target, and idle it
+       still marks where the value sits — which is the only way a zero reads
+       as a value rather than an empty bar. */
+    .param:hover .param-bar-knob { opacity: 1; }
     .param.is-default .param-bar-knob { background: var(--text-dim); }
-    /* Not live: nothing to drag, so no handle at all. */
-    .param:not(.is-live) .param-bar-knob { display: none; }
     .param-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     /* Enum rows: label left, dropdown right (a choice, not a magnitude).
