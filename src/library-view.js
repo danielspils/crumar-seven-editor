@@ -82,7 +82,7 @@
       return (
         `<div class="lib-row lib-patch selected lib-row-renaming" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
         `<span class="patch-num">${(entry.origin || {}).kind === 'backup' ? entry.origin.preset : ''}</span>` +
-        `<input class="lib-rename-input" type="text" value="${esc(entry.name)}" spellcheck="false">` +
+        `<input class="lib-rename-input" type="text" value="${esc(displayName(entry))}" spellcheck="false">` +
         `<span class="lib-origin"></span>` +
         `<span class="patch-sound">${esc(entry.soundName)}</span>` +
         `<span class="lib-badges">${badge(entry)}</span>` +
@@ -404,7 +404,7 @@
         if (state.renaming === rowKey(entry)) {
           return (
             `<div class="lib-slot lib-slot-patch selected" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
-            `${num}<input class="lib-rename-input" type="text" value="${esc(entry.name)}" spellcheck="false">` +
+            `${num}<input class="lib-rename-input" type="text" value="${esc(displayName(entry))}" spellcheck="false">` +
             `<span class="lib-badges"></span>` +
             `<span class="lib-origin">${esc(originLine(entry))}</span>` +
             `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +

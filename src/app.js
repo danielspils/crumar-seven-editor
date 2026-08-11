@@ -291,12 +291,15 @@
     listEl.innerHTML = bank.patches
       .map((p, i) =>
         p && i === bankRenaming
-          // The input carries the FULL stored name, not the display form the
-          // row strips the slot prefix from — you edit what actually exists.
+          // The input prefills with what the ROW shows, not the stored name.
+          // A backup's stored name is "Bank 4 Preset 1 — Tine Piano"; handing
+          // that back means deleting a prefix you never saw before you can
+          // type. Accepting it unchanged simply drops the prefix — no
+          // information is lost, since bank and preset live in `origin`.
           ? `<div class="patch-row selected" data-index="${i}">` +
             `<span class="patch-num">${i + 1}</span>` +
             `<input class="lib-rename-input bank-rename" type="text" spellcheck="false" ` +
-            `value="${String(libEntries.find((x) => x.file === p.file)?.name ?? p.name).replace(/"/g, '&quot;')}">` +
+            `value="${String(p.name).replace(/"/g, '&quot;')}">` +
             `</div>`
           : p
           ? R.renderPatchRow(p, i, sel)
