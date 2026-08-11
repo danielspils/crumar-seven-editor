@@ -143,9 +143,37 @@
   const selectedEntry = (data, state) =>
     (state.selected && data.patches.find((e) => state.selected === rowKey(e))) || null;
 
+  function renderPicker(data, state) {
+    const slot = state.picking;
+    const q = state.pickSearch || '';
+    const list = data.patches
+      .filter((e) => !e.invalid && matches(e, q))
+      .slice()
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const rows = list.length
+      ? list.map((e) =>
+          `<button type="button" class="lib-row lib-patch pick-row" data-pick-file="${esc(e.file)}">` +
+          `<span class="patch-name">${esc(e.name)}</span>` +
+          `<span class="lib-badges"></span>` +
+          `<span class="lib-origin">${esc(originLine(e))}</span>` +
+          `<span class="patch-sound">${esc(e.soundName)}</span>` +
+          `</button>`).join('')
+      : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
+    return (
+      `<div class="pick-head">` +
+      `<button type="button" class="lib-back pick-cancel">‹ Cancel</button>` +
+      `<span class="lib-setlist-name">Choose a patch for slot ${slot + 1}</span>` +
+      `</div>` +
+      `<input class="lib-search lib-autofocus" data-pick-search type="search" ` +
+      `placeholder="Search name or sound…" value="${esc(q)}">` +
+      rows
+    );
+  }
+
   function renderSetlistSlots(data, state) {
     const setlist = data.setlists[state.setlistIndex];
     if (!setlist) return renderSetlistList(data, state);
+    if (state.picking != null) return renderPicker(data, state);
     // First patch of a file represents it in a slot (slots reference files).
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
@@ -153,9 +181,7 @@
     // offers an Assign target for it — both selections stay visible.
     const sel = selectedEntry(data, state);
     const assignBtn = (i) =>
-      sel
-        ? `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Assign “${esc(sel.name)}” to slot ${i + 1}">Assign</button>`
-        : `<button type="button" class="slot-assign" disabled title="Select a patch first — then Assign puts it in this slot">Assign</button>`;
+      `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Choose a patch for slot ${i + 1}">Assign</button>`;
     const clearBtn = (i) =>
       `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">` +
       '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -215,6 +241,16 @@
           );
         }
         const selected = state.selected === rowKey(entry);
+        if (state.renaming === rowKey(entry)) {
+          return (
+            `<div class="lib-slot lib-slot-patch selected" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
+            `${num}<input class="lib-rename-input" type="text" value="${esc(entry.name)}" spellcheck="false">` +
+            `<span class="lib-badges"></span>` +
+            `<span class="lib-origin">${esc(originLine(entry))}</span>` +
+            `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
+            `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
+          );
+        }
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name">${esc(entry.name)}</span>` +
@@ -263,6 +299,8 @@
       renaming: null,
       renamingSetlist: null,
       creatingSetlist: false,
+      picking: null,     // slot index whose patch is being chosen
+      pickSearch: '',
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
       slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
     };
@@ -341,9 +379,10 @@
         render();
         return;
       }
-      if (e.target.closest('.lib-back')) {
+      if (e.target.closest('.lib-back') && !e.target.closest('.pick-cancel')) {
         state.setlistIndex = null;
         state.lastCleared = null;
+        state.picking = null;
         render();
         return;
       }
@@ -355,8 +394,23 @@
       // Slot controls come before row selection — they sit inside slot rows.
       const assign = e.target.closest('[data-slot-assign]');
       if (assign) {
-        const sel = selectedEntry(data, state);
-        if (sel && on.assignSlot) on.assignSlot(state.setlistIndex, Number(assign.dataset.slotAssign), sel.file);
+        state.picking = Number(assign.dataset.slotAssign);
+        state.pickSearch = '';
+        render();
+        return;
+      }
+      const pick = e.target.closest('[data-pick-file]');
+      if (pick) {
+        const slot = state.picking;
+        state.picking = null;
+        state.pickSearch = '';
+        if (on.assignSlot) on.assignSlot(state.setlistIndex, slot, pick.dataset.pickFile);
+        return;
+      }
+      if (e.target.closest('.pick-cancel')) {
+        state.picking = null;
+        state.pickSearch = '';
+        render();
         return;
       }
       const undo = e.target.closest('[data-slot-undo]');
@@ -481,6 +535,14 @@
     // would change — re-render preserves the bar? No: full re-render loses
     // focus, so patch the list innerHTML alone.
     el.addEventListener('input', (e) => {
+      if (e.target.dataset.pickSearch !== undefined) {
+        state.pickSearch = e.target.value;
+        const list = el.querySelector('.lib-list');
+        if (list) list.innerHTML = renderPicker(data, state);
+        const field = el.querySelector('[data-pick-search]');
+        if (field) { field.focus(); field.setSelectionRange(field.value.length, field.value.length); }
+        return;
+      }
       if (e.target.classList.contains('lib-search')) {
         state.search = e.target.value;
         const list = el.querySelector('.lib-list');

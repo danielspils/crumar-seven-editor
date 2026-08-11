@@ -427,6 +427,16 @@
     /* Same hierarchy as a library row — name + badge, then provenance +
        sound — with the slot controls in their own column so both text rows
        stop short of the ✕. */
+    /* Patch picker (opened by a slot's Assign). Replaces the slot list while
+       open — one thing on screen at a time. */
+    .pick-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 2px 8px; color: var(--text-muted);
+    }
+    .pick-head .lib-setlist-name { font-weight: 600; color: var(--text); }
+    .lib-list [data-pick-search] { width: 100%; margin-bottom: 6px; }
+    .pick-row { cursor: pointer; }
+
     .lib-slot {
       display: grid; grid-template-columns: 24px 1fr auto auto;
       column-gap: 10px; row-gap: 3px; align-items: baseline;
@@ -714,7 +724,7 @@
        takes ALL remaining width. Bar start therefore differs between groups
        (engine vs each effects section) but aligns within one — intended. */
     .params {
-      display: grid; grid-template-columns: max-content 1fr 40px;
+      display: grid; grid-template-columns: max-content 1fr minmax(40px, max-content);
       column-gap: 10px;
     }
     .param {
