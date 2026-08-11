@@ -133,9 +133,13 @@
     el.classList.add('shown');
     el.classList.toggle('is-busy', sticky);
     clearTimeout(el._timer);
-    // Sticky waits for hideToast(): it is reporting work in progress, and a
-    // timer would clear it while the work was still running.
-    if (!sticky) el._timer = setTimeout(() => el.classList.remove('shown'), 2200);
+    // Sticky waits for hideToast() — a short timer would clear it while the
+    // work was still running. But it gets a fail-safe anyway: every path that
+    // clears it is a path that can be missed, and a status message that never
+    // goes away is worse than one that goes away early.
+    el._timer = sticky
+      ? setTimeout(() => el.classList.remove('shown', 'is-busy'), 10000)
+      : setTimeout(() => el.classList.remove('shown'), 2200);
   }
 
   function hideToast() {
@@ -708,6 +712,11 @@
       toast('Entering audition mode…', { sticky: true });
       const btn = document.getElementById('audition-btn');
       if (btn) btn.click();
+      else hideToast();
+      // The click hands off to an async handler. If that handler bailed before
+      // starting the send — no target, a confirm declined, the instrument gone
+      // — nothing else will take this message down.
+      setTimeout(() => { if (!auditionInFlight && !isLive()) hideToast(); }, 400);
     } finally {
       offering = false;
     }
@@ -1555,7 +1564,10 @@
         connBtn.textContent = 'Connect';
       }
       // After the row's class is updated, so the re-render sees the new state.
-      if (s.state !== 'connected') window.__sevenClearLive();
+      if (s.state !== 'connected') {
+        window.__sevenClearLive();
+        hideToast(); // nothing is in progress once the instrument is gone
+      }
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
       soundsBtn.hidden = s.state !== 'connected' || !s.soundTable;
