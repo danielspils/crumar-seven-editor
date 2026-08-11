@@ -944,9 +944,16 @@
         // in Castelfidardo; this is the one place the app nods to that.
         // Firmware stays visible beside it — every protocol fact in this
         // project is version-gated, so the version is never decoration.
+        // The device's firmware STRING is the whole banner — "CRUMAR Seven
+        // v.1.37 Build date: Thu May 12 15:43:17 2022" — which repeats the
+        // instrument name we just printed. Show the version; the full string
+        // is one hover away, and stays verbatim there (Rule 5 in spirit: the
+        // raw is never replaced by the tidied view, only summarised).
+        const raw = String(s.firmware || '');
+        const version = (/v\.?\s*([\d.]+)/i.exec(raw) || [])[1] || raw;
         connText.innerHTML =
           `Pronto · <span class="conn-name">Crumar Seven</span>` +
-          `<span class="conn-fw">${String(s.firmware).replace(/[&<>"]/g, '')}</span>`;
+          `<span class="conn-fw" title="${esc(raw)}">${esc(version)}</span>`;
         connBtn.textContent = 'Disconnect';
         if (s.soundTable) {
           soundsBtn.textContent = `${s.soundTable.sounds.length} sounds`;

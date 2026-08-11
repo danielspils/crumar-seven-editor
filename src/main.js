@@ -210,9 +210,19 @@ function registerBackupIpc() {
     if (midi.state !== 'connected') return { started: false };
     const sendPcOn = midi.globals && midi.globals.glb[3] === 1;
     const knowPrior = sendPcOn && midi.lastPanelProgram != null;
+    // The Seven has no "which preset are you on?" opcode. The app learns the
+    // slot only when the panel BROADCASTS one — which happens on a preset
+    // press while connected. Selecting a preset before launching the app is
+    // invisible to it, so the run can't come back to it. Say how to fix that
+    // here, where the user can still act on it, instead of only stating the
+    // outcome afterwards.
+    const slot = midi.lastPanelProgram;
     const endState = knowPrior
-      ? 'When it finishes, the Seven is returned to the preset that was selected before the run.'
-      : 'When it finishes, the Seven is left on Bank 4, Preset 8 (the last slot backed up).';
+      ? `When it finishes, the Seven is returned to Bank ${Math.floor(slot / 8) + 1}, ` +
+        `Preset ${(slot % 8) + 1} — where it is now.`
+      : 'When it finishes, the Seven is left on Bank 4, Preset 8 (the last slot backed up).\n\n' +
+        'To come back to the preset you are on instead, press its button on the ' +
+        'panel once before you start — that is how the Seven tells the app where it is.';
     const win = BrowserWindow.fromWebContents(e.sender);
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning',
