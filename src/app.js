@@ -372,7 +372,7 @@
     if (stranded) {
       return (
         `<div class="audition-bar">` +
-        `<button type="button" id="save-live-btn">Save to library</button>` +
+        `<button type="button" id="save-live-btn">Save to Library</button>` +
         `<span class="audition-note is-error">The Seven disconnected. These edits ` +
         `are still here — save them to keep them.</span>` +
         `</div>`
@@ -396,7 +396,7 @@
     // before every edit.
     if (live) {
       const actions = liveEdit.dirty
-        ? `<button type="button" id="save-live-btn">Save to library</button>` +
+        ? `<button type="button" id="save-live-btn">Save to Library</button>` +
           `<button type="button" id="discard-live-btn">Discard</button>`
         : `<button type="button" id="done-live-btn">Done</button>`;
       return (
@@ -568,13 +568,30 @@
     // your work on the next preset recall is not something to discover later.
     const EXPLAINED = 'seven.auditionExplained';
     if (!localStorage.getItem(EXPLAINED)) {
-      const ok = await window.sevenAPI.midi.explainAudition();
+      const ok = await SevenModal.confirm({
+        title: 'AUDITION MODE',
+        body:
+          'Your tweaks change the sound of the Crumar Seven. But it\u2019s all in a ' +
+          'buffer. Your saved sounds are safe.\n\n' +
+          'To save your new sound to the SEVEN, hold a preset button for three ' +
+          'seconds (just like you normally do to save patches).\n\n' +
+          'Click the \u201CSave to Library\u201D button to save your new sound to ' +
+          'the computer.',
+        confirmLabel: 'Start Audition',
+      });
       localStorage.setItem(EXPLAINED, '1');
       if (!ok) return;
     }
     // Resetting while there are unsaved edits destroys them — ask first.
     if (isLive() && liveEdit.dirty) {
-      const go = await window.sevenAPI.midi.confirmReset();
+      const go = await SevenModal.confirm({
+        title: 'Discard your live edits?',
+        body:
+          'This sends the patch as it is saved on this computer, replacing what is ' +
+          'in the Seven’s edit buffer. Edits you have not saved to the library are lost.',
+        confirmLabel: 'Reset to Saved',
+        tone: 'is-warning',
+      });
       if (!go) return;
     }
     const btn = e.target.closest('#audition-btn');

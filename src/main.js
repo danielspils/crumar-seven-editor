@@ -198,43 +198,6 @@ function registerAuditionIpc() {
     }
   });
 
-  // Shown once, before the first audition ever. The edit buffer is volatile in
-  // a way that is easy to learn the hard way: recall a preset and the edit is
-  // gone. Say it before the first send, not after the first loss.
-  ipcMain.handle('audition:explain', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'info',
-      buttons: ['Start Audition', 'Cancel'],
-      defaultId: 0,
-      cancelId: 1,
-      message: 'Audition mode sends the patch to the Seven’s edit buffer.',
-      detail:
-        'You will hear it straight away, and the controls become live — every ' +
-        'change goes to the instrument as you make it.\n\n' +
-        'Nothing is stored. To keep an edit ON THE SEVEN, hold a preset button ' +
-        'on the panel for three seconds. To keep it ON THIS COMPUTER, use Save ' +
-        'to library. Recalling a preset discards anything unsaved.',
-    });
-    return response === 0;
-  });
-
-  ipcMain.handle('audition:confirmReset', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: ['Reset to Saved', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      message: 'Discard your live edits?',
-      detail:
-        'This sends the patch as it is saved on this computer, replacing what ' +
-        'is in the Seven’s edit buffer. Edits you have not saved to the library ' +
-        'are lost.',
-    });
-    return response === 0;
-  });
-
   // A sound with no parameters — the picker's "sound only" case.
   ipcMain.handle('audition:sound', async (_e, { name }) => {
     const midi = getMidi();
