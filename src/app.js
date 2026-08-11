@@ -380,12 +380,17 @@
     }
     if (!isConnected()) return '';
     const mine = auditionNote && auditionNote.file === target.file;
+    // While live the line is CONSTANT. It used to swap between the send result
+    // ("Sent 110 settings…") and a longer live hint, and the two wrapped to
+    // different heights — so making the first edit rewrote the sentence and
+    // shifted the row, which read as the app warning you about something.
+    // Only a genuine problem may replace it.
     const hint = live
-      ? 'Editing live — every change goes straight to the edit buffer. Hold a preset ' +
-        'button on the Seven for three seconds to keep it there.'
+      ? 'Nothing is saved until you hold a preset button on the Seven, or save to the library.'
       : 'Loads it into the edit buffer — hold a preset button on the Seven for three ' +
         'seconds to keep it.';
-    const note = mine
+    const showNote = mine && (!live || auditionNote.kind === 'is-error');
+    const note = showNote
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
       : `<span class="audition-note">${hint}</span>`;
 
@@ -395,21 +400,26 @@
     // the lists you pick the next patch from, and would have to be dismissed
     // before every edit.
     if (live) {
-      const actions = liveEdit.dirty
-        ? `<button type="button" id="save-live-btn">Save to Library</button>` +
-          `<button type="button" id="discard-live-btn">Discard</button>`
-        : `<button type="button" id="done-live-btn">Done</button>`;
+      // The bar's shape never changes while live. It used to swap Done for
+      // Save + Discard on the first edit, which moved every control sideways
+      // under the cursor mid-gesture. Same three buttons throughout; Save is
+      // simply disabled until there is something to save.
+      const dirty = liveEdit.dirty;
       return (
         `<div class="audition-bar is-live">` +
         `<span class="audition-mode">Audition mode</span>` +
         `<span class="audition-patch">${esc(patch.name)}` +
-        `${liveEdit.dirty ? '<span class="audition-dirty" title="Edited since it was sent">•</span>' : ''}` +
+        `${dirty ? '<span class="audition-dirty" title="Edited since it was sent">•</span>' : ''}` +
         `</span>` +
-        // It re-reads the patch FROM DISK and sends those values, so with live
-      // edits pending it is a reset, not a repeat. Name the consequence.
-      `<button type="button" id="audition-btn" class="is-secondary">Reset sound</button>` +
-        actions +
+        `<button type="button" id="audition-btn" class="is-secondary">Reset sound</button>` +
+        `<button type="button" id="save-live-btn"${dirty ? '' : ' disabled'}>Save to Library</button>` +
         note +
+        // Leaving is a close control at the far right, like the modal's — not
+        // a button competing with Save.
+        `<button type="button" id="done-live-btn" title="Leave audition mode" aria-label="Leave audition mode">` +
+        '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
         `</div>`
       );
     }
@@ -599,21 +609,27 @@
 
   detailEl.addEventListener('click', async (e) => {
     if (e.target.closest('#done-live-btn')) {
-      // Nothing unsaved, so this only stops the app speaking for the buffer.
-      // What the instrument holds is untouched — recalling a preset clears it.
-      liveEdit = null;
-      auditionNote = null;
-      renderDetail();
-      return;
-    }
-    if (e.target.closest('#discard-live-btn')) {
       const target = auditionTarget();
+      // Leaving with unsaved edits is a decision, not a side effect. What the
+      // instrument holds is untouched either way — it keeps them until a
+      // preset is recalled — but the library copy is what survives.
+      const liveEditWasDirty = !!(liveEdit && liveEdit.dirty);
+      if (liveEditWasDirty) {
+        const go = await SevenModal.confirm({
+          title: 'Leave without saving?',
+          body:
+            'Your edits stay in the Seven\u2019s buffer until you recall a preset, ' +
+            'but they will not be saved to this computer.',
+          confirmLabel: 'Leave Without Saving',
+          tone: 'is-warning',
+        });
+        if (!go) return;
+      }
       liveEdit = null;
-      auditionNote = {
-        kind: 'is-error',
-        text: 'Edits discarded. The Seven still holds them until you recall a preset.',
-        file: target && target.file,
-      };
+      auditionNote = liveEditWasDirty
+        ? { kind: 'is-error', file: target && target.file,
+            text: 'Left audition mode. Those edits were not saved to the library.' }
+        : null;
       renderDetail();
       return;
     }
