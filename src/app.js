@@ -610,11 +610,13 @@
   // working copy. Still ours -> the buffer survived, so stay live. Changed ->
   // a genuine recall replaced it, so end the session and say so.
   async function checkBufferAfterRecall(ev) {
-    const keys = [...(liveEdit.touched || [])].slice(0, 8);
     const file = liveEdit.file;
+    // Prefer the parameters this session changed; with none yet, sample the
+    // patch itself. Clearing without checking meant an unexplained Program
+    // Change silently ended a session whose buffer was still perfectly intact.
+    const touched = [...(liveEdit.touched || [])];
+    const keys = (touched.length ? touched : Object.keys(liveEdit.params)).slice(0, 8);
     if (!keys.length) {
-      // Nothing was edited, so there is nothing to lose either way — follow
-      // the instrument quietly.
       liveEdit = null;
       renderDetail();
       return;
@@ -668,6 +670,8 @@
   // row is still not live — so a second click on the control (or on another
   // one) used to open a second copy of the same modal.
   let offering = false;
+  let offeredFor = null;
+  let ourRecall = null; // { program, until } — the echo of a recall we sent // patch file the modal has already been shown for
 
   async function offerAudition() {
     if (offering || auditionInFlight) return;
@@ -677,6 +681,11 @@
     // pressing the button that now reads "Reset sound", which asks about
     // discarding the very edits the user was in the middle of making.
     if (isLive()) return;
+    // Offer once per patch. If the send fails, or the user declines, clicking
+    // another control should not put the same modal up again and again — the
+    // Audition button is still there for a deliberate retry.
+    const t = auditionTarget();
+    if (t && offeredFor === t.file) return;
     if (!isConnected()) {
       toast('Connect the Seven to edit sounds');
       return;
@@ -686,6 +695,7 @@
     try {
       const ok = await explainAuditionModal();
       localStorage.setItem('seven.auditionExplained', '1');
+      offeredFor = (auditionTarget() || {}).file || null;
       if (!ok) return;
       // Say it is happening where the eye already is — the button says
       // "Sending…", but the click was down among the controls.
@@ -830,6 +840,7 @@
     }
     if (!r.ok) {
       auditionNote = { kind: 'is-error', text: r.error, file: target.file };
+      toast(r.error);
     } else {
       // Say exactly what happened, including anything the device refused.
       const parts = [`Sent ${r.sent} settings · ${r.soundName}`];
@@ -1002,6 +1013,7 @@
 
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     lastTouched = 'device';
+    offeredFor = null;
     resetCollapsed();
     renderAll();
     // The Seven already moves the app when you press a preset button; this is
@@ -1052,6 +1064,10 @@
       if (!answer) return;
       if (answer === true) await saveLiveToLibrary();
     }
+    // With Send PC on, the Seven echoes the recall straight back as a Program
+    // Change. That echo is ours, not the player reaching for the panel, and
+    // treating it as theirs ended live sessions that had only just begun.
+    ourRecall = { program: bank * 8 + preset, until: Date.now() + 2000 };
     await window.sevenAPI.midi.recall(bank, preset);
     // The buffer has just been replaced on purpose, so the live session is
     // over. Without this the app kept asking about edits the FIRST recall had
@@ -1642,7 +1658,10 @@
         // buffer is intact and the edit is now permanent). Announcing loss for
         // both told people their work was gone at the exact moment they saved
         // it. So ask the instrument instead of guessing.
-        if (liveEdit && !auditionInFlight) checkBufferAfterRecall(ev);
+        const isEcho =
+          ourRecall && ourRecall.program === ev.program && Date.now() < ourRecall.until;
+        if (isEcho) ourRecall = null;
+        else if (liveEdit && !auditionInFlight) checkBufferAfterRecall(ev);
         // Send PC on: panel recalls are slot-identified, so the bank region
         // follows the hardware. Suppressed during a backup run — those PCs
         // are ours.

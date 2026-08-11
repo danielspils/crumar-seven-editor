@@ -209,7 +209,8 @@
         return (
           `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
-          `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span></span>` +
+          `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span>` +
+          `<span class="param-bar-knob" style="left:${valPct}%"></span></span>` +
           `<span class="param-value">${String(value)}</span>` +
           `</div>`
         );
@@ -218,7 +219,11 @@
       return (
         `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
         `<span class="param-label">${labelHtml}</span>` +
-        `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span></span>` +
+        `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span>` +
+        // A mark AT the value: something to aim a drag at, and the only way a
+        // value of zero shows at all — an empty fill and an empty bar look the
+        // same otherwise.
+        `<span class="param-bar-knob" style="left:${pct}%"></span></span>` +
         `<span class="param-value">${String(value)}</span>` +
         `</div>`
       );

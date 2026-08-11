@@ -743,6 +743,13 @@
        anywhere along, and switches/selectors respond to a click. */
     .param.is-live .param-bar { cursor: ew-resize; }
     .param.is-live .param-bar:hover { box-shadow: 0 0 0 1px var(--text-dim); }
+    /* A 6px track is a hard thing to hit with a mouse. The bar keeps its size
+       but takes clicks from a band well above and below it — layout is
+       untouched, only hit testing grows. */
+    .param.is-live .param-bar::before {
+      content: ''; position: absolute; left: 0; right: 0; top: -9px; bottom: -9px;
+    }
+    .param.is-live .param-bar:hover .param-bar-knob { box-shadow: 0 0 0 3px var(--shade-hard); }
     /* Only the side that would CHANGE something is a target: the lit half is
        already the current value, so it gets no pointer and no hover. */
     /* These controls were display-only, so their frames were taken out of hit
@@ -1013,8 +1020,24 @@
       align-items: center; padding: 3px 0;
     }
     .param-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: hidden; }
-    .param-bar-fill { display: block; height: 100%; background: var(--bar-fill); }
+    .param-bar { height: 6px; border-radius: 3px; background: var(--bar); overflow: visible; }
+    /* The mark sits ON the value, so a drag has something to aim at. It shows
+       on hover only: at rest these rows are a readout, and 110 permanent dots
+       would be noise. */
+    .param-bar-knob {
+      position: absolute; top: 50%; left: 0;
+      width: 11px; height: 11px; margin-left: -5.5px;
+      transform: translateY(-50%);
+      border-radius: 50%; background: var(--bar-fill);
+      box-shadow: 0 0 0 2px var(--bg);
+      pointer-events: none; /* the track owns the drag */
+      opacity: 0; transition: opacity .12s ease, box-shadow .12s ease;
+    }
+    .param.is-live:hover .param-bar-knob { opacity: 1; }
+    .param.is-default .param-bar-knob { background: var(--text-dim); }
+    /* Not live: nothing to drag, so no handle at all. */
+    .param:not(.is-live) .param-bar-knob { display: none; }
+    .param-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     /* Enum rows: label left, dropdown right (a choice, not a magnitude).
        Two-column layout — the control column shrinks and never exceeds the
