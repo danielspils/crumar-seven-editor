@@ -765,10 +765,7 @@
       const btn = e.target.closest('#save-live-btn');
       btn.disabled = true;
       btn.textContent = 'Saving…';
-      await window.sevenAPI.library.saveParams(liveEdit.file, liveEdit.patchIndex, liveEdit.params);
-      liveEdit.dirty = false;
-      auditionNote = { kind: 'is-ok', text: 'Saved to the library.', file: liveEdit.file };
-      await refreshLibrary();
+      await saveLiveToLibrary();
       renderDetail();
       return;
     }
@@ -995,18 +992,45 @@
     recallOnDevice(deviceSel.bank, deviceSel.preset);
   });
 
+  // Writes the working copy to the patch file. Needs no instrument — the
+  // values are already here, which is why switching patches never has to cost
+  // you the edit itself.
+  async function saveLiveToLibrary() {
+    if (!liveEdit) return;
+    const previous = { ...((libEntries.find(
+      (e) => e.file === liveEdit.file && e.patchIndex === liveEdit.patchIndex
+    ) || {}).params || {}) };
+    const { file, patchIndex } = liveEdit;
+    await window.sevenAPI.library.saveParams(file, patchIndex, liveEdit.params);
+    liveEdit.dirty = false;
+    auditionNote = { kind: 'is-ok', text: 'Saved to the library.', file };
+    await refreshLibrary();
+    undoStack.push('save to library', async () => {
+      await window.sevenAPI.library.saveParams(file, patchIndex, previous);
+      await refreshLibrary();
+      renderDetail();
+    });
+  }
+
   async function recallOnDevice(bank, preset) {
     if (!isConnected()) return;
     if (liveEdit && liveEdit.dirty) {
-      const go = await SevenModal.confirm({
-        title: 'Recall this preset on the Seven?',
+      // The Seven has ONE edit buffer, so a recall replaces it — that part is
+      // hardware. But the app holds these values, and saving them needs no
+      // instrument, so offer that rather than only warning.
+      const answer = await SevenModal.confirm({
+        title: 'Save your changes first?',
         body:
-          'Recalling replaces what is in the edit buffer, so the changes you have ' +
-          'not saved to the library will be gone.',
-        confirmLabel: 'Recall',
+          'Switching patches loads the new one onto the Seven, which replaces the ' +
+          'sound you have been editing.\n\n' +
+          'Saving keeps your changes on this computer. To keep them on the Seven ' +
+          'itself, hold a preset button for three seconds first.',
+        confirmLabel: 'Save, Then Switch',
+        secondaryLabel: 'Switch Without Saving',
         tone: 'is-warning',
       });
-      if (!go) return;
+      if (!answer) return;
+      if (answer === true) await saveLiveToLibrary();
     }
     await window.sevenAPI.midi.recall(bank, preset);
     // The buffer has just been replaced on purpose, so the live session is

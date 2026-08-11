@@ -21,8 +21,14 @@
       .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`)
       .join('');
 
-  // Resolves true (confirmed) or false (cancelled, escaped, backdrop).
-  function confirm({ title, body, confirmLabel = 'OK', cancelLabel = 'Close', tone = '' }) {
+  // Resolves true (confirmed), 'secondary' (the optional second action), or
+  // false (cancelled, escaped, backdrop). The secondary exists for the case
+  // where declining the main action still needs a choice of its own — "save
+  // first" versus "go ahead and lose it" are different answers, and a plain
+  // two-way confirm can only ask one of them.
+  function confirm({
+    title, body, confirmLabel = 'OK', cancelLabel = 'Close', secondaryLabel = '', tone = '',
+  }) {
     return new Promise((resolve) => {
       const host = document.createElement('div');
       host.className = 'seven-modal-overlay';
@@ -39,6 +45,9 @@
         `<div class="seven-modal-title">${esc(title)}</div>` +
         `<div class="seven-modal-body">${paragraphs(body)}</div>` +
         `<div class="seven-modal-actions">` +
+        (secondaryLabel
+          ? `<button type="button" class="seven-modal-second">${esc(secondaryLabel)}</button>`
+          : '') +
         `<button type="button" class="seven-modal-ok">${esc(confirmLabel)}</button>` +
         `</div></div>`;
 
@@ -54,6 +63,7 @@
 
       host.addEventListener('click', (e) => {
         if (e.target === host || e.target.closest('.seven-modal-cancel')) done(false);
+        else if (e.target.closest('.seven-modal-second')) done('secondary');
         else if (e.target.closest('.seven-modal-ok')) done(true);
       });
       document.addEventListener('keydown', onKey, true);
