@@ -743,12 +743,7 @@
        anywhere along, and switches/selectors respond to a click. */
     .param.is-live .param-bar { cursor: ew-resize; }
     .param.is-live .param-bar:hover { box-shadow: 0 0 0 1px var(--text-dim); }
-    /* A 6px track is a hard thing to hit with a mouse. The bar keeps its size
-       but takes clicks from a band well above and below it — layout is
-       untouched, only hit testing grows. */
-    .param.is-live .param-bar::before {
-      content: ''; position: absolute; left: 0; right: 0; top: -9px; bottom: -9px;
-    }
+
     .param.is-live .param-bar:hover .param-bar-knob { box-shadow: 0 0 0 3px var(--shade-hard); }
     /* Only the side that would CHANGE something is a target: the lit half is
        already the current value, so it gets no pointer and no hover. */
@@ -1027,6 +1022,12 @@
       position: relative; height: 6px; border-radius: 3px;
       background: var(--bar); overflow: visible;
     }
+    /* A 6px track is a hard thing to hit with a mouse, and hovering it is
+       harder still. The bar keeps its size but claims a band above and below —
+       layout untouched, only hit testing grows. */
+    .param-bar::before {
+      content: ''; position: absolute; left: 0; right: 0; top: -8px; bottom: -8px;
+    }
     /* The mark sits ON the value, so a drag has something to aim at. It shows
        on hover only: at rest these rows are a readout, and 110 permanent dots
        would be noise. */
@@ -1039,10 +1040,12 @@
       pointer-events: none; /* the track owns the drag */
       opacity: 0; transition: opacity .12s ease, box-shadow .12s ease;
     }
-    /* Shown on hover in every mode: live it is a drag target, and idle it
-       still marks where the value sits — which is the only way a zero reads
-       as a value rather than an empty bar. */
-    .param:hover .param-bar-knob { opacity: 1; }
+    /* Shown when the pointer is over the TRACK (plus its band), not anywhere
+       in the row — the label and the number are far from the thing the handle
+       belongs to. Live it is a drag target; idle it marks where the value
+       sits, which is the only way a zero reads as a value rather than an
+       empty bar. */
+    .param-bar:hover .param-bar-knob { opacity: 1; }
     .param.is-default .param-bar-knob { background: var(--text-dim); }
     .param-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
