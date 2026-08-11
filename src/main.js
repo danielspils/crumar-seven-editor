@@ -272,6 +272,21 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, 'index.html'));
   buildMenu(win);
+
+  // Dev tooling: SEVEN_SHOT=<path> captures the window once it has settled and
+  // exits. Used for release/website screenshots — the app renders itself at
+  // native resolution, which the OS screenshot tools can't do without
+  // screen-recording permission.
+  if (process.env.SEVEN_SHOT) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(async () => {
+        const image = await win.webContents.capturePage();
+        fs.writeFileSync(process.env.SEVEN_SHOT, image.toPNG());
+        console.log(`captured ${process.env.SEVEN_SHOT}`);
+        app.quit();
+      }, Number(process.env.SEVEN_SHOT_DELAY || 1500));
+    });
+  }
 }
 
 app.whenReady().then(() => {
