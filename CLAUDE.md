@@ -222,10 +222,19 @@ already verified, so this is app work, not reverse-engineering:
    ignored. A patch with no params is legal: that's the "sound only" case.
    Nothing is stored — the UI says the panel hold is the only way to keep it.
    Covered by `test/patch-sender.test.js` against a fake instrument (9 tests).
-2. **Live editing core** (added ahead of Transfer, agreed 2026-08-09): detail
-   controls become interactive while connected — each drag/toggle sends its
-   `0x20`, with read-back, a dirty marker, and "Save to library". This closes
-   the loop: edit live → save → audition → panel-hold to store.
+2. ~~**Live editing core**~~ **DONE.** Detail controls are interactive while a
+   patch is LIVE — and a patch is live only after an Audition, because that is
+   the one moment the app knows the edit buffer holds what is on screen.
+   Editing anything else would change whatever the Seven happens to be
+   playing. Each bar drag, tab press, segment click and dropdown change sends
+   one `0x20` and stores the value the device ECHOED, so the panel shows what
+   the instrument did rather than what was asked. Drags coalesce (one write in
+   flight, latest value queued). Disconnecting ends the session but never
+   discards unsaved edits: the bar stays with a Save button. "Save to library"
+   writes the working copy back to the patch file and moves both `captured`
+   and `verified` to now — those values came back from the instrument itself.
+   Verified on hardware 2026-08-11: `rho_atk` 64 → 32 echoed, 41 live rows,
+   0 after disconnect.
 3. **Task 10 — Sound selection UI**, fed by the live sound table.
 4. **Task 9 — Transfer**: walk a setlist's slots, loading each and prompting
    the three-second panel hold. Bank 1 blocked outright.

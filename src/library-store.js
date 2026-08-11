@@ -323,6 +323,28 @@ class LibraryStore {
     return target;
   }
 
+  // Write edited parameter values back to a patch. The values came back from
+  // the instrument itself (every live edit is echoed by the device before it
+  // reaches here), so this IS a device-confirmed state: captured and verified
+  // both move to now. Only keys the schema knows are accepted.
+  savePatchParams(file, patchIndex, params) {
+    const parsed = this.readFile(file);
+    if (!parsed.library) throw new Error('File is not readable');
+    const patch = parsed.library.patches[patchIndex];
+    if (!patch) throw new Error('No such patch in file');
+    const known = new Set(this.schema.parameters.map((p) => p.key));
+    const next = { ...patch.params };
+    for (const [k, v] of Object.entries(params || {})) {
+      if (known.has(k) && Number.isInteger(v)) next[k] = v;
+    }
+    patch.params = next;
+    const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    patch.captured = now;
+    patch.verified = now;
+    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    return { ok: true, captured: now };
+  }
+
   // Stamp a patch as still-current without touching its values. Used by a
   // backup run for slots that hashed identical to what is already on disk:
   // nothing changed, but the instrument DID confirm it, and a library that

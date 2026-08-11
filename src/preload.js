@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     rename: (file, patchIndex, newName) => ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
     duplicate: (file, patchIndex) => ipcRenderer.invoke('library:duplicate', { file, patchIndex }),
     trash: (file) => ipcRenderer.invoke('library:trash', { file }),
+    saveParams: (file, patchIndex, params) =>
+      ipcRenderer.invoke('library:saveParams', { file, patchIndex, params }),
     export: (file, suggestedName) => ipcRenderer.invoke('library:export', { file, suggestedName }),
     reveal: () => ipcRenderer.invoke('library:reveal'),
     contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
@@ -69,6 +71,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // be heard. Stores nothing — keeping it needs a three-second panel hold.
     audition: (file, patchIndex) => ipcRenderer.invoke('audition:send', { file, patchIndex }),
     auditionSound: (name) => ipcRenderer.invoke('audition:sound', { name }),
+    // One live parameter write to the edit buffer; resolves to the value the
+    // instrument actually took.
+    setParam: (key, value) => ipcRenderer.invoke('edit:param', { key, value }),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes

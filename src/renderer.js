@@ -75,6 +75,13 @@
 
     function paramRow(p, rawValue, view, opts) {
       const value = rawValue == null ? 0 : rawValue;
+      // Identity + range on every row, so the interaction layer can work from
+      // the DOM without a second copy of the taxonomy. `live` is set only when
+      // the instrument's edit buffer is known to hold THIS patch — otherwise a
+      // drag would change whatever the Seven happens to be playing.
+      const live = view && view.live && !(opts && opts.inertReason);
+      const attrs = `data-key="${p.key}" data-max="${p.max}"`;
+      const liveCls = live ? ' is-live' : '';
       const isDefault = value === defaultFor(p);
       const pct = p.max > 0 ? Math.max(0, Math.min(100, (value / p.max) * 100)) : 0;
       const label = p.values && p.values[value] != null ? p.values[value] : null;
@@ -108,7 +115,7 @@
           })
           .join('');
         return (
-          `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-value"><span class="select-wrap">` +
           `<select class="param-select" data-key="${p.key}">${options}</select>` +
@@ -132,11 +139,11 @@
       // Decay Type Keyboard|Mallets).
       if (p.max === 1 && p.values) {
         return (
-          `<div class="param param-switch${inertCls}">` +
+          `<div class="param param-switch${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-pill-cell"><span class="d6-frame"><span class="d6-tab d6-choice">` +
-          `<span class="d6-half${value === 0 ? ' pressed' : ''}">${esc(p.values[0])}</span>` +
-          `<span class="d6-half${value === 1 ? ' pressed' : ''}">${esc(p.values[1])}</span>` +
+          `<span class="d6-half${value === 0 ? ' pressed' : ''}" data-set="0">${esc(p.values[0])}</span>` +
+          `<span class="d6-half${value === 1 ? ' pressed' : ''}" data-set="1">${esc(p.values[1])}</span>` +
           `</span></span></span>` +
           `</div>`
         );
@@ -146,10 +153,10 @@
       if (p.max === 1) {
         const cap = p.label.replace(/^Filter\s+/i, '');
         return (
-          `<div class="param param-switch${inertCls}">` +
+          `<div class="param param-switch${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-pill-cell"><span class="d6-frame">` +
-          `<span class="d6-tab d6-toggle${value === 1 ? ' pressed' : ''}">${esc(cap)}</span>` +
+          `<span class="d6-tab d6-toggle${value === 1 ? ' pressed' : ''}" data-set="${value === 1 ? 0 : 1}">${esc(cap)}</span>` +
           `</span></span>` +
           `</div>`
         );
@@ -162,12 +169,12 @@
       // Non-interactive like the other stored-data controls.
       if (p.max >= 2 && p.max <= 15) {
         const segs = Array.from({ length: p.max + 1 }, (_, i) =>
-          `<span class="seg${i === value ? ' cur' : ''}"></span>`
+          `<span class="seg${i === value ? ' cur' : ''}" data-set="${i}"></span>`
         ).join('');
         const pos = `${value + 1}/${p.max + 1}`;
         const posText = view && view.showRaw ? `${pos} <em>${value}</em>` : pos;
         return (
-          `<div class="param param-discrete ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<div class="param param-discrete ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-seg">${segs}</span>` +
           `<span class="param-value">${posText}</span>` +
@@ -184,7 +191,7 @@
         const left = Math.min(valPct, centrePct);
         const width = Math.abs(valPct - centrePct);
         return (
-          `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+          `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label">${labelHtml}</span>` +
           `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span></span>` +
           `<span class="param-value">${String(value)}</span>` +
@@ -193,7 +200,7 @@
       }
       // CONTINUOUS: plain left-origin bar.
       return (
-        `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}">` +
+        `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
         `<span class="param-label">${labelHtml}</span>` +
         `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span></span>` +
         `<span class="param-value">${String(value)}</span>` +

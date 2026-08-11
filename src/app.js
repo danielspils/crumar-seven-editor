@@ -325,8 +325,12 @@
       lastTouched === 'device' && deviceSel
         ? `No backup of Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1} yet — connect the Seven and click “Back up instrument”.`
         : 'Select a patch';
+    // While a patch is live, the panel shows the WORKING copy — the values the
+    // instrument currently holds, including edits not yet saved to disk.
+    const live = isLive();
+    const shown = live ? { ...patch, params: liveEdit.params } : patch;
     detailEl.innerHTML = patch
-      ? renderAuditionBar(patch) + R.renderDetail(patch, { showRaw, collapsed, ...pos })
+      ? renderAuditionBar(patch, live) + R.renderDetail(shown, { showRaw, collapsed, live, ...pos })
       : `<div class="placeholder">${emptyMsg}</div>`;
     updateKnobRings();
   }
@@ -350,24 +354,165 @@
     return p && p.file ? { file: p.file, patchIndex: 0 } : null;
   }
 
-  function renderAuditionBar(patch) {
-    const row = document.getElementById('connection-row');
-    if (!row || !row.classList.contains('connected')) return '';
-    if (!auditionTarget()) return '';
-    const mine = auditionNote && auditionNote.file === auditionTarget().file;
+  function renderAuditionBar(patch, live) {
+    const target = auditionTarget();
+    if (!target) return '';
+    const stranded =
+      !isConnected() && liveEdit && liveEdit.dirty && liveEdit.file === target.file;
+    if (stranded) {
+      return (
+        `<div class="audition-bar">` +
+        `<button type="button" id="save-live-btn">Save to library</button>` +
+        `<span class="audition-note is-error">The Seven disconnected. These edits ` +
+        `are still here — save them to keep them.</span>` +
+        `</div>`
+      );
+    }
+    if (!isConnected()) return '';
+    const mine = auditionNote && auditionNote.file === target.file;
+    const hint = live
+      ? 'Editing live — every change goes straight to the edit buffer. Hold a preset ' +
+        'button on the Seven for three seconds to keep it there.'
+      : 'Loads it into the edit buffer — hold a preset button on the Seven for three ' +
+        'seconds to keep it.';
     const note = mine
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
-      : `<span class="audition-note">Loads it into the edit buffer — hold a preset button ` +
-        `on the Seven for three seconds to keep it.</span>`;
+      : `<span class="audition-note">${hint}</span>`;
+    const save =
+      live && liveEdit.dirty
+        ? `<button type="button" id="save-live-btn">Save to library</button>`
+        : '';
     return (
-      `<div class="audition-bar">` +
-      `<button type="button" id="audition-btn">Audition “${esc(patch.name)}”</button>` +
+      `<div class="audition-bar${live ? ' is-live' : ''}">` +
+      `<button type="button" id="audition-btn">` +
+      `${live ? 'Re-send' : 'Audition'} “${esc(patch.name)}”</button>` +
+      save +
       note +
       `</div>`
     );
   }
 
+  // The working copy of a patch that the instrument's edit buffer is known to
+  // hold. Set by a successful Audition and ONLY by that: without it, a control
+  // would be editing whatever the Seven happens to be playing, which is not
+  // what is on screen. Cleared on disconnect and when another patch is chosen.
+  let liveEdit = null; // { file, patchIndex, params, dirty }
+
+  const isConnected = () => {
+    const row = document.getElementById('connection-row');
+    return !!row && row.classList.contains('connected');
+  };
+
+  // Live requires BOTH: the buffer holds this patch, and we still have the
+  // instrument. Without the second, the controls would keep accepting edits
+  // that go nowhere.
+  function isLive() {
+    const t = auditionTarget();
+    return !!(
+      liveEdit && t && liveEdit.file === t.file && liveEdit.patchIndex === t.patchIndex &&
+      isConnected()
+    );
+  }
+
+  // Losing the instrument ends the live session, but NOT the working copy when
+  // it holds unsaved edits — those values are real, the device confirmed each
+  // one, and dropping them silently would lose work. The bar stays visible
+  // with a Save button and says the connection is gone.
+  window.__sevenClearLive = () => {
+    if (!liveEdit) return;
+    if (!liveEdit.dirty) liveEdit = null;
+    renderDetail();
+  };
+
+  // One parameter, one write. The value stored is the one the device ECHOED,
+  // never the one requested — if the Seven clamps or refuses, the panel shows
+  // what the instrument actually did.
+  let sendInFlight = false;
+  let pendingSend = null;
+
+  async function sendEdit(key, value) {
+    if (!isLive()) return;
+    if (sendInFlight) { pendingSend = { key, value }; return; } // coalesce a drag
+    sendInFlight = true;
+    try {
+      const r = await window.sevenAPI.midi.setParam(key, value);
+      if (r.ok) {
+        liveEdit.params[key] = r.value;
+        liveEdit.dirty = true;
+        auditionNote = null;
+      } else {
+        auditionNote = { kind: 'is-error', text: r.error, file: liveEdit.file };
+      }
+    } finally {
+      sendInFlight = false;
+    }
+    renderDetail();
+    if (pendingSend) {
+      const next = pendingSend;
+      pendingSend = null;
+      sendEdit(next.key, next.value);
+    }
+  }
+
+  const rowKeyOf = (el) => {
+    const row = el.closest('.param.is-live');
+    return row ? { key: row.dataset.key, max: Number(row.dataset.max) } : null;
+  };
+
+  // Bars: press or drag anywhere along the track. Value follows the pointer,
+  // rounded to the parameter's own range — no separate handle to hunt for.
+  detailEl.addEventListener('pointerdown', (e) => {
+    const bar = e.target.closest('.param.is-live .param-bar');
+    if (!bar) return;
+    const info = rowKeyOf(bar);
+    if (!info) return;
+    e.preventDefault();
+    const rect = bar.getBoundingClientRect();
+    const valueAt = (clientX) => {
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return Math.round(pct * info.max);
+    };
+    let last = null;
+    const move = (ev) => {
+      const v = valueAt(ev.clientX);
+      if (v !== last) { last = v; sendEdit(info.key, v); }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    move(e);
+  });
+
+  // Switches, choice tabs and segmented selectors all carry their target value.
+  detailEl.addEventListener('click', (e) => {
+    const hit = e.target.closest('.param.is-live [data-set]');
+    if (!hit) return;
+    const info = rowKeyOf(hit);
+    if (info) sendEdit(info.key, Number(hit.dataset.set));
+  });
+
+  detailEl.addEventListener('change', (e) => {
+    const sel = e.target.closest('.param.is-live .param-select');
+    if (!sel) return;
+    const info = rowKeyOf(sel);
+    if (info) sendEdit(info.key, Number(sel.value));
+  });
+
   detailEl.addEventListener('click', async (e) => {
+    if (e.target.closest('#save-live-btn')) {
+      const btn = e.target.closest('#save-live-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      await window.sevenAPI.library.saveParams(liveEdit.file, liveEdit.patchIndex, liveEdit.params);
+      liveEdit.dirty = false;
+      auditionNote = { kind: 'is-ok', text: 'Saved to the library.', file: liveEdit.file };
+      await refreshLibrary();
+      renderDetail();
+      return;
+    }
     if (!e.target.closest('#audition-btn')) return;
     const target = auditionTarget();
     if (!target) return;
@@ -385,6 +530,14 @@
       }
       parts.push('hold a preset button for 3s to keep it');
       auditionNote = { kind: 'is-ok', text: `${parts.join(' · ')}.`, file: target.file };
+      // The edit buffer now holds this patch, so its controls can go live.
+      // The working copy starts from what was actually sent.
+      liveEdit = {
+        file: target.file,
+        patchIndex: target.patchIndex,
+        params: { ...(currentPatch() || {}).params },
+        dirty: false,
+      };
     }
     renderDetail();
   });
@@ -965,6 +1118,8 @@
         connText.textContent = error || 'No instrument connected';
         connBtn.textContent = 'Connect';
       }
+      // After the row's class is updated, so the re-render sees the new state.
+      if (s.state !== 'connected') window.__sevenClearLive();
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
       soundsBtn.hidden = s.state !== 'connected' || !s.soundTable;

@@ -32,6 +32,8 @@ function registerLibraryIpc() {
     getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled'));
   ipcMain.handle('library:duplicate', (_e, { file, patchIndex }) =>
     getStore().duplicate(file, patchIndex));
+  ipcMain.handle('library:saveParams', (_e, { file, patchIndex, params }) =>
+    getStore().savePatchParams(file, patchIndex || 0, params));
   ipcMain.handle('library:trash', (_e, { file }) =>
     shell.trashItem(getStore().absPath(file)));
   ipcMain.handle('library:reveal', () => {
@@ -156,15 +158,22 @@ function getBackupRunner() {
   return backupRunner;
 }
 
+let schemaCache = null;
+function getSchema() {
+  if (!schemaCache) {
+    const root = path.join(__dirname, '..');
+    schemaCache = JSON.parse(
+      fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')
+    );
+  }
+  return schemaCache;
+}
+
 let patchSender = null;
 function getPatchSender() {
   if (!patchSender) {
     const { PatchSender } = require('./patch-sender');
-    const root = path.join(__dirname, '..');
-    patchSender = new PatchSender({
-      midi: getMidi(),
-      schema: JSON.parse(fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')),
-    });
+    patchSender = new PatchSender({ midi: getMidi(), schema: getSchema() });
   }
   return patchSender;
 }
@@ -196,6 +205,28 @@ function registerAuditionIpc() {
     try {
       const result = await getPatchSender().send({ sound: { name }, params: {} });
       return { ok: true, name, ...result };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+}
+
+// Live editing: one parameter, one write, to the EDIT BUFFER. The renderer
+// sends a schema KEY, never an id — ids are firmware-specific and the key is
+// the stable identity (docs/FORMAT.md). The device echoes the value it took,
+// which is what we return: the UI shows what the instrument did, not what we
+// asked for. Still stores nothing; the panel hold remains the only way to keep
+// an edit on the instrument, and "Save to library" keeps it on the computer.
+function registerEditIpc() {
+  ipcMain.handle('edit:param', async (_e, { key, value }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    const spec = getSchema().parameters.find((p) => p.key === key);
+    if (!spec) return { ok: false, error: `Unknown parameter “${key}”.` };
+    const wanted = Math.max(0, Math.min(spec.max, Number(value)));
+    try {
+      const r = await midi.setParamValue(spec.id, wanted);
+      return { ok: true, key, value: r.value, requested: wanted };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };
     }
@@ -395,6 +426,7 @@ app.whenReady().then(() => {
   registerMidiIpc();
   registerBackupIpc();
   registerAuditionIpc();
+  registerEditIpc();
   registerNotesIpc();
   forwardMidiEvents();
   createWindow();
