@@ -231,6 +231,30 @@ function registerEditIpc() {
       return { ok: false, error: String(err.message || err) };
     }
   });
+
+  // Read one parameter back. Used when the panel announces a change by CC:
+  // the CC says WHICH parameter moved, this says what it now is.
+  ipcMain.handle('edit:read', async (_e, { key }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false };
+    const spec = getSchema().parameters.find((p) => p.key === key);
+    if (!spec) return { ok: false };
+    try {
+      const r = await midi.readParamValue(spec.id);
+      return { ok: true, key, value: r.value };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+  // The CC number -> parameter key map, straight from the schema (every cc
+  // there came off the device; none carry ccUnverified). -1 means the
+  // parameter has no CC.
+  ipcMain.handle('edit:ccMap', () => {
+    const map = {};
+    for (const p of getSchema().parameters) if (p.cc >= 0) map[p.cc] = p.key;
+    return map;
+  });
 }
 
 function registerBackupIpc() {

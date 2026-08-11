@@ -305,6 +305,10 @@ class SevenMidi extends EventEmitter {
 
   _handleNonSysex(msg) {
     const status = msg[0] & 0xf0;
+    if (status === 0xb0) {
+      this.emit('event', { type: 'panel-cc', cc: msg[1], value: msg[2] });
+      return;
+    }
     if (status === 0xc0) {
       // Program Change from the panel (Send PC on): 0-based global slot.
       // Note: during a backup run the device may echo the PCs we send; the
@@ -317,8 +321,13 @@ class SevenMidi extends EventEmitter {
         preset: (msg[1] % 8) + 1,
       });
     }
-    // CC bursts accompany recalls; the layer doesn't decode them (recall
-    // values are read back over SysEx, which is authoritative).
+    // Panel moves announce themselves by CC (the 22 fixed panel CCs, flag=1
+    // params — protocol.md). The VALUE is not decoded here and never should
+    // be: how a CC value maps onto a parameter's range has not been
+    // demonstrated by the device, and guessing it would put invented numbers
+    // in front of the user. The arrival is the signal — "this parameter just
+    // changed on the panel" — and the value is then read back over SysEx,
+    // which is authoritative.
   }
 
   // --- reads ----------------------------------------------------------------

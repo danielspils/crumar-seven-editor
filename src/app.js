@@ -483,6 +483,33 @@
     }
   }
 
+  // Panel moves announce themselves by CC. The CC number says WHICH parameter
+  // moved — that mapping is device-verified in the schema — but its value is
+  // not interpreted: how a CC value maps onto a parameter's range has never
+  // been demonstrated, so the arrival is treated as a notification and the
+  // real value is read back over SysEx. Reads are coalesced per parameter, so
+  // sweeping a knob costs one read after it settles, not one per CC.
+  let ccMap = null;
+  const ccTimers = new Map();
+
+  async function onPanelCc(cc) {
+    if (!isLive()) return;
+    if (!ccMap) ccMap = await window.sevenAPI.midi.ccMap();
+    const key = ccMap[cc];
+    if (!key) return;
+    clearTimeout(ccTimers.get(key));
+    ccTimers.set(key, setTimeout(async () => {
+      ccTimers.delete(key);
+      if (!isLive()) return;
+      const r = await window.sevenAPI.midi.readParam(key);
+      if (r && r.ok && liveEdit.params[key] !== r.value) {
+        liveEdit.params[key] = r.value;
+        liveEdit.dirty = true; // the buffer no longer matches the saved patch
+        renderDetail();
+      }
+    }, 80));
+  }
+
   const rowKeyOf = (el) => {
     const row = el.closest('.param.is-live');
     return row ? { key: row.dataset.key, max: Number(row.dataset.max) } : null;
@@ -797,28 +824,34 @@
   });
 
   // Transient inline note next to a device-state control that can't act yet.
-  function showDeviceNote(host) {
+  function showDeviceNote(host, text) {
     let note = host.querySelector('.device-note');
     if (!note) {
       note = document.createElement('span');
       note.className = 'device-note';
       host.appendChild(note);
     }
-    note.textContent = 'No instrument connected.';
+    note.textContent = text || 'No instrument connected.';
     clearTimeout(note._timer);
     note._timer = setTimeout(() => note.remove(), 1800);
   }
 
   // The state pill reflects DEVICE state only — it never flips from a click
-  // (docs/DESIGN.md). A write can fail; render what the instrument reports.
+  // alone (docs/DESIGN.md). In audition mode it CAN act: the write goes out,
+  // and the pill re-renders from the value the instrument echoed back. The
+  // TODO this replaces was written before there was a device to talk to; its
+  // "No instrument connected" was the only answer available then, and it kept
+  // being given after the instrument arrived.
   function handleStatePill(pill) {
-    // TODO(device): when MIDI lands, this becomes:
-    //   1. send set-parameter (0x20) for the switch id (pill.dataset.switch)
-    //      with the toggled value,
-    //   2. await the device reply,
-    //   3. re-render the pill from the value the DEVICE reports.
-    // Until then: no device, so the pill stays put and we say why.
-    showDeviceNote(pill.parentElement);
+    const key = pill.dataset.switch;
+    if (isLive() && key) {
+      const current = liveEdit.params[key];
+      sendEdit(key, current === 1 ? 0 : 1); // raw flip; `invert` is a display rule
+      return;
+    }
+    showDeviceNote(pill.parentElement, isConnected()
+      ? 'Audition this patch to edit it live.'
+      : 'Connect the Seven to edit.');
   }
 
   // Clicking a section header toggles it regardless of switch state — values in
@@ -1256,7 +1289,19 @@
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
       } else if (ev.type === 'backup-done') showBackupDone(ev);
-      else if (ev.type === 'program-change' && !backupRunning) {
+      else if (ev.type === 'panel-cc') {
+        onPanelCc(ev.cc);
+      } else if (ev.type === 'program-change' && !backupRunning) {
+        // A recall replaces the edit buffer wholesale, so anything we were
+        // holding there is gone. Say so instead of leaving controls that look
+        // live but are editing a different preset.
+        if (liveEdit) {
+          const stale = liveEdit.dirty;
+          liveEdit = null;
+          auditionNote = stale
+            ? { kind: 'is-error', text: 'The Seven recalled a preset — your unsaved edits are gone.' }
+            : null;
+        }
         // Send PC on: panel recalls are slot-identified, so the bank region
         // follows the hardware. Suppressed during a backup run — those PCs
         // are ours.
