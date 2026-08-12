@@ -670,7 +670,14 @@
     /* Illustrated tiles are roomier than patch tiles — 24 instruments fit on a
        screen at this size, so the art can be legible without costing overview. */
     .pick-grid-art { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
-    .pick-tile-art { align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px; }
+    .pick-tile-art {
+      align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px;
+      /* A wash of the family colour behind the picture. Sounds that share an
+         instrument — every Venice Grand is an acoustic grand sample — share a
+         drawing, so the tile's colour and its name are what tell them apart. */
+      background: color-mix(in srgb, var(--tile) 14%, var(--bg-raised));
+    }
+    .pick-tile-art:hover { background: color-mix(in srgb, var(--tile) 26%, var(--bg-raised)); }
     .tile-art { color: var(--tile); display: block; line-height: 0; }
     /* A drawn instrument brings its own colours; only the fallback line art is
        tinted with the family colour. */
