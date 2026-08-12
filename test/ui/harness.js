@@ -32,6 +32,9 @@ window.ui = (() => {
   // Fails the scenario when the intended target is unreachable rather than
   // quietly dispatching an event no user could have produced.
   function click(el, what = 'control') {
+    // A missing element is a failed expectation, not an exception: a scenario
+    // that throws here reports one line and hides everything after it.
+    if (!check(!!el, `${what}: not on screen`)) return false;
     const hit = hitTarget(el);
     const reachable = hit && (hit === el || el.contains(hit) || hit.contains(el));
     if (!check(reachable, `${what}: a click at its centre lands on <${hit && hit.className}>, not the control`)) {
@@ -51,6 +54,14 @@ window.ui = (() => {
     return false;
   }
 
+  // Waits for a selector and returns the element (null if it never appears).
+  // Fixed sleeps were the source of the suite's only flake: the app re-renders
+  // after IPC, and "500ms is probably enough" is not a test.
+  async function waitEl(sel, what = sel) {
+    await waitFor(() => !!document.querySelector(sel), { what });
+    return document.querySelector(sel);
+  }
+
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -62,6 +73,18 @@ window.ui = (() => {
   async function requireDevice() {
     await waitFor(connected, { timeout: 20000, what: 'the Seven to connect' });
     return connected();
+  }
+
+  // The library section remembers whether it was open, ACROSS RUNS — it is
+  // persisted view state. A scenario that clicks the header blindly toggles
+  // whatever the last one left behind, which is how two scenarios that each
+  // passed alone failed together. Ensure the state; never toggle it.
+  async function openLibrary() {
+    if (!document.querySelector('#library.lib-open')) {
+      document.getElementById('library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+    await waitFor(() => !!document.querySelector('#library.lib-open'), { what: 'the library to open' });
+    await sleep(250); // its body renders just after the class lands
   }
 
   async function selectBankPreset(index) {
@@ -86,8 +109,8 @@ window.ui = (() => {
   }
 
   return {
-    sleep, check, note, click, hitTarget, waitFor, $, $$, connected, live,
-    requireDevice, selectBankPreset, enterAudition,
+    sleep, check, note, click, hitTarget, waitFor, waitEl, $, $$, connected, live,
+    requireDevice, selectBankPreset, enterAudition, openLibrary,
     result: () => ({ failures, notes }),
   };
 })();

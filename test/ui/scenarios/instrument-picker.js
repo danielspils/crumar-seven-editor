@@ -1,24 +1,21 @@
 // The picker's Instruments tab assigns a SOUND to a slot — the one honest
 // "unedited" option, since the Seven never gave up factory defaults.
 (async () => {
-  ui.$('#library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  await ui.sleep(500);
-  ui.click(ui.$('.seg-btn[data-tab="setlists"]'), 'the Setlists tab');
-  await ui.sleep(500);
-  const first = ui.$('.lib-setlist .patch-name');
+  await ui.openLibrary();
+  ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'the Setlists tab');
+  const first = await ui.waitEl('.lib-setlist .patch-name', 'a setlist row');
   if (!ui.check(!!first, 'a setlist to open')) return;
   ui.click(first, 'the first setlist');
   await ui.sleep(800);
 
-  const assign = ui.$('[data-slot-assign]');
+  const assign = await ui.waitEl('[data-slot-assign]', 'a slot Assign button');
   if (!ui.check(!!assign, 'a slot offers Assign')) return;
   const slot = Number(assign.dataset.slotAssign);
   ui.click(assign, 'Assign');
-  await ui.sleep(500);
-  ui.check(!!ui.$('.pick-modal'), 'the picker opens');
+  ui.check(!!(await ui.waitEl('.pick-modal', 'the picker')), 'the picker opens');
 
-  ui.click(ui.$('[data-pick-mode="sounds"]'), 'the Instruments tab');
-  await ui.sleep(400);
+  ui.click(await ui.waitEl('[data-pick-mode="sounds"]', 'the Instruments tab'), 'the Instruments tab');
+  await ui.waitFor(() => ui.$$('.pick-tile-art').length > 0, { what: 'the instrument tiles' });
   const tiles = ui.$$('.pick-tile-art');
   ui.check(tiles.length === 24, `every sound is offered as a tile (${tiles.length})`);
   ui.check(!!tiles[0]?.querySelector('svg.sound-art'), 'tiles carry their instrument artwork');

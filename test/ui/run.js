@@ -58,7 +58,31 @@ function runScenario(file, libraryDir) {
   });
 }
 
+// Only one app may hold the MIDI port. If the editor is already open, its
+// instance answers the device and the suite's does not — scenarios then fail
+// for a reason that has nothing to do with the code. Say so instead of
+// producing a flaky red.
+function appAlreadyRunning() {
+  const { execSync } = require('node:child_process');
+  try {
+    const out = execSync('ps -Ao command', { encoding: 'utf8' });
+    return out.split('\n').some(
+      (line) => line.includes('crumar-seven-editor') && line.includes('Electron') &&
+        !line.includes('SEVEN_UI_TEST') && !line.includes('ps -Ao')
+    );
+  } catch {
+    return false;
+  }
+}
+
 (async () => {
+  if (appAlreadyRunning()) {
+    console.error(
+      'The editor is already open, and it holds the instrument.\n' +
+      'Quit it first (or run: pkill -f "crumar-seven-editor"), then run this again.'
+    );
+    process.exit(2);
+  }
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.js') && (!only || f.includes(only))).sort();
   const scratch = makeScratchLibrary();
   console.log(`library: ${scratch} (a copy — the real one is never touched)\n`);
