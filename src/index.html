@@ -900,6 +900,20 @@
     .tile-art .sound-art.is-drawing { display: block; width: 100%; }
     .tile-art .sound-art.is-drawing svg,
     .tile-art .sound-art.is-drawing img { display: block; width: 100%; height: auto; }
+    /* A photograph with a transparent background reads as a cut-out pasted on
+       — hardest on the dark theme, where the silhouette meets near-black with
+       nothing between them. drop-shadow follows the ALPHA rather than the box,
+       so a pale halo traces the instrument itself and lifts it off the panel.
+       Light theme gets the opposite: a soft dark shadow, so it sits on the
+       surface rather than floating above it. */
+    .sound-art.is-drawing img {
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .28));
+    }
+    :root[data-theme="dark"] .sound-art.is-drawing img {
+      filter: drop-shadow(0 0 9px rgba(255, 255, 255, .16))
+              drop-shadow(0 0 26px rgba(255, 255, 255, .07))
+              drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
+    }
     .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
     .pick-note {
       margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);

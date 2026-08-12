@@ -115,6 +115,11 @@
   // hold. Set by a successful Audition and ONLY by that: without it, a control
   // would be editing whatever the Seven happens to be playing, which is not
   // what is on screen. Cleared on disconnect and when another patch is chosen.
+  const labelFor = (key) => {
+    const p = (deps.schema && deps.schema.parameters || []).find((x) => x.key === key);
+    return p ? p.label : key;
+  };
+
   let liveEdit = null; // { file, patchIndex, params, dirty }
 
   const isConnected = () => {
@@ -151,13 +156,25 @@
   let pendingSend = null;
   let auditionInFlight = false;
 
-  async function sendEdit(key, value) {
+  async function sendEdit(key, value, opts = {}) {
     if (!isLive()) return;
-    if (sendInFlight) { pendingSend = { key, value }; return; } // coalesce a drag
+    if (sendInFlight) { pendingSend = { key, value, opts }; return; } // coalesce a drag
     sendInFlight = true;
+    // What the parameter held before this write — the thing an undo puts back.
+    // Read before the send, because the send overwrites it.
+    const before = liveEdit.params[key];
     try {
       const r = await window.sevenAPI.midi.setParam(key, value);
       if (r.ok) {
+        // An edit to the instrument's buffer joins the app's one undo stack,
+        // so Cmd-Z means the same thing here as it does in the library. Not
+        // recorded when the undo IS the caller, or the stack would grow a rung
+        // every time you stepped back down it.
+        if (!opts.undoing && before != null && before !== r.value && deps.undoStack) {
+          deps.undoStack.push(`${labelFor(key)} → ${before}`, async () => {
+            await sendEdit(key, before, { undoing: true });
+          });
+        }
         liveEdit.params[key] = r.value;
         liveEdit.touched.add(key);
         liveEdit.dirty = true;
@@ -172,7 +189,7 @@
     if (pendingSend) {
       const next = pendingSend;
       pendingSend = null;
-      sendEdit(next.key, next.value);
+      sendEdit(next.key, next.value, next.opts);
     }
   }
 

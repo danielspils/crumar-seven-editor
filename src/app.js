@@ -188,6 +188,16 @@
   }
 
   async function pickSoundForSlot(bank, preset) {
+    // Both refusals are stated, not implied by a missing button.
+    if (bank === 1) {
+      return SevenModal.confirm({
+        title: 'Bank 1 holds the factory presets',
+        body: 'The app will not write to Bank 1. Choose a preset in Bank 2, 3 or 4 — or send ' +
+          'this sound to one of those from a patch in your library.',
+        confirmLabel: 'OK',
+        tone: 'is-warning',
+      });
+    }
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const pickedSound = await chooseSound(
       `Bank ${bank} · Preset ${preset}`,
@@ -707,13 +717,13 @@
           ? {
             bankLabel: bankLabel(deviceSel.bank),
             patchNumber: deviceSel.preset + 1,
-            // The illustration becomes the way IN to changing this preset's
-            // sound — but only where that could actually work: a slot on the
-            // instrument, connected, and not Bank 1 (the factory presets).
-            canPickSound:
-              isConnected() && deviceSel.bank !== 0
-                ? { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 }
-                : null,
+            // The illustration is ALWAYS the way in on a slot — including
+            // Bank 1 and including with nothing plugged in. It was gated on
+            // both, which meant the control vanished precisely when someone
+            // went looking for it, and an affordance you cannot find is worse
+            // than one that explains why it won't work. The refusals happen on
+            // the click, where they can say something.
+            canPickSound: { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
           }
           : {};
     const emptyMsg =
@@ -769,6 +779,7 @@
     refreshLibrary: () => refreshLibrary(),
     getEntries: () => libEntries,
     undoStack,
+    schema, // for a parameter's display name in the undo label
   });
 
   const esc = (v) =>
