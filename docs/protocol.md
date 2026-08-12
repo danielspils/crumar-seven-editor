@@ -209,21 +209,31 @@ behave conventionally under the same test.
 
 `zd6_lv` (Damper Lever) is NOT one of them: it takes a write normally.
 
-**What is established:** these six mirror the panel, and nothing announces them — so the
-app can only follow them by polling.
+**Established, and the question below is now closed:**
 
-**OPEN — does a software write to these six change the SOUND?** Unknown. The value
-changes and holds; whether the audio path honours it or reads the physical switch
-directly has not been tested. The first report from the instrument's owner was that the
-software controls "don't work", but at that moment the UI had a separate defect (clicking
-the lit half of a choice tab sent the value already in place, so some clicks sent
-nothing), which makes that report unreliable evidence about the audio.
+1. **They mirror the panel.** The poll above tracked all six as the tabs were flipped by
+   hand, with no write from the app.
+2. **Nothing announces them.** `flag=0, cc=-1` — they are not among the 22 panel CCs, so
+   the only way to follow them is to poll.
+3. **A write sticks.** `zd6_br` set to 0 read back 0 at 200ms, 600ms, 1.2s, 2s, 3s, 5s and
+   8s. The panel does not overwrite it.
+4. **A write REACHES THE AUDIO — verified 2026-08-11.** Setting all four filter tabs to 0
+   from the app, while the tabs were physically on, silenced the instrument; setting them
+   back to 1 from the app restored the sound. The manual states that all four off produces
+   no sound, and the instrument agreed in both directions. So these six are ordinary
+   writable parameters that happen to mirror hardware switches, not read-only reports of
+   them.
 
-A decisive test exists and needs a listener: the manual states that with all four filter
-tabs off the Clavinet produces NO SOUND. Setting `zd6_br/tr/md/sf` to 0 over SysEx while
-the tabs are physically on either silences the instrument — proving the write reaches the
-audio path — or does not, proving it doesn't. Silence is unambiguous; no timbre
-judgement required.
+   Both halves matter: silence alone could have been something else failing, and only the
+   return of sound proves the app put it back.
+
+The earlier report that "the software controls don't work" was a UI defect, not the
+device: `pointer-events: none` on the switch wrapper meant a real mouse click never
+reached the control, so nothing was ever sent. Recorded because it cost two rounds of
+investigating the instrument for a bug that was in a stylesheet.
+
+**Consequence for the app:** these can be set like any other parameter, and are followed
+by polling because the device will not tell us when a hand moves one.
 
 ### Set sound (`0x46`) → confirmation `0x45` + name reply `0x47` — verified
 

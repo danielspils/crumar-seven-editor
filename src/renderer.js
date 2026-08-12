@@ -73,12 +73,12 @@
       return p && p.values && p.values[value] != null ? p.values[value] : String(value);
     };
 
-    // Panel-owned: these six mirror physical Clavinet tabs — they follow the
-    // panel and announce nothing, so the app polls them while live. Whether a
-    // WRITE to them reaches the audio path is an OPEN question (docs/
-    // protocol.md), so they stay editable: locking them out would bake in the
-    // half of the finding that has not been tested.
-    const PANEL_OWNED = new Set(['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab']);
+    // These six mirror physical Clavinet tabs: they follow the panel, announce
+    // nothing (flag=0, cc=-1) so the app polls them, and take writes like any
+    // other parameter — setting all four filters to 0 from the app silences
+    // the instrument, verified 2026-08-11. Ordinary controls that happen to
+    // have a hardware twin, which is what the row's tooltip says.
+    const PANEL_MIRRORED = new Set(['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab']);
 
     function paramRow(p, rawValue, view, opts) {
       const value = rawValue == null ? 0 : rawValue;
@@ -86,14 +86,14 @@
       // the DOM without a second copy of the taxonomy. `live` is set only when
       // the instrument's edit buffer is known to hold THIS patch — otherwise a
       // drag would change whatever the Seven happens to be playing.
-      const panelOwned = PANEL_OWNED.has(p.key);
+      const panelMirrored = PANEL_MIRRORED.has(p.key);
       // These six also live on the panel as physical tabs. Saying so in the
       // label widened the column enough to push the controls off screen, so
       // the row carries it as a title. Declared HERE, above `attrs`, which
       // interpolates it — as a `const` further down it was a use-before-
       // declaration that threw on every row and left the detail panel frozen
       // on whatever it had rendered last.
-      const panelTitle = panelOwned ? ' title="Also a tab on the Seven\u2019s panel"' : '';
+      const panelTitle = panelMirrored ? ' title="Also a tab on the Seven\u2019s panel"' : '';
       const live = view && view.live && !(opts && opts.inertReason);
       const attrs = `data-key="${p.key}" data-max="${p.max}"${panelTitle}`;
       const liveCls = live ? ' is-live' : '';
