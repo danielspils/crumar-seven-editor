@@ -420,7 +420,16 @@ The July 2021 manual documents v1.22. On v1.37:
 4. ~~Whether the device pushes unsolicited notifications~~ **PARTIALLY RESOLVED
    (2026-08-09).** Preset recalls push an unsolicited `0x45` + a 22-CC panel dump (see the
    `0x45` section). Whether panel *encoder moves* push anything beyond their ordinary CC is
-   still unverified.
+   still unverified. **A three-second STORE pushes nothing of its own — CLOSED
+   2026-08-12** (`captures/store-hold-2026-08-12-notes.md`): a hold emits the same
+   `0x45` + 22-CC burst + `Cn <slot>` as an ordinary tap, with the same ~55 ms
+   `0x45`→PC gap. There is no store notification and no frame-level difference.
+   What DOES differ is the burst's contents: the broadcast following a store carries
+   **what was just written** (verified — the hold's burst carried the previously
+   recalled preset's sound id and all 22 CC values out of a slot that had held a
+   different patch). So a store is detectable only by comparing a slot's burst before
+   and after, never by a marker. Compare those CCs as opaque bytes — open item 8's
+   scaling law is still unverified.
 5. Whether `.bin` preset export shares this layout. Untested.
 6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
    digit of the sound ID in all 23 captured frames — rendering quirk or something else?
