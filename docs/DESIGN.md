@@ -32,6 +32,27 @@ One meaning per treatment — don't reuse these for anything else:
   always current, so there is no selection for it to indicate — its four LEDs
   carry which bank is active.
 
+## Type ladder
+
+Five sizes, all of them already in use before they were written down here. A
+new surface picks from this list rather than inventing a size — 11px and 14px
+crept in that way and read as "off" without anyone being able to say why.
+
+| Size | Weight | Treatment | What it is |
+|---|---|---|---|
+| 17px | 700 | — | The name of the thing this view is about: the engine's sound name, the source and destination of a transfer. One per view. |
+| 15px | 700 | — | Dialog titles, where the title IS the subject. |
+| 13px | 400 | — | Body copy. The document default (`body { font: 13px/1.45 }`). |
+| 12px | 700 | uppercase, `.12em` tracking, dim | **Region header.** "ON THE SEVEN", "SOUND ENGINE", "TRANSFER". Labels the thing below it and stays out of the way. |
+| 10px | 700 | uppercase, `.05–.1em` tracking, dim | Micro-labels: badges, chips, counts, the AUDITION MODE chip. |
+
+**A header never competes with what it introduces.** The transfer modal first
+set "Transfer" at 15/700 — the same size as the setlist name beneath it — and
+read as two titles arguing. Region-header treatment fixed it: the label went
+small and dim, and the two names it introduces went to 17. Same rule the main
+window already follows, where "SOUND ENGINE" sits quietly above a 17px sound
+name.
+
 ## Colour system
 
 Colours are BORROWED FROM THE INSTRUMENT, never invented. The panel artwork is
