@@ -70,8 +70,10 @@
     const note = showNote
       ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
       : live
-        ? '<span class="audition-note">Nothing is saved until you hold a preset button ' +
-          'on the Seven, or save to the library.</span>'
+        // Daniel's words, 2026-08-12. The old line said the same thing twice
+        // over — the Save button is right there and speaks for itself, so what
+        // is left to say is the part the app CANNOT do for you.
+        ? '<span class="audition-note">hold a button for 3 seconds on your Seven to save</span>'
         : '';
 
     // Audition mode is a STATE, not an interruption — so it wears persistent
@@ -629,6 +631,16 @@
     return {
       preview,
       isLive,
+      // Selecting a different patch is leaving. The session ends — but only
+      // when there is nothing to lose: a DIRTY session is left alone, because
+      // the bar and its Save button are the one thing standing between unsaved
+      // edits and the bin, and the switch guard owns that conversation.
+      endIfClean() {
+        if (!liveEdit || liveEdit.dirty) return false;
+        liveEdit = null;
+        stopPanelPoll();
+        return true;
+      },
       // Unlike isLive(), this asks about the SESSION rather than the selection:
       // is there edited-but-unsaved work in the instrument's buffer right now,
       // whatever the user happens to have clicked on. Anything that recalls a

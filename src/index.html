@@ -1126,21 +1126,83 @@
        ordinary patch. 128 also widens the text column enough to un-wrap most
        names — better in both dimensions at once. */
     .engine-art { flex: none; width: 128px; margin: -2px 0 0; }
-    /* The picture as a control. It grows toward the reader and names itself
-       only while the pointer is on it — a permanent "select sound" label would
-       shout at you on every patch you merely LOOK at. */
-    button.engine-art {
-      position: relative; padding: 0; border: none; background: none;
-      cursor: pointer; transform-origin: 70% 40%;
-      transition: transform .18s cubic-bezier(.34, 1.4, .5, 1);
+    /* The picture as a carousel. At rest it is one instrument: the sound this
+       patch names. On hover its neighbours slide out either side under arrows,
+       so choosing a different instrument is paging through pictures rather
+       than opening a grid and reading names. The peeks are drawn OUTSIDE the
+       box (overflow visible, high z-index) so the resting layout keeps its
+       128px and nothing reflows when the pointer arrives. */
+    .engine-carousel {
+      position: relative; overflow: visible; isolation: isolate;
     }
-    button.engine-art:hover, button.engine-art:focus-visible { transform: scale(1.42); z-index: 2; }
-    button.engine-art:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
-    .engine-art-cta {
+    .engine-carousel .car-face {
+      display: block; transition: transform .22s cubic-bezier(.34, 1.2, .5, 1), opacity .22s ease;
+    }
+    .engine-carousel .car-face .sound-art.is-drawing { display: block; width: 100%; }
+    .engine-carousel .car-face img, .engine-carousel .car-face svg {
+      display: block; width: 100%; height: auto;
+    }
+    /* The two neighbours sit exactly on the hero until the pointer arrives,
+       then move out and dim. Pointer-events off until then, or an invisible
+       peek would eat the hero's clicks. */
+    .engine-carousel .is-peek {
+      position: absolute; top: 0; left: 0; width: 100%;
+      opacity: 0; pointer-events: none; cursor: pointer; z-index: -1;
+    }
+    .engine-carousel:hover .is-peek, .engine-carousel:focus-within .is-peek {
+      opacity: .38; pointer-events: auto;
+    }
+    .engine-carousel:hover .is-prev, .engine-carousel:focus-within .is-prev {
+      transform: translateX(-72%) scale(.74);
+    }
+    .engine-carousel:hover .is-next, .engine-carousel:focus-within .is-next {
+      transform: translateX(72%) scale(.74);
+    }
+    .engine-carousel .is-peek:hover { opacity: .72; }
+    .engine-carousel .is-hero { cursor: pointer; }
+    .engine-carousel:hover .is-hero, .engine-carousel:focus-within .is-hero {
+      transform: scale(1.12);
+    }
+    /* Arrows only while paging is possible — over the peeks, not the hero. */
+    .car-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 34px; padding: 0; z-index: 3;
+      display: flex; align-items: center; justify-content: center;
+      font: inherit; font-size: 19px; line-height: 1;
+      color: #fff; background: rgba(0, 0, 0, .45);
+      border: none; border-radius: 4px; cursor: pointer;
+      opacity: 0; transition: opacity .18s ease;
+    }
+    .car-prev { left: -30px; }
+    .car-next { right: -30px; }
+    .engine-carousel:hover .car-arrow, .engine-carousel:focus-within .car-arrow { opacity: 1; }
+    .car-arrow:hover { background: rgba(0, 0, 0, .72); }
+    .car-arrow:focus-visible { opacity: 1; outline: 2px solid var(--amber); outline-offset: 2px; }
+    /* The name of whatever is under the pointer. Not a native title: the OS
+       holds those back for a second or more, and this is a label for the thing
+       you are pointing AT — it has to keep up with the pointer. 90ms is long
+       enough not to flicker while sweeping across the three faces. */
+    .car-face { position: relative; }
+    .car-face::after {
+      content: attr(data-car-name);
+      position: absolute; left: 50%; bottom: -19px; transform: translateX(-50%);
+      white-space: nowrap; z-index: 4; pointer-events: none;
+      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--text); background: var(--bg-raised);
+      border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+      opacity: 0; transition: opacity .1s ease .09s;
+    }
+    .car-face:hover::after { opacity: 1; }
+    /* The app's micro-label treatment (DESIGN.md type ladder): 10px, bold,
+       uppercase, letterspaced. It reads as a LABEL on top of the picture
+       rather than as a sentence someone left there. */
+    .engine-art-cta-unused {
       position: absolute; inset: 0; display: flex;
       align-items: center; justify-content: center; text-align: center;
-      font-size: 13px; font-weight: 700; line-height: 1.05; color: #fff;
-      text-shadow: 0 1px 6px rgba(0, 0, 0, .85), 0 0 22px rgba(0, 0, 0, .7);
+      font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; line-height: 1.5; color: #fff;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, .9), 0 0 22px rgba(0, 0, 0, .75);
       opacity: 0; transition: opacity .18s ease; pointer-events: none;
     }
     button.engine-art:hover .engine-art-cta,

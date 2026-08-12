@@ -49,6 +49,18 @@
 
   // ---- Data -----------------------------------------------------------------
   const schema = window.sevenAPI.getSchema();
+
+  // Sounds the carousel pages through. The CONNECTED unit's own table wherever
+  // there is one — a player should page through the instruments their Seven
+  // actually has — falling back to the schema's list when nothing is plugged
+  // in. Modeled first, then sampled: the same order as the picker's groups, so
+  // paging and browsing agree.
+  let soundList = [];
+  const setSoundList = (table) => {
+    const src = (table && table.sounds && table.sounds.length) ? table.sounds : (schema.sounds || []);
+    soundList = [...src].sort((a, b) => (a.sampled === b.sampled ? 0 : a.sampled ? 1 : -1));
+  };
+  setSoundList(null);
   const R = SevenRenderer.createRenderer(schema, SevenDefaults.defaultFor);
 
   // Banks 1–4 mirror the INSTRUMENT, derived from the latest backup patch per
@@ -102,6 +114,16 @@
   let deviceSel = { bank: 0, preset: 0 }; // the Seven boots at preset 1-1
   let lastTouched = 'device'; // 'device' | 'library'
 
+  // Where the sound carousel is parked. null = follow the patch; a number
+  // means the user has paged away from it and is browsing.
+  let carouselAt = null;
+  // The sound the INSTRUMENT says its buffer holds, when that is no longer the
+  // one the patch names — after choosing a different instrument in audition
+  // mode. The panel must describe what you are hearing, not what the file
+  // remembers: the picture, the name, and the engine's own controls all follow
+  // the sound, and showing the old one meant editing parameters that belong to
+  // an instrument that is no longer playing.
+  let liveSound = null;
   // View state only — never written to a patch or the library.
   let showRaw = false;
   let collapsed = {}; // section group -> bool
@@ -266,15 +288,81 @@
     toast(`Sound is now ${chosen.name}`);
   }
 
+  // Paging the carousel. The index lives here rather than in the renderer,
+  // which is a pure view — and it is reset whenever the selection changes, so
+  // the carousel goes back to showing what the newly selected patch names.
+  const soundIndexOf = (name) => Math.max(0, soundList.findIndex((x) => x.name === name));
+
   document.addEventListener('click', (e) => {
-    const pick = e.target.closest('[data-pick-sound-for], [data-pick-sound-file]');
-    if (!pick) return;
-    if (pick.dataset.pickSoundFile) {
-      return pickSoundForPatch(pick.dataset.pickSoundFile, Number(pick.dataset.pickSoundPi) || 0);
+    const step = e.target.closest('[data-car-step]');
+    if (step) {
+      const patch = currentPatch();
+      const from = carouselAt == null ? soundIndexOf(patch && patch.soundName) : carouselAt;
+      carouselAt = from + Number(step.dataset.carStep);
+      renderDetail();
+      return;
     }
-    const [bank, preset] = pick.dataset.pickSoundFor.split(':').map(Number);
-    pickSoundForSlot(bank, preset);
+    // Clicking a peek brings it to the middle rather than choosing it: you are
+    // still browsing until you click the one in the centre.
+    const face = e.target.closest('[data-car-name]');
+    if (face && face.closest('[data-carousel]')) {
+      if (face.classList.contains('is-peek')) {
+        carouselAt = soundIndexOf(face.dataset.carName);
+        renderDetail();
+        return;
+      }
+      // The hero: this is the choice.
+      const carousel = face.closest('[data-carousel]');
+      const target = carousel.dataset;
+      const name = face.dataset.carName;
+      const patch = currentPatch();
+      if (patch && name === patch.soundName) return; // already this one
+      chosenFromCarousel(name);
+      return;
+    }
   });
+
+  // What clicking the centred instrument means depends on what is selected —
+  // the same split the picture has always had: a slot on the Seven gets it
+  // sent and asks for the hold; a patch on disk has its file rewritten.
+  async function chosenFromCarousel(name) {
+    const found = soundList.find((x) => x.name === name);
+    const sampled = found ? !!found.sampled : undefined;
+    if (lastTouched === 'library' && libSelected) {
+      const file = libSelected.file;
+      const patchIndex = libSelected.patchIndex || 0;
+      const r = await window.sevenAPI.library.saveSound(file, patchIndex, name, sampled);
+      const was = r && r.previous && r.previous.name;
+      if (was) {
+        undoStack.push(`sound → ${name}`, async () => {
+          await window.sevenAPI.library.saveSound(file, patchIndex, was, r.previous.sampled);
+          carouselAt = null;
+          await refreshLibrary();
+        });
+      }
+      carouselAt = null;
+      await refreshLibrary();
+      return toast(`Sound is now ${name}`);
+    }
+    if (!deviceSel || deviceSel.bank === 0) return;
+    if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
+    const bank = deviceSel.bank + 1;
+    const preset = deviceSel.preset + 1;
+    const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${name}`);
+    if (!started || !started.started) {
+      return SevenModal.confirm({
+        title: 'Cannot send that sound',
+        body: (started && started.error) ||
+          (started && started.blocked && started.blocked[0] && started.blocked[0].reason) ||
+          'That sound could not be sent to this preset.',
+        confirmLabel: 'OK',
+        tone: 'is-warning',
+      });
+    }
+    carouselAt = null;
+    transferRunning = true;
+    return transferWalk(started.slots, bank);
+  }
 
   // ---- Arrow keys walk whichever list you last touched --------------------
   // The instrument's own rows recall as you land on them, exactly as clicking
@@ -703,6 +791,8 @@
           // FILE says, not what the instrument holds. No connection needed:
           // this is editing a patch on disk.
           canPickSound: { file: libSelected.file, patchIndex: libSelected.patchIndex || 0 },
+          sounds: soundList,
+          carouselAt,
         }
         : deviceSel
           ? {
@@ -719,6 +809,8 @@
             canPickSound: deviceSel.bank === 0
               ? null
               : { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
+            sounds: soundList,
+            carouselAt,
             noPickReason: deviceSel.bank === 0 ? 'Works on banks 2, 3 and 4' : null,
           }
           : {};
@@ -730,7 +822,12 @@
     // instrument currently holds, including edits not yet saved to disk.
     const live = audition.isLive();
     const working = audition.workingParams();
-    const shown = live && working ? { ...patch, params: working } : patch;
+    let shown = live && working ? { ...patch, params: working } : patch;
+    // The buffer's own instrument wins while live: name, badge, illustration
+    // and — through engineGroupFor — which engine's controls are shown.
+    if (live && liveSound && shown) {
+      shown = { ...shown, soundName: liveSound.name, sampled: !!liveSound.sampled };
+    }
     // Every live edit re-renders this panel, and replacing its contents resets
     // its scroll — so editing a parameter halfway down threw the view back to
     // the top on every change. Hold the position across the swap; a genuine
@@ -934,6 +1031,9 @@
     // new name, because both read the same file.
 
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
+    carouselAt = null; // a new selection brings the carousel back to its sound
+    liveSound = null;
+    audition.endIfClean();
     lastTouched = 'device';
     resetCollapsed();
     renderAll();
@@ -1058,6 +1158,10 @@
         // setlists exist, and doing that silently is not walking a set. The
         // library's flat list stays silent — that is a filing cabinet, and
         // clicking a row there is not a request to hear it.
+        // Moving to another patch leaves audition mode, here as in the bank
+        // region — unless there are unsaved edits, which the guard handles.
+        audition.endIfClean();
+        liveSound = null;
         if (opts.inSetlist) audition.preview({ file: entry.file, patchIndex: entry.patchIndex || 0 });
       },
       async contextMenu(entry) {
@@ -1589,6 +1693,7 @@
         connBtn.textContent = 'Disconnect';
         if (s.soundTable) {
           soundsBtn.textContent = `${s.soundTable.sounds.length} sounds`;
+          setSoundList(s.soundTable);
           renderSoundsPanel(s.soundTable);
         }
       } else if (s.state === 'connecting') {
@@ -1603,6 +1708,7 @@
       // After the row's class is updated, so the re-render sees the new state.
       if (s.state !== 'connected') {
         audition.clearLive();
+        liveSound = null; // no buffer, nothing for it to describe
         hideToast(); // nothing is in progress once the instrument is gone
       }
       connBtn.disabled = s.state === 'connecting';
@@ -1722,6 +1828,22 @@
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
       } else if (ev.type === 'backup-done') showBackupDone(ev);
+      else if (ev.type === 'current-sound') {
+        // The device broadcasts this on every sound change. While live it is
+        // the buffer telling us what it now holds; otherwise it belongs to a
+        // recall, which ends the live session anyway.
+        if (audition.isLive()) {
+          const found = soundList.find((x) => x.id === ev.soundId);
+          const patch = currentPatch();
+          if (found && patch && found.name !== patch.soundName) {
+            liveSound = found;
+            renderDetail();
+          } else if (found && patch && found.name === patch.soundName && liveSound) {
+            liveSound = null; // back to what the patch names
+            renderDetail();
+          }
+        }
+      }
       else if (ev.type === 'transfer-stored') {
         // The instrument's own evidence that the hold landed. It advances the
         // walk exactly where the button would have — one path forward, so the

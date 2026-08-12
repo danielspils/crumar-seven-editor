@@ -21,6 +21,45 @@
   const soundArt = () =>
     (typeof window !== 'undefined' && window.SevenSoundArt) ? window.SevenSoundArt : null;
 
+  // The instrument picture as a carousel. At rest it is one image — the sound
+  // this patch names. On hover the neighbours peek out either side with arrows
+  // over them, so choosing a different instrument is paging through pictures
+  // rather than opening a grid and reading names.
+  //
+  // Only instruments: the modeled engines and the sampled sets the connected
+  // unit has. Not patches — a patch is a set of SETTINGS, and this control
+  // changes which instrument plays them.
+  function soundCarousel(patch, view) {
+    const art = soundArt();
+    const sounds = (view && view.sounds) || [];
+    if (!art || sounds.length < 2) {
+      return `<div class="engine-art">${art ? art.iconFor(patch.soundName, patch.sampled) : ''}</div>`;
+    }
+    const home = Math.max(0, sounds.findIndex((s) => s.name === patch.soundName));
+    // carouselAt is where the user has paged to; null means "wherever the
+    // patch is", so selecting another patch brings the carousel with it.
+    const at = view.carouselAt == null ? home : ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
+    const wrap = (i) => sounds[((i % sounds.length) + sounds.length) % sounds.length];
+    // No `title`: the OS decides when a native tooltip appears and it is
+    // slow, and this one is the label for the thing under the pointer — it
+    // has to arrive at the speed of pointing. The name rides on the element
+    // and CSS draws it.
+    const face = (s, cls) =>
+      `<span class="car-face ${cls}" data-car-name="${esc(s.name)}">` +
+      `${art.iconFor(s.name, s.sampled)}</span>`;
+    const here = wrap(at);
+    const moved = here.name !== patch.soundName;
+    return (
+      `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}" data-carousel>` +
+      face(wrap(at - 1), 'is-peek is-prev') +
+      face(here, 'is-hero') +
+      face(wrap(at + 1), 'is-peek is-next') +
+      `<button type="button" class="car-arrow car-prev" data-car-step="-1" aria-label="Previous instrument">‹</button>` +
+      `<button type="button" class="car-arrow car-next" data-car-step="1" aria-label="Next instrument">›</button>` +
+      `</div>`
+    );
+  }
+
   // Effects chain, top to bottom. `sw` is the switch whose value 0 dims the
   // section (never inferred from a parameter value). pdl_exp has no switch.
   // `invert` marks inverted logic: veq_byp is EQ *Bypass* — 1 means bypassed,
@@ -339,22 +378,7 @@
         // there is no window and no art module.
         (soundArt()
           ? (view && view.canPickSound
-            // A button, not a decoration: the picture of the instrument IS the
-            // control that changes which instrument this preset holds. It grows
-            // and names itself on hover rather than carrying a label all the
-            // time — the label is only useful in the second before you click it.
-            ? `<button type="button" class="engine-art is-pickable" ` +
-              (view.canPickSound.file
-                // A library patch: this edits the FILE.
-                ? `data-pick-sound-file="${esc(view.canPickSound.file)}" ` +
-                  `data-pick-sound-pi="${view.canPickSound.patchIndex}" ` +
-                  'title="Choose the sound this patch uses"'
-                // A slot on the instrument: this sends and asks for the hold.
-                : `data-pick-sound-for="${view.canPickSound.bank}:${view.canPickSound.preset}" ` +
-                  `title="Choose the sound for Bank ${view.canPickSound.bank} · Preset ${view.canPickSound.preset}"`) +
-              '>' +
-              soundArt().iconFor(patch.soundName, patch.sampled) +
-              '<span class="engine-art-cta">select<br>sound</span></button>'
+            ? soundCarousel(patch, view)
             // Not a control here, and the tooltip says so rather than leaving
             // the picture looking inert for no reason.
             : `<div class="engine-art"${view && view.noPickReason ? ` title="${esc(view.noPickReason)}"` : ''}>` +
