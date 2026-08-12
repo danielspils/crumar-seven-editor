@@ -342,12 +342,25 @@
       }
       carouselAt = null;
       await refreshLibrary();
+      quietCarousel();
       return toast(`Sound is now ${name}`);
     }
     if (!deviceSel || deviceSel.bank === 0) return;
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const bank = deviceSel.bank + 1;
     const preset = deviceSel.preset + 1;
+
+    // No walk and no dialog: choosing an instrument drops you into audition
+    // mode with it playing. The hold-the-button modal belongs to a TRANSFER,
+    // where the app is stepping you through eight presets and needs to know
+    // when each one is done. Here you are trying a sound on one preset, and
+    // the audition bar already says how to keep it.
+    //
+    // The runner still does the moving, for one reason: it recalls the target
+    // slot before it loads anything. A three-second hold stores to whatever
+    // button you press in whatever bank the panel is on, so without that
+    // recall the hold could land in a different bank entirely. Started and
+    // immediately closed — the walk's UI never appears.
     const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${name}`);
     if (!started || !started.started) {
       return SevenModal.confirm({
@@ -359,9 +372,25 @@
         tone: 'is-warning',
       });
     }
+    const step = await window.sevenAPI.transfer.next(); // recalls the slot, then loads
+    await window.sevenAPI.transfer.cancel();            // nothing stored, nothing claimed
+    if (!step || step.type === 'transfer-done') return toast('That sound could not be sent');
+
     carouselAt = null;
-    transferRunning = true;
-    return transferWalk(started.slots, bank);
+    liveSound = soundList.find((x) => x.name === name) || null;
+    audition.beginLive();
+    renderDetail();
+    quietCarousel();
+  }
+
+  // After a pick the pointer is still on the carousel, so it re-renders under
+  // the cursor already in its hover state — which reads as though the click
+  // did nothing. Hold it shut until the pointer leaves and comes back.
+  function quietCarousel() {
+    const car = document.querySelector('[data-carousel]');
+    if (!car) return;
+    car.classList.add('is-quiet');
+    car.addEventListener('pointerleave', () => car.classList.remove('is-quiet'), { once: true });
   }
 
   // ---- Arrow keys walk whichever list you last touched --------------------
@@ -1033,7 +1062,7 @@
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     carouselAt = null; // a new selection brings the carousel back to its sound
     liveSound = null;
-    audition.endIfClean();
+    audition.endSession();
     lastTouched = 'device';
     resetCollapsed();
     renderAll();
@@ -1160,7 +1189,7 @@
         // clicking a row there is not a request to hear it.
         // Moving to another patch leaves audition mode, here as in the bank
         // region — unless there are unsaved edits, which the guard handles.
-        audition.endIfClean();
+        audition.endSession();
         liveSound = null;
         if (opts.inSetlist) audition.preview({ file: entry.file, patchIndex: entry.patchIndex || 0 });
       },

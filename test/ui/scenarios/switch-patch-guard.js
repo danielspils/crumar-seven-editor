@@ -1,5 +1,12 @@
-// Switching patches with unsaved edits offers to save them, and saving keeps
-// the values on this computer.
+// Leaving audition mode DISCARDS. Navigating to another patch ends the
+// session and the edits go — no prompt, no rescue. Daniel's call (2026-08-12),
+// replacing a save-first dialog: the bar already says nothing is saved until
+// you save it, and a prompt between you and the next patch taxes the common
+// case to protect the rare one.
+//
+// What the app owes in exchange is on trial here: it must SAY that the edits
+// went, and it must leave the instrument playing what you are now looking at
+// rather than the sound you were trying out.
 (async () => {
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
   await ui.selectBankPreset(0);
@@ -8,6 +15,7 @@
   const row = ui.$('.param.is-live[data-max="127"]');
   if (!ui.check(!!row, 'a continuous parameter is live')) return;
   const key = row.dataset.key;
+  const before = Number(ui.$(`.param[data-key="${key}"] .param-value`).textContent);
   const bar = row.querySelector('.param-bar');
   const r = bar.getBoundingClientRect();
   bar.dispatchEvent(new PointerEvent('pointerdown', {
@@ -16,20 +24,22 @@
   window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
   if (!(await ui.waitFor(() => !!ui.$('.audition-dirty'), { what: 'an unsaved change' }))) return;
   const edited = Number(ui.$(`.param[data-key="${key}"] .param-value`).textContent);
+  ui.check(edited !== before, `the parameter moved (${before} → ${edited})`);
 
-  // Now switch patches: the app must ASK rather than discard.
+  // Switch patches. Nothing may stand in the way.
   ui.$$('#patch-list .patch-row')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  const asked = await ui.waitFor(() => !!ui.$('.seven-modal'), { timeout: 4000, what: 'the save-first prompt' });
-  ui.check(asked, 'switching with unsaved edits asks first');
-  if (!asked) return;
-  ui.check(!!ui.$('.seven-modal-second'), 'the prompt offers switching without saving too');
-  ui.$('.seven-modal-ok').click();       // "Save, Then Switch"
-  await ui.waitFor(() => !ui.$('.seven-modal'), { what: 'the prompt to close' });
-  await ui.sleep(1200);
+  await ui.sleep(900);
+  ui.check(!ui.$('.seven-modal'), 'switching is not interrupted by a prompt');
+  ui.check(!ui.$('.audition-bar.is-live'), 'the live session is over');
 
-  // Back to the first patch: the saved value must be what was edited.
+  // It has to say what it just did.
   await ui.selectBankPreset(0);
+  const note = ui.$('.audition-note.is-error');
+  ui.check(!!note && /not saved/i.test(note.textContent), `it says the edits went: ${note && note.textContent}`);
+
+  // And the library must be untouched — discarded means discarded, not
+  // "written somewhere else".
   const shown = Number(ui.$(`.param[data-key="${key}"] .param-value`)?.textContent);
-  ui.note(`${key}: edited ${edited}, library now ${shown}`);
-  ui.check(shown === edited, `the edit was saved to the library (${shown} vs ${edited})`);
+  ui.note(`${key}: was ${before}, edited to ${edited}, library shows ${shown}`);
+  ui.check(shown === before, `the library kept its own value (${shown} vs ${before})`);
 })()

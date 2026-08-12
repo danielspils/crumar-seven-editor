@@ -434,6 +434,18 @@ The July 2021 manual documents v1.22. On v1.37:
    and after, never by a marker. Compare those CCs as opaque bytes — open item 8's
    scaling law is still unverified.
 5. Whether `.bin` preset export shares this layout. Untested.
+5b. **`dly_mf` / `dly_ml` accept writes but were reported to change nothing
+   audible (2026-08-12).** With FX2 in Delay mode, the owner adjusted Max
+   Feedback (id 86) and Max Level (id 87) and heard no change. A direct check
+   ruled the app out: each was read, written to 100, echoed 100 and read back
+   100 on a fresh `0x22`, then restored — the instrument takes and holds the
+   value. `dly_sp` (Stereo Spread, id 88) in the same group behaves the same on
+   the wire and IS audible. So the two are conditional on something not yet
+   identified. Candidates worth a session, none of them evidence yet: another
+   parameter gating them, a mod/expression assignment they cap rather than set
+   (the "Max" in both names), or a firmware quirk. Do not label them inert in
+   the UI until the condition is demonstrated — the app currently shows them as
+   ordinary controls, which is what the device reports them to be.
 6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
    digit of the sound ID in all 23 captured frames — rendering quirk or something else?
    Also unexplained: the doubled `B0 01` pair closing every recall burst.

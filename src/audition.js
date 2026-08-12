@@ -90,7 +90,12 @@
       return (
         `<div class="audition-bar is-live">` +
         `<span class="audition-mode">Audition mode</span>` +
-        `<span class="audition-patch">${esc(patch.name)}` +
+        // NOT the patch's name. It names where the session STARTED, and after
+        // choosing another instrument that is no longer what you are hearing —
+        // the bar said "Car Parts CP-80" over a DX7 (Daniel, 2026-08-12). The
+        // sound engine panel below already names what is playing. All that is
+        // left to say here is whether there is something unsaved.
+        `<span class="audition-patch">` +
         `${dirty ? '<span class="audition-dirty" title="Edited since it was sent">•</span>' : ''}` +
         `</span>` +
         `<button type="button" id="audition-btn" class="is-secondary">Reset sound</button>` +
@@ -123,6 +128,27 @@
   };
 
   let liveEdit = null; // { file, patchIndex, params, dirty }
+  // Which slot the Seven was sitting on when this session started. Leaving
+  // audition mode is an act in the APP — the instrument goes on playing
+  // whatever we last put in its buffer — so a session that ends cleanly puts
+  // the instrument back where it found it. Without this you leave audition
+  // mode, select something else, and are still hearing the sound you were
+  // trying out (Daniel, 2026-08-12: "I'm hearing a CP80 even when I've
+  // switched to another patch").
+  let cameFrom = null; // { bank, preset }, 0-based, or null if unknown
+
+  const rememberWhereWeWere = () => {
+    cameFrom = (deps.getSlot && deps.getSlot()) || null;
+  };
+
+  // Put it back. Never when the session is dirty: a recall replaces the edit
+  // buffer, and unsaved edits live there.
+  const restoreWhereWeWere = () => {
+    const back = cameFrom;
+    cameFrom = null;
+    if (!back || !isConnected()) return;
+    window.sevenAPI.midi.recall(back.bank, back.preset);
+  };
 
   const isConnected = () => {
     const row = document.getElementById('connection-row');
@@ -509,6 +535,7 @@
         touched: new Set(), // keys this session changed — evidence for the check below
         dirty: false,
       };
+      rememberWhereWeWere();
       startPanelPoll();
     }
     deps.renderDetail();
@@ -614,6 +641,7 @@
             touched: new Set(),
             dirty: false,
           };
+          rememberWhereWeWere();
           startPanelPoll();
         } else if (r) {
           toast(r.error);
@@ -631,14 +659,50 @@
     return {
       preview,
       isLive,
-      // Selecting a different patch is leaving. The session ends — but only
-      // when there is nothing to lose: a DIRTY session is left alone, because
-      // the bar and its Save button are the one thing standing between unsaved
-      // edits and the bin, and the switch guard owns that conversation.
-      endIfClean() {
-        if (!liveEdit || liveEdit.dirty) return false;
+      // Enter the live session for whatever is selected, without the modal or
+      // the send — for a caller that has ALREADY put the right thing in the
+      // edit buffer and knows it. The one rule this must not break is the one
+      // audition exists for: live means the buffer holds what is on screen.
+      beginLive() {
+        const target = auditionTarget();
+        const patch = deps.getPatch();
+        if (!target || !patch) return false;
+        liveEdit = {
+          file: target.file,
+          patchIndex: target.patchIndex,
+          params: { ...(patch.params || {}) },
+          touched: new Set(),
+          dirty: false,
+        };
+        rememberWhereWeWere();
+        startPanelPoll();
+        deps.renderDetail();
+        return true;
+      },
+      // Selecting a different patch is leaving, and leaving DISCARDS. Daniel's
+      // call, 2026-08-12, replacing a save-first prompt: the audition bar
+      // already says nothing is saved until you save it, and a dialog between
+      // you and the next patch is a toll on the common case (browsing) to
+      // protect the rare one (browsing away from work you wanted).
+      //
+      // Two things make that liveable. The note says plainly what just
+      // happened — "Left audition mode. Those edits were not saved to the
+      // library." — and the instrument is put back where the session found it,
+      // so what you hear matches what you are looking at.
+      endSession() {
+        if (!liveEdit) return false;
+        const lost = liveEdit.dirty;
+        const file = liveEdit.file;
         liveEdit = null;
         stopPanelPoll();
+        restoreWhereWeWere();
+        if (lost) {
+          auditionNote = {
+            kind: 'is-error',
+            file,
+            text: 'Left audition mode. Those edits were not saved to the library.',
+          };
+        }
         return true;
       },
       // Unlike isLive(), this asks about the SESSION rather than the selection:

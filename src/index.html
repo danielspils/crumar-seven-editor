@@ -1149,6 +1149,12 @@
       position: absolute; top: 0; left: 0; width: 100%;
       opacity: 0; pointer-events: none; cursor: pointer; z-index: -1;
     }
+    /* Just picked: the pointer is still sitting on the carousel, so :hover is
+       true and it stays open — which reads as "nothing happened". Quiet until
+       the pointer leaves and comes back. */
+    .engine-carousel.is-quiet .is-peek,
+    .engine-carousel.is-quiet .car-arrow { opacity: 0 !important; pointer-events: none; }
+    .engine-carousel.is-quiet .is-hero { transform: none !important; }
     .engine-carousel:hover .is-peek, .engine-carousel:focus-within .is-peek {
       opacity: .38; pointer-events: auto;
     }
