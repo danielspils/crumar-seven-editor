@@ -11,6 +11,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { EventEmitter } = require('node:events');
 
 const { TransferRunner } = require('../src/transfer-runner');
 const { LibraryStore } = require('../src/library-store');
@@ -20,7 +21,24 @@ const schema = JSON.parse(
 
 const params = (v) => Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(v, p.max)]));
 
-function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true } = {}) {
+// A stand-in for the instrument: it answers a Program Change with the same
+// unsolicited 0x45 ("current-sound") the real Seven broadcasts on every recall,
+// which is what the runner gates the load on. `deaf: true` swallows the PC and
+// answers nothing, the way a pulled cable does.
+function fakeMidi({ sounds, connected, deaf = false }) {
+  const midi = new EventEmitter();
+  midi.state = connected ? 'connected' : 'disconnected';
+  midi.soundTable = { sounds: sounds.map((name, id) => ({ id, name })) };
+  midi.recalled = [];
+  midi.sendProgramChange = (program) => {
+    midi.recalled.push(program);
+    if (deaf) return;
+    setImmediate(() => midi.emit('event', { type: 'current-sound', soundId: 0 }));
+  };
+  return midi;
+}
+
+function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf = false } = {}) {
   const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'seven-transfer-')), 'Library');
   const store = new LibraryStore(dir, schema, {
     banks: [{ patches: [
@@ -29,10 +47,7 @@ function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true } = {}
     ] }],
   });
   const entries = store.list().patches;
-  const midi = {
-    state: connected ? 'connected' : 'disconnected',
-    soundTable: { sounds: sounds.map((name, id) => ({ id, name })) },
-  };
+  const midi = fakeMidi({ sounds, connected, deaf });
   const sent = [];
   const sender = { send: async (patch) => { sent.push(patch); return { sent: 1 }; } };
   return { store, midi, sender, sent, entries, dir };
@@ -155,6 +170,92 @@ test('the report never claims the instrument confirmed a store', async () => {
   await runner.nextSlot();
   const done = await runner.confirmSlot();
   assert.match(done.note, /the Seven does not report stores/);
+});
+
+test('picking a bank moves the instrument to it, before anything is decided', async () => {
+  const { store, midi, sender, sent } = setup();
+  const r = await new TransferRunner({ midi, store, sender }).selectBank(3);
+  assert.deepStrictEqual(r, { ok: true, bank: 3, program: 16 }); // bank 3, preset 1
+  assert.deepStrictEqual(midi.recalled, [16]);
+  assert.deepStrictEqual(sent, [], 'a recall writes nothing');
+});
+
+test('picking a bank refuses Bank 1 and a missing instrument', async () => {
+  const { store, midi, sender } = setup();
+  assert.match((await new TransferRunner({ midi, store, sender }).selectBank(1)).error, /factory/);
+  const off = setup({ connected: false });
+  const r = await new TransferRunner({ midi: off.midi, store: off.store, sender }).selectBank(2);
+  assert.match(r.error, /not connected/);
+  assert.deepStrictEqual(off.midi.recalled, []);
+});
+
+test('backing out puts the panel back where it was', async () => {
+  const { store, midi, sender } = setup();
+  midi.lastPanelProgram = 5; // the player was on bank 1, preset 6
+  const runner = new TransferRunner({ midi, store, sender });
+  await runner.selectBank(4);
+  assert.deepStrictEqual(await runner.releaseBank(), { ok: true, program: 5 });
+  assert.deepStrictEqual(midi.recalled, [24, 5]);
+  assert.deepStrictEqual(await runner.releaseBank(), { ok: false }, 'releasing twice is a no-op');
+});
+
+test('with no known prior slot the panel is left where we put it', async () => {
+  const { store, midi, sender } = setup(); // lastPanelProgram undefined: Send PC off
+  const runner = new TransferRunner({ midi, store, sender });
+  await runner.selectBank(2);
+  assert.deepStrictEqual(await runner.releaseBank(), { ok: false });
+  assert.deepStrictEqual(midi.recalled, [8], 'no guessed slot is sent');
+});
+
+test('once the walk starts, releasing the bank cannot yank the panel back', async () => {
+  const { store, midi, sender, entries } = setup();
+  midi.lastPanelProgram = 5;
+  const runner = new TransferRunner({ midi, store, sender });
+  await runner.selectBank(2);
+  runner.start(setlistWith(store, [entries[0].file]), 2);
+  assert.deepStrictEqual(await runner.releaseBank(), { ok: false });
+  assert.deepStrictEqual(midi.recalled, [8]);
+});
+
+test('each slot is recalled on the instrument before it is loaded', async () => {
+  const { store, midi, sender, sent, entries } = setup();
+  const list = setlistWith(store, [entries[0].file, null, entries[1].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 3);
+
+  await runner.nextSlot();
+  // Bank 3, preset 1 is global slot 16 — the panel lands on the bank and the
+  // button the modal is about to point at.
+  assert.deepStrictEqual(midi.recalled, [16]);
+  await runner.confirmSlot();
+  assert.deepStrictEqual(midi.recalled, [16, 18], 'the skipped slot is not recalled');
+  assert.strictEqual(sent.length, 2);
+});
+
+test('the recall comes before the load, never after', async () => {
+  const { store, midi, sender, entries } = setup();
+  const order = [];
+  midi.on('event', (ev) => { if (ev.type === 'current-sound') order.push('recall'); });
+  const senderSpy = { send: async (p) => { order.push('send'); return sender.send(p); } };
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender: senderSpy });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  // A recall replaces the edit buffer; the other order would discard the patch.
+  assert.deepStrictEqual(order, ['recall', 'send']);
+});
+
+test('an unanswered recall stops the walk rather than writing blind', async () => {
+  const { store, midi, sender, sent, entries } = setup({ deaf: true });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+
+  const done = await runner.nextSlot();
+  assert.strictEqual(done.type, 'transfer-done');
+  assert.match(done.error, /did not answer the recall for preset 1/);
+  assert.deepStrictEqual(sent, [], 'nothing was loaded');
+  assert.deepStrictEqual(done.confirmed, []);
 });
 
 test('refuses without a connection', () => {

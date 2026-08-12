@@ -612,6 +612,12 @@
     return {
       preview,
       isLive,
+      // Unlike isLive(), this asks about the SESSION rather than the selection:
+      // is there edited-but-unsaved work in the instrument's buffer right now,
+      // whatever the user happens to have clicked on. Anything that recalls a
+      // preset for its own reasons has to check this first — a recall replaces
+      // the buffer, and only a dirty session has something to lose.
+      hasUnsavedEdit: () => !!(liveEdit && liveEdit.dirty),
       clearLive,
       renderBar: renderAuditionBar,
       workingParams: () => (liveEdit ? liveEdit.params : null),

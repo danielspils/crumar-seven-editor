@@ -20,11 +20,20 @@
 //     hold is done, because only they can see the panel.
 //   - Stopping is always allowed, and what was written stays written. The
 //     report says exactly which presets changed and which did not.
+//   - EACH SLOT IS RECALLED ON THE INSTRUMENT BEFORE IT IS LOADED. A Program
+//     Change moves the Seven to that bank and preset (device-verified: PC
+//     recalls 0-based global slots across all four banks), so the panel the
+//     player is looking at lights the same button the app is asking them to
+//     hold. The app cannot see which bank the panel is on, and it cannot see
+//     where a three-second hold lands — putting the instrument on the target
+//     slot ourselves is the only way to remove that gap. If the recall is not
+//     acknowledged, the walk STOPS rather than write a preset blind.
 
 const { EventEmitter } = require('node:events');
 
 const SLOTS_PER_BANK = 8;
 const BLOCKED_BANK = 1;
+const RECALL_TIMEOUT_MS = 1500;
 
 class TransferRunner extends EventEmitter {
   constructor({ midi, store, sender }) {
@@ -35,6 +44,7 @@ class TransferRunner extends EventEmitter {
     this.running = false;
     this.cancelled = false;
     this.state = null;
+    this.priorProgram = null; // where the panel was before selectBank() moved it
   }
 
   // Resolve a setlist against the connected instrument WITHOUT sending
@@ -99,6 +109,55 @@ class TransferRunner extends EventEmitter {
     };
   }
 
+  // Move the instrument to a bank the moment the user picks it, BEFORE the
+  // "replace this bank?" question. The point is that the question stops being
+  // abstract: the Seven is sitting on that bank, so you can play what you are
+  // about to overwrite. Nothing is written — a recall only touches the edit
+  // buffer.
+  //
+  // Where the panel was is snapshotted first, so releaseBank() can put it back
+  // if the run never happens. That is only knowable when Send PC is on and the
+  // panel has recalled something since connect; when it isn't, we say so by
+  // leaving the instrument where we put it rather than guessing a slot.
+  async selectBank(bank) {
+    if (this.running) return { ok: false, error: 'A transfer is already running' };
+    if (bank === BLOCKED_BANK) {
+      return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
+    }
+    if (!Number.isInteger(bank) || bank < 1 || bank > 4) {
+      return { ok: false, error: `There is no bank ${bank}.` };
+    }
+    if (!this.midi || this.midi.state !== 'connected') {
+      return { ok: false, error: 'The Seven is not connected.' };
+    }
+    const prior = this.midi.lastPanelProgram;
+    const program = (bank - 1) * SLOTS_PER_BANK;
+    try {
+      await this._recall(program);
+    } catch (err) {
+      // Not fatal: the walk recalls each slot again and stops there if the
+      // instrument is really not answering. Nothing has been written.
+      return { ok: false, error: String(err.message || err) };
+    }
+    this.priorProgram = Number.isInteger(prior) ? prior : null;
+    return { ok: true, bank, program };
+  }
+
+  // Put the panel back where it was, for when the user chose a bank and then
+  // backed out. A no-op once a walk has started — by then the instrument is
+  // meant to be sitting on the bank being written.
+  async releaseBank() {
+    const prior = this.priorProgram;
+    this.priorProgram = null;
+    if (this.running || prior === null || prior === undefined) return { ok: false };
+    try {
+      await this._recall(prior);
+      return { ok: true, program: prior };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+
   // Begins a walk. Nothing is sent until nextSlot() is called, so a caller can
   // set up its UI first and the instrument is never touched by starting.
   start(setlistIndex, bank) {
@@ -107,6 +166,7 @@ class TransferRunner extends EventEmitter {
     if (!plan.ok) return plan;
     this.running = true;
     this.cancelled = false;
+    this.priorProgram = null; // the walk owns the panel from here
     this.state = {
       bank,
       setlistIndex,
@@ -130,6 +190,14 @@ class TransferRunner extends EventEmitter {
       const patch = slot.action === 'send-sound'
         ? { sound: { name: slot.soundName }, params: {} }
         : this._patchFor(slot.ref);
+      // Move the instrument to the slot FIRST — a recall replaces the edit
+      // buffer, so doing it after the load would throw the load away.
+      try {
+        await this._recall((st.bank - 1) * SLOTS_PER_BANK + i);
+      } catch (err) {
+        return this.finish(`The Seven did not answer the recall for preset ${i + 1}, so nothing ` +
+          'was loaded for it. Check the cable and try again.');
+      }
       await this.sender.send(patch);
       st.sent.push(i);
       const step = {
@@ -162,11 +230,42 @@ class TransferRunner extends EventEmitter {
     return this.finish();
   }
 
-  finish() {
+  // Recall the target slot on the instrument so the panel's bank and preset
+  // LEDs match the button we are about to ask for. Gated on the unsolicited
+  // 0x45 the device broadcasts on every recall — the same completion signal
+  // the backup run uses — with the listener armed BEFORE the PC goes out so
+  // the broadcast cannot slip through the gap.
+  _recall(program) {
+    return new Promise((resolve, reject) => {
+      const onEvent = (ev) => {
+        if (ev.type !== 'current-sound') return;
+        cleanup();
+        resolve(program);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`no recall broadcast within ${RECALL_TIMEOUT_MS}ms`));
+      }, RECALL_TIMEOUT_MS);
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.midi.removeListener('event', onEvent);
+      };
+      this.midi.on('event', onEvent);
+      try {
+        this.midi.sendProgramChange(program);
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    });
+  }
+
+  finish(error) {
     const st = this.state || { confirmed: [], sent: [], slots: [], bank: null };
     const report = {
       type: 'transfer-done',
       bank: st.bank,
+      error: error || null,
       cancelled: this.cancelled,
       confirmed: st.confirmed.map((i) => i + 1),
       loadedNotConfirmed: st.sent.filter((i) => !st.confirmed.includes(i)).map((i) => i + 1),
