@@ -23,6 +23,26 @@
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
       --action: #4fb96a;
       --action-ink: #08150d;
+
+      /* Instrument illustrations (assets/instruments/*.svg, inlined so these
+         reach them — an SVG loaded through <img> is its own document and
+         inherits nothing). Flat-design colours, tuned per theme: the drawings
+         sit on the panel surface in dark mode and on the antiqued paper in
+         light, and the same greys read differently against each. */
+      --inst-chassis: #33333a;
+      --inst-chassis-accent: #565663;
+      --inst-outline: #0b0b0d;
+      --inst-hardware: #9a9aa4;
+      --inst-key-white: #efece4;
+      --inst-key-black: #17171a;
+      --inst-wood: #7a4a24;
+      --inst-wurlitzer-red: #c0392b;
+      --inst-dx7-turquoise: #29a396;
+      --inst-lcd: #3fbf6a;
+      --inst-grille: #9d968a;
+      --inst-rail: #cfc9ba;
+      --inst-stripe: #c0392b;
+      --inst-knob: #d98324;
       --warn: #d9a13b;
       --sampled: #4caf6d;
       --modeled: #5b8fd9;
@@ -52,6 +72,21 @@
       --amber: #8a5d00;
       --action: #2c8b4f;
       --action-ink: #f4f7f5;
+
+      --inst-chassis: #3f3f47;
+      --inst-chassis-accent: #6b6b78;
+      --inst-outline: #23232a;
+      --inst-hardware: #8d8d97;
+      --inst-key-white: #fbf8f1;
+      --inst-key-black: #23232a;
+      --inst-wood: #8b5424;
+      --inst-wurlitzer-red: #b7382c;
+      --inst-dx7-turquoise: #1f8d82;
+      --inst-lcd: #35a85c;
+      --inst-grille: #b3ab9b;
+      --inst-rail: #ddd7c8;
+      --inst-stripe: #b7382c;
+      --inst-knob: #c9761f;
       --warn: #7d5a10;
       --sampled: #1c7a45;
       --modeled: #2a5fae;
@@ -634,9 +669,13 @@
     .pick-mode.on { background: var(--shade-hard); color: var(--text); }
     /* Illustrated tiles are roomier than patch tiles — 24 instruments fit on a
        screen at this size, so the art can be legible without costing overview. */
-    .pick-grid-art { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .pick-grid-art { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
     .pick-tile-art { align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px; }
     .tile-art { color: var(--tile); display: block; line-height: 0; }
+    /* A drawn instrument brings its own colours; only the fallback line art is
+       tinted with the family colour. */
+    .tile-art.is-drawing { width: 100%; }
+    .tile-art.is-drawing svg { display: block; width: 100%; height: auto; }
     .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
     .pick-note {
       margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);

@@ -23,6 +23,18 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // same family document-wide.
   getPanelSvg: () =>
     readText('assets/seven-panel.svg').replace(/@font-face\s*{[^}]*}\s*/g, ''),
+  // Instrument illustrations, inlined. They must be INLINE for their CSS
+  // variables to resolve: an SVG loaded through <img> is a separate document
+  // and inherits nothing from the page, so it would render its fallback
+  // colours in both themes.
+  getInstrumentSvgs: () => {
+    const dir = path.join(root, 'assets', 'instruments');
+    const out = {};
+    for (const file of fs.readdirSync(dir)) {
+      if (file.endsWith('.svg')) out[file.replace(/\.svg$/, '')] = readText(path.join('assets', 'instruments', file));
+    }
+    return out;
+  },
   // Self-hosted fonts as data: URIs — path-independent and fully offline.
   getFontCss: () => {
     const face = (family, rel, { weight = '100 900', style = 'normal' } = {}) => {

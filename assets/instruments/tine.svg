@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="100%" height="100%">
+  <!-- Tine electric piano, suitcase model: a lid over a name rail, the keybed,
+       and a speaker cabinet on tapered legs. Drawn for this project — the
+       proportions and the parts are what makes one of these recognisable, so
+       none of them are invented, but there is no maker's badge anywhere on it.
+
+       Every id is prefixed, because several of these are inlined into one page
+       and a bare id="grille" would be claimed by whichever loaded first. -->
+  <defs>
+    <pattern id="tine-cloth" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M0 0h4v4H0z" fill="var(--inst-grille, #b9b2a2)"/>
+      <path d="M0 0h4M0 2h4" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".22" stroke-width=".6"/>
+      <path d="M0 0v4M2 0v4" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".14" stroke-width=".6"/>
+    </pattern>
+  </defs>
+
+  <!-- Speaker cabinet: the lower box, grille cloth inset behind a frame. -->
+  <rect x="46" y="96" width="148" height="42" rx="2"
+        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="2"/>
+  <rect x="54" y="102" width="132" height="30" fill="url(#tine-cloth)"
+        stroke="var(--inst-outline, #0f172a)" stroke-width="1.2"/>
+  <!-- Pedal rod, straight down from the cabinet's centre. -->
+  <path d="M120 138v10" stroke="var(--inst-hardware, #9a9aa4)" stroke-width="2.4"/>
+  <rect x="110" y="147" width="20" height="4" rx="1.5"
+        fill="var(--inst-hardware, #9a9aa4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1"/>
+
+  <!-- Tapered legs, splayed like the chrome ones on the real cabinets. -->
+  <g stroke="var(--inst-hardware, #9a9aa4)" stroke-width="3.4" stroke-linecap="round">
+    <path d="M56 138l-8 14"/>
+    <path d="M184 138l8 14"/>
+  </g>
+
+  <!-- Lid: the sloped top, darker along its face. -->
+  <path d="M40 34h160a4 4 0 0 1 4 4v20H36V38a4 4 0 0 1 4-4z"
+        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="2"/>
+  <path d="M36 44h168" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".45" stroke-width="1.2"/>
+
+  <!-- Name rail: cream strip carrying the controls, with the red pinstripe. -->
+  <rect x="36" y="58" width="168" height="14"
+        fill="var(--inst-rail, #d9d3c4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.6"/>
+  <path d="M36 70.5h168" stroke="var(--inst-stripe, #c0392b)" stroke-width="1.6"/>
+  <g stroke="var(--inst-outline, #0f172a)" stroke-width="1.1">
+    <circle cx="52" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
+    <circle cx="66" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
+    <rect x="78" y="62" width="26" height="6" rx="1" fill="var(--inst-chassis-accent, #565663)"/>
+    <rect x="110" y="62" width="26" height="6" rx="1" fill="var(--inst-chassis-accent, #565663)"/>
+    <circle cx="150" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
+    <circle cx="164" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
+  </g>
+
+  <!-- Keybed: white keys, then the black-key groups in their real 2-3 pattern. -->
+  <rect x="36" y="72" width="168" height="24"
+        fill="var(--inst-key-white, #efece4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.6"/>
+  <g stroke="var(--inst-outline, #0f172a)" stroke-opacity=".35" stroke-width=".7">
+    <path d="M44 84v12M52 84v12M60 84v12M68 84v12M76 84v12M84 84v12M92 84v12M100 84v12
+             M108 84v12M116 84v12M124 84v12M132 84v12M140 84v12M148 84v12M156 84v12
+             M164 84v12M172 84v12M180 84v12M188 84v12M196 84v12"/>
+  </g>
+  <g fill="var(--inst-key-black, #17171a)">
+    <rect x="42" y="72" width="5" height="12"/><rect x="53" y="72" width="5" height="12"/>
+    <rect x="70" y="72" width="5" height="12"/><rect x="81" y="72" width="5" height="12"/><rect x="92" y="72" width="5" height="12"/>
+    <rect x="109" y="72" width="5" height="12"/><rect x="120" y="72" width="5" height="12"/>
+    <rect x="137" y="72" width="5" height="12"/><rect x="148" y="72" width="5" height="12"/><rect x="159" y="72" width="5" height="12"/>
+    <rect x="176" y="72" width="5" height="12"/><rect x="187" y="72" width="5" height="12"/>
+  </g>
+</svg>

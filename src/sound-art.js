@@ -73,6 +73,11 @@
       '<path d="M9 22h29"/>' +
       '<path d="M12 9l14-4"/>' +
       '<path d="M12 22v7M35 22v7M24 22v5"/>',
+    // Upright: a tall cabinet with the keys at the front. Used when the drawn
+    // illustration is unavailable.
+    upright:
+      '<rect x="10" y="4" width="28" height="19" rx="1"/><path d="M13 7h22v8H13z"/>' +
+      '<path d="M7 23h34v5H7z"/><path d="M13 23v3M19 23v3M25 23v3M31 23v3"/>',
     // Sampled, with no instrument of its own: a waveform.
     wave: '<path d="M4 16h4l3-8 4 15 4-11 3 7 3-4h15"/>',
     // A sound this build has never seen.
@@ -85,6 +90,7 @@
   // Name → art. Ordered: the first match wins, so "Sampled Tine Piano" gets the
   // tine drawing rather than the generic sampled waveform.
   const RULES = [
+    [/upright/i, 'upright'],
     [/tine/i, 'tine'],
     [/reed|wurl/i, 'reed'],
     [/electric grand|\b70b\b|\bcp\b/i, 'grandLegs'],
@@ -101,9 +107,40 @@
     return sampled ? 'wave' : 'keys';
   }
 
-  // Returns a complete <svg>. Strokes use currentColor so a tile can tint the
-  // art with its engine colour without a second palette to keep in step.
+  // Drawn illustrations, one per instrument TYPE (assets/instruments). Where a
+  // sound has one, it is used instead of the line art — full colour, inlined so
+  // its CSS variables resolve against the page's theme. The line art remains
+  // for everything with no instrument to draw: a rack module, a vibraphone, a
+  // sample set that was never a physical machine.
+  const DRAWING_FOR = {
+    tine: 'tine',
+    reed: 'reed',
+    clavi: 'clavi',
+    grandLegs: 'cp70',
+    synth: 'dx7',
+    grand: 'grand',
+    upright: 'upright',
+  };
+
+  let drawings = null; // { name: svg markup }, loaded once through the preload seam
+
+  function drawingFor(artKey) {
+    if (drawings === null) {
+      drawings = (global.sevenAPI && global.sevenAPI.getInstrumentSvgs)
+        ? global.sevenAPI.getInstrumentSvgs()
+        : {};
+    }
+    const file = DRAWING_FOR[artKey];
+    return file ? drawings[file] || null : null;
+  }
+
+  // Returns a complete <svg>, or the drawing wrapped for the tile. Line-art
+  // strokes use currentColor so a tile can tint them with the engine colour;
+  // a drawing brings its own palette and is left alone.
   function iconFor(name, sampled) {
+    const key = artKeyFor(name, sampled);
+    const drawn = drawingFor(key);
+    if (drawn) return `<span class="sound-art is-drawing" aria-hidden="true">${drawn}</span>`;
     return (
       '<svg class="sound-art" viewBox="0 0 48 32" width="46" height="31" aria-hidden="true" ' +
       'fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" ' +

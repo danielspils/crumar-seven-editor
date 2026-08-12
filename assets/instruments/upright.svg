@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="100%" height="100%">
+  <rect x="45" y="138" width="16" height="12" fill="var(--inst-chassis, #1e293b)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.5" />
+  <rect x="179" y="138" width="16" height="12" fill="var(--inst-chassis, #1e293b)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.5" />
+  <rect x="40" y="25" width="160" height="115" rx="2" fill="var(--inst-chassis, #1e293b)" stroke="var(--inst-outline, #0f172a)" stroke-width="2" />
+  <rect x="52" y="35" width="136" height="45" fill="var(--inst-chassis-accent, #334155)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.5" />
+  <rect x="36" y="84" width="168" height="18" fill="var(--inst-key-white, #ffffff)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.5" />
+  <g fill="var(--inst-key-black, #0f172a)">
+    <rect x="44" y="84" width="4" height="10" /><rect x="52" y="84" width="4" height="10" />
+    <rect x="68" y="84" width="4" height="10" /><rect x="76" y="84" width="4" height="10" /><rect x="84" y="84" width="4" height="10" />
+    <rect x="100" y="84" width="4" height="10" /><rect x="108" y="84" width="4" height="10" />
+    <rect x="124" y="84" width="4" height="10" /><rect x="132" y="84" width="4" height="10" /><rect x="140" y="84" width="4" height="10" />
+    <rect x="156" y="84" width="4" height="10" /><rect x="164" y="84" width="4" height="10" />
+    <rect x="180" y="84" width="4" height="10" /><rect x="188" y="84" width="4" height="10" />
+  </g>
+  <line x1="52" y1="108" x2="188" y2="108" stroke="var(--inst-outline, #0f172a)" stroke-width="1.5" />
+</svg>
