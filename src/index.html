@@ -19,6 +19,10 @@
       --text-dim: #5e5e66;
       --accent: #ff3b30;      /* panel LED red */
       --amber: #ffb020;
+      /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
+         assets/seven-panel.svg). Filled buttons that DO something wear it. */
+      --action: #4fb96a;
+      --action-ink: #08150d;
       --warn: #d9a13b;
       --sampled: #4caf6d;
       --modeled: #5b8fd9;
@@ -46,6 +50,8 @@
       --text-dim: #8a8375;
       --accent: #b8362b;
       --amber: #8a5d00;
+      --action: #2c8b4f;
+      --action-ink: #f4f7f5;
       --warn: #7d5a10;
       --sampled: #1c7a45;
       --modeled: #2a5fae;
@@ -501,25 +507,25 @@
       position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 8px);
       z-index: 80; pointer-events: none;
       background: var(--bg-panel); color: var(--text);
-      border: 1px solid var(--line); border-left: 3px solid var(--amber);
+      border: 1px solid var(--line); border-left: 3px solid var(--action);
       border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600;
       box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
       opacity: 0; transition: opacity .15s ease, transform .15s ease;
     }
     #undo-toast.shown { opacity: 1; transform: translate(-50%, 0); }
     /* Work in progress rather than a result: centred in the window where the
-       eye already is, with an amber edge on both sides and a quiet pulse, so
+       eye already is, with the action colour on both edges and a quiet pulse, so
        it reads as "hold on" instead of "done". Results stay at the bottom —
        they are worth noticing, not worth interrupting for. */
     #undo-toast.is-busy {
       top: 50%; bottom: auto; transform: translate(-50%, calc(-50% + 8px));
       padding: 14px 24px; font-size: 13px;
-      border-left-color: var(--amber); border-right: 3px solid var(--amber);
+      border-left-color: var(--action); border-right: 3px solid var(--action);
     }
     #undo-toast.is-busy.shown { transform: translate(-50%, -50%); }
     #undo-toast.is-busy::after {
       content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px;
-      border-radius: 50%; background: var(--amber); vertical-align: middle;
+      border-radius: 50%; background: var(--action); vertical-align: middle;
       animation: toast-pulse 1s ease-in-out infinite;
     }
     @keyframes toast-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
@@ -535,7 +541,7 @@
       position: relative;
       width: min(440px, 92vw);
       background: var(--bg-panel); color: var(--text);
-      border: 1px solid var(--line); border-top: 4px solid var(--amber);
+      border: 1px solid var(--line); border-top: 4px solid var(--action);
       border-radius: 8px; padding: 20px 22px 18px;
       box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
     }
@@ -559,7 +565,7 @@
     .seven-modal-cancel:hover { color: var(--text); background: var(--shade-hard); }
     .seven-modal-title { padding-right: 28px; }
     .seven-modal-ok {
-      color: var(--bg); background: var(--amber); border: 1px solid var(--amber);
+      color: var(--action-ink); background: var(--action); border: 1px solid var(--action);
     }
     .seven-modal-second {
       font: inherit; font-size: 12px; font-weight: 600;
@@ -750,8 +756,8 @@
     .audition-note.is-error { color: var(--warn-text, #c0392b); }
     #save-live-btn {
       font: inherit; font-size: 12px; font-weight: 600;
-      color: var(--bg); background: var(--amber);
-      border: 1px solid var(--amber); border-radius: 5px;
+      color: var(--action-ink); background: var(--action);
+      border: 1px solid var(--action); border-radius: 5px;
       padding: 5px 12px; cursor: pointer; flex: none;
     }
     #save-live-btn:disabled { opacity: .6; cursor: default; }
@@ -769,10 +775,10 @@
     .param.is-live .seg { cursor: pointer; }
     .param.is-live .d6-half:not(.pressed):hover {
       background: var(--shade-hard); color: var(--text);
-      box-shadow: inset 0 0 0 1px var(--amber);
+      box-shadow: inset 0 0 0 1px var(--action);
     }
-    .param.is-live .d6-toggle:hover { box-shadow: inset 0 0 0 1px var(--amber); }
-    .param.is-live .seg:hover { background: var(--amber); }
+    .param.is-live .d6-toggle:hover { box-shadow: inset 0 0 0 1px var(--action); }
+    .param.is-live .seg:hover { background: var(--action); }
     .param.is-live .param-seg:hover .seg { background: var(--text-dim); }
     /* Audition mode reads as a state you are IN: the header sticks to the top
        of the detail panel as you scroll, and the panel wears an amber edge. */
@@ -780,16 +786,16 @@
       position: sticky; top: -16px; z-index: 5;
       padding-right: 48px; /* keeps the wrapped line clear of the close control */
       margin: -16px -20px 16px; padding: 10px 20px;
-      background: var(--bg); border-bottom: 2px solid var(--amber);
+      background: var(--bg); border-bottom: 2px solid var(--action);
       box-shadow: 0 6px 12px -8px rgba(0, 0, 0, .45);
     }
     .audition-mode {
       font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--bg); background: var(--amber);
+      color: var(--action-ink); background: var(--action);
       padding: 3px 8px; border-radius: 4px; flex: none;
     }
     .audition-patch { font-weight: 600; font-size: 13px; flex: none; }
-    .audition-dirty { color: var(--amber); margin-left: 6px; font-size: 15px; line-height: 1; }
+    .audition-dirty { color: var(--action); margin-left: 6px; font-size: 15px; line-height: 1; }
     #audition-btn.is-secondary { font-weight: 400; color: var(--text-muted); }
     /* The note's height is reserved, so swapping its text (hint, result,
        error) never reflows the row beneath it. */

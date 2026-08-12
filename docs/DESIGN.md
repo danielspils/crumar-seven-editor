@@ -32,6 +32,50 @@ One meaning per treatment — don't reuse these for anything else:
   always current, so there is no selection for it to indicate — its four LEDs
   carry which bank is active.
 
+## Colour system
+
+Colours are BORROWED FROM THE INSTRUMENT, never invented. The panel artwork is
+drawn from photographs of the Seven, so its palette is the instrument's own —
+and anything the app needs a colour for should come from there rather than
+from a designer's preference.
+
+| Role | Variable | Source | Used for |
+|---|---|---|---|
+| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | filled buttons that DO something: Start Audition, Save to Library, the AUDITION MODE chip, the live bar's edge |
+| Destructive | `--accent` | panel LED red | the selected-row edge, and any confirm that destroys something |
+| Navigation | `--amber` | the panel's amber legends | which tab or segment is selected, focus rings, an open rename field |
+| Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
+| Sampled | `--sampled` | panel green legend, darker | the Sampled badge, outlined |
+
+Two rules keep those from colliding:
+
+**Filled means action; outlined means state.** A filled green button does
+something when pressed. An outlined green badge is a label. The Sampled badge
+and the Save to Library button are both green and never read as the same kind
+of thing, because one is a filled control and the other is an outline.
+
+**Amber is for where you ARE, not for what to press.** The active bank tab, the
+active segment, a focus ring, a field being edited. It was doing double duty as
+the action colour, which is why the audition buttons read as louder than
+anything else on screen (Daniel, 2026-08-11: "pretty out there").
+
+### Both palettes, always
+
+Every variable is defined in BOTH `:root` (dark) and `:root[data-theme="light"]`,
+and `test/css-hazards.test.js` fails the build if one is missing. A colour that
+exists in one theme is invisible in the other until someone switches, which is
+exactly how the dropdown chevron stayed unreadable in light mode for weeks.
+
+The same test forbids a hardcoded colour inside a `data:` URI outside the
+palettes: an SVG in a data URI cannot inherit `currentColor`, so its stroke has
+to be written in — safe only where each theme supplies its own.
+
+### What is NOT themed
+
+The panel strip and its controls (the Clavinet-style tabs, the knobs, the
+pressed caps) keep their physical colours in both themes. They are a picture of
+a machine that does not change colour when the room lights do.
+
 ## Parameter rendering taxonomy
 
 How a parameter renders is decided from **schema data** (`max`, `values`,
