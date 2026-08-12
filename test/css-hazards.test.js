@@ -115,3 +115,38 @@ test('no interactive control sits inside a pointer-events:none wrapper', () => {
     .map((r) => `"${r.selector}" carries pointer-events:none but contains controls`);
   assert.deepStrictEqual(problems, []);
 });
+
+// ---- Light / dark parity ---------------------------------------------------
+// The app ships two palettes. A colour that exists in one and not the other is
+// invisible until someone switches themes — the dropdown chevron was baked as
+// a light stroke inside a data: URI and vanished in light mode for weeks.
+
+function paletteVars(selector) {
+  const block = css.slice(css.indexOf(selector));
+  const body = block.slice(block.indexOf('{') + 1, block.indexOf('}'));
+  return new Set((body.match(/--[a-z0-9-]+(?=\s*:)/g) || []));
+}
+
+test('both palettes define the same variables', () => {
+  const dark = paletteVars(':root {');
+  const light = paletteVars(':root[data-theme="light"]');
+  assert.ok(dark.size > 15 && light.size > 15, `palettes look empty: ${dark.size}/${light.size}`);
+  const missingInLight = [...dark].filter((v) => !light.has(v));
+  const missingInDark = [...light].filter((v) => !dark.has(v));
+  assert.deepStrictEqual(
+    { missingInLight, missingInDark },
+    { missingInLight: [], missingInDark: [] }
+  );
+});
+
+test('no data: URI hardcodes a colour outside the palettes', () => {
+  // An SVG in a data: URI cannot inherit currentColor, so its stroke has to be
+  // written in. That is only safe inside a palette, where each theme supplies
+  // its own — anywhere else it is one theme's colour used in both.
+  const paletteEnd = css.indexOf('}', css.indexOf(':root[data-theme="light"]'));
+  const afterPalettes = css.slice(paletteEnd);
+  const offenders = (afterPalettes.match(/url\(['"]?data:image\/svg\+xml[^)]*\)/g) || [])
+    .filter((u) => /stroke=%23|fill=%23|stroke="#|fill="#/.test(u))
+    .map((u) => u.slice(0, 80));
+  assert.deepStrictEqual(offenders, []);
+});
