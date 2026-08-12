@@ -44,6 +44,20 @@ const OP = {
 };
 
 const GLB_SEND_PC = 3; // pinned by a captured editor write (30 03 01, ack 31 03)
+
+// The nine globals are addressed 1:1 by index (verified sweep), but WHICH
+// setting each index is has only been pinned for three of them, against the
+// manufacturer editor's own display:
+//
+//   2 = Send CC        captured 0x30 frame
+//   3 = Send PC        captured 30 03 01 as the editor's Send PC went to YES
+//   8 = Memory Protect toggling OFF->ON moved slot 8 and nothing else
+//
+// The other six match that editor's page order, which is an assumption and not
+// evidence (docs/protocol.md keeps `orderUnverified`). Writing an index whose
+// meaning is a guess could change any setting on someone's instrument, so the
+// gate is here, at the wire, rather than in the UI that happens to call it.
+const PINNED_GLOBALS = new Set([2, GLB_SEND_PC, 8]);
 const STRING_FIRMWARE = 4; // string index 4 = firmware/build string
 const WFP_REDACTED = '[wfp redacted]';
 const MAX_VALID_PARAM_ID = 109;
@@ -495,6 +509,19 @@ class SevenMidi extends EventEmitter {
     return path.join(this.userDataDir, MARKER_FILE);
   }
 
+  // A global the USER asked to change. No pending-restore marker: the marker
+  // exists so the app can give back something it borrowed, and a choice the
+  // player made is not borrowed.
+  async setGlobalOption(index, value) {
+    if (this.state !== 'connected') throw new Error('not connected');
+    if (!PINNED_GLOBALS.has(index)) {
+      throw new Error(`glb ${index} has no verified meaning — refusing to write it`);
+    }
+    await this._setGlobal(index, value);
+    this.globals = await this.readGlobals();
+    return { index, value: this.globals.glb[index] };
+  }
+
   async setSendPc(value) {
     if (this.state !== 'connected') throw new Error('not connected');
     const current = this.globals.glb[GLB_SEND_PC];
@@ -545,4 +572,6 @@ class SevenMidi extends EventEmitter {
   }
 }
 
-module.exports = { SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_SEND_PC };
+module.exports = {
+  SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_SEND_PC, PINNED_GLOBALS,
+};

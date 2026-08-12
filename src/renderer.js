@@ -107,8 +107,16 @@
       // is inert rather than pretending it applies).
       const inertReason = opts && opts.inertReason;
       const inertCls = inertReason ? ' is-inert' : '';
+      // The reason is a TOOLTIP, not part of the label: the label column is
+      // sized to its longest entry, so a sentence in one row widened the
+      // column for every row (Daniel, 2026-08-12). What stays on screen is the
+      // short marker; the "why" is one hover away.
       const labelHtml =
-        esc(p.label) + (inertReason ? ` <em class="inert-note">${esc(inertReason)}</em>` : '');
+        `<span class="param-label-text">${esc(p.label)}</span>` +
+        (inertReason ? ` <em class="inert-note">${esc(inertReason.mark)}</em>` : '');
+      const labelTitle = inertReason
+        ? ` title="${esc(`${p.label} — ${inertReason.why}`)}"`
+        : '';
       // Raw numeric hidden by default on enum rows ("Pedal Wha-Wha", not
       // "Pedal Wha-Wha 3"). With showRaw on, the raw byte shows on every row —
       // for non-enums the displayed number already IS the raw value, so the
@@ -135,7 +143,7 @@
           .join('');
         return (
           `<div class="param param-enum ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
-          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-value"><span class="select-wrap">` +
           `<select class="param-select" data-key="${p.key}">${options}</select>` +
           `</span></span>` +
@@ -159,7 +167,7 @@
       if (p.max === 1 && p.values) {
         return (
           `<div class="param param-switch${inertCls}${liveCls}" ${attrs}>` +
-          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-pill-cell"><span class="d6-frame"><span class="d6-tab d6-choice">` +
           `<span class="d6-half${value === 0 ? ' pressed' : ''}" data-set="0">${esc(p.values[0])}</span>` +
           `<span class="d6-half${value === 1 ? ' pressed' : ''}" data-set="1">${esc(p.values[1])}</span>` +
@@ -173,7 +181,7 @@
         const cap = p.label.replace(/^Filter\s+/i, '');
         return (
           `<div class="param param-switch${inertCls}${liveCls}" ${attrs}>` +
-          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-pill-cell"><span class="d6-frame">` +
           `<span class="d6-tab d6-toggle${value === 1 ? ' pressed' : ''}" data-set="${value === 1 ? 0 : 1}">${esc(cap)}</span>` +
           `</span></span>` +
@@ -194,7 +202,7 @@
         const posText = view && view.showRaw ? `${pos} <em>${value}</em>` : pos;
         return (
           `<div class="param param-discrete ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
-          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-seg">${segs}</span>` +
           `<span class="param-value">${posText}</span>` +
           `</div>`
@@ -211,7 +219,7 @@
         const width = Math.abs(valPct - centrePct);
         return (
           `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
-          `<span class="param-label">${labelHtml}</span>` +
+          `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span>` +
           `<span class="param-bar-knob" style="left:${valPct}%"></span></span>` +
           `<span class="param-value">${String(value)}</span>` +
@@ -221,7 +229,7 @@
       // CONTINUOUS: plain left-origin bar.
       return (
         `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
-        `<span class="param-label">${labelHtml}</span>` +
+        `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
         `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span>` +
         // A mark AT the value: something to aim a drag at, and the only way a
         // value of zero shows at all — an empty fill and an empty bar look the
@@ -287,7 +295,13 @@
           // piano (manual) — show it as inert instead of pretending it applies.
           const opts =
             p.key === 'rom_p05' && !/piano|grand|upright/i.test(patch.soundName || '')
-              ? { inertReason: '— inert: loaded sample isn’t a piano' }
+              ? {
+                inertReason: {
+                  mark: 'not used',
+                  why: 'This control only does something when the loaded sample is a ' +
+                    'piano. The Seven still stores a value for it.',
+                },
+              }
               : undefined;
           return paramRow(p, patch.params[p.key], view, opts);
         })

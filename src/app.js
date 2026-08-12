@@ -1267,6 +1267,93 @@
       soundsPanel.hidden = !open;
       soundsBtn.classList.toggle('open', open);
     };
+    // ---- Instrument settings (the nine globals) ---------------------------
+    // Every slot is shown, because a raw value is worth seeing even when we
+    // cannot name it. Only the three whose meaning is PINNED against the
+    // device offer a switch; the rest are read-only and say so. The names for
+    // the other six come from the manufacturer editor's page order, which is
+    // an assumption — marked as one rather than presented as fact.
+    const settingsBtn = document.getElementById('settings-button');
+    const settingsPanel = document.getElementById('settings-panel');
+    const GLB_NAMES = [
+      'Channel', 'Alt. Channel', 'Send CC', 'Send PC', 'MIDI Soft-Thru',
+      'Sustain Polarity', 'Volume Type', 'Velocity Curve', 'Memory Protect',
+    ];
+    // What a value MEANS is only known for the switches: 1 = on, captured as
+    // the editor's Send PC went to YES. Everything else keeps its raw number.
+    const SWITCHES = new Set([2, 3, 8]);
+
+    const renderSettings = (g) => {
+      const rows = settingsPanel.querySelector('.settings-rows');
+      const writable = new Set(g.writable || []);
+      rows.replaceChildren(...g.glb.map((value, index) => {
+        const row = document.createElement('div');
+        row.className = `set-row${writable.has(index) ? '' : ' is-unverified'}`;
+        const name = document.createElement('span');
+        name.className = 'set-name';
+        name.textContent = GLB_NAMES[index] || `Global ${index}`;
+        if (!writable.has(index)) {
+          const tag = document.createElement('span');
+          tag.className = 'set-guess';
+          tag.textContent = 'name unverified';
+          tag.title = 'This slot\u2019s meaning has not been confirmed against the ' +
+            'instrument, so the app will not write it.';
+          name.appendChild(tag);
+        }
+        row.appendChild(name);
+        if (writable.has(index) && SWITCHES.has(index)) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'set-toggle';
+          const on = value === 1;
+          btn.setAttribute('aria-pressed', String(on));
+          btn.textContent = on ? 'On' : 'Off';
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const r = await window.sevenAPI.midi.setGlobal(index, on ? 0 : 1);
+            btn.disabled = false;
+            if (!r.ok) return toast(r.error || 'The Seven refused that change');
+            // Re-read rather than assume: the row shows what the instrument
+            // reports it now holds, not what we asked for.
+            const fresh = await window.sevenAPI.midi.globals();
+            if (fresh.ok) renderSettings(fresh);
+          });
+          row.appendChild(btn);
+        } else {
+          const val = document.createElement('span');
+          val.className = 'set-value';
+          val.textContent = value;
+          row.appendChild(val);
+        }
+        return row;
+      }));
+      settingsPanel.querySelector('.settings-foot').textContent =
+        `Tuning ${g.tun} Hz. Six of the nine settings are shown read-only: their ` +
+        'names come from the manufacturer editor\u2019s page order, which this project ' +
+        'has not confirmed against the instrument, and writing a slot whose meaning ' +
+        'is a guess could change any setting on your Seven. A transfer borrows Send PC ' +
+        'while it runs and puts it back.';
+    };
+
+    const setSettingsOpen = async (open) => {
+      settingsPanel.hidden = !open;
+      settingsBtn.classList.toggle('open', open);
+      if (!open) return;
+      const g = await window.sevenAPI.midi.globals();
+      if (g.ok) return renderSettings(g);
+      // These are the INSTRUMENT's settings, so there is nothing to show
+      // without one — but the gear stays put and says so, rather than
+      // disappearing and leaving you hunting for it.
+      settingsPanel.querySelector('.settings-rows').replaceChildren();
+      settingsPanel.querySelector('.settings-foot').textContent =
+        'These are the Seven\u2019s own settings, read from the instrument. Connect it to see them.';
+    };
+    settingsBtn.addEventListener('click', () => setSettingsOpen(settingsPanel.hidden));
+    document.addEventListener('click', (e) => {
+      if (!settingsPanel.hidden && !settingsPanel.contains(e.target) &&
+          !settingsBtn.contains(e.target)) setSettingsOpen(false);
+    });
+
     soundsBtn.addEventListener('click', () => setSoundsOpen(soundsPanel.hidden));
     document.addEventListener('click', (e) => {
       if (!soundsPanel.hidden && !soundsPanel.contains(e.target) && e.target !== soundsBtn) {
@@ -1316,7 +1403,13 @@
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
       soundsBtn.hidden = s.state !== 'connected' || !s.soundTable;
-      if (s.state !== 'connected') { backupRunning = false; setSoundsOpen(false); }
+      // Always offered: a settings gear that vanishes is a settings gear you
+      // go looking for. It is the PANEL that reports there is no instrument.
+      if (s.state !== 'connected') {
+        backupRunning = false;
+        setSoundsOpen(false);
+        setSettingsOpen(false);
+      }
     };
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;

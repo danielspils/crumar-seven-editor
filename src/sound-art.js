@@ -103,6 +103,10 @@
     // the upright rule on purpose: a "Venice Upright U1" is an upright, and
     // the picture should say what the instrument is before it says which
     // family it belongs to.
+    // "Combo Piano" is a sampled set whose instrument nobody here can name —
+    // it sounds like a stack of DX7s, and the picture says exactly that rather
+    // than borrowing the acoustic grand it would otherwise fall into.
+    [/combo/i, 'combo'],
     [/venice/i, 'venice'],
     [/grand|piano/i, 'grand'],
   ];
@@ -124,6 +128,9 @@
     clavi: 'clavi',
     grandLegs: 'cp70',
     synth: 'dx7',
+    rack: 'mks80',
+    vibes: 'vibes',
+    combo: 'combo',
     grand: 'grand',
     venice: 'venice',
     upright: 'upright',

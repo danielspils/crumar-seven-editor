@@ -265,6 +265,27 @@ function registerEditIpc() {
     return map;
   });
 
+  // The instrument's own global options. Read is the whole array; the write
+  // is refused by the MIDI layer for any index whose meaning has not been
+  // pinned against the device (see PINNED_GLOBALS there).
+  ipcMain.handle('midi:globals', async () => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false };
+    const { PINNED_GLOBALS } = require('./seven-midi');
+    const g = midi.globals || await midi.readGlobals();
+    // glb and tun only — the reply also carries wfp, which the parse layer has
+    // already replaced and which must never travel further than this process.
+    return { ok: true, tun: g.tun, glb: g.glb.slice(), writable: [...PINNED_GLOBALS] };
+  });
+
+  ipcMain.handle('midi:setGlobal', async (_e, { index, value }) => {
+    try {
+      return { ok: true, ...(await getMidi().setGlobalOption(index, value)) };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
   // Recall a preset ON THE INSTRUMENT. The bank region mirrors hardware, so
   // clicking a slot there should move the hardware — the library region never
   // does this, because a file is not a slot.

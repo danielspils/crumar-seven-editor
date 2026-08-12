@@ -263,6 +263,57 @@
       color: #16161a; font-weight: 600;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
     }
+    /* [hidden] is a UA rule (display:none) and ANY author display wins over
+       it — so a bare `display: inline-flex` here made the gear render while
+       hidden, which is how it turned up in the connection row with no
+       instrument attached. Scope the display to the not-hidden case. */
+    #settings-button {
+      font: inherit; font-size: 12px; padding: 2px 10px;
+      color: #26262a; background: none;
+      border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 4px; cursor: pointer;
+    }
+    #settings-button:hover, #settings-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
+    #settings-panel {
+      position: absolute; top: 100%; right: 12px; z-index: 30;
+      min-width: 430px; max-height: 70vh; overflow-y: auto;
+      background: var(--bg-raised); border: 1px solid var(--line);
+      border-top: none; border-radius: 0 0 6px 6px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+      padding: 12px 16px 10px;
+    }
+    .settings-head {
+      font-size: 12px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
+    }
+    .set-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 0; border-top: 1px solid var(--line);
+    }
+    .set-row:first-child { border-top: none; }
+    .set-name { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+    /* A name we have not pinned against the device is shown, because the raw
+       value is still worth seeing — but it is marked, and it cannot be
+       written. */
+    .set-row.is-unverified .set-name { color: var(--text-muted); }
+    .set-guess {
+      margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+    .set-value { flex: none; font-size: 12px; color: var(--text-dim); min-width: 26px; text-align: right; }
+    .set-toggle {
+      flex: none; font: inherit; font-size: 11px; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase;
+      padding: 2px 10px; border-radius: 10px; cursor: pointer;
+      color: var(--text-muted); background: none; border: 1px solid var(--line);
+    }
+    .set-toggle[aria-pressed="true"] {
+      color: var(--action-ink); background: var(--action); border-color: var(--action);
+    }
+    .set-toggle:disabled { opacity: .5; cursor: default; }
+    .settings-foot {
+      margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+      font-size: 12px; color: var(--text-dim); line-height: 1.5;
+    }
     #sounds-panel {
       position: absolute; top: 100%; right: 12px; z-index: 30;
       min-width: 460px; max-height: 60vh; overflow-y: auto;
@@ -572,9 +623,14 @@
     /* Same hierarchy as a library row — name + badge, then provenance +
        sound — with the slot controls in their own column so both text rows
        stop short of the ✕. */
-    /* Undo feedback: says what was put back, then gets out of the way. */
+    /* Feedback, centred in the window rather than parked at the bottom edge.
+       Down there it was missed: the eye is on the library or the panel, and a
+       message that appears outside where you are looking may as well not have
+       appeared (Daniel, 2026-08-12 — "I'm still seeing a modal in the lower
+       portion flash by"). Everything the app says now arrives in the same
+       place the modals do. */
     #undo-toast {
-      position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 8px);
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 8px));
       z-index: 80; pointer-events: none;
       background: var(--bg-panel); color: var(--text);
       border: 1px solid var(--line); border-left: 3px solid var(--action);
@@ -582,13 +638,11 @@
       box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
       opacity: 0; transition: opacity .15s ease, transform .15s ease;
     }
-    #undo-toast.shown { opacity: 1; transform: translate(-50%, 0); }
-    /* Work in progress rather than a result: centred in the window where the
-       eye already is, with the action colour on both edges and a quiet pulse, so
-       it reads as "hold on" instead of "done". Results stay at the bottom —
-       they are worth noticing, not worth interrupting for. */
+    #undo-toast.shown { opacity: 1; transform: translate(-50%, -50%); }
+    /* Work in progress rather than a result: the action colour on both edges
+       and a quiet pulse, so it reads as "hold on" instead of "done". Same
+       position as any other message — only the treatment differs. */
     #undo-toast.is-busy {
-      top: 50%; bottom: auto; transform: translate(-50%, calc(-50% + 8px));
       padding: 14px 24px; font-size: 13px;
       border-left-color: var(--action); border-right: 3px solid var(--action);
     }
@@ -880,9 +934,15 @@
     .slot-undo:hover { color: var(--text); }
     .lib-slot-missing .slot-text { color: var(--warn); }
     /* Setlist editing */
+    /* Pinned to the bottom of the scroller. It sat at the end of the list, so
+       with enough setlists it fell below the fold and could not be clicked at
+       all — and any small change elsewhere in the window (one more button in
+       the connection row) was enough to tip it over. A control that creates
+       things should not be the thing you have to scroll to find. */
     .lib-new-setlist {
+      position: sticky; bottom: 0; z-index: 1;
       display: block; width: 100%; padding: 9px 6px;
-      background: none; border: none; border-bottom: 1px solid var(--line);
+      background: var(--bg); border: none; border-top: 1px solid var(--line);
       color: var(--text-muted); font: inherit; text-align: left; cursor: pointer;
     }
     .lib-new-setlist:hover { background: var(--bg-raised); color: var(--text); }
@@ -1246,7 +1306,10 @@
        takes ALL remaining width. Bar start therefore differs between groups
        (engine vs each effects section) but aligns within one — intended. */
     .params {
-      display: grid; grid-template-columns: max-content 1fr minmax(40px, max-content);
+      /* fit-content, not max-content: the label column still shrinks to its
+         content, but one long label can no longer stretch it — and with it
+         every row — past a sane share of the column. */
+      display: grid; grid-template-columns: fit-content(46%) 1fr minmax(40px, max-content);
       column-gap: 10px;
     }
     .param {
@@ -1348,10 +1411,18 @@
       <button id="sounds-button" type="button" hidden>24 sounds</button>
       <button id="backup-button" type="button" hidden>Back up instrument</button>
       <button id="conn-button" type="button">Connect</button>
+      <button id="settings-button" type="button" title="The Seven’s own settings">Settings</button>
     </span>
     <!-- Expansion visibility: what THIS unit has installed, per the sound
          table read on connect. Sound ids are unit-specific; the fingerprint
          is what backups reference. -->
+    <!-- The instrument's own global options. Nine slots, three of them with a
+         verified meaning; see seven-midi.js PINNED_GLOBALS. -->
+    <div id="settings-panel" hidden>
+      <div class="settings-head">Instrument settings</div>
+      <div class="settings-rows"></div>
+      <div class="settings-foot"></div>
+    </div>
     <div id="sounds-panel" hidden>
       <div class="sounds-cols"></div>
       <div class="sounds-foot"></div>
