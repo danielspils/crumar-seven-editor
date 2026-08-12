@@ -28,12 +28,20 @@
 //     where a three-second hold lands — putting the instrument on the target
 //     slot ourselves is the only way to remove that gap. If the recall is not
 //     acknowledged, the walk STOPS rather than write a preset blind.
+//   - SEND PC IS BORROWED, NOT ASSUMED. Detecting the player's hold depends on
+//     it, but it is a setting people turn off for real reasons. The run turns
+//     it on if it has to and puts it back when it finishes.
 
 const { EventEmitter } = require('node:events');
 
 const SLOTS_PER_BANK = 8;
 const BLOCKED_BANK = 1;
 const RECALL_TIMEOUT_MS = 1500;
+// How long the CC burst has to close after its 0x45. Measured at ~55ms on the
+// wire (captures/store-hold-2026-08-12); this is generous.
+const BURST_TAIL_MS = 400;
+// glb index 3, pinned by a captured editor write (see seven-midi.js).
+const SEND_PC_INDEX = 3;
 
 class TransferRunner extends EventEmitter {
   constructor({ midi, store, sender }) {
@@ -45,6 +53,8 @@ class TransferRunner extends EventEmitter {
     this.cancelled = false;
     this.state = null;
     this.priorProgram = null; // where the panel was before selectBank() moved it
+    this._storeWatch = null;  // unsubscribe for the hold detector, when armed
+    this._borrowedSendPc = false; // did WE turn Send PC on for this run?
   }
 
   // Resolve a setlist against the connected instrument WITHOUT sending
@@ -192,14 +202,21 @@ class TransferRunner extends EventEmitter {
         : this._patchFor(slot.ref);
       // Move the instrument to the slot FIRST — a recall replaces the edit
       // buffer, so doing it after the load would throw the load away.
+      let before = null;
+      this._unwatchStore();
+      // Before the first recall of the run, so the very first burst can close.
+      if (st.sent.length === 0) await this._borrowSendPc();
       try {
-        await this._recall((st.bank - 1) * SLOTS_PER_BANK + i);
+        before = await this._recall((st.bank - 1) * SLOTS_PER_BANK + i);
       } catch (err) {
         return this.finish(`The Seven did not answer the recall for preset ${i + 1}, so nothing ` +
           'was loaded for it. Check the cable and try again.');
       }
       await this.sender.send(patch);
       st.sent.push(i);
+      // Armed only after the patch is in the buffer: a burst before that could
+      // not be the store we are waiting for.
+      this._watchForStore(i, before);
       const step = {
         slot: i,
         preset: i + 1,
@@ -235,12 +252,92 @@ class TransferRunner extends EventEmitter {
   // 0x45 the device broadcasts on every recall — the same completion signal
   // the backup run uses — with the listener armed BEFORE the PC goes out so
   // the broadcast cannot slip through the gap.
+  // Send PC is what makes the hold visible to us: without it the panel emits no
+  // Program Change, the recall burst never closes, and there is nothing to
+  // detect. Plenty of people keep it OFF for good reasons — the Seven transmits
+  // Program Change to everything downstream, so a recall can yank a module's or
+  // a laptop's patch too, and stray PCs land in a DAW take.
+  //
+  // So the transfer BORROWS it rather than assuming it. The marker file is
+  // written before the change (seven-midi.js), which means even a crash mid-run
+  // leaves a note for the next launch to put it back.
+  async _borrowSendPc() {
+    this._borrowedSendPc = false;
+    const midi = this.midi;
+    if (!midi || typeof midi.setSendPc !== 'function') return;
+    if (!midi.globals || midi.globals.glb[SEND_PC_INDEX] === 1) return; // already on
+    try {
+      await midi.setSendPc(1);
+      this._borrowedSendPc = true;
+    } catch {
+      // Not fatal: the walk still runs, it just runs on the button.
+    }
+  }
+
+  _returnSendPc() {
+    if (!this._borrowedSendPc) return;
+    this._borrowedSendPc = false;
+    // Deliberately not awaited: finish() answers the UI synchronously, and the
+    // marker on disk is what guarantees this happens even if we die here.
+    Promise.resolve(this.midi.restoreSendPc()).catch(() => {});
+  }
+
+  // Watch for the player's three-second hold, which the Seven does not
+  // announce. Captured at the instrument 2026-08-12: a hold emits exactly what
+  // a tap emits — 0x45, the 22 CCs, then the PC — so there is no marker to look
+  // for. What differs is the CONTENTS. The burst following a store carries what
+  // was just written; the burst following a tap carries what the preset held
+  // before. We already have the "before" from the recall this runner does on
+  // its way in, so a burst on the same slot that differs from it is a write.
+  //
+  // Ambiguity is resolved toward saying nothing: if the patch we sent happens
+  // to match what the slot already held, both bursts are identical and this
+  // stays quiet. The button is always there, and a slot that already holds the
+  // right patch is not a wrong outcome.
+  _watchForStore(slotIndex, before) {
+    this._unwatchStore();
+    if (!before || !this.midi || typeof this.midi.on !== 'function') return;
+    const program = (this.state.bank - 1) * SLOTS_PER_BANK + slotIndex;
+    const onEvent = (ev) => {
+      if (ev.type !== 'recall-burst' || ev.program !== program) return;
+      if (ev.fingerprint === before) return; // a tap: the preset is unchanged
+      this._unwatchStore();
+      this.emit('event', {
+        type: 'transfer-stored',
+        slot: slotIndex,
+        preset: slotIndex + 1,
+        bank: this.state.bank,
+      });
+    };
+    this.midi.on('event', onEvent);
+    this._storeWatch = () => this.midi.removeListener('event', onEvent);
+  }
+
+  _unwatchStore() {
+    if (this._storeWatch) this._storeWatch();
+    this._storeWatch = null;
+  }
+
+  // Recall a slot AND capture what it holds, which is the reference the store
+  // detection above compares against. Resolves the burst fingerprint, or null
+  // when the burst never completed (Send PC off — then there is no detection
+  // and the walk runs on the button alone).
   _recall(program) {
     return new Promise((resolve, reject) => {
+      let sound = false;
       const onEvent = (ev) => {
+        if (ev.type === 'recall-burst' && ev.program === program) {
+          cleanup();
+          resolve(ev.fingerprint);
+          return;
+        }
         if (ev.type !== 'current-sound') return;
-        cleanup();
-        resolve(program);
+        // The 0x45 alone is the completion signal the backup run uses, and it
+        // is enough to know the recall landed. Give the CC burst a moment to
+        // close after it; if no PC follows, resolve without a fingerprint.
+        if (sound) return;
+        sound = true;
+        setTimeout(() => { cleanup(); resolve(null); }, BURST_TAIL_MS);
       };
       const timer = setTimeout(() => {
         cleanup();
@@ -261,6 +358,8 @@ class TransferRunner extends EventEmitter {
   }
 
   finish(error) {
+    this._unwatchStore();
+    this._returnSendPc();
     const st = this.state || { confirmed: [], sent: [], slots: [], bank: null };
     const report = {
       type: 'transfer-done',

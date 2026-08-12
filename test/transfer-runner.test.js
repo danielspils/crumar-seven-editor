@@ -25,20 +25,40 @@ const params = (v) => Object.fromEntries(schema.parameters.map((p) => [p.key, Ma
 // unsolicited 0x45 ("current-sound") the real Seven broadcasts on every recall,
 // which is what the runner gates the load on. `deaf: true` swallows the PC and
 // answers nothing, the way a pulled cable does.
-function fakeMidi({ sounds, connected, deaf = false }) {
+function fakeMidi({ sounds, connected, deaf = false, sendPc = 1 }) {
   const midi = new EventEmitter();
   midi.state = connected ? 'connected' : 'disconnected';
+  // glb[3] is Send PC. The runner borrows it when it is off, because the hold
+  // detection cannot see anything without it.
+  midi.globals = { glb: { 3: sendPc } };
+  midi.sendPcWrites = [];
+  midi.restored = 0;
+  midi.setSendPc = async (v) => { midi.sendPcWrites.push(v); midi.globals.glb[3] = v; };
+  midi.restoreSendPc = async () => { midi.restored += 1; midi.globals.glb[3] = sendPc; };
   midi.soundTable = { sounds: sounds.map((name, id) => ({ id, name })) };
   midi.recalled = [];
+  // What each slot currently holds, as the device's burst fingerprint. The
+  // recall broadcast carries it; so does the broadcast after a store, which is
+  // the whole basis of hold detection.
+  midi.slotContents = new Map();
+  midi.burst = (program) => {
+    midi.emit('event', { type: 'current-sound', soundId: 0 });
+    midi.emit('event', {
+      type: 'recall-burst',
+      program,
+      soundId: 0,
+      fingerprint: midi.slotContents.get(program) || `slot-${program}`,
+    });
+  };
   midi.sendProgramChange = (program) => {
     midi.recalled.push(program);
     if (deaf) return;
-    setImmediate(() => midi.emit('event', { type: 'current-sound', soundId: 0 }));
+    setImmediate(() => midi.burst(program));
   };
   return midi;
 }
 
-function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf = false } = {}) {
+function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf = false, sendPc = 1 } = {}) {
   const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'seven-transfer-')), 'Library');
   const store = new LibraryStore(dir, schema, {
     banks: [{ patches: [
@@ -47,7 +67,7 @@ function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf 
     ] }],
   });
   const entries = store.list().patches;
-  const midi = fakeMidi({ sounds, connected, deaf });
+  const midi = fakeMidi({ sounds, connected, deaf, sendPc });
   const sent = [];
   const sender = { send: async (patch) => { sent.push(patch); return { sent: 1 }; } };
   return { store, midi, sender, sent, entries, dir };
@@ -256,6 +276,102 @@ test('an unanswered recall stops the walk rather than writing blind', async () =
   assert.match(done.error, /did not answer the recall for preset 1/);
   assert.deepStrictEqual(sent, [], 'nothing was loaded');
   assert.deepStrictEqual(done.confirmed, []);
+});
+
+// The Seven never says "stored". These pin the only thing that distinguishes a
+// three-second hold from a tap: what the burst afterwards CARRIES.
+// See captures/store-hold-2026-08-12-notes.md.
+test('a hold is detected by the slot broadcasting different contents', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file, entries[1].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  const seen = [];
+  runner.on('event', (ev) => { if (ev.type === 'transfer-stored') seen.push(ev.preset); });
+  runner.start(list, 2);
+  await runner.nextSlot(); // recalls slot 8, loads preset 1
+
+  // The player holds the button: the preset now holds what we sent, so its
+  // next broadcast differs from the one the recall gave us.
+  midi.slotContents.set(8, 'the-patch-we-sent');
+  midi.burst(8);
+  assert.deepStrictEqual(seen, [1]);
+});
+
+test('a tap is not a hold — same contents, no claim', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  const seen = [];
+  runner.on('event', (ev) => { if (ev.type === 'transfer-stored') seen.push(ev.preset); });
+  runner.start(list, 2);
+  await runner.nextSlot();
+
+  midi.burst(8); // unchanged fingerprint: the preset was recalled, not written
+  assert.deepStrictEqual(seen, [], 'nothing is claimed on ambiguous evidence');
+});
+
+test('a burst on another slot is not this slot being stored', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  const seen = [];
+  runner.on('event', (ev) => { if (ev.type === 'transfer-stored') seen.push(ev.preset); });
+  runner.start(list, 2);
+  await runner.nextSlot();
+
+  midi.slotContents.set(11, 'something-else');
+  midi.burst(11); // the player wandered off to preset 4
+  assert.deepStrictEqual(seen, []);
+});
+
+test('the detector is disarmed once the walk is over', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  const seen = [];
+  runner.on('event', (ev) => { if (ev.type === 'transfer-stored') seen.push(ev.preset); });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  await runner.confirmSlot(); // finishes: nothing left to send
+
+  midi.slotContents.set(8, 'changed-later');
+  midi.burst(8);
+  assert.deepStrictEqual(seen, [], 'a preset edited after the run is not our business');
+});
+
+test('Send PC is borrowed when it is off, and given back at the end', async () => {
+  const { store, midi, sender, entries } = setup({ sendPc: 0 });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+
+  await runner.nextSlot();
+  assert.deepStrictEqual(midi.sendPcWrites, [1], 'turned on for the run');
+  assert.strictEqual(midi.restored, 0, 'still borrowed mid-walk');
+
+  await runner.confirmSlot(); // finishes
+  assert.strictEqual(midi.restored, 1, 'put back when the run ends');
+});
+
+test('Send PC already on is left alone', async () => {
+  const { store, midi, sender, entries } = setup({ sendPc: 1 });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  await runner.confirmSlot();
+  assert.deepStrictEqual(midi.sendPcWrites, [], 'nothing written');
+  assert.strictEqual(midi.restored, 0, 'nothing to restore — we never took it');
+});
+
+test('a borrowed Send PC is returned even when the walk is stopped', async () => {
+  const { store, midi, sender, entries } = setup({ sendPc: 0 });
+  const list = setlistWith(store, [entries[0].file, entries[1].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  runner.cancel();
+  assert.strictEqual(midi.restored, 1);
 });
 
 test('refuses without a connection', () => {

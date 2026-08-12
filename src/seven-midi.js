@@ -329,6 +329,12 @@ class SevenMidi extends EventEmitter {
     if (op === OP.CURRENT_SOUND) {
       // F0 .. 45 <binary soundId> <ascii first digit> F7 — fires on every
       // preset recall (followed by a CC burst) and every sound change (not).
+      // A recall opens a BURST: this frame, then the 22 panel CCs, closed by
+      // the Program Change ~55ms later. Assembled here because it is one event
+      // on the wire even though it arrives as 24 messages, and because what it
+      // CARRIES is the only way to tell a store from a tap — the two are
+      // identical frame for frame (captures/store-hold-2026-08-12-notes.md).
+      this._burst = { soundId: msg[5], ccs: [] };
       this.emit('event', { type: 'current-sound', soundId: msg[5] });
     } else if (op === OP.SOUND_NAME) {
       this.emit('event', {
@@ -340,6 +346,7 @@ class SevenMidi extends EventEmitter {
   _handleNonSysex(msg) {
     const status = msg[0] & 0xf0;
     if (status === 0xb0) {
+      if (this._burst) this._burst.ccs.push([msg[1], msg[2]]);
       this.emit('event', { type: 'panel-cc', cc: msg[1], value: msg[2] });
       return;
     }
@@ -354,6 +361,21 @@ class SevenMidi extends EventEmitter {
         bank: Math.floor(msg[1] / 8) + 1,
         preset: (msg[1] % 8) + 1,
       });
+      // The PC closes the burst the 0x45 opened. The fingerprint is the sound
+      // id and the CC bytes as they arrived — compared, never decoded: how a
+      // CC maps onto a parameter's range is still unverified for sub-127-max
+      // params (protocol.md open item 8), so these are opaque evidence that
+      // the slot's contents did or did not change.
+      if (this._burst) {
+        const { soundId, ccs } = this._burst;
+        this._burst = null;
+        this.emit('event', {
+          type: 'recall-burst',
+          program: msg[1],
+          soundId,
+          fingerprint: `${soundId}|${ccs.map(([c, v]) => `${c}:${v}`).join(',')}`,
+        });
+      }
     }
     // Panel moves announce themselves by CC (the 22 fixed panel CCs, flag=1
     // params — protocol.md). The VALUE is not decoded here and never should
