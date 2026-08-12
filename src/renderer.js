@@ -318,13 +318,17 @@
         // gave every switch a values array — it matched nothing and
         // [].every() is vacuously true, so the warning fired for every
         // Clavi patch.
+        `</div>` +
+        `<div class="params">${rowsFor(group, patch, view)}</div>` +
+        // BELOW the controls, not above them. It appears and disappears as the
+        // switches are flipped, and from the header it shoved every row down
+        // mid-gesture — moving the switch out from under the pointer that just
+        // turned it off.
         (group === 'pno_zd6' &&
         ['zd6_sf', 'zd6_md', 'zd6_tr', 'zd6_br']
           .every((k) => (patch.params[k] ?? 0) === 0)
           ? `<div class="warn-banner">⚠ All four filter switches are off — the Clavinet produces no sound in this state.</div>`
           : '') +
-        `</div>` +
-        `<div class="params">${rowsFor(group, patch, view)}</div>` +
         `</div>`
       );
     }
