@@ -51,11 +51,12 @@
     const moved = here.name !== patch.soundName;
     return (
       `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}" data-carousel>` +
+      // No arrows: the neighbours ARE the targets. An arrow is a control that
+      // points at a thing you could have pointed at yourself, and it sat on
+      // top of the very picture it was scrolling.
       face(wrap(at - 1), 'is-peek is-prev') +
       face(here, 'is-hero') +
       face(wrap(at + 1), 'is-peek is-next') +
-      `<button type="button" class="car-arrow car-prev" data-car-step="-1" aria-label="Previous instrument">‹</button>` +
-      `<button type="button" class="car-arrow car-next" data-car-step="1" aria-label="Next instrument">›</button>` +
       `</div>`
     );
   }

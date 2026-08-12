@@ -38,9 +38,22 @@
   // this module only asks which file is in front of the user.
   const auditionTarget = () => deps.getTarget();
 
+  // The bar says ONE thing, and only once there is something to say: your
+  // changes are not saved, and here is how to keep them.
+  //
+  // It used to announce a mode — AUDITION MODE, with a chip, a Reset button
+  // and a way out. That mode was never a place the player was in; it was the
+  // app's own bookkeeping for "the instrument's buffer holds what is on
+  // screen", which selecting a patch now guarantees on its own. What is left
+  // is the fact the app cannot do for you: storing needs your hands on the
+  // panel (Daniel, 2026-08-12).
+  const SAVE_HINT = 'In banks 2, 3, or 4, hold a button for 3 seconds to save';
+
   function renderAuditionBar(patch, live) {
     const target = auditionTarget();
     if (!target) return '';
+    // Losing the cable is not the same as walking away from a patch: you did
+    // not choose it, so the edits stay and the bar keeps a way to save them.
     const stranded =
       !isConnected() && liveEdit && liveEdit.dirty && liveEdit.file === target.file;
     if (stranded) {
@@ -54,71 +67,21 @@
     }
     if (!isConnected()) return '';
     const mine = auditionNote && auditionNote.file === target.file;
-    // While live the line is CONSTANT. It used to swap between the send result
-    // ("Sent 110 settings…") and a longer live hint, and the two wrapped to
-    // different heights — so making the first edit rewrote the sentence and
-    // shifted the row, which read as the app warning you about something.
-    // Only a genuine problem may replace it.
-    // Before you are in audition mode the button says what it does, so the
-    // sentence beside it only repeated itself; the rule it carried is what the
-    // modal explains. Live, the line is constant (see below). Either way, a
-    // real problem still replaces it.
-    // Notes are shown while live too. That used to reflow the controls, which
-    // is why they were suppressed; now the line sits on its own full-width row
-    // beneath them, so its text can change without moving anything.
-    const showNote = mine;
-    const note = showNote
-      ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
-      : live
-        // Daniel's words, 2026-08-12. The old line said the same thing twice
-        // over — the Save button is right there and speaks for itself, so what
-        // is left to say is the part the app CANNOT do for you.
-        ? '<span class="audition-note">hold a button for 3 seconds on your Seven to save</span>'
-        : '';
-
-    // Audition mode is a STATE, not an interruption — so it wears persistent
-    // chrome (a sticky amber-edged header that follows you down the panel)
-    // rather than a modal. A modal big enough for 110 parameters would cover
-    // the lists you pick the next patch from, and would have to be dismissed
-    // before every edit.
-    if (live) {
-      // The bar's shape never changes while live. It used to swap Done for
-      // Save + Discard on the first edit, which moved every control sideways
-      // under the cursor mid-gesture. Same three buttons throughout; Save is
-      // simply disabled until there is something to save.
-      const dirty = liveEdit.dirty;
-      return (
-        `<div class="audition-bar is-live">` +
-        `<span class="audition-mode">Audition mode</span>` +
-        // NOT the patch's name. It names where the session STARTED, and after
-        // choosing another instrument that is no longer what you are hearing —
-        // the bar said "Car Parts CP-80" over a DX7 (Daniel, 2026-08-12). The
-        // sound engine panel below already names what is playing. All that is
-        // left to say here is whether there is something unsaved.
-        `<span class="audition-patch">` +
-        `${dirty ? '<span class="audition-dirty" title="Edited since it was sent">•</span>' : ''}` +
-        `</span>` +
-        `<button type="button" id="audition-btn" class="is-secondary">Reset sound</button>` +
-        `<button type="button" id="save-live-btn"${dirty ? '' : ' disabled'}>Save to Library</button>` +
-        note +
-        // Leaving is a close control at the far right, like the modal's — not
-        // a button competing with Save.
-        `<button type="button" id="done-live-btn" title="Leave audition mode" aria-label="Leave audition mode">` +
-        '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
-        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
-        '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
-        `</div>`
-      );
+    // A real problem always gets said. Otherwise the bar is silent until an
+    // edit exists to lose.
+    const dirty = !!(live && liveEdit && liveEdit.dirty);
+    if (!mine && !dirty) return '';
+    if (mine && !dirty) {
+      return `<div class="audition-bar"><span class="audition-note ${auditionNote.kind}">` +
+        `${esc(auditionNote.text)}</span></div>`;
     }
     return (
-      `<div class="audition-bar">` +
-      // "Audition <name>" read as a STATUS — as though you were auditioning
-      // that patch — when it is the offer to start one (Daniel, 2026-08-12:
-      // "it remains in audition mode... at least the UI says so"). A verb with
-      // nothing after it cannot be mistaken for a label, and the patch it
-      // would act on is the one selected right beside it.
-      `<button type="button" id="audition-btn">Audition this patch</button>` +
-      note +
+      `<div class="audition-bar is-live">` +
+      `<span class="audition-dirty" title="Edited, and not saved">•</span>` +
+      `<button type="button" id="save-live-btn">Save to Library</button>` +
+      (mine
+        ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
+        : `<span class="audition-note">${SAVE_HINT}</span>`) +
       `</div>`
     );
   }
@@ -334,19 +297,6 @@
     deps.renderDetail();
   }
 
-  const explainAuditionModal = () =>
-    SevenModal.confirm({
-      title: 'AUDITION MODE',
-      body:
-        'Your tweaks change the sound of the Crumar Seven. But it\u2019s all in a ' +
-        'buffer. Your saved sounds are safe.\n\n' +
-        'To save your new sound to the SEVEN, hold a preset button for three ' +
-        'seconds (just like you normally do to save patches).\n\n' +
-        'Click the \u201CSave to Library\u201D button to save your new sound to ' +
-        'the computer.',
-      confirmLabel: 'Start Audition',
-    });
-
   // Reaching for a control while not in audition mode IS the request to edit,
   // so it offers the way in rather than explaining why nothing happened. The
   // modal is the door: Start Audition walks through it, the X declines.
@@ -380,20 +330,13 @@
       // asking again only added a step to dismiss — and a modal that can
       // reappear is a modal that can trap you. What the rule is gets taught
       // once by the Audition button, and stated permanently in the bar.
-      localStorage.setItem('seven.auditionExplained', '1');
-      toast('Entering audition mode…', { sticky: true });
-      const btn = document.getElementById('audition-btn');
-      if (btn) btn.click();
-      else hideToast();
-      // The click hands off to an async handler. If that handler bailed before
-      // starting the send — no target, a confirm declined, the instrument gone
-      // — nothing else will take this message down.
-      setTimeout(() => {
-        if (!auditionInFlight && !isLive()) {
-          hideToast();
-          pendingIntent = null; // declined or failed: the move does not linger
-        }
-      }, 400);
+      // No button and no dialog. Reaching for a control is the request; the
+      // app makes the buffer match what is on screen and then does what you
+      // reached for. There is nothing here for the player to agree to.
+      await preview(auditionTarget());
+      hideToast();
+      if (isLive()) await applyPendingIntent();
+      else pendingIntent = null;
     } finally {
       offering = false;
     }
@@ -535,74 +478,10 @@
       deps.renderDetail();
       return;
     }
-    if (!e.target.closest('#audition-btn')) return;
-    const target = auditionTarget();
-    if (!target) return;
-    // Explain the rule once from the BUTTON — you already said what you wanted
-    // by pressing it. Reaching for a control instead is a different case: see
-    // offerAudition().
-    const EXPLAINED = 'seven.auditionExplained';
-    if (!localStorage.getItem(EXPLAINED)) {
-      const ok = await explainAuditionModal();
-      localStorage.setItem(EXPLAINED, '1');
-      if (!ok) return;
-    }
-    // Resetting while there are unsaved edits destroys them — ask first.
-    if (isLive() && liveEdit.dirty) {
-      const go = await SevenModal.confirm({
-        title: 'Discard your live edits?',
-        body:
-          'This sends the patch as it is saved on this computer, replacing what is ' +
-          'in the Seven’s edit buffer. Edits you have not saved to the library are lost.',
-        confirmLabel: 'Reset Sound',
-        tone: 'is-warning',
-      });
-      if (!go) return;
-    }
-    const btn = e.target.closest('#audition-btn');
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    auditionInFlight = true;
-    let r;
-    try {
-      r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
-    } catch (err) {
-      // An IPC that rejects (rather than returning {ok:false}) used to strand
-      // the button mid-send: disabled, reading "Sending…", with no path back
-      // except restarting the app.
-      r = { ok: false, error: `The send failed: ${err && err.message}` };
-    } finally {
-      auditionInFlight = false;
-      hideToast();
-    }
-    if (!r.ok) {
-      auditionNote = { kind: 'is-error', text: r.error, file: target.file };
-      toast(r.error);
-    } else {
-      // Say exactly what happened, including anything the device refused.
-      const parts = [`Sent ${r.sent} settings · ${r.soundName}`];
-      if (r.mismatches && r.mismatches.length) {
-        parts.push(`${r.mismatches.length} value${r.mismatches.length === 1 ? '' : 's'} the Seven adjusted`);
-      }
-      parts.push('hold a preset button for 3s to keep it');
-      auditionNote = { kind: 'is-ok', text: `${parts.join(' · ')}.`, file: target.file };
-      // The edit buffer now holds this patch, so its controls can go live.
-      // The working copy starts from what was actually sent.
-      liveEdit = {
-        file: target.file,
-        patchIndex: target.patchIndex,
-        params: { ...(deps.getPatch() || {}).params },
-        touched: new Set(), // keys this session changed — evidence for the check below
-        dirty: false,
-      };
-      rememberWhereWeWere();
-      startPanelPoll();
-    }
-    deps.renderDetail();
-    // Now do the thing they reached for. After the render, so the row it
-    // belongs to is live and the value it writes is the one the panel shows.
-    if (r.ok) await applyPendingIntent();
-    else pendingIntent = null;
+    // The Audition button is gone. Selecting a patch already makes the
+    // instrument play it — a bank slot by recall, a library patch by load — so
+    // there is nothing left to press to "enter" anything, and the whole send
+    // path that lived here now belongs to preview().
   });
 
   // Writes the working copy to the patch file. Needs no instrument — the
@@ -610,13 +489,48 @@
   // you the edit itself.
   async function saveLiveToLibrary() {
     if (!liveEdit) return;
-    const previous = { ...((deps.getEntries().find(
+    const entry = deps.getEntries().find(
       (e) => e.file === liveEdit.file && e.patchIndex === liveEdit.patchIndex
-    ) || {}).params || {}) };
-    const { file, patchIndex } = liveEdit;
+    ) || {};
+    const previous = { ...(entry.params || {}) };
+    let { file, patchIndex } = liveEdit;
+
+    // Two ways to keep it, and the app should not pick for you. Overwriting is
+    // right when you are refining a patch; a copy is right when you are making
+    // a variant — and it is the only safe answer on a BACKUP record, which is
+    // a dated account of what the instrument held that day rather than a patch
+    // you were working on.
+    const answer = await SevenModal.confirm({
+      title: `Save “${esc(entry.name || 'this patch')}”`,
+      body: entry.origin && entry.origin.kind === 'backup'
+        ? 'This patch is a backup record — what the Seven held on the day it was ' +
+          'captured. Overwriting changes that record; a copy leaves it alone.'
+        : 'Overwrite this patch, or keep it and save your changes as a copy?',
+      confirmLabel: 'Overwrite patch',
+      secondaryLabel: 'Save a copy',
+      cancelLabel: 'Cancel',
+    });
+    if (!answer) return;
+    if (answer === 'secondary') {
+      const copy = await window.sevenAPI.library.duplicate(file, patchIndex);
+      if (!copy || !copy.file) {
+        toast('Could not make a copy');
+        return;
+      }
+      // The live session follows the copy: what you go on editing is the thing
+      // you just chose to keep.
+      file = copy.file;
+      patchIndex = copy.patchIndex || 0;
+      liveEdit.file = file;
+      liveEdit.patchIndex = patchIndex;
+    }
     await window.sevenAPI.library.saveParams(file, patchIndex, liveEdit.params);
     liveEdit.dirty = false;
-    auditionNote = { kind: 'is-ok', text: 'Saved to the library.', file };
+    auditionNote = {
+      kind: 'is-ok',
+      text: answer === 'secondary' ? 'Saved as a copy.' : 'Saved to the library.',
+      file,
+    };
     await deps.refreshLibrary();
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
@@ -627,37 +541,40 @@
 
   async function recallOnDevice(bank, preset) {
     if (!isConnected()) return;
-    if (liveEdit && liveEdit.dirty) {
-      // The Seven has ONE edit buffer, so a recall replaces it — that part is
-      // hardware. But the app holds these values, and saving them needs no
-      // instrument, so offer that rather than only warning.
-      const answer = await SevenModal.confirm({
-        title: 'Save your changes first?',
-        body:
-          'Switching patches loads the new one onto the Seven, which replaces the ' +
-          'sound you have been editing.\n\n' +
-          'Saving keeps your changes on this computer. To keep them on the Seven ' +
-          'itself, hold a preset button for three seconds first.',
-        confirmLabel: 'Save, Then Switch',
-        secondaryLabel: 'Switch Without Saving',
-        tone: 'is-warning',
-      });
-      if (!answer) return;
-      if (answer === true) await saveLiveToLibrary();
-    }
+    // No save-first prompt: leaving a patch discards, everywhere, by decision
+    // (2026-08-12). The bar says so while the edits exist.
     // With Send PC on, the Seven echoes the recall straight back as a Program
     // Change. That echo is ours, not the player reaching for the panel, and
     // treating it as theirs ended live sessions that had only just begun.
     ourRecall = { program: bank * 8 + preset, until: Date.now() + 2000 };
     await window.sevenAPI.midi.recall(bank, preset);
-    // The buffer has just been replaced on purpose, so the live session is
-    // over. Without this the app kept asking about edits the FIRST recall had
-    // already discarded — a warning about work that no longer existed, once
-    // per click.
-    if (liveEdit) {
-      liveEdit = null;
-      deps.renderDetail();
-    }
+    // The buffer now holds this slot's own preset, which is exactly what the
+    // panel is showing — so the session is simply OPEN. There is no mode to
+    // enter: selecting a slot on the Seven guarantees the one condition
+    // editing requires, and asking the player to confirm that guarantee was
+    // the whole of "audition mode" on this side (2026-08-12).
+    liveEdit = null;
+    beginLiveForTarget();
+    deps.renderDetail();
+  }
+
+  // Open a session on whatever is selected, from a caller that has just made
+  // the buffer match it. The one rule it must not break is the rule the whole
+  // module exists for: live means the buffer holds what is on screen.
+  function beginLiveForTarget() {
+    const target = auditionTarget();
+    const patch = deps.getPatch();
+    if (!target || !patch) return false;
+    liveEdit = {
+      file: target.file,
+      patchIndex: target.patchIndex,
+      params: { ...(patch.params || {}) },
+      touched: new Set(),
+      dirty: false,
+    };
+    rememberWhereWeWere();
+    startPanelPoll();
+    return true;
   }
 
   // The state pill reflects DEVICE state only — it never flips from a click
@@ -728,20 +645,9 @@
       // edit buffer and knows it. The one rule this must not break is the one
       // audition exists for: live means the buffer holds what is on screen.
       beginLive() {
-        const target = auditionTarget();
-        const patch = deps.getPatch();
-        if (!target || !patch) return false;
-        liveEdit = {
-          file: target.file,
-          patchIndex: target.patchIndex,
-          params: { ...(patch.params || {}) },
-          touched: new Set(),
-          dirty: false,
-        };
-        rememberWhereWeWere();
-        startPanelPoll();
-        deps.renderDetail();
-        return true;
+        const ok = beginLiveForTarget();
+        if (ok) deps.renderDetail();
+        return ok;
       },
       // Selecting a different patch is leaving, and leaving DISCARDS. Daniel's
       // call, 2026-08-12, replacing a save-first prompt: the audition bar

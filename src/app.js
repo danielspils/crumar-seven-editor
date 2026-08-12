@@ -315,22 +315,37 @@
   // the carousel goes back to showing what the newly selected patch names.
   const soundIndexOf = (name) => Math.max(0, soundList.findIndex((x) => x.name === name));
 
-  document.addEventListener('click', (e) => {
-    const step = e.target.closest('[data-car-step]');
-    if (step) {
-      const patch = currentPatch();
-      const from = carouselAt == null ? soundIndexOf(patch && patch.soundName) : carouselAt;
-      carouselAt = from + Number(step.dataset.carStep);
+  // Paging turns the carousel rather than cutting to the next frame: each face
+  // moves one position along — the one you clicked into the middle, the middle
+  // one out to its side — and only then does the panel re-render. Without it
+  // the pictures simply changed where they stood, which reads as a jump cut
+  // rather than a wheel (Daniel, 2026-08-12).
+  const TURN_MS = 340;
+  let turning = false;
+
+  function turnCarousel(dir) {
+    if (turning) return;
+    const car = document.querySelector('[data-carousel]');
+    const patch = currentPatch();
+    const from = carouselAt == null ? soundIndexOf(patch && patch.soundName) : carouselAt;
+    if (!car) { carouselAt = from + dir; renderDetail(); return; }
+    turning = true;
+    car.classList.add(dir > 0 ? 'is-turning-next' : 'is-turning-prev');
+    setTimeout(() => {
+      turning = false;
+      carouselAt = from + dir;
       renderDetail();
-      return;
-    }
-    // Clicking a peek brings it to the middle rather than choosing it: you are
-    // still browsing until you click the one in the centre.
+    }, TURN_MS);
+  }
+
+  document.addEventListener('click', (e) => {
+    // Clicking a neighbour ADVANCES to it; only the one in the middle is a
+    // choice. Reaching past the centre to pick something would make the
+    // carousel a row of buttons rather than a wheel you turn.
     const face = e.target.closest('[data-car-name]');
     if (face && face.closest('[data-carousel]')) {
       if (face.classList.contains('is-peek')) {
-        carouselAt = soundIndexOf(face.dataset.carName);
-        renderDetail();
+        turnCarousel(face.classList.contains('is-next') ? 1 : -1);
         return;
       }
       // The hero: this is the choice.

@@ -98,13 +98,12 @@ window.ui = (() => {
   // Enter audition mode the way the Audition button does, answering the
   // first-run explainer if this profile has never seen it. A scenario that
   // did this by hand would be testing the explainer, not the thing it came for.
+  // There is no longer anything to press: selecting a patch makes the
+  // instrument play it, which IS the live session. This waits for that rather
+  // than driving a button that no longer exists.
   async function enterAudition() {
-    const btn = $('#audition-btn');
-    if (!check(!!btn, 'the Audition button is present')) return false;
-    btn.click();
-    await sleep(400);
-    $('.seven-modal-ok')?.click();
-    await waitFor(live, { what: 'audition mode' });
+    if (live()) return true;
+    await waitFor(live, { what: 'the session to open', timeout: 8000 });
     return live();
   }
 
