@@ -10,9 +10,23 @@
   // anything renders so there is no flash, and persisted like the other UI
   // state — never patch data.
   const THEME_KEY = 'seven.theme';
-  const applyTheme = (name) => {
+  const THEME_FADE_MS = 1050; // a beat longer than the CSS, so nothing is cut off
+  let themeFade = null;
+  // `fade` only when a person asked for it. On boot the theme must land
+  // instantly — fading in from the wrong palette IS the flash we avoid by
+  // applying it before anything renders.
+  const applyTheme = (name, fade) => {
+    const root = document.documentElement;
     const theme = name === 'light' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = theme;
+    if (fade && root.dataset.theme !== theme) {
+      // The transition lives on a class rather than on the elements, so it
+      // exists only for the moment of the switch and never slows an ordinary
+      // hover or re-render.
+      root.classList.add('theme-fading');
+      clearTimeout(themeFade);
+      themeFade = setTimeout(() => root.classList.remove('theme-fading'), THEME_FADE_MS);
+    }
+    root.dataset.theme = theme;
     localStorage.setItem(THEME_KEY, theme);
     // Keep the divider's switch in step whichever route set the theme.
     for (const b of document.querySelectorAll('[data-theme-set]')) {
@@ -24,7 +38,7 @@
     applyTheme(localStorage.getItem(THEME_KEY) || 'dark'));
   document.addEventListener('click', (e) => {
     const pick = e.target.closest('[data-theme-set]');
-    if (pick) applyTheme(pick.dataset.themeSet);
+    if (pick) applyTheme(pick.dataset.themeSet, true);
   });
 
   // Self-hosted fonts (Archivo for the panel strip, Inter for the UI) — must be
@@ -158,6 +172,9 @@
   // pointing at. Those Program Changes come back to us as events; this flag
   // keeps them from being read as the player reaching for the panel.
   let transferRunning = false;
+  // Set while a step is waiting: the runner tells us when it has SEEN the hold
+  // land on the instrument, and that resolves the same wait the button does.
+  let transferStored = null;
 
   // The preset the walk moves to after `slot`, from the plan the runner already
   // made. Knowing it up front is what lets the picture move the moment the
@@ -176,8 +193,15 @@
   // someone standing at the instrument with both hands busy. So the dialog
   // stays and the picture moves: the highlight and the HOLD legend travel to
   // the next button, which is the move the player's own hand is about to make.
-  async function transferWalk(first, slots) {
-    if (!first || first.type === 'transfer-done') return transferDone(first);
+  // `slots` is the runner's plan, which already knows the first target — so the
+  // dialog can open on it BEFORE the instrument is touched. Loading a patch is
+  // a recall plus ~110 verified writes, and doing that behind a closed dialog
+  // left a second of nothing happening between "Send to Bank 3" and the walk
+  // appearing. Now the walk appears at once, showing the button you are about
+  // to hold, with its actions inert until the patch is actually there.
+  async function transferWalk(slots, bank) {
+    const firstSlot = nextTransferSlot(slots, -1);
+    if (!firstSlot) return transferDone(await window.sevenAPI.transfer.next());
     // A picture of the panel rather than a sentence about it: the player is
     // looking at the instrument, and "hold THAT one" is a location, not a
     // fact. The bank LED and the button both light where they will light.
@@ -185,10 +209,15 @@
       title: 'Transfer',
       bodyHtml:
         '<p class="tx-step-name"></p>' +
+        '<p class="tx-step-hear">(you can hear it now)</p>' +
         '<p class="tx-step-where"></p>' +
-        SevenPanelMini.render(first.bank, first.preset) +
-        '<p class="tx-note">Hold it for three seconds. The patch is playing now; ' +
-        'until you hold the button, this preset is unchanged.</p>',
+        SevenPanelMini.render(bank, firstSlot.slot + 1) +
+        '<p class="tx-note">Hold for 3 seconds.</p>' +
+        // "lights will run" rather than "the button blinks": what the panel
+        // actually does at a store has not been captured, and the owner's
+        // description is a sequence across the LEDs rather than one of them
+        // flashing. Says enough to recognise it, claims nothing precise.
+        '<p class="tx-note">Your Seven lights will run indicating the sound is saved.</p>',
       confirmLabel: 'Held it — next',
       denyLabel: 'Stop',
       cancelLabel: 'Stop',
@@ -203,12 +232,35 @@
       SevenPanelMini.setPreset(modal.body, preset);
     };
 
-    let step = first;
+    // The plan's version of the first step, on screen immediately; the runner's
+    // version replaces it the moment the patch has actually landed.
+    showStep(bank, firstSlot.slot + 1, firstSlot.name);
+    modal.busy(true);
+    let step = await window.sevenAPI.transfer.next();
+    modal.busy(false);
+    if (!step || step.type === 'transfer-done') return await transferDone(step, modal);
     showStep(step.bank, step.preset, step.name);
+    // Every exit is `await`ed rather than returned: in an async function the
+    // finally below runs the moment a return EXPRESSION is evaluated, which
+    // would close the dialog out from under the report being written into it.
     try {
       for (;;) {
-        const go = await modal.action();
-        if (!go) return transferDone(await window.sevenAPI.transfer.cancel());
+        // Two ways forward, and the instrument usually wins: the button, or the
+        // Seven telling us the preset changed under the player's hand. Neither
+        // is a timer. modal.action() is idempotent, so losing this race and
+        // asking again on the next pass reuses the same pending click.
+        const seen = new Promise((resolve) => { transferStored = resolve; });
+        let byInstrument = false;
+        const go = await Promise.race([
+          modal.action(),
+          seen.then(() => { byInstrument = true; return true; }),
+        ]);
+        transferStored = null;
+        // The instrument answered, so the button's wait is stale. Dropping it
+        // is what stops a habitual click landing on the NEXT preset and
+        // recording it as held when it never was.
+        if (byInstrument) modal.clearPending();
+        if (!go) return await transferDone(await window.sevenAPI.transfer.cancel(), modal);
         // Move to the next button first, then load it. The player is already
         // reaching; the picture should be where they are going, not where they
         // were, for the second it takes to send a patch.
@@ -217,7 +269,7 @@
         modal.busy(true);
         step = await window.sevenAPI.transfer.confirm();
         modal.busy(false);
-        if (!step || step.type === 'transfer-done') return transferDone(step);
+        if (!step || step.type === 'transfer-done') return await transferDone(step, modal);
         // Reconcile with what the runner actually did — the plan is a guess
         // about the future and the report is not.
         showStep(step.bank, step.preset, step.name);
@@ -227,25 +279,41 @@
     }
   }
 
-  async function transferDone(report) {
+  // The end of the walk, shown IN the walk's own dialog. The report is the last
+  // step of the thing you just did, not a new conversation about it — so the
+  // panel picture and the step fade out and this fades in, in the same frame.
+  async function transferDone(report, modal) {
     transferRunning = false;
     if (!report) return;
     const stored = report.confirmed.length;
     const loose = report.loadedNotConfirmed;
-    await SevenModal.confirm({
-      title: report.error ? 'Transfer stopped' : report.cancelled ? 'Transfer stopped' : 'Transfer finished',
-      tone: report.error ? 'is-warning' : undefined,
-      body:
-        (report.error ? `${report.error}\n\n` : '') +
-        `${stored} of ${report.total} preset${report.total === 1 ? '' : 's'} stored in Bank ` +
-        `${report.bank}.` +
-        (loose.length
-          ? `\n\nPreset ${loose.join(', ')} was loaded but you did not confirm the hold, so it ` +
-            'is still in the edit buffer rather than saved on the instrument.'
-          : '') +
-        `\n\n${report.note}`,
-      confirmLabel: 'Done',
-    });
+    const bodyHtml =
+      (report.error ? `<p class="tx-note tx-alarm">${esc(report.error)}</p>` : '') +
+      `<p class="tx-step-name">${stored} of ${report.total} ` +
+      `preset${report.total === 1 ? '' : 's'} stored</p>` +
+      `<p class="tx-step-where">Bank ${report.bank}</p>` +
+      (loose.length
+        ? `<p class="tx-note">Preset ${loose.join(', ')} was loaded but you did not confirm the ` +
+          'hold, so it is still in the edit buffer rather than saved on the instrument.</p>'
+        : '');
+    // report.note — "listed as stored because you confirmed the hold" — is
+    // deliberately NOT shown. It was written when a hold could only be taken on
+    // the player's word; now the walk mostly advances because the instrument
+    // broadcast the changed preset, which is evidence rather than a claim. The
+    // caveat still holds for a slot advanced by the button, but the distinction
+    // costs more to explain than it is worth on screen. It stays on the report
+    // object for anything that wants the fine print.
+    const title = report.error || report.cancelled ? 'Transfer stopped' : 'Transfer complete';
+    const tone = report.error ? 'is-warning is-transfer' : 'is-transfer';
+
+    if (modal) {
+      await modal.replace({ title, bodyHtml, confirmLabel: 'Done', tone });
+      await modal.action();
+    } else {
+      // No dialog to reuse (nothing reaches this today; kept so a future caller
+      // that reports without a walk still says the same things).
+      await SevenModal.confirm({ title, bodyHtml, confirmLabel: 'Done', tone });
+    }
     await refreshLibrary();
   }
 
@@ -903,6 +971,9 @@
         if (!audition.hasUnsavedEdit()) await window.sevenAPI.transfer.selectBank(bank);
         // Anything below that stops short of starting puts the panel back.
         const release = () => window.sevenAPI.transfer.releaseBank();
+        // Whether the run will have to borrow Send PC, so the dialog can say so
+        // before it happens rather than after.
+        const sendPcOff = (await window.sevenAPI.midi.status()).sendPc === 0;
 
         const plan = await window.sevenAPI.transfer.preflight(index, bank);
         if (!plan.ok) {
@@ -935,7 +1006,15 @@
             `<p class="tx-to">Crumar Seven’s Bank ${bank}</p>` +
             '<p class="tx-note">You will manually transfer each sound, replacing the current ' +
             'sounds.</p>' +
-            '<p class="tx-note">Don’t forget to back up your current tones.</p>',
+            '<p class="tx-note tx-aside">(Backup your current bank tones before they say ' +
+            'ciao!)</p>' +
+            // Only when we are about to touch a setting that is theirs. Said
+            // here rather than after the fact, because borrowing something
+            // quietly is the part that would feel like a liberty.
+            (sendPcOff
+              ? '<p class="tx-note tx-fine">Send PC is off on your Seven. The transfer switches ' +
+                'it on so the app can follow along, and switches it back when it’s done.</p>'
+              : ''),
           confirmLabel: `Send to Bank ${bank}`,
           // No Cancel button: the X is the way out, and the single red button
           // is then unmistakably the one thing this dialog does. The keyboard
@@ -957,7 +1036,7 @@
         // Set before the first step: the runner recalls the slot inside next(),
         // and that Program Change is ours, not the player's.
         transferRunning = true;
-        transferWalk(await window.sevenAPI.transfer.next(), started.slots);
+        transferWalk(started.slots, bank);
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();
@@ -1224,6 +1303,9 @@
         connText.textContent = 'Connecting…';
       } else {
         connText.textContent = error || 'No instrument connected';
+        // The failure messages are full sentences and the strip clips them —
+        // the tooltip is where the rest of the instruction lives.
+        connText.title = error || '';
         connBtn.textContent = 'Connect';
       }
       // After the row's class is updated, so the re-render sees the new state.
@@ -1342,6 +1424,12 @@
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
       } else if (ev.type === 'backup-done') showBackupDone(ev);
+      else if (ev.type === 'transfer-stored') {
+        // The instrument's own evidence that the hold landed. It advances the
+        // walk exactly where the button would have — one path forward, so the
+        // manual answer and the observed one can never disagree.
+        if (transferStored) transferStored(ev);
+      }
       else if (ev.type === 'panel-cc') {
         audition.onPanelCc(ev.cc);
       } else if (ev.type === 'program-change' && !backupRunning) {

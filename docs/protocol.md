@@ -343,10 +343,13 @@ Alt. Channel, Send CC, Send PC, Midi Soft-Thru, Sustain Polarity, Volume Type, V
 Curve, Memory Protect. A full nine-index sweep confirmed that **`0x30 <index>` addresses
 `glb[index]` 1:1 for all nine slots** — each index moved exactly its own slot (snapshot then
 restored), so the set-global index and the get-globals array position are the same numbering, no
-permutation. The **name↔index mapping is still UNVERIFIED as a whole**; only two names are pinned
-against the display: **index 2 = Send CC** (captured `0x30` frame) and **index 8 = Memory
-Protect** (toggling it OFF→ON moved slot 8, nothing else). Both match the assumed DOM order. Keep
-`orderUnverified` until all nine names are pinned against the panel.
+permutation. The **name↔index mapping is still UNVERIFIED as a whole**; three names are pinned
+against the display: **index 2 = Send CC** (captured `0x30` frame), **index 3 = Send PC**
+(captured `30 03 01` at the moment the editor's Send PC was flipped to YES —
+`captures/editor-tap-send-pc-2026-08-09-notes.md`), and **index 8 = Memory Protect** (toggling it
+OFF→ON moved slot 8, nothing else). All three match the assumed DOM order. Keep `orderUnverified`
+until all nine names are pinned against the panel — **the app may only WRITE a pinned index**,
+which today means 2, 3 and 8, and in practice only 3 (the transfer borrows Send PC).
 
 `glb` values are **not uniformly 0-based dropdown indices** — the encoding is per-field and
 partly unknown. Slot 1 reads `1` while Alt. Channel displays "Ch. 1", so that field is offset or

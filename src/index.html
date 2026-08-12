@@ -106,6 +106,20 @@
        the top, and only the two columns below scroll, independently. A root
        scrollbar could otherwise shift the whole UI when sections expand. */
     html, body { height: 100%; overflow: hidden; }
+    /* Light and dark cross-fade rather than cut. The rule is scoped to a class
+       that exists only for the ~1s of a switch (src/app.js), so no ordinary
+       hover, drag or re-render pays for it — and the switch is the one moment
+       where every surface in the window changes at once, which is exactly when
+       a cut is most jarring. Only the properties that carry the palette. */
+    html.theme-fading, html.theme-fading *, html.theme-fading *::before,
+    html.theme-fading *::after {
+      transition: background-color 1s ease, color 1s ease, border-color 1s ease,
+                  fill 1s ease, stroke 1s ease, box-shadow 1s ease, opacity 1s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html.theme-fading, html.theme-fading *, html.theme-fading *::before,
+      html.theme-fading *::after { transition: none; }
+    }
     body {
       background: var(--bg);
       color: var(--text);
@@ -220,8 +234,20 @@
     #sounds-button:hover, #sounds-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #sounds-button + #backup-button, #sounds-button + #conn-button { margin-left: 0; }
     #connection-row { position: relative; }
+    /* Three columns, not two things and a floating third. The toggle used to be
+       absolutely centred, which put it out of flow — so a long status line ran
+       underneath it and the buttons collided with it on a narrow window. Equal
+       flex on the two side groups centres it exactly, and now everything in the
+       row can see everything else. */
+    .conn-status, .conn-actions { display: flex; align-items: center; flex: 1 1 0; min-width: 0; }
+    .conn-status { gap: 8px; }
+    .conn-actions { gap: 8px; justify-content: flex-end; }
+    /* The failure messages are sentences, and a sentence must not push the
+       controls off the strip. It gets the room it has and says the rest in its
+       tooltip. */
+    #connection-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #theme-toggle {
-      position: absolute; left: 50%; transform: translateX(-50%);
+      flex: none;
       display: flex; border: 1px solid rgba(0, 0, 0, .3); border-radius: 5px;
       overflow: hidden; background: rgba(0, 0, 0, .06);
     }
@@ -642,22 +668,40 @@
       color: var(--text-dim);
     }
     .seven-modal.is-transfer .seven-modal-body { text-align: center; margin-top: 18px; }
-    .tx-from, .tx-to {
+    .seven-modal-body .tx-from, .seven-modal-body .tx-to {
       margin: 0; font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.3;
     }
-    .tx-from { font-style: italic; }
-    .tx-count {
+    .seven-modal-body .tx-from { font-style: italic; }
+    .seven-modal-body .tx-count {
       margin: 4px 0 0; font-size: 10px; font-weight: 700;
       letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim);
     }
-    .tx-arrow { margin: 8px 0; font-size: 17px; line-height: 1; color: var(--text-dim); }
+    .seven-modal-body .tx-arrow { margin: 8px 0; font-size: 17px; line-height: 1; color: var(--text-dim); }
     /* One sentence per paragraph: a forced break inside centred prose lands
-       wherever the modal happens to be wide, which reads as ragged. */
-    .tx-note { margin: 22px 0 0; font-size: 13px; line-height: 1.55; }
-    .tx-note + .tx-note { margin-top: 8px; }
+       wherever the modal happens to be wide, which reads as ragged. `balance`
+       does the rest — centred text with an orphan on the last line is the
+       whole reason this block looked untidy.
+
+       Every rule here is scoped under .seven-modal-body on purpose: the
+       modal's own `.seven-modal-body p { margin: 0 0 9px }` is MORE specific
+       than a bare .tx-class, so an unscoped `margin: … auto` silently lost and
+       the measured block sat left-aligned with its text centred inside it. */
+    .seven-modal-body .tx-note {
+      margin: 18px auto 0; max-width: 26em;
+      font-size: 13px; line-height: 1.45; text-wrap: balance;
+    }
+    /* The aside sits under its sentence, not as a second statement. */
+    .seven-modal-body .tx-note + .tx-note { margin-top: 5px; }
+    .seven-modal-body .tx-aside { color: var(--text-dim); }
+    /* What the instrument never told us, said quietly rather than dropped. */
+    .seven-modal-body .tx-fine { font-size: 12px; color: var(--text-dim); }
+    .seven-modal-body .tx-alarm { margin-top: 0; color: var(--accent); }
     /* The walk's step: which patch, then where it goes, then the panel. */
-    .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
-    .tx-step-where {
+    .seven-modal-body .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
+    /* Sits ON the name, not under the block: the patch is already playing, and
+       that is the one thing about this step you can check by ear. */
+    .seven-modal-body .tx-step-hear { margin: 1px 0 0; font-size: 13px; }
+    .seven-modal-body .tx-step-where {
       margin: 4px 0 14px; font-size: 10px; font-weight: 700;
       letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim);
     }
@@ -665,6 +709,16 @@
        rather than disappear, so the dialog keeps its shape under the hands. */
     .seven-modal.is-busy .seven-modal-actions,
     .seven-modal.is-busy .seven-modal-cancel { opacity: .4; pointer-events: none; }
+    /* Becoming the next thing: the old content fades out, the card resizes,
+       the new content fades in. One dialog, several states — never a dialog
+       that vanishes so another can take its place. */
+    .seven-modal-body, .seven-modal-actions { transition: opacity .17s ease; }
+    .seven-modal.is-swapping .seven-modal-body,
+    .seven-modal.is-swapping .seven-modal-actions { opacity: 0; }
+    .seven-modal.is-resizing { overflow: hidden; transition: height .34s cubic-bezier(.4, 0, .2, 1); }
+    @media (prefers-reduced-motion: reduce) {
+      .seven-modal-body, .seven-modal-actions, .seven-modal.is-resizing { transition: none; }
+    }
     .seven-modal.is-warning .seven-modal-ok { background: var(--accent); border-color: var(--accent); }
     .seven-modal-ok:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
@@ -684,8 +738,10 @@
        attention on the instrument itself. */
     .panel-mini .pm-active .pm-led { fill: #ff3b30; animation: pm-blink 1.05s steps(1, end) infinite; }
     @keyframes pm-blink { 0%, 55% { fill: #ff3b30; } 56%, 100% { fill: #6d2a25; } }
-    /* Seven identical caps and one to press: the rest step back. */
-    .panel-mini .pm-dim { opacity: .34; }
+    /* Seven identical caps and one to press: the rest step back — but stay
+       readable. Too dim and you cannot see where the walk is heading, only
+       where it is. */
+    .panel-mini .pm-dim { opacity: .5; }
     .panel-mini .pm-active { opacity: 1; }
     .panel-mini .pm-btn { transition: opacity .26s ease; }
     .panel-mini .pm-btn .pm-face { transition: fill .26s ease, stroke .26s ease; }
@@ -1259,17 +1315,21 @@
 <body>
   <div id="panel-strip"></div>
   <div id="connection-row">
-    <span class="conn-dot"></span>
-    <span id="connection-text">No instrument connected</span>
+    <span class="conn-status">
+      <span class="conn-dot"></span>
+      <span id="connection-text">No instrument connected</span>
+    </span>
     <!-- Appearance sits on the divider itself: it belongs to neither region,
          and the aluminium strip is the seam between them. -->
     <div id="theme-toggle" role="group" aria-label="Appearance">
       <button type="button" data-theme-set="light">light</button>
       <button type="button" data-theme-set="dark">dark</button>
     </div>
-    <button id="sounds-button" type="button" hidden>24 sounds</button>
-    <button id="backup-button" type="button" hidden>Back up instrument</button>
-    <button id="conn-button" type="button">Connect</button>
+    <span class="conn-actions">
+      <button id="sounds-button" type="button" hidden>24 sounds</button>
+      <button id="backup-button" type="button" hidden>Back up instrument</button>
+      <button id="conn-button" type="button">Connect</button>
+    </span>
     <!-- Expansion visibility: what THIS unit has installed, per the sound
          table read on connect. Sound ids are unit-specific; the fingerprint
          is what backups reference. -->

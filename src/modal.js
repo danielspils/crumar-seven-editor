@@ -10,6 +10,13 @@
 // so the keyboard path is the same one the OS dialog gave for free.
 
 (function (global) {
+  // Kept in step with the .seven-modal transitions in index.html.
+  const REPLACE_FADE_MS = 170;
+  const REPLACE_RESIZE_MS = 340;
+  // Card classes that describe what the dialog is DOING, as opposed to what it
+  // is — these survive a tone change.
+  const STATE = new Set(['is-busy', 'is-swapping', 'is-resizing']);
+
   const esc = (v) =>
     String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -159,10 +166,12 @@
     const bodyEl = host.querySelector('.seven-modal-body');
     const okBtn = host.querySelector('.seven-modal-ok');
     let pending = null;
+    let pendingPromise = null;
     const settle = (v) => {
       if (!pending) return;
       const resolve = pending;
       pending = null;
+      pendingPromise = null;
       resolve(v);
     };
     const busy = () => card.classList.contains('is-busy');
@@ -182,12 +191,75 @@
     document.body.appendChild(host);
     okBtn.focus();
 
+    const actionsEl = host.querySelector('.seven-modal-actions');
+    const titleEl = host.querySelector('.seven-modal-title');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
     return {
       body: bodyEl,
       // Waiting, while the app talks to the instrument: the actions go inert
       // rather than vanish, so the dialog doesn't change shape under the hands.
       busy(on) { card.classList.toggle('is-busy', !!on); },
-      action() { return new Promise((resolve) => { pending = resolve; }); },
+      // Turn the SAME dialog into the next thing it has to be: the old content
+      // fades out, the card resizes to the new content, the new content fades
+      // in. A task that ends by replacing one dialog with another makes the end
+      // look like a different event from the thing that led to it — when the
+      // report IS the last step of the walk, not a new conversation.
+      async replace({ title: newTitle, bodyHtml: html, confirmLabel: ok, denyLabel: deny = '', tone: newTone }) {
+        // ORDER MATTERS, and getting it wrong is what made this jump: the
+        // height is pinned BEFORE the content changes. Swap first and the card
+        // lays out at the new content's natural height for a frame — a snap to
+        // the new size, then an animation from it, which reads as the jump the
+        // animation was supposed to prevent.
+        card.classList.add('is-resizing');
+        card.style.height = `${card.offsetHeight}px`;
+        card.classList.add('is-swapping');
+        await wait(REPLACE_FADE_MS);
+
+        if (newTitle != null) titleEl.textContent = newTitle;
+        if (newTone != null) {
+          // Keep whatever state the card is mid-way through — rewriting the
+          // class list wholesale would drop the fade we are inside of.
+          const state = [...card.classList].filter((c) => c.startsWith('is-') && STATE.has(c));
+          card.className = ['seven-modal', newTone, ...state].join(' ');
+        }
+        bodyEl.innerHTML = html;
+        actionsEl.innerHTML =
+          (deny ? `<button type="button" class="seven-modal-deny">${esc(deny)}</button>` : '') +
+          `<button type="button" class="seven-modal-ok">${esc(ok)}</button>`;
+
+        // Measure the new content's natural height. scrollHeight is no use
+        // here: with the height pinned it never reports LESS than the pin, so
+        // a report shorter than the step it replaces would measure as no
+        // change at all and never animate. Release to auto, read, re-pin —
+        // all in one go, so no frame is painted in between.
+        const pinned = card.style.height;
+        card.style.height = 'auto';
+        const after = card.offsetHeight;
+        card.style.height = pinned;
+        await new Promise((r) => requestAnimationFrame(r));
+        card.style.height = `${after}px`;
+        card.classList.remove('is-swapping');
+        await wait(REPLACE_RESIZE_MS);
+        card.style.height = '';
+        card.classList.remove('is-resizing');
+        const nextOk = host.querySelector('.seven-modal-ok');
+        if (nextOk) nextOk.focus();
+      },
+      // Idempotent on purpose: a caller that races this against something else
+      // (the transfer walk races it against the instrument) will ask again
+      // after losing the race, and a second promise would orphan the first —
+      // leaving a click that resolves nothing.
+      action() {
+        if (!pendingPromise) pendingPromise = new Promise((resolve) => { pending = resolve; });
+        return pendingPromise;
+      },
+      // Throw away a wait that something else already answered. Without this,
+      // a caller that wins the race another way leaves the click armed: the
+      // next press settles a promise from a step that is already over, and
+      // advances one the player never answered. A click while nothing is
+      // pending does nothing, which is the point.
+      clearPending() { pending = null; pendingPromise = null; },
       close() {
         document.removeEventListener('keydown', onKey, true);
         settle(false);
