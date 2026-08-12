@@ -344,8 +344,15 @@
             // and names itself on hover rather than carrying a label all the
             // time — the label is only useful in the second before you click it.
             ? `<button type="button" class="engine-art is-pickable" ` +
-              `data-pick-sound-for="${view.canPickSound.bank}:${view.canPickSound.preset}" ` +
-              `title="Choose the sound for Bank ${view.canPickSound.bank} · Preset ${view.canPickSound.preset}">` +
+              (view.canPickSound.file
+                // A library patch: this edits the FILE.
+                ? `data-pick-sound-file="${esc(view.canPickSound.file)}" ` +
+                  `data-pick-sound-pi="${view.canPickSound.patchIndex}" ` +
+                  'title="Choose the sound this patch uses"'
+                // A slot on the instrument: this sends and asks for the hold.
+                : `data-pick-sound-for="${view.canPickSound.bank}:${view.canPickSound.preset}" ` +
+                  `title="Choose the sound for Bank ${view.canPickSound.bank} · Preset ${view.canPickSound.preset}"`) +
+              '>' +
               soundArt().iconFor(patch.soundName, patch.sampled) +
               '<span class="engine-art-cta">select<br>sound</span></button>'
             : `<div class="engine-art">${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`)

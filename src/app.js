@@ -154,22 +154,26 @@
   // the detail panel. The tiles are the library's own grid — the same artwork
   // and the same order — hosted here because the target is a slot on the
   // Seven rather than a slot in a setlist.
-  async function pickSoundForSlot(bank, preset) {
+  // The tile grid in a dialog of our own. Sounds come from the CONNECTED
+  // unit's table where there is one — ids differ per instrument, so the list a
+  // player sees is their instrument's list — and fall back to the schema's
+  // when choosing for a file with nothing plugged in.
+  async function chooseSound(title, note) {
     const status = await window.sevenAPI.midi.status();
-    const sounds = status.soundTable && status.soundTable.sounds;
-    if (!sounds || !sounds.length) return toast('Connect the Seven to choose a sound');
+    const live = status.soundTable && status.soundTable.sounds;
+    const sounds = (live && live.length) ? live : schema.sounds || [];
+    if (!sounds.length) return null;
 
     const modal = SevenModal.open({
-      title: `Bank ${bank} · Preset ${preset}`,
+      title,
       bodyHtml:
-        '<p class="tx-note tx-fine">Choosing an instrument sends it to this preset and plays it. ' +
-        'Nothing is kept until you hold the button on the Seven.</p>' +
+        `<p class="tx-note tx-fine">${esc(note)}</p>` +
         `<div class="pick-body pick-inline">${SevenLibraryView.renderSoundTiles({ pickSearch: '' }, sounds)}</div>`,
       confirmLabel: 'Cancel',
       cancelLabel: 'Cancel',
       tone: 'is-transfer',
     });
-    const chosen = await new Promise((resolve) => {
+    const name = await new Promise((resolve) => {
       modal.body.addEventListener('click', (e) => {
         const tile = e.target.closest('[data-pick-sound]');
         if (tile) resolve(tile.dataset.pickSound);
@@ -178,7 +182,20 @@
       modal.action().then(() => resolve(null));
     });
     modal.close();
-    if (!chosen) return;
+    if (!name) return null;
+    const found = sounds.find((s) => s.name === name);
+    return { name, sampled: found ? !!found.sampled : undefined };
+  }
+
+  async function pickSoundForSlot(bank, preset) {
+    if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
+    const pickedSound = await chooseSound(
+      `Bank ${bank} · Preset ${preset}`,
+      'Choosing an instrument sends it to this preset and plays it. Nothing is kept until ' +
+      'you hold the button on the Seven.'
+    );
+    if (!pickedSound) return;
+    const chosen = pickedSound.name;
 
     const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${chosen}`);
     if (!started || !started.started) {
@@ -196,9 +213,64 @@
     return transferWalk(started.slots, bank);
   }
 
+  // Send ONE patch from the library to one preset. Same walk as a setlist
+  // transfer and as the sound picker — the target is chosen here instead of
+  // coming from a setlist's position.
+  async function sendPatchToSlot(entry) {
+    if (!isConnected()) return toast('Connect the Seven to send a patch to it');
+    const bank = await SevenModal.choose({
+      title: `Send “${entry.name}” to the Seven`,
+      body: 'Which bank? Bank 1 is not offered: it holds the factory presets.',
+      choices: [{ value: 2, label: 'Bank 2' }, { value: 3, label: 'Bank 3' }, { value: 4, label: 'Bank 4' }],
+    });
+    if (!bank) return;
+    const preset = await SevenModal.choose({
+      title: `Bank ${bank} — which preset?`,
+      body: 'This preset is replaced, and only once you hold its button on the Seven.',
+      choices: Array.from({ length: 8 }, (_, i) => ({ value: i + 1, label: `Preset ${i + 1}` })),
+    });
+    if (!preset) return;
+
+    const started = await window.sevenAPI.transfer.startSlot(bank, preset, entry.file);
+    if (!started || !started.started) {
+      return SevenModal.confirm({
+        title: 'Cannot send that patch',
+        body: (started && started.error) ||
+          (started && started.blocked && started.blocked[0] && started.blocked[0].reason) ||
+          'That patch could not be sent.',
+        confirmLabel: 'OK',
+        tone: 'is-warning',
+      });
+    }
+    transferRunning = true;
+    return transferWalk(started.slots, bank);
+  }
+
+  // Choosing the sound a stored PATCH names. The parameters stay: the Seven
+  // keeps engine settings across a sound change (verified on the device), so
+  // the file does too. Undoable, like every other library edit.
+  async function pickSoundForPatch(file, patchIndex) {
+    const chosen = await chooseSound('Choose this patch’s sound',
+      'The settings stay as they are — only which instrument the patch names changes.');
+    if (!chosen) return;
+    const r = await window.sevenAPI.library.saveSound(file, patchIndex, chosen.name, chosen.sampled);
+    const was = r && r.previous && r.previous.name;
+    if (was) {
+      undoStack.push(`sound → ${chosen.name}`, async () => {
+        await window.sevenAPI.library.saveSound(file, patchIndex, was, r.previous.sampled);
+        await refreshLibrary();
+      });
+    }
+    await refreshLibrary();
+    toast(`Sound is now ${chosen.name}`);
+  }
+
   document.addEventListener('click', (e) => {
-    const pick = e.target.closest('[data-pick-sound-for]');
+    const pick = e.target.closest('[data-pick-sound-for], [data-pick-sound-file]');
     if (!pick) return;
+    if (pick.dataset.pickSoundFile) {
+      return pickSoundForPatch(pick.dataset.pickSoundFile, Number(pick.dataset.pickSoundPi) || 0);
+    }
     const [bank, preset] = pick.dataset.pickSoundFor.split(':').map(Number);
     pickSoundForSlot(bank, preset);
   });
@@ -625,7 +697,12 @@
     // device patch shows ITS bank/preset (the selection's, not the tab's).
     const pos =
       lastTouched === 'library' && libSelected
-        ? {}
+        ? {
+          // The same picture, the same gesture — but here it changes what the
+          // FILE says, not what the instrument holds. No connection needed:
+          // this is editing a patch on disk.
+          canPickSound: { file: libSelected.file, patchIndex: libSelected.patchIndex || 0 },
+        }
         : deviceSel
           ? {
             bankLabel: bankLabel(deviceSel.bank),
@@ -983,6 +1060,7 @@
           libView.beginRename(entry);
           return;
         }
+        if (action === 'send') return sendPatchToSlot(entry);
         if (action === 'duplicate') await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex);
         else if (action === 'trash') {
           await window.sevenAPI.library.trash(entry.file);

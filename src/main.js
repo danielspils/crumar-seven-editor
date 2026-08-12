@@ -32,6 +32,8 @@ function registerLibraryIpc() {
     getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled'));
   ipcMain.handle('library:duplicate', (_e, { file, patchIndex }) =>
     getStore().duplicate(file, patchIndex));
+  ipcMain.handle('library:saveSound', (_e, { file, patchIndex, soundName, sampled }) =>
+    getStore().savePatchSound(file, patchIndex || 0, soundName, sampled));
   ipcMain.handle('library:saveParams', (_e, { file, patchIndex, params }) =>
     getStore().savePatchParams(file, patchIndex || 0, params));
   ipcMain.handle('library:trash', (_e, { file }) =>
@@ -67,6 +69,8 @@ function registerLibraryIpc() {
     popupMenu(e, [
       { label: 'Rename', action: 'rename' },
       { label: 'Duplicate', action: 'duplicate' },
+      { type: 'separator' },
+      { label: 'Send to Seven…', action: 'send' },
       { type: 'separator' },
       { label: 'Export…', action: 'export' },
       { type: 'separator' },

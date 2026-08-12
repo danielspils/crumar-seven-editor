@@ -77,6 +77,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     rename: (file, patchIndex, newName) => ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
     duplicate: (file, patchIndex) => ipcRenderer.invoke('library:duplicate', { file, patchIndex }),
     trash: (file) => ipcRenderer.invoke('library:trash', { file }),
+    saveSound: (file, patchIndex, soundName, sampled) =>
+      ipcRenderer.invoke('library:saveSound', { file, patchIndex, soundName, sampled }),
     saveParams: (file, patchIndex, params) =>
       ipcRenderer.invoke('library:saveParams', { file, patchIndex, params }),
     export: (file, suggestedName) => ipcRenderer.invoke('library:export', { file, suggestedName }),

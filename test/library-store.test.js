@@ -230,3 +230,26 @@ test('a backup setlist is stamped when it is written and when it is replaced', (
   assert.ok(list[0].touchedAt > '2001', 're-running the day stamps it again');
   assert.ok(first, 'and it was stamped the first time too');
 });
+
+// Changing which SOUND a stored patch names. The name is the patch's portable
+// identity — ids differ per instrument — so this is the only safe way to say
+// "this patch is a Clavi now".
+test('a patch’s sound can be changed without disturbing its parameters', () => {
+  const { store } = freshStore();
+  const entry = store.list().patches[0];
+  const before = store.readFile(entry.file).library.patches[entry.patchIndex || 0];
+  const params = { ...before.params };
+
+  const r = store.savePatchSound(entry.file, entry.patchIndex || 0, 'Clavi Piano', true);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.previous.name, before.sound.name, 'it reports what it replaced, for undo');
+
+  const after = store.readFile(entry.file).library.patches[entry.patchIndex || 0];
+  assert.strictEqual(after.sound.name, 'Clavi Piano');
+  assert.strictEqual(after.sound.sampled, true);
+  assert.deepStrictEqual(after.params, params, 'settings survive a sound change, as on the device');
+  // `verified` is the instrument's word, and the instrument has not spoken
+  // since this edit.
+  assert.strictEqual(after.verified, before.verified, 'verified is not re-stamped by an app-side edit');
+  assert.notStrictEqual(after.captured, undefined);
+});

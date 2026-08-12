@@ -372,6 +372,26 @@ class LibraryStore {
   // the instrument itself (every live edit is echoed by the device before it
   // reaches here), so this IS a device-confirmed state: captured and verified
   // both move to now. Only keys the schema knows are accepted.
+  // Change which SOUND a stored patch names. The name is the patch's portable
+  // identity (schema soundsNote) — ids differ per unit — so this rewrites the
+  // name and the modeled/sampled flag and nothing else. The parameters stay:
+  // the Seven keeps engine settings across a sound change (verified 2026-08-09,
+  // 0x46), so the app does the same.
+  savePatchSound(file, patchIndex, soundName, sampled) {
+    const parsed = this.readFile(file);
+    if (!parsed.library) throw new Error('File is not readable');
+    const patch = parsed.library.patches[patchIndex];
+    if (!patch) throw new Error('No such patch in file');
+    const previous = { name: patch.sound && patch.sound.name, sampled: patch.sound && patch.sound.sampled };
+    patch.sound = { ...(patch.sound || {}), name: String(soundName) };
+    if (typeof sampled === 'boolean') patch.sound.sampled = sampled;
+    // NOT touching `verified`: the instrument has not confirmed this patch
+    // since the change, and saying otherwise would be a claim we cannot make.
+    patch.captured = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    return { ok: true, previous };
+  }
+
   savePatchParams(file, patchIndex, params) {
     const parsed = this.readFile(file);
     if (!parsed.library) throw new Error('File is not readable');
