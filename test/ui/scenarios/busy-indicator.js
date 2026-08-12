@@ -2,11 +2,14 @@
 // screen forever whenever the send never started.
 (async () => {
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
-  await ui.selectBankPreset(0);
-  const bar = ui.$('.param:not(.is-live) .param-bar');
-  if (!ui.check(!!bar, 'a parameter bar is present')) return;
+  // A BANK preset is a recall — one message, nothing to wait for. The wait
+  // this indicator exists for is loading a patch from the library, which sends
+  // the sound and 110 values.
+  await ui.openLibrary();
+  const row = await ui.waitEl('#library .lib-row.lib-patch', 'a library patch');
+  if (!ui.check(!!row, 'a library patch to load')) return;
 
-  ui.click(bar, 'parameter bar');
+  ui.click(row, 'a library patch');
   await ui.waitFor(() => !!ui.$('#undo-toast.is-busy.shown'), { timeout: 3000, what: 'the busy indicator' });
   const el = ui.$('#undo-toast');
   const box = el.getBoundingClientRect();

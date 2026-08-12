@@ -1149,10 +1149,14 @@
     /* The two neighbours sit exactly on the hero until the pointer arrives,
        then move out and dim. Pointer-events off until then, or an invisible
        peek would eat the hero's clicks. */
-    .engine-carousel .is-peek {
+    .engine-carousel .is-peek, .engine-carousel .is-far {
       position: absolute; top: 0; left: 0; width: 100%;
       opacity: 0; pointer-events: none; cursor: pointer; z-index: -1;
     }
+    /* Parked out of sight either side. Never visible at rest — their whole job
+       is to arrive during a turn. */
+    .engine-carousel .is-far-prev { transform: translateX(-140%) scale(.6); }
+    .engine-carousel .is-far-next { transform: translateX(140%) scale(.6); }
     /* Just picked: the pointer is still sitting on the carousel, so :hover is
        true and it stays open — which reads as "nothing happened". Quiet until
        the pointer leaves and comes back. */
@@ -1176,18 +1180,25 @@
        you clicked travels INTO the middle and the middle one travels out.
        Re-rendering without this made the images change in place — a jump cut,
        not a rotation. */
-    .engine-carousel.is-turning-next .is-next,
-    .engine-carousel.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
-    .engine-carousel.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning-next .is-prev { transform: translateX(-130%) scale(.6); opacity: 0; }
-    .engine-carousel.is-turning-prev .is-next { transform: translateX(130%) scale(.6); opacity: 0; }
+
     /* No arrows. Clicking a neighbour brings it to the middle, so the picture
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
     .engine-carousel:hover .is-prev:hover { transform: translateX(-72%) scale(.82); }
     .engine-carousel:hover .is-next:hover { transform: translateX(72%) scale(.82); }
+    .engine-carousel.is-turning.is-turning-next .is-next,
+    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
+    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
+    .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
+    /* The one rolling in from beyond, taking the vacated side. */
+    .engine-carousel.is-turning.is-turning-next .is-far-next { transform: translateX(72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-far-prev { transform: translateX(-72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-next .is-far-prev { transform: translateX(-210%) scale(.5); opacity: 0; }
+    .engine-carousel.is-turning.is-turning-prev .is-far-next { transform: translateX(210%) scale(.5); opacity: 0; }
+    .engine-carousel .is-far { transition: transform .42s cubic-bezier(.22, .9, .3, 1), opacity .38s ease; }
     /* The name of whatever is under the pointer. Not a native title: the OS
        holds those back for a second or more, and this is a label for the thing
        you are pointing AT — it has to keep up with the pointer. 90ms is long

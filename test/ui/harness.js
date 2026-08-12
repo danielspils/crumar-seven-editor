@@ -66,7 +66,10 @@ window.ui = (() => {
   const $$ = (sel) => [...document.querySelectorAll(sel)];
 
   const connected = () => !!$('#connection-row.connected');
-  const live = () => !!$('.audition-bar.is-live');
+  // "Live" is no longer a bar on screen: the bar only appears once there is an
+  // unsaved edit to warn about. What live MEANS is that the instrument's
+  // buffer holds what is shown, and the proof of that is writable controls.
+  const live = () => !!$('.param.is-live');
 
   // Most scenarios need an instrument; the runner skips them when none is
   // attached rather than reporting failures the code did not cause.

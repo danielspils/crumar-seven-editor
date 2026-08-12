@@ -51,12 +51,20 @@
     const moved = here.name !== patch.soundName;
     return (
       `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}" data-carousel>` +
-      // No arrows: the neighbours ARE the targets. An arrow is a control that
-      // points at a thing you could have pointed at yourself, and it sat on
-      // top of the very picture it was scrolling.
+      // FIVE faces, not three. The two beyond the edges are invisible at rest
+      // and exist only so the turn has something to roll IN with: with three,
+      // the clicked picture moved to the middle and the side it came from was
+      // left empty, which reads as two images swapping rather than a wheel
+      // going round (Daniel, 2026-08-12).
+      //
+      // No arrows either: the neighbours ARE the targets. An arrow is a control
+      // pointing at a thing you could point at yourself, sitting on top of the
+      // very picture it scrolls.
+      face(wrap(at - 2), 'is-far is-far-prev') +
       face(wrap(at - 1), 'is-peek is-prev') +
       face(here, 'is-hero') +
       face(wrap(at + 1), 'is-peek is-next') +
+      face(wrap(at + 2), 'is-far is-far-next') +
       `</div>`
     );
   }

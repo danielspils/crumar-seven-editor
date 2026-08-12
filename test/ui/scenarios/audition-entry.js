@@ -1,4 +1,8 @@
-// Reaching for a control enters audition mode — from every KIND of control.
+// Selecting a patch IS the session — there is nothing to enter. Recalling the
+// slot puts it in the instrument's edit buffer, which is the only thing a live
+// control ever required, so every control on screen is live from the moment
+// the patch is chosen.
+//
 // The Clav's switches are here by name: they were unclickable for two rounds
 // because a wrapper carried pointer-events:none, and synthetic clicks in an
 // earlier version of this suite would have passed anyway.
@@ -7,10 +11,11 @@
 
   // Bank 1 Preset 4 is a Clavi patch: switches, choice tabs, no bars up top.
   await ui.selectBankPreset(3);
-  ui.check(!ui.live(), 'starts outside audition mode');
+  ui.check(ui.live(), 'selecting a preset opens the session — nothing to press');
+  ui.check(!ui.$('#audition-btn'), 'and there is no Audition button to press');
 
-  const half = ui.$('.param:not(.is-live) .d6-half');
-  ui.check(!!half, 'the Clavi patch shows switch halves');
+  const half = ui.$('.param.is-live .d6-half');
+  ui.check(!!half, 'the Clavi patch shows switch halves, live');
   if (half) {
     const hit = ui.hitTarget(half);
     ui.check(
@@ -18,8 +23,8 @@
       `a click on a switch half reaches it (landed on <${hit && hit.className}>)`
     );
     ui.click(half, 'Clavi switch half');
-    await ui.waitFor(ui.live, { what: 'audition mode from a switch' });
-    ui.note(`switch -> live: ${ui.live()}`);
+    await ui.sleep(600);
+    ui.check(ui.live(), 'the switch stays live after being pressed');
   }
 
   // A bar, on a patch whose engine has them.
@@ -29,18 +34,12 @@
   // asks "Reset Sound?" and that dialog sits over the control this step is
   // trying to click. Leaving a session also recalls the slot it started from
   // to put the instrument back, so there is a round trip to wait out.
-  await ui.selectBankPreset(1);
-  await ui.sleep(1200);
+  // A patch whose engine has bars, to prove it is not a Clavi-only trick.
   await ui.selectBankPreset(0);
   await ui.sleep(600);
-  const bar = ui.$('.param:not(.is-live) .param-bar');
-  ui.check(!!bar, 'a parameter bar is present');
-  if (bar) {
-    ui.click(bar, 'parameter bar');
-    await ui.waitFor(ui.live, { what: 'audition mode from a bar' });
-    ui.note(`bar -> live: ${ui.live()}`);
-  }
+  const bar = ui.$('.param.is-live .param-bar');
+  ui.check(!!bar, 'a parameter bar is live too');
 
-  // No modal should ever be involved in this path any more.
-  ui.check(!ui.$('.seven-modal'), 'entering audition mode shows no modal');
+  // Nothing may ever ask permission on this path.
+  ui.check(!ui.$('.seven-modal'), 'no dialog stands between a patch and playing it');
 })()

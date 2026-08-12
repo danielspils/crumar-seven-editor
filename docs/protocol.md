@@ -434,6 +434,16 @@ The July 2021 manual documents v1.22. On v1.37:
    and after, never by a marker. Compare those CCs as opaque bytes — open item 8's
    scaling law is still unverified.
 5. Whether `.bin` preset export shares this layout. Untested.
+5a. **A backup reads the EDIT BUFFER, so it records whatever is loaded — not
+   necessarily what the slot holds.** The run recalls each slot and reads the
+   110 values back, which is the same buffer an audition writes into. On
+   2026-08-12 a run recorded Bank 2 Preset 4 as a bare Clavi Piano while the
+   instrument still held Shapes Clav: an audition was loaded when the run
+   reached that slot. The instrument was right and the backup was wrong, which
+   is the worse way round. The app now ends any live session and lets its
+   recall land before starting a run; anything else driving the buffer during a
+   backup (the manufacturer's editor, a second copy of this app) would corrupt
+   a record the same way, and nothing on the wire would say so.
 5b. **`dly_mf` / `dly_ml` accept writes but were reported to change nothing
    audible (2026-08-12).** With FX2 in Delay mode, the owner adjusted Max
    Feedback (id 86) and Max Level (id 87) and heard no change. A direct check

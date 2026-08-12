@@ -330,7 +330,10 @@
     const from = carouselAt == null ? soundIndexOf(patch && patch.soundName) : carouselAt;
     if (!car) { carouselAt = from + dir; renderDetail(); return; }
     turning = true;
-    car.classList.add(dir > 0 ? 'is-turning-next' : 'is-turning-prev');
+    // Two classes: one selects the direction, the other doubles the rule's
+    // specificity so a pointer resting on the face it just clicked cannot pin
+    // it in its hover position while the wheel turns.
+    car.classList.add('is-turning', dir > 0 ? 'is-turning-next' : 'is-turning-prev');
     setTimeout(() => {
       turning = false;
       carouselAt = from + dir;
@@ -1118,7 +1121,10 @@
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     carouselAt = null; // a new selection brings the carousel back to its sound
     liveSound = null;
-    audition.endSession();
+    // No endSession() here: recallOnDevice below closes the old session and
+    // opens one on this slot. Ending it first also RESTORED the instrument to
+    // the slot we are leaving, one recall before recalling the slot we want —
+    // two moves where the player asked for one.
     lastTouched = 'device';
     resetCollapsed();
     renderAll();
@@ -1818,6 +1824,14 @@
         backupBtn.textContent = 'Cancelling…';
         return;
       }
+      // End any live session FIRST, and let its recall land. A backup recalls
+      // each slot and reads the edit buffer — so if something is auditioning
+      // when the run reaches that slot, the buffer's contents get written down
+      // as the preset. That happened on 2026-08-12: Bank 2 Preset 4 was
+      // recorded as a bare Clavi Piano while the instrument still held Shapes
+      // Clav. The record was wrong, not the Seven, which is the worse failure
+      // of the two — a backup that lies is worse than one that refuses.
+      if (audition.endSession()) await new Promise((r) => setTimeout(r, 600));
       const { started } = await window.sevenAPI.midi.backup();
       if (started) {
         backupRunning = true;

@@ -120,7 +120,7 @@
     // a player presses a panel button, and wrong when the app pressed it. Left
     // unmarked, putting the instrument back yanked the selection to the bank
     // region mid-browse, so the next arrow key moved the wrong list.
-    ourRecall = { program: back.bank * 8 + back.preset, until: Date.now() + 2000 };
+    markOurRecall(back.bank * 8 + back.preset);
     window.sevenAPI.midi.recall(back.bank, back.preset);
   };
 
@@ -274,15 +274,11 @@
       if (!r || !r.ok || r.value !== liveEdit.params[key]) { intact = false; break; }
     }
     if (intact) {
-      // The edit buffer still holds what we sent. Most often that means the
-      // user just stored it on the panel — say where, without claiming more
-      // than the instrument has actually told us.
-      auditionNote = {
-        kind: 'is-ok',
-        file,
-        text: `The Seven is on Bank ${ev.bank} · Preset ${ev.preset}, still holding these settings. ` +
-          'If you held the button to store it, it is saved there — Save to Library keeps a copy here.',
-      };
+      // Nothing to say. The buffer still holds what is on screen, which is the
+      // ordinary state of things now that selecting a patch loads it — and a
+      // paragraph explaining that a hold you just performed probably worked is
+      // a paragraph about the absence of a problem (Daniel, 2026-08-12).
+      auditionNote = null;
     } else {
       const stale = liveEdit.dirty;
       liveEdit = null;
@@ -304,7 +300,29 @@
   // row is still not live — so a second click on the control (or on another
   // one) used to open a second copy of the same modal.
   let offering = false;
-  let ourRecall = null; // { program, until } — the echo of a recall we sent // patch file the modal has already been shown for
+  // Every recall WE issue, until its echo comes back. A list, not one slot:
+  // selecting a patch can fire two in a row — one to put the instrument back
+  // where the last session started, then one for the slot just chosen — and
+  // with room for only the latest, the first echo arrived unrecognised, was
+  // read as the player pressing a panel button, and dragged the selection back
+  // to the bank it had just left (Daniel, 2026-08-12: "I click Bank 3/button 2
+  // and it flips back to Bank 2").
+  let ourRecalls = []; // [{ program, until }]
+
+  const markOurRecall = (program) => {
+    const now = Date.now();
+    ourRecalls = ourRecalls.filter((r) => r.until > now);
+    ourRecalls.push({ program, until: now + 2500 });
+  };
+
+  const claimOurRecall = (program) => {
+    const now = Date.now();
+    const i = ourRecalls.findIndex((r) => r.program === program && r.until > now);
+    ourRecalls = ourRecalls.filter((r) => r.until > now);
+    if (i < 0) return false;
+    ourRecalls.splice(i, 1);
+    return true;
+  };
 
   async function offerAudition() {
     if (offering || auditionInFlight) return;
@@ -546,7 +564,7 @@
     // With Send PC on, the Seven echoes the recall straight back as a Program
     // Change. That echo is ours, not the player reaching for the panel, and
     // treating it as theirs ended live sessions that had only just begun.
-    ourRecall = { program: bank * 8 + preset, until: Date.now() + 2000 };
+    markOurRecall(bank * 8 + preset);
     await window.sevenAPI.midi.recall(bank, preset);
     // The buffer now holds this slot's own preset, which is exactly what the
     // panel is showing — so the session is simply OPEN. There is no mode to
@@ -690,11 +708,7 @@
       // A Program Change while live is ambiguous — see checkBufferAfterRecall.
       // Returns true when the app caused it, so the caller ignores its echo.
       onProgramChange(ev) {
-        const isEcho = ourRecall && ourRecall.program === ev.program && Date.now() < ourRecall.until;
-        if (isEcho) {
-          ourRecall = null;
-          return true;
-        }
+        if (claimOurRecall(ev.program)) return true;
         if (liveEdit && !auditionInFlight) checkBufferAfterRecall(ev);
         return false;
       },
