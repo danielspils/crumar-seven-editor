@@ -1191,12 +1191,18 @@
     .car-face { position: relative; }
     .car-face::after {
       content: attr(data-car-name);
-      position: absolute; left: 50%; bottom: -19px; transform: translateX(-50%);
+      /* ON the instrument, not under it. Below the picture it landed on the
+         parameter rows; and several sounds share one photograph — every Venice
+         grand is the same piano — so the name has to sit where the eye already
+         is rather than somewhere it has to go looking. */
+      /* Below centre, out of the arrows' line: at 50% the name ran straight
+         through both of them and the three read as one string. */
+      position: absolute; left: 50%; top: 68%; transform: translate(-50%, -50%);
       white-space: nowrap; z-index: 4; pointer-events: none;
       font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--text); background: var(--bg-raised);
-      border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+      color: #fff; background: rgba(20, 20, 22, .72);
+      border-radius: 4px; padding: 3px 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
       opacity: 0; transition: opacity .1s ease .09s;
     }
     .car-face:hover::after { opacity: 1; }

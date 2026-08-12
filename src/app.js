@@ -288,6 +288,28 @@
     toast(`Sound is now ${chosen.name}`);
   }
 
+  // Selecting a library patch — from a click, or from the arrow keys. One
+  // function, because the arrows used to fake a click on the neighbouring row
+  // and that raced the list's own re-render: the highlight stopped advancing
+  // and the panel showed the patch before last (Daniel, 2026-08-12).
+  function selectLibraryEntry(entry, opts = {}) {
+    // Independent of the device selection — both stay set, both stay visibly
+    // selected; the detail panel follows the last touch.
+    libSelected = entry;
+    lastTouched = 'library';
+    resetCollapsed();
+    renderAll();
+    // Moving to another patch leaves audition mode, here as in the bank region.
+    audition.endSession();
+    liveSound = null;
+    // Selecting a patch PLAYS it, in the flat list as well as in a setlist.
+    // The flat list was treated as a filing cabinet — selecting a row meant
+    // "show me this", not "play this" — but that distinction was the app's, not
+    // the player's: you click a patch to hear it. preview() collapses rapid
+    // selections into one load, so arrowing down a list does not pile up sends.
+    audition.preview({ file: entry.file, patchIndex: entry.patchIndex || 0 });
+  }
+
   // Paging the carousel. The index lives here rather than in the renderer,
   // which is a pure view — and it is reset whenever the selection changes, so
   // the carousel goes back to showing what the newly selected patch names.
@@ -326,26 +348,17 @@
   // the same split the picture has always had: a slot on the Seven gets it
   // sent and asks for the hold; a patch on disk has its file rewritten.
   async function chosenFromCarousel(name) {
-    const found = soundList.find((x) => x.name === name);
-    const sampled = found ? !!found.sampled : undefined;
-    if (lastTouched === 'library' && libSelected) {
-      const file = libSelected.file;
-      const patchIndex = libSelected.patchIndex || 0;
-      const r = await window.sevenAPI.library.saveSound(file, patchIndex, name, sampled);
-      const was = r && r.previous && r.previous.name;
-      if (was) {
-        undoStack.push(`sound → ${name}`, async () => {
-          await window.sevenAPI.library.saveSound(file, patchIndex, was, r.previous.sampled);
-          carouselAt = null;
-          await refreshLibrary();
-        });
-      }
-      carouselAt = null;
-      await refreshLibrary();
-      quietCarousel();
-      return toast(`Sound is now ${name}`);
+    // Picking an instrument AUDITIONS it. It never rewrites a file.
+    //
+    // It used to: with a library patch selected, choosing a sound wrote the new
+    // name straight into the patch on disk. That is a reasonable thing to be
+    // able to do and a terrible thing to do by accident — five of Daniel's
+    // backup records were silently renamed by what he thought was auditioning
+    // (2026-08-12). A file is edited by asking to edit it, not by listening.
+    if (!isConnected()) return toast('Connect the Seven to try another instrument');
+    if (!deviceSel || deviceSel.bank === 0) {
+      return toast('Choose a preset in Bank 2, 3 or 4 to try an instrument on it');
     }
-    if (!deviceSel || deviceSel.bank === 0) return;
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const bank = deviceSel.bank + 1;
     const preset = deviceSel.preset + 1;
@@ -416,17 +429,22 @@
   }
 
   function moveLibrarySelection(dir) {
-    // Clicking the neighbouring row rather than reaching into the view's
-    // state: the click path already handles selection, the detail panel and
-    // playing the patch when it is in a setlist, and a second way in would
-    // drift from it.
+    // The DOM gives the ORDER — grouped and filtered exactly as displayed —
+    // and nothing else. The move itself goes through the same function a click
+    // does, rather than dispatching a fake click and hoping the re-render has
+    // not replaced the node underneath it.
     const rows = [...document.querySelectorAll('#library .lib-row.lib-patch')];
     if (!rows.length) return;
     const at = rows.findIndex((r) => r.classList.contains('selected'));
     const next = rows[at < 0 ? (dir > 0 ? 0 : rows.length - 1) : at + dir];
     if (!next) return;
-    next.click();
+    const entry = libEntries.find(
+      (e) => e.file === next.dataset.file && (e.patchIndex || 0) === (Number(next.dataset.pi) || 0)
+    );
+    if (!entry) return;
+    libView.select(entry);       // the highlight, now, with no round trip
     next.scrollIntoView({ block: 'nearest' });
+    selectLibraryEntry(entry, { inSetlist: !!next.closest('.lib-slot') });
   }
 
   document.addEventListener('keydown', (e) => {
@@ -897,9 +915,16 @@
     el: detailEl,
     getTarget: currentTarget,
     getPatch: () => currentPatch(),
-    renderDetail: () => renderDetail(),
+    // The panel strip goes with it. A live edit re-renders the detail, and the
+    // strip was left showing the value before the change — the knobs are part
+    // of the same picture of the instrument, not decoration beside it.
+    renderDetail: () => { renderDetail(); updateKnobLit(); updateClaviGroup(); },
     refreshLibrary: () => refreshLibrary(),
     getEntries: () => libEntries,
+    // Which slot the Seven is on, so a session can put it back when it ends.
+    // Referenced by audition.js and MISSING until now, which is why leaving
+    // audition mode left you still hearing the sound you were trying out.
+    getSlot: () => (deviceSel ? { bank: deviceSel.bank, preset: deviceSel.preset } : null),
     undoStack,
     schema, // for a parameter's display name in the undo label
   });
@@ -972,8 +997,20 @@
     '--k-glow-fill', '--k-bore-fill', '--k-bore-stroke', '--k-top-stroke',
     '--k-mid-stroke', '--k-skirt-stroke', '--k-rib-stroke', '--k-shadow',
   ];
+  // The patch AS SHOWN: the working copy while a session is live, so the panel
+  // strip agrees with the parameter rows. The strip used to read the saved
+  // patch, so toggling the Synth Pad during an audition lit its section pill
+  // and left its knob dark (Daniel, 2026-08-12: "the pad is on, but the knob
+  // is not lit").
+  function shownPatch() {
+    const base = currentPatch();
+    if (!base) return base;
+    const working = audition.isLive() ? audition.workingParams() : null;
+    return working ? { ...base, params: working } : base;
+  }
+
   function updateKnobLit() {
-    const patch = currentPatch();
+    const patch = shownPatch();
     for (const [id, spec] of Object.entries(KNOB_LIT_SWITCH)) {
       const el = panelStrip.querySelector(`#${id}`);
       if (!el) continue;
@@ -1010,7 +1047,11 @@
   function updateClaviGroup() {
     const group = panelStrip.querySelector('#clavi-group');
     if (!group) return;
-    const patch = currentPatch();
+    const base = shownPatch();
+    // liveSound wins: the buffer's instrument decides which engine is playing.
+    const patch = base && liveSound && audition.isLive()
+      ? { ...base, soundName: liveSound.name, sampled: !!liveSound.sampled }
+      : base;
     const active = !!patch && R.engineGroupFor(patch) === 'pno_zd6';
     group.classList.toggle('inactive', !active);
   }
@@ -1176,23 +1217,7 @@
       // the picker's Instruments tab. Sound-only slots reference these by NAME,
       // never by id: ids are not portable across units (schema soundsNote).
       sounds: schema.sounds,
-      select(entry, opts = {}) {
-        // Independent of the device selection — both stay set, both stay
-        // visibly selected; the detail panel follows the last touch.
-        libSelected = entry;
-        lastTouched = 'library';
-        resetCollapsed();
-        renderAll();
-        // Clicking a patch in a SETLIST plays it: walking a set is the reason
-        // setlists exist, and doing that silently is not walking a set. The
-        // library's flat list stays silent — that is a filing cabinet, and
-        // clicking a row there is not a request to hear it.
-        // Moving to another patch leaves audition mode, here as in the bank
-        // region — unless there are unsaved edits, which the guard handles.
-        audition.endSession();
-        liveSound = null;
-        if (opts.inSetlist) audition.preview({ file: entry.file, patchIndex: entry.patchIndex || 0 });
-      },
+      select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
         if (!action) return;
@@ -1861,7 +1886,12 @@
         // The device broadcasts this on every sound change. While live it is
         // the buffer telling us what it now holds; otherwise it belongs to a
         // recall, which ends the live session anyway.
-        if (audition.isLive()) {
+        // Ignore it while a load is in flight: the broadcast belongs to the
+        // patch being sent, and by the time it arrives the selection may have
+        // moved on — which showed the PREVIOUS patch's instrument in the
+        // header, one step behind the list (Daniel, 2026-08-12, arrowing
+        // through the library).
+        if (audition.isLive() && !audition.isBusy()) {
           const found = soundList.find((x) => x.id === ev.soundId);
           const patch = currentPatch();
           if (found && patch && found.name !== patch.soundName) {
@@ -1894,15 +1924,18 @@
         // The module decides whether this is the echo of a recall the app
         // sent, or the player reaching for the panel. During a transfer every
         // PC is ours, so the question doesn't arise.
-        if (!transferRunning) audition.onProgramChange(ev);
+        const ours = transferRunning || audition.onProgramChange(ev);
         // Send PC on: panel recalls are slot-identified, so the bank region
-        // follows the hardware. Suppressed during a backup run — those PCs
-        // are ours.
-        deviceSel = { bank: ev.bank - 1, preset: ev.preset - 1 };
-        bankIndex = ev.bank - 1;
-        lastTouched = 'device';
-        resetCollapsed();
-        renderAll();
+        // follows the hardware — but only when it was the HARDWARE. Following
+        // our own echo moved the selection out from under a player browsing
+        // the library, and the next arrow key then walked the other list.
+        if (!ours) {
+          deviceSel = { bank: ev.bank - 1, preset: ev.preset - 1 };
+          bankIndex = ev.bank - 1;
+          lastTouched = 'device';
+          resetCollapsed();
+          renderAll();
+        }
       }
       // current-sound events also arrive here (recalls without Send PC give
       // sound identity but not the slot — not enough to move the selection).

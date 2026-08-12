@@ -378,7 +378,14 @@
         // there is no window and no art module.
         (soundArt()
           ? (view && view.canPickSound
-            ? soundCarousel(patch, view)
+            ? (view.canPickSound.file
+              // A library patch. Its picture is not a control: choosing an
+              // instrument means HEARING it, which needs a preset on the Seven
+              // to hear it on. Editing the file's sound is a deliberate act
+              // elsewhere, not a side effect of browsing.
+              ? `<div class="engine-art" title="Select a preset in Bank 2, 3 or 4 to try another instrument">` +
+                `${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`
+              : soundCarousel(patch, view))
             // Not a control here, and the tooltip says so rather than leaving
             // the picture looking inert for no reason.
             : `<div class="engine-art"${view && view.noPickReason ? ` title="${esc(view.noPickReason)}"` : ''}>` +

@@ -23,9 +23,16 @@
   }
 
   // A bar, on a patch whose engine has them.
-  if (ui.live()) ui.$('#done-live-btn')?.click();
-  await ui.sleep(400);
+  //
+  // Leave by NAVIGATING, not by the close button: navigation discards, while
+  // the close button leaves an edited session standing — so the next audition
+  // asks "Reset Sound?" and that dialog sits over the control this step is
+  // trying to click. Leaving a session also recalls the slot it started from
+  // to put the instrument back, so there is a round trip to wait out.
+  await ui.selectBankPreset(1);
+  await ui.sleep(1200);
   await ui.selectBankPreset(0);
+  await ui.sleep(600);
   const bar = ui.$('.param:not(.is-live) .param-bar');
   ui.check(!!bar, 'a parameter bar is present');
   if (bar) {

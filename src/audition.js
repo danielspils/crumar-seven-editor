@@ -112,7 +112,12 @@
     }
     return (
       `<div class="audition-bar">` +
-      `<button type="button" id="audition-btn">Audition “${esc(patch.name)}”</button>` +
+      // "Audition <name>" read as a STATUS — as though you were auditioning
+      // that patch — when it is the offer to start one (Daniel, 2026-08-12:
+      // "it remains in audition mode... at least the UI says so"). A verb with
+      // nothing after it cannot be mistaken for a label, and the patch it
+      // would act on is the one selected right beside it.
+      `<button type="button" id="audition-btn">Audition this patch</button>` +
       note +
       `</div>`
     );
@@ -147,6 +152,12 @@
     const back = cameFrom;
     cameFrom = null;
     if (!back || !isConnected()) return;
+    // Mark it as OURS before it goes. The Seven echoes the Program Change and
+    // the app moves its selection to follow the hardware — which is right when
+    // a player presses a panel button, and wrong when the app pressed it. Left
+    // unmarked, putting the instrument back yanked the selection to the bank
+    // region mid-browse, so the next arrow key moved the wrong list.
+    ourRecall = { program: back.bank * 8 + back.preset, until: Date.now() + 2000 };
     window.sevenAPI.midi.recall(back.bank, back.preset);
   };
 
@@ -377,7 +388,12 @@
       // The click hands off to an async handler. If that handler bailed before
       // starting the send — no target, a confirm declined, the instrument gone
       // — nothing else will take this message down.
-      setTimeout(() => { if (!auditionInFlight && !isLive()) hideToast(); }, 400);
+      setTimeout(() => {
+        if (!auditionInFlight && !isLive()) {
+          hideToast();
+          pendingIntent = null; // declined or failed: the move does not linger
+        }
+      }, 400);
     } finally {
       offering = false;
     }
@@ -388,9 +404,49 @@
     return row ? { key: row.dataset.key, max: Number(row.dataset.max) } : null;
   };
 
+  // The move that PROMPTED audition mode. Reaching for a control while the
+  // patch is not live opens the session — and then the move itself was lost,
+  // so you had to make it twice: once to be asked, once to mean it. This
+  // remembers what you were reaching for and does it as soon as the session
+  // opens (Daniel, 2026-08-12).
+  let pendingIntent = null;
+
+  const intentFrom = (e, el) => {
+    const row = el.closest('.param');
+    if (!row || !row.dataset.key) return null;
+    const key = row.dataset.key;
+    const setter = el.closest('[data-set]');
+    if (setter) return { key, value: Number(setter.dataset.set) };
+    const bar = el.closest('.param-bar');
+    if (bar) {
+      const rect = bar.getBoundingClientRect();
+      const max = Number(row.dataset.max);
+      if (!rect.width || !Number.isFinite(max)) return null;
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      return { key, value: Math.round(pct * max) };
+    }
+    return null;
+  };
+
+  // Called once a session is live. A pending move is a one-shot: if the send
+  // fails or the offer is declined, it is dropped rather than lying in wait.
+  async function applyPendingIntent() {
+    const intent = pendingIntent;
+    pendingIntent = null;
+    if (!intent || !isLive()) return;
+    await sendEdit(intent.key, intent.value);
+  }
+
   // Bars: press or drag anywhere along the track. Value follows the pointer,
   // rounded to the parameter's own range — no separate handle to hunt for.
   el.addEventListener('pointerdown', (e) => {
+    const idleBar = e.target.closest('.param:not(.is-live) .param-bar');
+    if (idleBar) {
+      // Remember where on the bar they pressed; the click handler that follows
+      // opens the offer.
+      pendingIntent = intentFrom(e, idleBar);
+      return;
+    }
     const bar = e.target.closest('.param.is-live .param-bar');
     if (!bar) return;
     e.preventDefault();
@@ -420,7 +476,11 @@
   el.addEventListener('click', (e) => {
     // Not live yet: any reach for a control offers audition mode.
     const idle = e.target.closest('.param:not(.is-live) [data-set], .param:not(.is-live) .param-bar');
-    if (idle) { offerAudition(); return; }
+    if (idle) {
+      pendingIntent = intentFrom(e, idle);
+      offerAudition();
+      return;
+    }
     const hit = e.target.closest('.param.is-live [data-set]');
     if (!hit) return;
     const info = rowKeyOf(hit);
@@ -539,6 +599,10 @@
       startPanelPoll();
     }
     deps.renderDetail();
+    // Now do the thing they reached for. After the render, so the row it
+    // belongs to is live and the value it writes is the one the panel shows.
+    if (r.ok) await applyPendingIntent();
+    else pendingIntent = null;
   });
 
   // Writes the working copy to the patch file. Needs no instrument — the
@@ -691,20 +755,18 @@
       // so what you hear matches what you are looking at.
       endSession() {
         if (!liveEdit) return false;
-        const lost = liveEdit.dirty;
-        const file = liveEdit.file;
         liveEdit = null;
         stopPanelPoll();
         restoreWhereWeWere();
-        if (lost) {
-          auditionNote = {
-            kind: 'is-error',
-            file,
-            text: 'Left audition mode. Those edits were not saved to the library.',
-          };
-        }
+        // No note. It was written when leaving was rare and deliberate; now
+        // every click on another patch leaves, and a red line after each one
+        // is noise rather than news.
         return true;
       },
+      // Is a load on its way to the instrument? The 0x45 it will broadcast
+      // belongs to THAT load, not to whatever is selected by the time it
+      // lands.
+      isBusy: () => auditionInFlight,
       // Unlike isLive(), this asks about the SESSION rather than the selection:
       // is there edited-but-unsaved work in the instrument's buffer right now,
       // whatever the user happens to have clicked on. Anything that recalls a
