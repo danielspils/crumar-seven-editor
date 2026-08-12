@@ -355,7 +355,10 @@
               '>' +
               soundArt().iconFor(patch.soundName, patch.sampled) +
               '<span class="engine-art-cta">select<br>sound</span></button>'
-            : `<div class="engine-art">${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`)
+            // Not a control here, and the tooltip says so rather than leaving
+            // the picture looking inert for no reason.
+            : `<div class="engine-art"${view && view.noPickReason ? ` title="${esc(view.noPickReason)}"` : ''}>` +
+              `${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`)
           : '') +
         `</div>` +
         // Warnings sit BELOW the head, full width — beside a picture they

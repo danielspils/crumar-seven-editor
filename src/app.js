@@ -188,16 +188,7 @@
   }
 
   async function pickSoundForSlot(bank, preset) {
-    // Both refusals are stated, not implied by a missing button.
-    if (bank === 1) {
-      return SevenModal.confirm({
-        title: 'Bank 1 holds the factory presets',
-        body: 'The app will not write to Bank 1. Choose a preset in Bank 2, 3 or 4 — or send ' +
-          'this sound to one of those from a patch in your library.',
-        confirmLabel: 'OK',
-        tone: 'is-warning',
-      });
-    }
+    // Bank 1 never reaches here — the picture is not a control on those slots.
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const pickedSound = await chooseSound(
       `Bank ${bank} · Preset ${preset}`,
@@ -717,13 +708,18 @@
           ? {
             bankLabel: bankLabel(deviceSel.bank),
             patchNumber: deviceSel.preset + 1,
-            // The illustration is ALWAYS the way in on a slot — including
-            // Bank 1 and including with nothing plugged in. It was gated on
-            // both, which meant the control vanished precisely when someone
-            // went looking for it, and an affordance you cannot find is worse
-            // than one that explains why it won't work. The refusals happen on
-            // the click, where they can say something.
-            canPickSound: { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
+            // Bank 1 is the factory presets and the app will not write there,
+            // so the picture is not a control at all on those slots — it says
+            // why on hover instead. A button that opens only to refuse is a
+            // dead end dressed as an offer.
+            //
+            // It IS offered with nothing plugged in, though: that refusal is
+            // temporary and actionable ("connect the Seven"), where Bank 1's
+            // is permanent. Hiding it there is what made it unfindable.
+            canPickSound: deviceSel.bank === 0
+              ? null
+              : { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
+            noPickReason: deviceSel.bank === 0 ? 'Works on banks 2, 3 and 4' : null,
           }
           : {};
     const emptyMsg =
