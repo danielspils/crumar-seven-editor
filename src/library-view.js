@@ -167,9 +167,34 @@
       .join('');
   }
 
+  // "Bank 2 setlist (2026-08-12)" — a dated RECORD written by a backup run, as
+  // opposed to a setlist someone built for a gig.
+  const BACKUP_NAME = /^Bank ([1-4]) setlist \((\d{4}-\d{2}-\d{2})(, partial)?\)$/;
+
+  // Most recently touched first — made, edited, or opened. A backup run stamps
+  // the four setlists it writes, so the last run sits at the top until you go
+  // and work on something else, and then THAT is at the top. One rule, no
+  // categories.
+  //
+  // Setlists made before the app recorded this have no stamp. Rather than dump
+  // them in a heap, a backup record falls back to the date in its own name and
+  // anything else to its position in the file — so an untouched library still
+  // reads newest-run-first.
+  const touchKey = (s, i) => {
+    if (s.touchedAt) return `9:${s.touchedAt}`;
+    const m = BACKUP_NAME.exec(s.name);
+    if (m) return `1:${m[2]}:${String(9 - Number(m[1])).padStart(2, '0')}`;
+    return `0:${String(10000 + i).padStart(6, '0')}`;
+  };
+
   function renderSetlistList(data, state) {
+    // The original index travels with each row: everything downstream (rename,
+    // delete, send, open) addresses setlists by their position in the FILE, so
+    // this ordering is display only and never renumbers anything.
     const rows = data.setlists
-      .map((s, i) => {
+      .map((s, i) => ({ s, i, key: touchKey(s, i) }))
+      .sort((a, b) => (a.key === b.key ? a.i - b.i : (a.key < b.key ? 1 : -1)))
+      .map(({ s, i }) => {
         if (state.renamingSetlist === i) {
           return (
             `<div class="lib-row lib-setlist-renaming" data-setlist="${i}">` +
@@ -191,7 +216,7 @@
           `<span class="patch-sound">${label}</span>` +
           `</button>` +
           `<button type="button" class="setlist-send" data-setlist-send="${i}" ` +
-          `title="Load “${esc(s.name)}” onto a bank on the Seven">Send to bank…</button>` +
+          `title="Load “${esc(s.name)}” onto a bank on the Seven">Send to Seven →</button>` +
           `<button type="button" class="setlist-delete" data-setlist-delete="${i}" ` +
           `title="Delete “${esc(s.name)}” (the patches stay in the library)">` +
           '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -444,6 +469,11 @@
       `<div class="lib-setlist-head">` +
       `<button type="button" class="lib-back">‹ Setlists</button>` +
       `<span class="lib-setlist-name">${esc(setlist.name)}</span>` +
+      // Also here, not only on the row you hovered to get in: this is the view
+      // where you finish arranging a setlist, and it is the moment you want to
+      // put it on the instrument.
+      `<button type="button" class="setlist-send" data-setlist-send="${state.setlistIndex}" ` +
+      `title="Load “${esc(setlist.name)}” onto a bank on the Seven">Send to Seven →</button>` +
       `</div>` +
       rows
     );
@@ -559,6 +589,7 @@
           clearTimeout(openTimer);
           openTimer = setTimeout(() => {
             state.setlistIndex = index;
+            if (on.openSetlist) on.openSetlist(index);
             render();
           }, 260);
           return;
@@ -662,7 +693,11 @@
       }
       const setlistRow = e.target.closest('.lib-setlist');
       if (setlistRow) {
-        state.setlistIndex = Number(setlistRow.dataset.setlist);
+        const index = Number(setlistRow.dataset.setlist);
+        state.setlistIndex = index;
+        // Opening counts as touching it: the thing you just looked at is the
+        // thing you are most likely to want next.
+        if (on.openSetlist) on.openSetlist(index);
         render();
         return;
       }
@@ -891,5 +926,5 @@
     };
   }
 
-  return { createLibraryView, renderBody };
+  return { createLibraryView, renderBody, renderSoundTiles };
 });

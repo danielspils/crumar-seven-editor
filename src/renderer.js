@@ -338,7 +338,17 @@
         // Guarded: renderer.js is loaded in Node by the unit tests, where
         // there is no window and no art module.
         (soundArt()
-          ? `<div class="engine-art">${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`
+          ? (view && view.canPickSound
+            // A button, not a decoration: the picture of the instrument IS the
+            // control that changes which instrument this preset holds. It grows
+            // and names itself on hover rather than carrying a label all the
+            // time — the label is only useful in the second before you click it.
+            ? `<button type="button" class="engine-art is-pickable" ` +
+              `data-pick-sound-for="${view.canPickSound.bank}:${view.canPickSound.preset}" ` +
+              `title="Choose the sound for Bank ${view.canPickSound.bank} · Preset ${view.canPickSound.preset}">` +
+              soundArt().iconFor(patch.soundName, patch.sampled) +
+              '<span class="engine-art-cta">select<br>sound</span></button>'
+            : `<div class="engine-art">${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`)
           : '') +
         `</div>` +
         // Warnings sit BELOW the head, full width — beside a picture they

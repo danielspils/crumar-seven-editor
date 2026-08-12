@@ -188,6 +188,66 @@ class TransferRunner extends EventEmitter {
     return { ...plan, started: true };
   }
 
+  // ONE preset, from the bank region: pick a patch or a bare sound and put it
+  // in that slot. Deliberately not a second code path — it builds a plan of
+  // eight slots with seven of them empty and hands it to the same walk, so
+  // Bank 1 stays refused, the sound is still resolved against THIS instrument,
+  // the slot is still recalled before it is written, the hold is still
+  // detected, and Send PC is still borrowed and given back. A feature that
+  // routes around those rules is how they stop being rules.
+  //
+  // `ref` is a library file name, or "sound:<name>" for a bare sound.
+  preflightSlot(bank, preset, ref) {
+    if (bank === BLOCKED_BANK) {
+      return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
+    }
+    if (!Number.isInteger(bank) || bank < 1 || bank > 4) {
+      return { ok: false, error: `There is no bank ${bank}.` };
+    }
+    if (!Number.isInteger(preset) || preset < 1 || preset > SLOTS_PER_BANK) {
+      return { ok: false, error: `There is no preset ${preset}.` };
+    }
+    if (!this.midi || this.midi.state !== 'connected') {
+      return { ok: false, error: 'The Seven is not connected.' };
+    }
+    const table = (this.midi.soundTable && this.midi.soundTable.sounds) || [];
+    const known = new Set(table.map((s) => s.name));
+    const slot = { slot: preset - 1, ref, name: null, soundName: null, action: 'skip', reason: null };
+    if (String(ref).startsWith('sound:')) {
+      slot.soundName = String(ref).slice('sound:'.length);
+      slot.name = slot.soundName;
+      slot.action = known.has(slot.soundName) ? 'send-sound' : 'blocked';
+    } else {
+      const entry = this.store.list().patches.find((e) => e.file === ref && !e.invalid);
+      if (!entry) {
+        return { ok: false, blocked: [{ slot: preset - 1, reason: 'the patch file is missing from the library' }] };
+      }
+      slot.name = entry.name;
+      slot.soundName = entry.soundName;
+      slot.action = known.has(entry.soundName) ? 'send' : 'blocked';
+    }
+    if (slot.action === 'blocked') {
+      slot.reason = `this instrument has no “${slot.soundName}”`;
+      return { ok: false, blocked: [slot] };
+    }
+    // Seven empty slots and one to write: the walk steps over the empties and
+    // reports the preset number from its position, so nothing else changes.
+    const slots = Array.from({ length: SLOTS_PER_BANK }, (_, i) =>
+      (i === preset - 1 ? slot : { slot: i, ref: null, action: 'skip', reason: 'left alone' }));
+    return { ok: true, bank, setlist: slot.name, slots, willWrite: 1, blocked: [] };
+  }
+
+  startSlot(bank, preset, ref) {
+    if (this.running) throw new Error('A transfer is already running');
+    const plan = this.preflightSlot(bank, preset, ref);
+    if (!plan.ok) return plan;
+    this.running = true;
+    this.cancelled = false;
+    this.priorProgram = null;
+    this.state = { bank, setlistIndex: null, slots: plan.slots, index: -1, sent: [], confirmed: [] };
+    return { ...plan, started: true };
+  }
+
   // Loads the next slot that has something to send. Returns the step for the
   // UI to describe, or a finished report when there are none left.
   async nextSlot() {

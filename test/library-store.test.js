@@ -179,3 +179,54 @@ test('a malformed setlist entry is dropped, the rest survive', () => {
   assert.ok(listNamed(store, 'Good'), 'the good setlist survives');
   assert.ok(!store.readSetlists().some((x) => x.name === 42), 'the malformed one is dropped');
 });
+
+// Ordering the setlist list: the store stamps `touchedAt` on every act, and
+// the view sorts on it. The file's own order never changes — setlists are
+// addressed by position, so a reorder that renumbered them would repoint every
+// menu and Send button at the wrong list.
+test('every setlist act stamps touchedAt, and the file order never moves', () => {
+  const { store } = freshStore();
+  const a = store.createSetlist('First');
+  const b = store.createSetlist('Second');
+  const stampOf = (i) => store.readSetlists()[i].touchedAt;
+
+  assert.ok(stampOf(a) && stampOf(b), 'creating stamps both');
+
+  // Backdate first: two stamps taken in the same millisecond are equal, and
+  // that is a property of the clock, not of the code being tested.
+  const backdate = (i) => {
+    const all = store.readSetlists();
+    all[i].touchedAt = '2000-01-01T00:00:00.000Z';
+    store.writeSetlists(all);
+  };
+
+  backdate(a);
+  store.assignSlot(a, 0, 'x.sevenlib.json');
+  assert.ok(stampOf(a) > '2001', 'assigning re-stamps');
+  assert.strictEqual(store.readSetlists()[a].name, 'First', 'still at its own index');
+
+  backdate(b);
+  assert.strictEqual(store.touchSetlist(b), true);
+  assert.ok(stampOf(b) > '2001', 'opening re-stamps');
+  assert.strictEqual(store.touchSetlist(99), false, 'a setlist that is not there');
+
+  assert.deepStrictEqual(
+    store.readSetlists().map((s) => s.name), ['First', 'Second'],
+    'order in the file is untouched by any of it'
+  );
+});
+
+test('a backup setlist is stamped when it is written and when it is replaced', () => {
+  const { store } = freshStore();
+  store.createOrReplaceSetlist('Bank 2 setlist (2026-08-12)', ['a.json']);
+  const first = store.readSetlists().find((s) => s.name.startsWith('Bank 2')).touchedAt;
+  assert.ok(first, 'a fresh backup record is stamped');
+  const all = store.readSetlists();
+  all[0].touchedAt = '2000-01-01T00:00:00.000Z';
+  store.writeSetlists(all);
+  store.createOrReplaceSetlist('Bank 2 setlist (2026-08-12)', ['b.json']);
+  const list = store.readSetlists().filter((s) => s.name.startsWith('Bank 2'));
+  assert.strictEqual(list.length, 1, 'a same-day re-run replaces rather than stacks');
+  assert.ok(list[0].touchedAt > '2001', 're-running the day stamps it again');
+  assert.ok(first, 'and it was stamped the first time too');
+});

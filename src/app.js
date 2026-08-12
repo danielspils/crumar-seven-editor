@@ -150,6 +150,109 @@
     }
   }
 
+  // Choosing the sound for ONE preset on the instrument, from the picture in
+  // the detail panel. The tiles are the library's own grid — the same artwork
+  // and the same order — hosted here because the target is a slot on the
+  // Seven rather than a slot in a setlist.
+  async function pickSoundForSlot(bank, preset) {
+    const status = await window.sevenAPI.midi.status();
+    const sounds = status.soundTable && status.soundTable.sounds;
+    if (!sounds || !sounds.length) return toast('Connect the Seven to choose a sound');
+
+    const modal = SevenModal.open({
+      title: `Bank ${bank} · Preset ${preset}`,
+      bodyHtml:
+        '<p class="tx-note tx-fine">Choosing an instrument sends it to this preset and plays it. ' +
+        'Nothing is kept until you hold the button on the Seven.</p>' +
+        `<div class="pick-body pick-inline">${SevenLibraryView.renderSoundTiles({ pickSearch: '' }, sounds)}</div>`,
+      confirmLabel: 'Cancel',
+      cancelLabel: 'Cancel',
+      tone: 'is-transfer',
+    });
+    const chosen = await new Promise((resolve) => {
+      modal.body.addEventListener('click', (e) => {
+        const tile = e.target.closest('[data-pick-sound]');
+        if (tile) resolve(tile.dataset.pickSound);
+      });
+      // The dialog's own button is the way out; it resolves nothing.
+      modal.action().then(() => resolve(null));
+    });
+    modal.close();
+    if (!chosen) return;
+
+    const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${chosen}`);
+    if (!started || !started.started) {
+      return SevenModal.confirm({
+        title: 'Cannot send that sound',
+        body: started && started.error
+          ? started.error
+          : (started && started.blocked && started.blocked[0] && started.blocked[0].reason) ||
+            'That sound could not be sent to this preset.',
+        confirmLabel: 'OK',
+        tone: 'is-warning',
+      });
+    }
+    transferRunning = true;
+    return transferWalk(started.slots, bank);
+  }
+
+  document.addEventListener('click', (e) => {
+    const pick = e.target.closest('[data-pick-sound-for]');
+    if (!pick) return;
+    const [bank, preset] = pick.dataset.pickSoundFor.split(':').map(Number);
+    pickSoundForSlot(bank, preset);
+  });
+
+  // ---- Arrow keys walk whichever list you last touched --------------------
+  // The instrument's own rows recall as you land on them, exactly as clicking
+  // does — but a held arrow key repeats, and a recall per repeat would be a
+  // burst of Program Changes at the Seven. So the SELECTION moves at once and
+  // the recall follows the last one, once you stop.
+  let recallTimer = null;
+  const RECALL_SETTLE_MS = 320;
+
+  function moveBankSelection(dir) {
+    const here = deviceSel && deviceSel.bank === bankIndex ? deviceSel.preset : null;
+    const next = here == null ? (dir > 0 ? 0 : 7) : here + dir;
+    if (next < 0 || next > 7) return; // stop at the ends: a bank is 8 slots
+    deviceSel = { bank: bankIndex, preset: next };
+    lastTouched = 'device';
+    resetCollapsed();
+    renderAll();
+    const row = listEl.querySelector(`.patch-row[data-index="${next}"]`);
+    if (row) row.scrollIntoView({ block: 'nearest' });
+    clearTimeout(recallTimer);
+    recallTimer = setTimeout(() => audition.recallOnDevice(next === null ? 0 : deviceSel.bank, next), RECALL_SETTLE_MS);
+  }
+
+  function moveLibrarySelection(dir) {
+    // Clicking the neighbouring row rather than reaching into the view's
+    // state: the click path already handles selection, the detail panel and
+    // playing the patch when it is in a setlist, and a second way in would
+    // drift from it.
+    const rows = [...document.querySelectorAll('#library .lib-row.lib-patch')];
+    if (!rows.length) return;
+    const at = rows.findIndex((r) => r.classList.contains('selected'));
+    const next = rows[at < 0 ? (dir > 0 ? 0 : rows.length - 1) : at + dir];
+    if (!next) return;
+    next.click();
+    next.scrollIntoView({ block: 'nearest' });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // A dialog owns the keyboard while it is up — including the picker, where
+    // the arrows belong to the grid.
+    if (document.querySelector('.seven-modal-overlay, .pick-overlay')) return;
+    e.preventDefault();
+    const dir = e.key === 'ArrowDown' ? 1 : -1;
+    if (lastTouched === 'library') moveLibrarySelection(dir);
+    else moveBankSelection(dir);
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'z' && e.key !== 'Z') return;
     if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
@@ -524,7 +627,17 @@
       lastTouched === 'library' && libSelected
         ? {}
         : deviceSel
-          ? { bankLabel: bankLabel(deviceSel.bank), patchNumber: deviceSel.preset + 1 }
+          ? {
+            bankLabel: bankLabel(deviceSel.bank),
+            patchNumber: deviceSel.preset + 1,
+            // The illustration becomes the way IN to changing this preset's
+            // sound — but only where that could actually work: a slot on the
+            // instrument, connected, and not Bank 1 (the factory presets).
+            canPickSound:
+              isConnected() && deviceSel.bank !== 0
+                ? { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 }
+                : null,
+          }
           : {};
     const emptyMsg =
       lastTouched === 'device' && deviceSel
@@ -1037,6 +1150,13 @@
         // and that Program Change is ours, not the player's.
         transferRunning = true;
         transferWalk(started.slots, bank);
+      },
+      // Opening a setlist marks it as the most recently used, so it rises to
+      // the top of the list. Deliberately not awaited and not re-rendered: the
+      // reorder should be waiting for you when you come BACK to the list, not
+      // happen under your eyes as you open it.
+      openSetlist(index) {
+        window.sevenAPI.setlists.touch(index);
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();

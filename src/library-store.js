@@ -121,6 +121,11 @@ class LibraryStore {
         }
         ok.push({
           name: s.name || 'Untitled setlist',
+          // Carried through the validation, not rebuilt away: this reader
+          // reconstructs a setlist from scratch, so a field it does not name
+          // is silently lost on every read — which is what happened to the
+          // first version of touchedAt. Anything added here must be listed.
+          ...(typeof s.touchedAt === 'string' ? { touchedAt: s.touchedAt } : {}),
           slots: Array.from({ length: 8 }, (_, i) => {
             const v = s.slots[i];
             if (v == null) return null;
@@ -146,9 +151,32 @@ class LibraryStore {
   }
 
   // ---- setlist mutations — every one persists immediately ------------------
+  //
+  // Every setlist carries `touchedAt`: when it was last made, edited, or
+  // opened. The list is ordered by it, so what you worked on last is at the
+  // top and a fresh backup run lands above everything — until you touch
+  // something else. Order stored in the FILE never changes: setlists are
+  // addressed by position everywhere, so sorting is a display concern and this
+  // is the field it sorts on.
+  _touch(setlists, index) {
+    if (setlists[index]) setlists[index].touchedAt = new Date().toISOString();
+    return setlists;
+  }
+
+  touchSetlist(index) {
+    const setlists = this.readSetlists();
+    if (!setlists[index]) return false;
+    this.writeSetlists(this._touch(setlists, index));
+    return true;
+  }
+
   createSetlist(name) {
     const setlists = this.readSetlists();
-    setlists.push({ name: String(name).trim() || 'Untitled setlist', slots: Array(8).fill(null) });
+    setlists.push({
+      name: String(name).trim() || 'Untitled setlist',
+      slots: Array(8).fill(null),
+      touchedAt: new Date().toISOString(),
+    });
     this.writeSetlists(setlists);
     return setlists.length - 1;
   }
@@ -157,7 +185,7 @@ class LibraryStore {
     const setlists = this.readSetlists();
     if (!setlists[index]) throw new Error('No such setlist');
     setlists[index].name = String(name).trim() || setlists[index].name;
-    this.writeSetlists(setlists);
+    this.writeSetlists(this._touch(setlists, index));
   }
 
   // Deletes the setlist ONLY — never the patches it references.
@@ -177,14 +205,14 @@ class LibraryStore {
     const setlists = this.readSetlists();
     if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');
     setlists[index].slots[slot] = String(file);
-    this.writeSetlists(setlists);
+    this.writeSetlists(this._touch(setlists, index));
   }
 
   clearSlot(index, slot) {
     const setlists = this.readSetlists();
     if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');
     setlists[index].slots[slot] = null;
-    this.writeSetlists(setlists);
+    this.writeSetlists(this._touch(setlists, index));
   }
 
   // Reorder by swap — dropping on an occupied slot exchanges the two, never
@@ -195,7 +223,7 @@ class LibraryStore {
     const s = setlists[index];
     if (!s || from < 0 || from > 7 || to < 0 || to > 7) throw new Error('Bad slot');
     [s.slots[from], s.slots[to]] = [s.slots[to], s.slots[from]];
-    this.writeSetlists(setlists);
+    this.writeSetlists(this._touch(setlists, index));
   }
 
   readFile(file) {
@@ -219,8 +247,13 @@ class LibraryStore {
     const padded = [...slots.slice(0, 8)];
     while (padded.length < 8) padded.push(null);
     const existing = setlists.findIndex((s) => s.name === name);
-    if (existing >= 0) setlists[existing].slots = padded;
-    else setlists.push({ name, slots: padded });
+    const now = new Date().toISOString();
+    if (existing >= 0) {
+      setlists[existing].slots = padded;
+      setlists[existing].touchedAt = now;
+    } else {
+      setlists.push({ name, slots: padded, touchedAt: now });
+    }
     this.writeSetlists(setlists);
   }
 

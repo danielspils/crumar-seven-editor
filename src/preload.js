@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     preflight: (setlistIndex, bank) => ipcRenderer.invoke('transfer:preflight', { setlistIndex, bank }),
     start: (setlistIndex, bank, confirmed) =>
       ipcRenderer.invoke('transfer:start', { setlistIndex, bank, confirmed }),
+    startSlot: (bank, preset, ref) => ipcRenderer.invoke('transfer:startSlot', { bank, preset, ref }),
     next: () => ipcRenderer.invoke('transfer:next'),
     confirm: () => ipcRenderer.invoke('transfer:confirm'),
     cancel: () => ipcRenderer.invoke('transfer:cancel'),
@@ -131,6 +132,7 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   setlists: {
     create: (name) => ipcRenderer.invoke('setlist:create', { name }),
     rename: (index, name) => ipcRenderer.invoke('setlist:rename', { index, name }),
+    touch: (index) => ipcRenderer.invoke('setlist:touch', { index }),
     delete: (index) => ipcRenderer.invoke('setlist:delete', { index }),
     assign: (index, slot, file) => ipcRenderer.invoke('setlist:assign', { index, slot, file }),
     clear: (index, slot) => ipcRenderer.invoke('setlist:clear', { index, slot }),

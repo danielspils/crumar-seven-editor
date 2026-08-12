@@ -374,6 +374,45 @@ test('a borrowed Send PC is returned even when the walk is stopped', async () =>
   assert.strictEqual(midi.restored, 1);
 });
 
+// One preset from the bank region. It must inherit every rule rather than
+// re-implement any of them.
+test('a single slot is written through the same walk, with the same rules', async () => {
+  const { store, midi, sender, sent, entries } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  const started = runner.startSlot(3, 5, entries[0].file);
+  assert.strictEqual(started.started, true);
+  assert.strictEqual(started.willWrite, 1);
+
+  const step = await runner.nextSlot();
+  assert.strictEqual(step.preset, 5, 'the walk reports the preset it was given');
+  assert.strictEqual(step.bank, 3);
+  assert.deepStrictEqual(midi.recalled, [20], 'bank 3 preset 5 recalled first');
+  assert.strictEqual(sent.length, 1);
+
+  const done = await runner.confirmSlot();
+  assert.strictEqual(done.type, 'transfer-done');
+  assert.deepStrictEqual(done.confirmed, [5]);
+  assert.strictEqual(done.total, 1, 'the seven untouched presets are not counted');
+});
+
+test('a single slot refuses Bank 1, a bad preset, and a sound this unit lacks', () => {
+  const { store, midi, sender, entries } = setup({ sounds: ['Tine Piano'] }); // no Clavi
+  const runner = new TransferRunner({ midi, store, sender });
+  assert.match(runner.preflightSlot(1, 3, entries[0].file).error, /factory presets/);
+  assert.match(runner.preflightSlot(2, 9, entries[0].file).error, /no preset 9/);
+  const missing = runner.preflightSlot(2, 3, entries[1].file); // Beta = Clavi Piano
+  assert.strictEqual(missing.ok, false);
+  assert.match(missing.blocked[0].reason, /has no .Clavi Piano./);
+});
+
+test('a single slot can be a bare sound', async () => {
+  const { store, midi, sender, sent } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
+  await runner.nextSlot();
+  assert.deepStrictEqual(sent[0], { sound: { name: 'Clavi Piano' }, params: {} });
+});
+
 test('refuses without a connection', () => {
   const { store, midi, sender, entries } = setup({ connected: false });
   const list = setlistWith(store, [entries[0].file]);

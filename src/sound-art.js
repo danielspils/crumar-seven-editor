@@ -126,7 +126,7 @@
     tine: 'tine',
     reed: 'reed',
     clavi: 'clavi',
-    grandLegs: 'cp70',
+    grandLegs: 'cp80',
     synth: 'dx7',
     rack: 'mks80',
     vibes: 'vibes',

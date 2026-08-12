@@ -75,6 +75,8 @@ function registerLibraryIpc() {
 
   // ---- Setlists (all mutations persist immediately in setlists.json) -------
   ipcMain.handle('setlist:create', (_e, { name }) => getStore().createSetlist(name));
+  // Opening one counts as using it — the list is ordered by last touched.
+  ipcMain.handle('setlist:touch', (_e, { index }) => getStore().touchSetlist(index));
   ipcMain.handle('setlist:rename', (_e, { index, name }) => getStore().renameSetlist(index, name));
   ipcMain.handle('setlist:delete', (_e, { index }) => getStore().deleteSetlist(index));
   ipcMain.handle('setlist:assign', (_e, { index, slot, file }) => getStore().assignSlot(index, slot, file));
@@ -342,6 +344,12 @@ function registerTransferIpc() {
     if (confirmed !== true) return { ok: false, cancelled: true };
     return runner.start(setlistIndex, bank);
   });
+
+  // One preset, from the bank region. No confirm dialog here: the user picked
+  // a sound for a specific slot they were already looking at, and the walk
+  // itself is the confirmation — nothing is stored until they hold the button.
+  ipcMain.handle('transfer:startSlot', (_e, { bank, preset, ref }) =>
+    getTransferRunner().startSlot(bank, preset, ref));
 
   ipcMain.handle('transfer:next', () => getTransferRunner().nextSlot());
   ipcMain.handle('transfer:confirm', () => getTransferRunner().confirmSlot());

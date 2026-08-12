@@ -613,6 +613,8 @@
       display: flex; align-items: center; gap: 8px;
       padding: 4px 2px 8px; color: var(--text-muted);
     }
+    /* Pushed to the right edge, away from the back button and the name. */
+    .lib-setlist-head .setlist-send { margin-left: auto; }
     .lib-back {
       font: inherit; font-size: 12px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
@@ -879,6 +881,9 @@
     /* Illustrated tiles are roomier than patch tiles — 24 instruments fit on a
        screen at this size, so the art can be legible without costing overview. */
     .pick-grid-art { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
+    /* The same grid, hosted inside a plain dialog rather than the library's
+       own picker shell (one preset on the instrument, not a setlist slot). */
+    .pick-inline { max-height: 54vh; overflow-y: auto; margin-top: 12px; text-align: left; }
     .pick-tile-art {
       align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px;
       /* A wash of the family colour behind the picture. Sounds that share an
@@ -1105,6 +1110,29 @@
        ordinary patch. 128 also widens the text column enough to un-wrap most
        names — better in both dimensions at once. */
     .engine-art { flex: none; width: 128px; margin: -2px 0 0; }
+    /* The picture as a control. It grows toward the reader and names itself
+       only while the pointer is on it — a permanent "select sound" label would
+       shout at you on every patch you merely LOOK at. */
+    button.engine-art {
+      position: relative; padding: 0; border: none; background: none;
+      cursor: pointer; transform-origin: 70% 40%;
+      transition: transform .18s cubic-bezier(.34, 1.4, .5, 1);
+    }
+    button.engine-art:hover, button.engine-art:focus-visible { transform: scale(1.42); z-index: 2; }
+    button.engine-art:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+    .engine-art-cta {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center; text-align: center;
+      font-size: 13px; font-weight: 700; line-height: 1.05; color: #fff;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, .85), 0 0 22px rgba(0, 0, 0, .7);
+      opacity: 0; transition: opacity .18s ease; pointer-events: none;
+    }
+    button.engine-art:hover .engine-art-cta,
+    button.engine-art:focus-visible .engine-art-cta { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      button.engine-art, .engine-art-cta { transition: none; }
+      button.engine-art:hover { transform: none; }
+    }
     .engine-art .sound-art.is-drawing { display: block; width: 100%; }
     .engine-art .sound-art.is-drawing img,
     .engine-art .sound-art.is-drawing svg { display: block; width: 100%; height: auto; }
