@@ -190,6 +190,8 @@
           `<span class="patch-name">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
           `</button>` +
+          `<button type="button" class="setlist-send" data-setlist-send="${i}" ` +
+          `title="Load “${esc(s.name)}” onto a bank on the Seven">Send to bank…</button>` +
           `<button type="button" class="setlist-delete" data-setlist-delete="${i}" ` +
           `title="Delete “${esc(s.name)}” (the patches stay in the library)">` +
           '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -590,6 +592,13 @@
         render();
         return;
       }
+      const send = e.target.closest('[data-setlist-send]');
+      if (send) {
+        const i = Number(send.dataset.setlistSend);
+        if (data.setlists[i] && on.sendSetlist) on.sendSetlist(i, data.setlists[i].name);
+        return;
+      }
+
       const del = e.target.closest('[data-setlist-delete]');
       if (del) {
         const i = Number(del.dataset.setlistDelete);

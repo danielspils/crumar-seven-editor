@@ -72,5 +72,41 @@
     });
   }
 
-  global.SevenModal = { confirm };
+  // A short list of choices, for when the question is "which one" rather than
+  // "are you sure". Resolves the chosen value, or null if dismissed.
+  function choose({ title, body, choices, cancelLabel = 'Close' }) {
+    return new Promise((resolve) => {
+      const host = document.createElement('div');
+      host.className = 'seven-modal-overlay';
+      host.innerHTML =
+        `<div class="seven-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">` +
+        `<button type="button" class="seven-modal-cancel" aria-label="${esc(cancelLabel)}" ` +
+        `title="${esc(cancelLabel)}">` +
+        '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
+        'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+        '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
+        `<div class="seven-modal-title">${esc(title)}</div>` +
+        `<div class="seven-modal-body">${paragraphs(body)}</div>` +
+        `<div class="seven-modal-actions">` +
+        choices.map((c) => `<button type="button" class="seven-modal-ok" data-choice="${esc(c.value)}">${esc(c.label)}</button>`).join('') +
+        `</div></div>`;
+
+      const done = (value) => {
+        document.removeEventListener('keydown', onKey, true);
+        host.remove();
+        resolve(value);
+      };
+      const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(null); } };
+      host.addEventListener('click', (e) => {
+        const pick = e.target.closest('[data-choice]');
+        if (pick) return done(Number(pick.dataset.choice) || pick.dataset.choice);
+        if (e.target === host || e.target.closest('.seven-modal-cancel')) done(null);
+      });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(host);
+      host.querySelector('[data-choice]').focus();
+    });
+  }
+
+  global.SevenModal = { confirm, choose };
 })(window);

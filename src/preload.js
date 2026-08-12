@@ -91,6 +91,15 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     ccMap: () => ipcRenderer.invoke('edit:ccMap'),
     // Recall a slot on the instrument (bank/preset are 0-based).
     recall: (bank, preset) => ipcRenderer.invoke('midi:recall', { bank, preset }),
+  },
+  // Transfer: a setlist onto a bank. Nothing here can bypass the runner's
+  // rules — these are messages, not decisions.
+  transfer: {
+    preflight: (setlistIndex, bank) => ipcRenderer.invoke('transfer:preflight', { setlistIndex, bank }),
+    start: (setlistIndex, bank) => ipcRenderer.invoke('transfer:start', { setlistIndex, bank }),
+    next: () => ipcRenderer.invoke('transfer:next'),
+    confirm: () => ipcRenderer.invoke('transfer:confirm'),
+    cancel: () => ipcRenderer.invoke('transfer:cancel'),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes

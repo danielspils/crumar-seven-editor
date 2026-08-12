@@ -151,6 +151,42 @@
     if (msg && msg.type === 'undo') runUndo();
   });
 
+  // Walks the player through a transfer: one preset, one hold, one confirm.
+  // Nothing here advances on a timer — only the player can see the panel.
+  async function transferStep(step) {
+    if (!step || step.type === 'transfer-done') return transferDone(step);
+    const go = await SevenModal.confirm({
+      title: `Bank ${step.bank}, preset ${step.preset} — ${step.name}`,
+      body:
+        `${step.instruction}\n\n` +
+        'The patch is loaded and playing now. Holding the button is what keeps it; ' +
+        'until you do, this preset is unchanged.',
+      confirmLabel: 'Held it — next',
+      cancelLabel: 'Stop',
+    });
+    if (!go) return transferDone(await window.sevenAPI.transfer.cancel());
+    transferStep(await window.sevenAPI.transfer.confirm());
+  }
+
+  async function transferDone(report) {
+    if (!report) return;
+    const stored = report.confirmed.length;
+    const loose = report.loadedNotConfirmed;
+    await SevenModal.confirm({
+      title: report.cancelled ? 'Transfer stopped' : 'Transfer finished',
+      body:
+        `${stored} of ${report.total} preset${report.total === 1 ? '' : 's'} stored in Bank ` +
+        `${report.bank}.` +
+        (loose.length
+          ? `\n\nPreset ${loose.join(', ')} was loaded but you did not confirm the hold, so it ` +
+            'is still in the edit buffer rather than saved on the instrument.'
+          : '') +
+        `\n\n${report.note}`,
+      confirmLabel: 'Done',
+    });
+    await refreshLibrary();
+  }
+
   // ---- Panel strip (inline SVG so element ids are addressable) -------------
   const panelStrip = document.getElementById('panel-strip');
   panelStrip.innerHTML = window.sevenAPI.getPanelSvg(); // keeps class="readonly"
@@ -758,6 +794,48 @@
             await refreshLibrary();
           });
         }
+      },
+      // ---- Transfer: a setlist onto a bank ---------------------------------
+      // The runner owns the rules; this walks the player through them. Bank 1
+      // is absent from the choices AND refused by the runner, so neither this
+      // nor any future caller can write over the factory presets.
+      async sendSetlist(index, name) {
+        if (!isConnected()) {
+          toast('Connect the Seven to send a setlist to it');
+          return;
+        }
+        const bank = await SevenModal.choose({
+          title: `Send “${name}” to which bank?`,
+          body:
+            'The patches load one at a time, and you hold that preset button on the Seven for ' +
+            'three seconds to keep each one.\n\n' +
+            'Bank 1 is not offered: it holds the factory presets.',
+          choices: [
+            { value: 2, label: 'Bank 2' },
+            { value: 3, label: 'Bank 3' },
+            { value: 4, label: 'Bank 4' },
+          ],
+        });
+        if (!bank) return;
+
+        const plan = await window.sevenAPI.transfer.preflight(index, bank);
+        if (!plan.ok) {
+          // A blocked plan is not a failure to hide — it names what this
+          // instrument cannot play, which is the whole point of checking.
+          await SevenModal.confirm({
+            title: plan.error ? 'Cannot send this setlist' : 'This instrument is missing sounds',
+            body: plan.error || plan.blocked
+              .map((b) => `Slot ${b.slot + 1}${b.name ? ` (${b.name})` : ''}: ${b.reason}`)
+              .join('\n\n'),
+            confirmLabel: 'OK',
+            tone: 'is-warning',
+          });
+          return;
+        }
+
+        const started = await window.sevenAPI.transfer.start(index, bank);
+        if (!started || !started.started) return; // cancelled at the confirm
+        transferStep(await window.sevenAPI.transfer.next());
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();

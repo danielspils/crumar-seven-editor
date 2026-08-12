@@ -280,6 +280,60 @@ function registerEditIpc() {
   });
 }
 
+let transferRunner = null;
+function getTransferRunner() {
+  if (!transferRunner) {
+    const { TransferRunner } = require('./transfer-runner');
+    transferRunner = new TransferRunner({
+      midi: getMidi(),
+      store: getStore(),
+      sender: getPatchSender(),
+    });
+    transferRunner.on('event', (ev) => {
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send('midi-event', ev);
+    });
+  }
+  return transferRunner;
+}
+
+// Transfer: a setlist onto a bank, one preset at a time. Every rule that keeps
+// this safe lives in the runner (Bank 1 blocked, pre-flight before any write,
+// no timers), so these handlers stay thin — they must not be able to route
+// around it.
+function registerTransferIpc() {
+  ipcMain.handle('transfer:preflight', (_e, { setlistIndex, bank }) =>
+    getTransferRunner().preflight(setlistIndex, bank));
+
+  ipcMain.handle('transfer:start', async (e, { setlistIndex, bank }) => {
+    const runner = getTransferRunner();
+    const plan = runner.preflight(setlistIndex, bank);
+    if (!plan.ok) return plan;
+
+    // Confirm at the point of no return, naming the bank being replaced. The
+    // dialog offers the backup because losing presets you never captured is
+    // the one mistake here that cannot be undone.
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: [`Send to Bank ${bank}`, 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      message: `Replace Bank ${bank}'s presets with “${plan.setlist}”?`,
+      detail:
+        `${plan.willWrite} preset${plan.willWrite === 1 ? '' : 's'} will be loaded one at a ` +
+        'time, and you hold the matching preset button on the Seven for three seconds to keep ' +
+        'each one.\n\nWhatever is in Bank ' + bank + ' now is replaced as you do that. If you ' +
+        'have not backed up this instrument recently, cancel and back it up first.',
+    });
+    if (response !== 0) return { ok: false, cancelled: true };
+    return runner.start(setlistIndex, bank);
+  });
+
+  ipcMain.handle('transfer:next', () => getTransferRunner().nextSlot());
+  ipcMain.handle('transfer:confirm', () => getTransferRunner().confirmSlot());
+  ipcMain.handle('transfer:cancel', () => getTransferRunner().cancel());
+}
+
 function registerBackupIpc() {
   // Confirm EVERY run — no "don't show again". The dialog states where the
   // instrument will be left before anything is sent.
@@ -505,6 +559,7 @@ app.whenReady().then(() => {
   registerBackupIpc();
   registerAuditionIpc();
   registerEditIpc();
+  registerTransferIpc();
   registerNotesIpc();
   forwardMidiEvents();
   createWindow();

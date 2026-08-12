@@ -513,6 +513,15 @@
       text-align: left; cursor: pointer;
     }
     .lib-setlist-row:hover { background: var(--bg-raised); }
+    .setlist-send {
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: none; border: 1px solid var(--line); border-radius: 4px;
+      padding: 3px 9px; cursor: pointer; flex: none;
+      opacity: 0; transition: opacity .12s;
+    }
+    .lib-setlist-row:hover .setlist-send { opacity: 1; }
+    .setlist-send:hover { color: var(--action); border-color: var(--action); }
+    .setlist-send:focus-visible { opacity: 1; }
     .setlist-delete {
       display: flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; flex: none;
