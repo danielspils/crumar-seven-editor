@@ -1,66 +1,77 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="100%" height="100%">
-  <!-- Tine electric piano, suitcase model: a lid over a name rail, the keybed,
-       and a speaker cabinet on tapered legs. Drawn for this project — the
-       proportions and the parts are what makes one of these recognisable, so
-       none of them are invented, but there is no maker's badge anywhere on it.
+  <!-- Tine electric piano, stage model, front elevation. Drawn for this
+       project from the shapes that make one recognisable: the wedge case, the
+       name rail with its four controls, the red pinstripe under the rail, a
+       44-key bed in true proportion, corner protectors, and the tubular stand
+       with its cross-brace. No maker's badge, wordmark or logo appears here —
+       the instrument is recognisable without borrowing anyone's mark.
 
-       Every id is prefixed, because several of these are inlined into one page
-       and a bare id="grille" would be claimed by whichever loaded first. -->
+       Ids are prefixed (tine-*) because several drawings are inlined into one
+       page and a bare id would be claimed by whichever loaded first. -->
   <defs>
-    <pattern id="tine-cloth" width="4" height="4" patternUnits="userSpaceOnUse">
-      <path d="M0 0h4v4H0z" fill="var(--inst-grille, #b9b2a2)"/>
-      <path d="M0 0h4M0 2h4" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".22" stroke-width=".6"/>
-      <path d="M0 0v4M2 0v4" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".14" stroke-width=".6"/>
-    </pattern>
+    <linearGradient id="tine-chrome" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="var(--inst-hardware, #9a9aa4)" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="var(--inst-hardware, #9a9aa4)"/>
+      <stop offset="1" stop-color="var(--inst-hardware, #9a9aa4)" stop-opacity=".5"/>
+    </linearGradient>
   </defs>
 
-  <!-- Speaker cabinet: the lower box, grille cloth inset behind a frame. -->
-  <rect x="46" y="96" width="148" height="42" rx="2"
-        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="2"/>
-  <rect x="54" y="102" width="132" height="30" fill="url(#tine-cloth)"
-        stroke="var(--inst-outline, #0f172a)" stroke-width="1.2"/>
-  <!-- Pedal rod, straight down from the cabinet's centre. -->
-  <path d="M120 138v10" stroke="var(--inst-hardware, #9a9aa4)" stroke-width="2.4"/>
-  <rect x="110" y="147" width="20" height="4" rx="1.5"
-        fill="var(--inst-hardware, #9a9aa4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1"/>
-
-  <!-- Tapered legs, splayed like the chrome ones on the real cabinets. -->
-  <g stroke="var(--inst-hardware, #9a9aa4)" stroke-width="3.4" stroke-linecap="round">
-    <path d="M56 138l-8 14"/>
-    <path d="M184 138l8 14"/>
+  <!-- Tubular stand: two splayed legs a side, joined by a brace, on feet. -->
+  <g stroke="url(#tine-chrome)" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M44 104L26 148"/><path d="M52 104L70 140"/>
+    <path d="M196 104L214 148"/><path d="M188 104L170 140"/>
+    <path d="M30 138h38"/><path d="M172 138h38"/>
+  </g>
+  <g fill="var(--inst-hardware, #9a9aa4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1">
+    <ellipse cx="26" cy="149" rx="5" ry="2.4"/><ellipse cx="214" cy="149" rx="5" ry="2.4"/>
+    <ellipse cx="70" cy="141" rx="4" ry="2"/><ellipse cx="170" cy="141" rx="4" ry="2"/>
   </g>
 
-  <!-- Lid: the sloped top, darker along its face. -->
-  <path d="M40 34h160a4 4 0 0 1 4 4v20H36V38a4 4 0 0 1 4-4z"
-        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="2"/>
-  <path d="M36 44h168" stroke="var(--inst-outline, #0f172a)" stroke-opacity=".45" stroke-width="1.2"/>
+  <!-- Case: lid, then the front face below it. The lid's top plane is a shade
+       lighter, which is what gives these their wedge in a flat drawing. -->
+  <path d="M24 40h192a6 6 0 0 1 6 6v8H18v-8a6 6 0 0 1 6-6z"
+        fill="var(--inst-chassis-accent, #565663)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.8"/>
+  <rect x="18" y="52" width="204" height="12"
+        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.8"/>
 
-  <!-- Name rail: cream strip carrying the controls, with the red pinstripe. -->
-  <rect x="36" y="58" width="168" height="14"
-        fill="var(--inst-rail, #d9d3c4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.6"/>
-  <path d="M36 70.5h168" stroke="var(--inst-stripe, #c0392b)" stroke-width="1.6"/>
-  <g stroke="var(--inst-outline, #0f172a)" stroke-width="1.1">
-    <circle cx="52" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
-    <circle cx="66" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
-    <rect x="78" y="62" width="26" height="6" rx="1" fill="var(--inst-chassis-accent, #565663)"/>
-    <rect x="110" y="62" width="26" height="6" rx="1" fill="var(--inst-chassis-accent, #565663)"/>
-    <circle cx="150" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
-    <circle cx="164" cy="65" r="3.4" fill="var(--inst-knob, #d98324)"/>
+  <!-- Name rail: brushed strip, four controls at the left, red pinstripe. -->
+  <rect x="22" y="55" width="196" height="9" rx="1"
+        fill="var(--inst-rail, #cfc9ba)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.2"/>
+  <g stroke="var(--inst-outline, #0f172a)" stroke-opacity=".35" stroke-width=".5">
+    <path d="M22 57.5h196M22 61.5h196"/>
   </g>
+  <g stroke="var(--inst-outline, #0f172a)" stroke-width=".9">
+    <circle cx="34" cy="59.5" r="3" fill="var(--inst-knob, #d98324)"/>
+    <circle cx="46" cy="59.5" r="3" fill="var(--inst-knob, #d98324)"/>
+    <circle cx="58" cy="59.5" r="3" fill="var(--inst-knob, #d98324)"/>
+    <circle cx="70" cy="59.5" r="3" fill="var(--inst-knob, #d98324)"/>
+  </g>
+  <rect x="112" y="56.5" width="30" height="6" rx=".8"
+        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width=".9"/>
 
-  <!-- Keybed: white keys, then the black-key groups in their real 2-3 pattern. -->
-  <rect x="36" y="72" width="168" height="24"
-        fill="var(--inst-key-white, #efece4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.6"/>
-  <g stroke="var(--inst-outline, #0f172a)" stroke-opacity=".35" stroke-width=".7">
-    <path d="M44 84v12M52 84v12M60 84v12M68 84v12M76 84v12M84 84v12M92 84v12M100 84v12
-             M108 84v12M116 84v12M124 84v12M132 84v12M140 84v12M148 84v12M156 84v12
-             M164 84v12M172 84v12M180 84v12M188 84v12M196 84v12"/>
+  <!-- The pinstripe that runs the width under the rail. -->
+  <path d="M18 65.2h204" stroke="var(--inst-stripe, #c0392b)" stroke-width="1.8"/>
+
+  <!-- Keybed: 44 white keys in true proportion, black keys in 2-3 groups. -->
+  <rect x="26" y="66" width="188" height="28"
+        fill="var(--inst-key-white, #efece4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.4"/>
+  <g stroke="var(--inst-outline, #0f172a)" stroke-opacity=".38" stroke-width=".55">
+    <path d="M30.27 80.0V94.0 M34.55 80.0V94.0 M38.82 80.0V94.0 M43.09 80.0V94.0 M47.36 80.0V94.0 M51.64 80.0V94.0 M55.91 80.0V94.0 M60.18 80.0V94.0 M64.45 80.0V94.0 M68.73 80.0V94.0 M73.0 80.0V94.0 M77.27 80.0V94.0 M81.55 80.0V94.0 M85.82 80.0V94.0 M90.09 80.0V94.0 M94.36 80.0V94.0 M98.64 80.0V94.0 M102.91 80.0V94.0 M107.18 80.0V94.0 M111.45 80.0V94.0 M115.73 80.0V94.0 M120.0 80.0V94.0 M124.27 80.0V94.0 M128.55 80.0V94.0 M132.82 80.0V94.0 M137.09 80.0V94.0 M141.36 80.0V94.0 M145.64 80.0V94.0 M149.91 80.0V94.0 M154.18 80.0V94.0 M158.45 80.0V94.0 M162.73 80.0V94.0 M167.0 80.0V94.0 M171.27 80.0V94.0 M175.55 80.0V94.0 M179.82 80.0V94.0 M184.09 80.0V94.0 M188.36 80.0V94.0 M192.64 80.0V94.0 M196.91 80.0V94.0 M201.18 80.0V94.0 M205.45 80.0V94.0 M209.73 80.0V94.0"/>
   </g>
   <g fill="var(--inst-key-black, #17171a)">
-    <rect x="42" y="72" width="5" height="12"/><rect x="53" y="72" width="5" height="12"/>
-    <rect x="70" y="72" width="5" height="12"/><rect x="81" y="72" width="5" height="12"/><rect x="92" y="72" width="5" height="12"/>
-    <rect x="109" y="72" width="5" height="12"/><rect x="120" y="72" width="5" height="12"/>
-    <rect x="137" y="72" width="5" height="12"/><rect x="148" y="72" width="5" height="12"/><rect x="159" y="72" width="5" height="12"/>
-    <rect x="176" y="72" width="5" height="12"/><rect x="187" y="72" width="5" height="12"/>
+    <rect x="29.03" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="33.31" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="41.85" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="46.12" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="50.4" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="58.94" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="63.21" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="71.76" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="76.03" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="80.31" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="88.85" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="93.12" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="101.67" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="105.94" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="110.21" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="118.76" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="123.03" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="131.58" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="135.85" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="140.12" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="148.67" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="152.94" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="161.49" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="165.76" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="170.03" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="178.58" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="182.85" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="191.4" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="195.67" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="199.94" y="66.0" width="2.48" height="15.0" rx=".6"/><rect x="208.49" y="66.0" width="2.48" height="15.0" rx=".6"/>
+  </g>
+
+  <!-- Cheeks either side of the keys, and the case's bottom lip with the
+       corner protectors these always have. -->
+  <rect x="18" y="64" width="8" height="32" fill="var(--inst-chassis, #33333a)"
+        stroke="var(--inst-outline, #0f172a)" stroke-width="1.4"/>
+  <rect x="214" y="64" width="8" height="32" fill="var(--inst-chassis, #33333a)"
+        stroke="var(--inst-outline, #0f172a)" stroke-width="1.4"/>
+  <rect x="18" y="94" width="204" height="10" rx="1.5"
+        fill="var(--inst-chassis, #33333a)" stroke="var(--inst-outline, #0f172a)" stroke-width="1.8"/>
+  <g fill="var(--inst-hardware, #9a9aa4)" stroke="var(--inst-outline, #0f172a)" stroke-width="1">
+    <path d="M18 96h10v8H19.5A1.5 1.5 0 0 1 18 102.5z"/>
+    <path d="M222 96h-10v8h8.5a1.5 1.5 0 0 0 1.5-1.5z"/>
   </g>
 </svg>
