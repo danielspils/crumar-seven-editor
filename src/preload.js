@@ -95,8 +95,11 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Transfer: a setlist onto a bank. Nothing here can bypass the runner's
   // rules — these are messages, not decisions.
   transfer: {
+    selectBank: (bank) => ipcRenderer.invoke('transfer:selectBank', { bank }),
+    releaseBank: () => ipcRenderer.invoke('transfer:releaseBank'),
     preflight: (setlistIndex, bank) => ipcRenderer.invoke('transfer:preflight', { setlistIndex, bank }),
-    start: (setlistIndex, bank) => ipcRenderer.invoke('transfer:start', { setlistIndex, bank }),
+    start: (setlistIndex, bank, confirmed) =>
+      ipcRenderer.invoke('transfer:start', { setlistIndex, bank, confirmed }),
     next: () => ipcRenderer.invoke('transfer:next'),
     confirm: () => ipcRenderer.invoke('transfer:confirm'),
     cancel: () => ipcRenderer.invoke('transfer:cancel'),

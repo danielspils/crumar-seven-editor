@@ -618,9 +618,99 @@
       padding: 7px 14px; cursor: pointer;
     }
     .seven-modal-second:hover { color: var(--text); border-color: var(--text-muted); }
+    /* Declining, when it deserves a button rather than the corner X. Same
+       outlined weight as the secondary — the filled one is the action. */
+    .seven-modal-deny {
+      font: inherit; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); background: none;
+      border: 1px solid var(--line); border-radius: 5px;
+      padding: 7px 14px; cursor: pointer;
+    }
+    .seven-modal-deny:hover { color: var(--text); border-color: var(--text-muted); }
+    .seven-modal-deny:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
     .seven-modal-actions { gap: 8px; }
+
+    /* The transfer confirm reads as a movement — this, into that — so it is
+       centred and stacked rather than set as prose. TRANSFER is a region
+       header in the app's own vocabulary (uppercase, letterspaced, dim), not a
+       heading competing with the two names it introduces: what is moving and
+       where it lands are the largest things here, at the same size the engine
+       gives a sound's name. */
+    .seven-modal.is-transfer .seven-modal-title {
+      text-align: center; padding: 0 28px;
+      font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .seven-modal.is-transfer .seven-modal-body { text-align: center; margin-top: 18px; }
+    .tx-from, .tx-to {
+      margin: 0; font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.3;
+    }
+    .tx-from { font-style: italic; }
+    .tx-count {
+      margin: 4px 0 0; font-size: 10px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .tx-arrow { margin: 8px 0; font-size: 17px; line-height: 1; color: var(--text-dim); }
+    /* One sentence per paragraph: a forced break inside centred prose lands
+       wherever the modal happens to be wide, which reads as ragged. */
+    .tx-note { margin: 22px 0 0; font-size: 13px; line-height: 1.55; }
+    .tx-note + .tx-note { margin-top: 8px; }
+    /* The walk's step: which patch, then where it goes, then the panel. */
+    .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
+    .tx-step-where {
+      margin: 4px 0 14px; font-size: 10px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim);
+    }
+    /* Mid-step the app is writing to the instrument. The actions go inert
+       rather than disappear, so the dialog keeps its shape under the hands. */
+    .seven-modal.is-busy .seven-modal-actions,
+    .seven-modal.is-busy .seven-modal-cancel { opacity: .4; pointer-events: none; }
     .seven-modal.is-warning .seven-modal-ok { background: var(--accent); border-color: var(--accent); }
     .seven-modal-ok:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+    /* The transfer's panel picture. Literal panel colours in both themes — it
+       is a photograph of a machine, not part of the interface's palette. */
+    .panel-mini { display: block; margin: 2px 0 4px; }
+    .panel-mini .pm-bg { fill: #141416; }
+    .panel-mini .pm-bezel { fill: #1a1a1c; }
+    .panel-mini .pm-face { fill: #232327; stroke: #4a4a52; stroke-width: 1; }
+    .panel-mini .pm-cap { fill: rgba(255, 255, 255, .045); }
+    .panel-mini .pm-led { fill: #5a2320; }
+    /* Which button to press is carried by the GROUP's class, so stepping to
+       the next one is a toggle on living nodes and every one of these can
+       cross-fade rather than cut. */
+    .panel-mini .pm-active .pm-face { fill: #34343a; stroke: #8d8d97; stroke-width: 1.4; }
+    /* The one lit LED blinks, the way a preset waiting to be stored asks for
+       attention on the instrument itself. */
+    .panel-mini .pm-active .pm-led { fill: #ff3b30; animation: pm-blink 1.05s steps(1, end) infinite; }
+    @keyframes pm-blink { 0%, 55% { fill: #ff3b30; } 56%, 100% { fill: #6d2a25; } }
+    /* Seven identical caps and one to press: the rest step back. */
+    .panel-mini .pm-dim { opacity: .34; }
+    .panel-mini .pm-active { opacity: 1; }
+    .panel-mini .pm-btn { transition: opacity .26s ease; }
+    .panel-mini .pm-btn .pm-face { transition: fill .26s ease, stroke .26s ease; }
+    /* The legend travels the row rather than being redrawn over the next
+       button — the same move the player's hand is about to make. */
+    .panel-mini .pm-hold-g { transition: transform .3s cubic-bezier(.4, 0, .2, 1); }
+    .panel-mini .pm-num, .panel-mini .pm-idx {
+      fill: #7a7a84; font-family: 'Archivo Narrow', Helvetica, Arial, sans-serif;
+      font-size: 12px; font-weight: 700; font-style: italic;
+      transition: fill .26s ease;
+    }
+    .panel-mini .pm-idx { text-anchor: middle; }
+    .panel-mini .pm-on, .panel-mini .pm-active .pm-idx { fill: #f0efe8; }
+    @media (prefers-reduced-motion: reduce) {
+      .panel-mini .pm-btn, .panel-mini .pm-btn .pm-face,
+      .panel-mini .pm-hold-g, .panel-mini .pm-idx { transition: none; }
+      .panel-mini .pm-active .pm-led { animation: none; }
+    }
+    /* HOLD wears the panel's CLAVI TABS yellow, bracketed the same way. */
+    .panel-mini .pm-hold {
+      fill: #d9c24a; font-family: 'Archivo Narrow', Helvetica, Arial, sans-serif;
+      font-size: 14px; font-weight: 700; font-style: italic;
+      letter-spacing: .06em; text-anchor: middle;
+    }
+    .panel-mini .pm-bracket { stroke: #d9c24a; stroke-width: 1; fill: none; }
 
     /* Patch picker: a modal over the setlist, so the slots you're filling stay
        visible behind it. Tiles rather than rows — the point is seeing many
@@ -1231,7 +1321,8 @@
   </div>
   <script src="defaults.js"></script>
   <script src="renderer.js"></script>
-  <script src="toast.js"></script>
+  <script src="panel-mini.js"></script>
+    <script src="toast.js"></script>
     <script src="audition.js"></script>
     <script src="undo.js"></script>
     <script src="scroll-fade.js"></script>

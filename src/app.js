@@ -153,28 +153,90 @@
 
   // Walks the player through a transfer: one preset, one hold, one confirm.
   // Nothing here advances on a timer — only the player can see the panel.
-  async function transferStep(step) {
-    if (!step || step.type === 'transfer-done') return transferDone(step);
-    const go = await SevenModal.confirm({
-      title: `Bank ${step.bank}, preset ${step.preset} — ${step.name}`,
-      body:
-        `${step.instruction}\n\n` +
-        'The patch is loaded and playing now. Holding the button is what keeps it; ' +
-        'until you do, this preset is unchanged.',
+  // The runner recalls each target slot on the instrument before it loads it,
+  // so the Seven's own bank and preset LEDs land on the button the modal is
+  // pointing at. Those Program Changes come back to us as events; this flag
+  // keeps them from being read as the player reaching for the panel.
+  let transferRunning = false;
+
+  // The preset the walk moves to after `slot`, from the plan the runner already
+  // made. Knowing it up front is what lets the picture move the moment the
+  // player says they held the button, rather than after the next patch has
+  // finished loading.
+  function nextTransferSlot(slots, after) {
+    for (let i = after + 1; i < slots.length; i++) {
+      const a = slots[i].action;
+      if (a === 'send' || a === 'send-sound') return slots[i];
+    }
+    return null;
+  }
+
+  // ONE modal for the whole walk. Eight presets is one task, not eight
+  // questions, and closing the dialog between them made the app flash at
+  // someone standing at the instrument with both hands busy. So the dialog
+  // stays and the picture moves: the highlight and the HOLD legend travel to
+  // the next button, which is the move the player's own hand is about to make.
+  async function transferWalk(first, slots) {
+    if (!first || first.type === 'transfer-done') return transferDone(first);
+    // A picture of the panel rather than a sentence about it: the player is
+    // looking at the instrument, and "hold THAT one" is a location, not a
+    // fact. The bank LED and the button both light where they will light.
+    const modal = SevenModal.open({
+      title: 'Transfer',
+      bodyHtml:
+        '<p class="tx-step-name"></p>' +
+        '<p class="tx-step-where"></p>' +
+        SevenPanelMini.render(first.bank, first.preset) +
+        '<p class="tx-note">Hold it for three seconds. The patch is playing now; ' +
+        'until you hold the button, this preset is unchanged.</p>',
       confirmLabel: 'Held it — next',
+      denyLabel: 'Stop',
       cancelLabel: 'Stop',
+      tone: 'is-transfer',
     });
-    if (!go) return transferDone(await window.sevenAPI.transfer.cancel());
-    transferStep(await window.sevenAPI.transfer.confirm());
+    const nameEl = modal.body.querySelector('.tx-step-name');
+    const whereEl = modal.body.querySelector('.tx-step-where');
+    // textContent, not markup: patch names come off disk and the device.
+    const showStep = (bank, preset, name) => {
+      nameEl.textContent = name || '';
+      whereEl.textContent = `Bank ${bank} · Preset ${preset}`;
+      SevenPanelMini.setPreset(modal.body, preset);
+    };
+
+    let step = first;
+    showStep(step.bank, step.preset, step.name);
+    try {
+      for (;;) {
+        const go = await modal.action();
+        if (!go) return transferDone(await window.sevenAPI.transfer.cancel());
+        // Move to the next button first, then load it. The player is already
+        // reaching; the picture should be where they are going, not where they
+        // were, for the second it takes to send a patch.
+        const ahead = nextTransferSlot(slots, step.slot);
+        if (ahead) showStep(step.bank, ahead.slot + 1, ahead.name);
+        modal.busy(true);
+        step = await window.sevenAPI.transfer.confirm();
+        modal.busy(false);
+        if (!step || step.type === 'transfer-done') return transferDone(step);
+        // Reconcile with what the runner actually did — the plan is a guess
+        // about the future and the report is not.
+        showStep(step.bank, step.preset, step.name);
+      }
+    } finally {
+      modal.close();
+    }
   }
 
   async function transferDone(report) {
+    transferRunning = false;
     if (!report) return;
     const stored = report.confirmed.length;
     const loose = report.loadedNotConfirmed;
     await SevenModal.confirm({
-      title: report.cancelled ? 'Transfer stopped' : 'Transfer finished',
+      title: report.error ? 'Transfer stopped' : report.cancelled ? 'Transfer stopped' : 'Transfer finished',
+      tone: report.error ? 'is-warning' : undefined,
       body:
+        (report.error ? `${report.error}\n\n` : '') +
         `${stored} of ${report.total} preset${report.total === 1 ? '' : 's'} stored in Bank ` +
         `${report.bank}.` +
         (loose.length
@@ -832,6 +894,16 @@
         });
         if (!bank) return;
 
+        // Move the Seven to that bank now, while the decision is still open.
+        // The next two dialogs ask whether to replace what is in it — better
+        // asked with the instrument sitting on it, playable. A recall replaces
+        // the edit buffer, so it is skipped while a live edit is unsaved: the
+        // user has not agreed to anything yet, and losing their work at the
+        // point of merely picking a bank would be indefensible.
+        if (!audition.hasUnsavedEdit()) await window.sevenAPI.transfer.selectBank(bank);
+        // Anything below that stops short of starting puts the panel back.
+        const release = () => window.sevenAPI.transfer.releaseBank();
+
         const plan = await window.sevenAPI.transfer.preflight(index, bank);
         if (!plan.ok) {
           // A blocked plan is not a failure to hide — it names what this
@@ -844,12 +916,48 @@
             confirmLabel: 'OK',
             tone: 'is-warning',
           });
+          await release();
           return;
         }
 
-        const started = await window.sevenAPI.transfer.start(index, bank);
-        if (!started || !started.started) return; // cancelled at the confirm
-        transferStep(await window.sevenAPI.transfer.next());
+        // The point of no return, in the app's own voice. Built as a movement
+        // rather than a sentence — what is going, where it lands — because
+        // that is the shape of the thing and a paragraph makes you assemble it
+        // yourself. Declining gets a button of its own and the keyboard starts
+        // on it: losing presets you never captured is the one mistake here
+        // that cannot be undone.
+        const go = await SevenModal.confirm({
+          title: 'Transfer',
+          bodyHtml:
+            `<p class="tx-from">${esc(plan.setlist)}</p>` +
+            `<p class="tx-count">${plan.willWrite} preset${plan.willWrite === 1 ? '' : 's'}</p>` +
+            '<p class="tx-arrow" aria-hidden="true">↓</p>' +
+            `<p class="tx-to">Crumar Seven’s Bank ${bank}</p>` +
+            '<p class="tx-note">You will manually transfer each sound, replacing the current ' +
+            'sounds.</p>' +
+            '<p class="tx-note">Don’t forget to back up your current tones.</p>',
+          confirmLabel: `Send to Bank ${bank}`,
+          // No Cancel button: the X is the way out, and the single red button
+          // is then unmistakably the one thing this dialog does. The keyboard
+          // still starts on the X rather than on the destructive action.
+          cancelLabel: 'Cancel',
+          defaultDeny: true,
+          tone: 'is-warning is-transfer',
+        });
+        if (!go) {
+          await release();
+          return;
+        }
+
+        const started = await window.sevenAPI.transfer.start(index, bank, true);
+        if (!started || !started.started) {
+          await release();
+          return;
+        }
+        // Set before the first step: the runner recalls the slot inside next(),
+        // and that Program Change is ours, not the player's.
+        transferRunning = true;
+        transferWalk(await window.sevenAPI.transfer.next(), started.slots);
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();
@@ -1247,8 +1355,9 @@
         // both told people their work was gone at the exact moment they saved
         // it. So ask the instrument instead of guessing.
         // The module decides whether this is the echo of a recall the app
-        // sent, or the player reaching for the panel.
-        audition.onProgramChange(ev);
+        // sent, or the player reaching for the panel. During a transfer every
+        // PC is ours, so the question doesn't arise.
+        if (!transferRunning) audition.onProgramChange(ev);
         // Send PC on: panel recalls are slot-identified, so the bank region
         // follows the hardware. Suppressed during a backup run — those PCs
         // are ours.

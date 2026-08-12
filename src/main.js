@@ -301,31 +301,24 @@ function getTransferRunner() {
 // no timers), so these handlers stay thin — they must not be able to route
 // around it.
 function registerTransferIpc() {
+  // Bank picked, nothing decided yet: put the instrument on that bank so the
+  // "replace this?" question is about something the player can hear.
+  ipcMain.handle('transfer:selectBank', (_e, { bank }) => getTransferRunner().selectBank(bank));
+  ipcMain.handle('transfer:releaseBank', () => getTransferRunner().releaseBank());
+
   ipcMain.handle('transfer:preflight', (_e, { setlistIndex, bank }) =>
     getTransferRunner().preflight(setlistIndex, bank));
 
-  ipcMain.handle('transfer:start', async (e, { setlistIndex, bank }) => {
+  // The confirmation this needs is the app's own modal now — an OS alert says
+  // "the computer needs something from you", when what this moment says is
+  // "here is what is about to happen to your instrument". `confirmed` is not a
+  // formality: without it this refuses, so a caller that skips the question has
+  // to say so in its own source rather than merely omit it.
+  ipcMain.handle('transfer:start', async (_e, { setlistIndex, bank, confirmed }) => {
     const runner = getTransferRunner();
     const plan = runner.preflight(setlistIndex, bank);
     if (!plan.ok) return plan;
-
-    // Confirm at the point of no return, naming the bank being replaced. The
-    // dialog offers the backup because losing presets you never captured is
-    // the one mistake here that cannot be undone.
-    const win = BrowserWindow.fromWebContents(e.sender);
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: [`Send to Bank ${bank}`, 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      message: `Replace Bank ${bank}'s presets with “${plan.setlist}”?`,
-      detail:
-        `${plan.willWrite} preset${plan.willWrite === 1 ? '' : 's'} will be loaded one at a ` +
-        'time, and you hold the matching preset button on the Seven for three seconds to keep ' +
-        'each one.\n\nWhatever is in Bank ' + bank + ' now is replaced as you do that. If you ' +
-        'have not backed up this instrument recently, cancel and back it up first.',
-    });
-    if (response !== 0) return { ok: false, cancelled: true };
+    if (confirmed !== true) return { ok: false, cancelled: true };
     return runner.start(setlistIndex, bank);
   });
 
