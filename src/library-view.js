@@ -672,7 +672,9 @@
         if (entry) {
           state.selected = rowKey(entry);
           render();
-          if (on.select) on.select(entry);
+          // Tell app.js whether this click was inside a setlist, which is
+          // what decides between "select" and "select and play".
+          if (on.select) on.select(entry, { inSetlist: state.setlistIndex != null });
         }
       }
     });

@@ -18,7 +18,13 @@
   await ui.waitFor(() => ui.$$('.pick-tile-art').length > 0, { what: 'the instrument tiles' });
   const tiles = ui.$$('.pick-tile-art');
   ui.check(tiles.length === 24, `every sound is offered as a tile (${tiles.length})`);
-  ui.check(!!tiles[0]?.querySelector('svg.sound-art'), 'tiles carry their instrument artwork');
+  // Art is either a drawn illustration (a wrapper holding an inlined SVG) or
+  // the line-art mark for instruments with nothing to draw. Both count.
+  const art = tiles[0]?.querySelector('.sound-art');
+  ui.check(!!art, 'tiles carry artwork');
+  ui.check(!!(art && art.querySelector('svg') || art?.tagName === 'svg'), 'the artwork is an SVG');
+  const drawn = tiles.filter((t) => t.querySelector('.sound-art.is-drawing')).length;
+  ui.note(`${drawn} of ${tiles.length} tiles use a drawn illustration`);
 
   const name = tiles[0].dataset.pickSound;
   ui.click(tiles[0], `the ${name} tile`);

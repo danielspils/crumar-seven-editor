@@ -421,6 +421,15 @@
 
   // Audition mode and live editing (src/audition.js). It owns the live session;
   // app.js owns the selection it acts on.
+  // The connection row is app.js's own element, so this lives here rather than
+  // being borrowed from the audition module — which is where it went during
+  // the split, leaving "Send to bank…" calling a function that no longer
+  // existed. The click threw and nothing happened.
+  const isConnected = () => {
+    const row = document.getElementById('connection-row');
+    return !!row && row.classList.contains('connected');
+  };
+
   // Which patch the detail panel is acting on: the library selection when that
   // was touched last, otherwise the selected bank slot. Both app.js and the
   // audition module work from this one answer.
@@ -711,13 +720,18 @@
       // the picker's Instruments tab. Sound-only slots reference these by NAME,
       // never by id: ids are not portable across units (schema soundsNote).
       sounds: schema.sounds,
-      select(entry) {
+      select(entry, opts = {}) {
         // Independent of the device selection — both stay set, both stay
         // visibly selected; the detail panel follows the last touch.
         libSelected = entry;
         lastTouched = 'library';
         resetCollapsed();
         renderAll();
+        // Clicking a patch in a SETLIST plays it: walking a set is the reason
+        // setlists exist, and doing that silently is not walking a set. The
+        // library's flat list stays silent — that is a filing cabinet, and
+        // clicking a row there is not a request to hear it.
+        if (opts.inSetlist) audition.preview({ file: entry.file, patchIndex: entry.patchIndex || 0 });
       },
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();

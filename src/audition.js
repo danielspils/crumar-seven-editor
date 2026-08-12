@@ -566,7 +566,51 @@
     offerAudition();
   }
 
+    // Preview a patch by selection — clicking a setlist slot should let you
+    // hear it. Coalesced: while one send is in flight the latest request is
+    // remembered and sent after, so walking a list does not queue a send per
+    // row. Declines with a toast when there are unsaved live edits, rather
+    // than silently discarding them.
+    let previewQueued = null;
+
+    async function preview(target) {
+      if (!isConnected() || !target) return;
+      if (liveEdit && liveEdit.dirty && liveEdit.file !== target.file) {
+        toast('Save or discard your edits before previewing another patch');
+        return;
+      }
+      if (auditionInFlight) {
+        previewQueued = target;
+        return;
+      }
+      auditionInFlight = true;
+      toast('Loading…', { sticky: true });
+      try {
+        const r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
+        if (r && r.ok) {
+          liveEdit = {
+            file: target.file,
+            patchIndex: target.patchIndex,
+            params: { ...(deps.getPatch() || {}).params },
+            touched: new Set(),
+            dirty: false,
+          };
+          startPanelPoll();
+        } else if (r) {
+          toast(r.error);
+        }
+      } finally {
+        auditionInFlight = false;
+        hideToast();
+      }
+      deps.renderDetail();
+      const next = previewQueued;
+      previewQueued = null;
+      if (next && next.file !== target.file) preview(next);
+    }
+
     return {
+      preview,
       isLive,
       clearLive,
       renderBar: renderAuditionBar,
