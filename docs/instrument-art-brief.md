@@ -11,6 +11,34 @@ image model is the tool that does that. The trade is that the result is raster,
 so it cannot recolour itself per theme — which is why transparency and a
 mid-tone palette matter below.
 
+## The set that shipped (2026-08-12)
+
+Eight photoreal illustrations, **generated with Gemini by the project's author**
+— so they are ours to ship in a public MIT repo, which stock or clipart would
+not have been. Three-quarter view, not the straight-on elevation this brief
+originally specified: the set agrees with itself, which matters more than
+agreeing with a spec written before the set existed.
+
+`tine`, `reed`, `clavi`, `cp70`, `dx7`, `grand` (the modeled Acoustic Piano),
+`venice` (the sampled Venice family, the same grand in brown so the two read as
+related but distinct), `upright`.
+
+Two traps this set walked into, both worth avoiding next time:
+
+- **Export with real transparency, not a screenshot of the preview.** The first
+  batch had the transparency checkerboard baked into the pixels — every pixel
+  opaque, the grey squares painted in — which renders as a grey rectangle
+  behind the instrument. `tools/strip-checker.js` recovers such a file (border
+  flood fill, feathered rim), but only when the checker is light grey; a
+  black-and-white checker cannot be cut away automatically, because the
+  drawings are outlined in black.
+- **One instrument alone in frame.** A neighbouring keyboard wandered into one
+  generation and was erased with white rather than deleted, leaving an opaque
+  band that was invisible on the light theme and obvious on the dark one.
+
+Sizes: 512px on the long edge, which covers every use at 2x — the picker tile
+(158px) and the sound engine header (128px).
+
 ---
 
 ## The style block — paste this with every request
@@ -51,7 +79,10 @@ the result and keeps the files clean to ship.
 ## Checks before a file is accepted
 
 1. **No text anywhere.** Zoom in on the control rail, the fallboard and the
-   lid. Models add brand names back even when told not to.
+   lid. Models add brand names back even when told not to — one generation came
+   back with a real model designation on the panel. Illegible squiggle standing
+   in for a name plate is fine and reads as detail; a readable model name is
+   not.
 2. **Transparent background**, not white. A white rectangle will show as a
    patch against the dark theme.
 3. **Same angle as the anchor.** Straight-on. One tilted instrument in a row

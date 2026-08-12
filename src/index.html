@@ -836,8 +836,9 @@
     .tile-art { color: var(--tile); display: block; line-height: 0; }
     /* A drawn instrument brings its own colours; only the fallback line art is
        tinted with the family colour. */
-    .tile-art.is-drawing { width: 100%; }
-    .tile-art.is-drawing svg { display: block; width: 100%; height: auto; }
+    .tile-art .sound-art.is-drawing { display: block; width: 100%; }
+    .tile-art .sound-art.is-drawing svg,
+    .tile-art .sound-art.is-drawing img { display: block; width: 100%; height: auto; }
     .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
     .pick-note {
       margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
@@ -1031,7 +1032,25 @@
       text-align: center;
     }
 
-    .engine-head { margin-bottom: 12px; }
+    /* Text on the left, instrument on the right: the picture uses the space
+       beside the name rather than taking a band across the top and pushing
+       every parameter down. */
+    .engine-head {
+      display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px;
+    }
+    .engine-head-text { flex: 1 1 auto; min-width: 0; }
+    /* 128, not 150: the picture sets the header's height in every case (the
+       longest sound name and description together still come in shorter), so
+       every pixel here is a pixel of parameters pushed below the fold on an
+       ordinary patch. 128 also widens the text column enough to un-wrap most
+       names — better in both dimensions at once. */
+    .engine-art { flex: none; width: 128px; margin: -2px 0 0; }
+    .engine-art .sound-art.is-drawing { display: block; width: 100%; }
+    .engine-art .sound-art.is-drawing img,
+    .engine-art .sound-art.is-drawing svg { display: block; width: 100%; height: auto; }
+    /* The line-art fallback is a 48x32 mark, not a picture — it keeps its own
+       size and the family tint rather than being blown up to fill the space. */
+    .engine-art > svg.sound-art { width: 92px; height: auto; color: var(--text-dim); }
     .engine-sound { font-size: 17px; font-weight: 700; }
     .engine-sound .badge { vertical-align: 3px; margin-left: 6px; }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }

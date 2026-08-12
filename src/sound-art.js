@@ -98,6 +98,12 @@
     [/\bdx\b/i, 'synth'],
     [/\bmks\b/i, 'rack'],
     [/vibraphone|vibes/i, 'vibes'],
+    // Venice is a family of sampled acoustics with its own illustration — a
+    // brown grand, where the modeled Acoustic Piano is black. It sits AFTER
+    // the upright rule on purpose: a "Venice Upright U1" is an upright, and
+    // the picture should say what the instrument is before it says which
+    // family it belongs to.
+    [/venice/i, 'venice'],
     [/grand|piano/i, 'grand'],
   ];
 
@@ -119,15 +125,16 @@
     grandLegs: 'cp70',
     synth: 'dx7',
     grand: 'grand',
+    venice: 'venice',
     upright: 'upright',
   };
 
-  let drawings = null; // { name: svg markup }, loaded once through the preload seam
+  let drawings = null; // { name: {kind, markup|src} }, loaded once via preload
 
   function drawingFor(artKey) {
     if (drawings === null) {
-      drawings = (global.sevenAPI && global.sevenAPI.getInstrumentSvgs)
-        ? global.sevenAPI.getInstrumentSvgs()
+      drawings = (global.sevenAPI && global.sevenAPI.getInstrumentArt)
+        ? global.sevenAPI.getInstrumentArt()
         : {};
     }
     const file = DRAWING_FOR[artKey];
@@ -140,7 +147,14 @@
   function iconFor(name, sampled) {
     const key = artKeyFor(name, sampled);
     const drawn = drawingFor(key);
-    if (drawn) return `<span class="sound-art is-drawing" aria-hidden="true">${drawn}</span>`;
+    if (drawn && drawn.kind === 'png') {
+      // The alt is empty and the wrapper aria-hidden: the sound's NAME is
+      // right beside it, and a screen reader repeating it as a picture caption
+      // would say the same thing twice.
+      return '<span class="sound-art is-drawing" aria-hidden="true">' +
+        `<img src="${drawn.src}" alt=""></span>`;
+    }
+    if (drawn) return `<span class="sound-art is-drawing" aria-hidden="true">${drawn.markup}</span>`;
     return (
       '<svg class="sound-art" viewBox="0 0 48 32" width="46" height="31" aria-hidden="true" ' +
       'fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" ' +

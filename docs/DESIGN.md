@@ -70,6 +70,14 @@ from a designer's preference.
 
 Two rules keep those from colliding:
 
+**A drawing brings its own colours; only line art is tinted.** The instrument
+illustrations are photoreal raster and are left alone — the tile tints its
+BACKGROUND with the family colour instead, so a Venice Grand and an Acoustic
+Piano are told apart by the wash behind them and by their own artwork. The
+48x32 line-art marks (vibraphone, rack module, the sample sets with no physical
+instrument) still use `currentColor` and take the tint, because a symbol has no
+palette of its own to protect.
+
 **Filled means action; outlined means state.** A filled green button does
 something when pressed. An outlined green badge is a label. The Sampled badge
 and the Save to Library button are both green and never read as the same kind

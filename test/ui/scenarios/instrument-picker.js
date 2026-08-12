@@ -18,11 +18,16 @@
   await ui.waitFor(() => ui.$$('.pick-tile-art').length > 0, { what: 'the instrument tiles' });
   const tiles = ui.$$('.pick-tile-art');
   ui.check(tiles.length === 24, `every sound is offered as a tile (${tiles.length})`);
-  // Art is either a drawn illustration (a wrapper holding an inlined SVG) or
-  // the line-art mark for instruments with nothing to draw. Both count.
+  // Art is either a drawn illustration — a full-colour PNG, or an inlined SVG
+  // for the ones still drawn as line work — or the line-art mark for
+  // instruments with nothing to photograph. All three count; what matters is
+  // that a tile renders something, not which element carries it.
   const art = tiles[0]?.querySelector('.sound-art');
   ui.check(!!art, 'tiles carry artwork');
-  ui.check(!!(art && art.querySelector('svg') || art?.tagName === 'svg'), 'the artwork is an SVG');
+  ui.check(
+    !!(art && (art.querySelector('img') || art.querySelector('svg'))) || art?.tagName === 'svg',
+    'the artwork renders as a picture'
+  );
   const drawn = tiles.filter((t) => t.querySelector('.sound-art.is-drawing')).length;
   ui.note(`${drawn} of ${tiles.length} tiles use a drawn illustration`);
 

@@ -18,6 +18,9 @@
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  const soundArt = () =>
+    (typeof window !== 'undefined' && window.SevenSoundArt) ? window.SevenSoundArt : null;
+
   // Effects chain, top to bottom. `sw` is the switch whose value 0 dims the
   // section (never inferred from a parameter value). pdl_exp has no switch.
   // `invert` marks inverted logic: veq_byp is EQ *Bypass* — 1 means bypassed,
@@ -305,10 +308,27 @@
         `<div class="engine">` +
         `<div class="col-title">Sound engine</div>` +
         `<div class="engine-head">` +
+        // Name, description and slot in a column, with the instrument BESIDE
+        // them rather than above: stacked, the picture pushed every parameter
+        // down the page, and the parameters are what the view is for.
+        `<div class="engine-head-text">` +
         `<div class="engine-sound">${esc(patch.soundName)} ` +
         `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">${patch.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
         `<div class="engine-sub"><span class="engine-group">${esc(label)}</span></div>` +
         pos +
+        `</div>` +
+        // The same illustration the picker uses. A patch is easier to place by
+        // the instrument it is than by its name — and using one picture in
+        // both views means choosing a sound and looking at it afterwards are
+        // recognisably the same thing.
+        // Guarded: renderer.js is loaded in Node by the unit tests, where
+        // there is no window and no art module.
+        (soundArt()
+          ? `<div class="engine-art">${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`
+          : '') +
+        `</div>` +
+        // Warnings sit BELOW the head, full width — beside a picture they
+        // would be squeezed into a column half the panel wide.
         (missing
           ? `<div class="warn-banner">⚠ This sound is not installed on this instrument — the patch needs “${esc(patch.soundName)}”.</div>`
           : '') +
@@ -318,7 +338,6 @@
         // gave every switch a values array — it matched nothing and
         // [].every() is vacuously true, so the warning fired for every
         // Clavi patch.
-        `</div>` +
         `<div class="params">${rowsFor(group, patch, view)}</div>` +
         // BELOW the controls, not above them. It appears and disappears as the
         // switches are flipped, and from the header it shoved every row down

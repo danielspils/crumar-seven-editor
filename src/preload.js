@@ -27,11 +27,24 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // variables to resolve: an SVG loaded through <img> is a separate document
   // and inherits nothing from the page, so it would render its fallback
   // colours in both themes.
-  getInstrumentSvgs: () => {
+  // Two kinds live side by side: SVG line art, inlined so its CSS variables
+  // resolve against the page's theme, and full-colour PNG illustrations, which
+  // bring their own palette and are served as data: URIs so the renderer needs
+  // no file access. A PNG wins where both exist.
+  getInstrumentArt: () => {
     const dir = path.join(root, 'assets', 'instruments');
     const out = {};
     for (const file of fs.readdirSync(dir)) {
-      if (file.endsWith('.svg')) out[file.replace(/\.svg$/, '')] = readText(path.join('assets', 'instruments', file));
+      const rel = path.join('assets', 'instruments', file);
+      if (file.endsWith('.svg')) {
+        const name = file.replace(/\.svg$/, '');
+        if (!out[name]) out[name] = { kind: 'svg', markup: readText(rel) };
+      } else if (file.endsWith('.png')) {
+        out[file.replace(/\.png$/, '')] = {
+          kind: 'png',
+          src: `data:image/png;base64,${fs.readFileSync(path.join(root, rel)).toString('base64')}`,
+        };
+      }
     }
     return out;
   },
