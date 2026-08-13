@@ -1470,15 +1470,40 @@
        beside the name rather than taking a band across the top and pushing
        every parameter down. */
     .engine-head {
-      display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px;
+      /* BLOCK, not flex: the picture floats and the text flows past it, so
+         the name and its pill get the panel's full width on the first line
+         and only the shorter lines below sit beside the instrument. A flex
+         row gave the text a fixed column, and no offset or size could stop
+         "Venice Upright U1 Felt" wrapping in it (Daniel, 2026-08-13). */
+      display: block; margin-bottom: 12px;
+      /* The picture is pushed down, so the row is as tall as the picture's
+         offset plus itself — pull that back off the bottom. */
+      margin-bottom: -6px;
     }
-    .engine-head-text { flex: 1 1 auto; min-width: 0; }
+    .engine-head-text { min-width: 0; }
+    /* The float is cleared by the row below it, not by the head. */
+    .engine-head::after { content: ''; display: block; clear: both; }
+    /* The name and its pill stay on one line together. */
+    .engine-sound .badge { white-space: nowrap; }
     /* 128, not 150: the picture sets the header's height in every case (the
        longest sound name and description together still come in shorter), so
        every pixel here is a pixel of parameters pushed below the fold on an
        ordinary patch. 128 also widens the text column enough to un-wrap most
        names — better in both dimensions at once. */
-    .engine-art { flex: none; width: 128px; margin: -2px 0 0; }
+    /* Pushed DOWN so the name and its pill get the panel's full width on the
+       first line. The picture used to start level with the heading, which
+       squeezed the text column and wrapped "Electric Grand Piano" onto two
+       lines with the pill stranded on the second (Daniel, 2026-08-13). The
+       heading is one line tall, so that is how far it drops. */
+    /* Below the HEADING, not merely below the top. At 26px the float's edge
+       still cut into the name's own line, so the pill had nowhere to sit even
+       with half the panel empty (Daniel, 2026-08-13). The name clears it now
+       and the picture sits beside the lines that are short anyway. */
+    /* Back to 128. It was cut to 96 while trying to give the heading room,
+       which the FLOAT already does — the text flows past the picture, so its
+       width costs the name nothing (Daniel, 2026-08-13). The carousel shares
+       this class, so shrinking it shrank the wheel too. */
+    .engine-art { float: right; width: 128px; margin: 34px 0 6px 14px; }
     /* Under the wheel, appearing only when the middle is a candidate. */
     .car-select {
       /* Tucked against the foot of the instrument, not floating below the box:
@@ -1699,8 +1724,15 @@
     /* The line-art fallback is a 48x32 mark, not a picture — it keeps its own
        size and the family tint rather than being blown up to fill the space. */
     .engine-art > svg.sound-art { width: 92px; height: auto; color: var(--text-dim); }
-    .engine-sound { font-size: 17px; font-weight: 700; }
-    .engine-sound .badge { vertical-align: 3px; margin-left: 6px; }
+    /* The longest name and its pill share one line. "Venice Upright U1 Felt"
+       plus a Sample pill overflowed at 17px and the pill dropped to a line of
+       its own; a point off the name and a tighter pill fit them together
+       (Daniel, 2026-08-13). */
+    .engine-sound { font-size: 16px; font-weight: 700; }
+    .engine-sound .badge {
+      vertical-align: 2px; margin-left: 6px;
+      font-size: 9px; padding: 2px 6px; white-space: nowrap;
+    }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
     .engine-group { color: var(--text-muted); font-size: 12px; }
     .engine-pos { color: var(--text-muted); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }

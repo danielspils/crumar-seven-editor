@@ -1844,8 +1844,11 @@
     libData = data; // last known state — undo steps capture from it
     libEntries = data.patches;
     libView.update(data);
+    // Count the FILES, and say so. It said "35 patches" beside a Patches tab
+    // showing six, because that tab lists only what you made while the region
+    // holds everything on disk — backups included (Daniel, 2026-08-13).
     const n = data.patches.filter((e) => !e.invalid).length;
-    libCount.textContent = `— ${n} patch${n === 1 ? '' : 'es'}`;
+    libCount.textContent = `— ${n} patch file${n === 1 ? '' : 's'}`;
     // The bank region derives from the same list — one fetch feeds both.
     rebuildBanks(data.patches);
     updateSevenHead();
