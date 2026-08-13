@@ -992,72 +992,85 @@
               drop-shadow(0 0 26px rgba(255, 255, 255, .07))
               drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
     }
-    /* SAMPLED sounds glow in the badge's own green (--sampled), so the mark
-       and the word are the same colour and nobody has to be taught a second
-       vocabulary. Modeled keeps the neutral halo: a mark should MEAN something,
-       and "no mark" is a cleaner default than a second colour competing with
-       it — it also means the cue survives red/green colour blindness, since it
-       is presence against absence rather than hue against hue.
-       color-mix keeps it tied to the token: change --sampled and the glow
-       follows, in both themes.
+    /* How a SAMPLED instrument arrives: a line crosses it, and the instrument
+       exists behind the line. Nothing is there before the line reaches it.
 
-       Light and dark are two different effects, not one at two strengths. On
-       the dark panel the halo is a LIGHT SOURCE — wide and soft, with darkness
-       to fall into. On cream there is no darkness to occupy, so the same green
-       has to arrive as a coloured SHADOW: tighter, stronger, dropped a little,
-       so the instrument sits on the page instead of hovering over it. */
-    .sound-art.is-drawing.is-sampled img {
-      filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--sampled) 70%, transparent))
-              drop-shadow(0 0 8px color-mix(in srgb, var(--sampled) 55%, transparent))
-              drop-shadow(0 1px 2px rgba(0, 0, 0, .25));
+       The line follows the CONTOURS of the instrument rather than running the
+       full width of the box (Daniel, 2026-08-13), and the way it does that is
+       a mask: app.js hands the instrument's own image over as --art-src, the
+       line is painted across the whole drawn rect, and the mask means it only
+       shows where that image is opaque. So on a grand piano the line is short
+       over the legs and long across the lid, for free — no per-instrument work
+       and no silhouette data to maintain.
+
+       Everything is measured, not assumed. The art is object-fit: contain, so
+       a wide flat instrument leaves empty bands above and below; app.js
+       measures the drawn rect and hands over --scan-top/-left/-span/-w, and
+       every rule here is expressed in those. Animating over the BOX instead
+       meant the pass spent most of its travel crossing nothing.
+
+       Landing only, so nothing animates at rest. */
+    .car-face.is-landing .sound-art.is-drawing.is-sampled {
+      position: relative;
+      /* A proportion of the instrument, not a fixed height: wide flat art
+         renders short — the Combo Piano is 48px tall in a 128px box — and a
+         fixed lamp covered half of it at every moment, which reads as a blob
+         arriving rather than a pass across something. */
+      --lamp-h: max(4px, calc(var(--scan-span, 128px) * 0.14));
     }
-    :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
-      filter: drop-shadow(0 0 12px color-mix(in srgb, var(--sampled) 60%, transparent))
-              drop-shadow(0 0 30px color-mix(in srgb, var(--sampled) 28%, transparent))
-              drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
+    /* The reveal, over the drawn rect rather than the box. */
+    @keyframes sampled-reveal {
+      0%   { clip-path: inset(0 0 calc(100% - var(--scan-top)) 0); }
+      100% { clip-path: inset(0 0 calc(100% - var(--scan-top) - var(--scan-span)) 0); }
     }
-    /* A slow breath on EVERY sampled instrument, wherever it is drawn — the
-       carousel, the engine panel, the picker's 24 tiles (Daniel, 2026-08-13).
-       Animating drop-shadow repaints each element every frame and the shadow
-       traces the PNG's alpha, so this is genuinely more work than a static
-       glow; it is affordable because the boxes are small and the period is
-       long. If the picker ever feels heavy, that grid is the first place to
-       scope it back — measure before assuming. Slow enough (2.8s) to read as
-       breathing rather than blinking. */
-    @keyframes sampled-breathe {
-      0%, 100% { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--sampled) 42%, transparent))
-                         drop-shadow(0 0 22px color-mix(in srgb, var(--sampled) 18%, transparent))
-                         drop-shadow(0 2px 4px rgba(0, 0, 0, .55)); }
-      50%      { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--sampled) 72%, transparent))
-                         drop-shadow(0 0 38px color-mix(in srgb, var(--sampled) 34%, transparent))
-                         drop-shadow(0 2px 4px rgba(0, 0, 0, .55)); }
+    /* A band of constant height travelling top to bottom. Both insets
+       interpolate, which is what keeps the height fixed while it moves. */
+    @keyframes sampled-line {
+      0%   { clip-path: inset(0 0 calc(100% - var(--lamp-h)) 0); opacity: 0; }
+      10%  { opacity: 1; }
+      88%  { opacity: 1; }
+      100% { clip-path: inset(calc(100% - var(--lamp-h)) 0 0 0); opacity: 0; }
     }
-    @keyframes sampled-breathe-light {
-      0%, 100% { filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--sampled) 55%, transparent))
-                         drop-shadow(0 0 7px color-mix(in srgb, var(--sampled) 40%, transparent))
-                         drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
-      50%      { filter: drop-shadow(0 3px 7px color-mix(in srgb, var(--sampled) 85%, transparent))
-                         drop-shadow(0 0 12px color-mix(in srgb, var(--sampled) 62%, transparent))
-                         drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+    .is-landing.is-scan .sound-art.is-drawing.is-sampled img {
+      animation: sampled-reveal 550ms linear var(--scan-delay, 0ms) 1;
     }
-    .sound-art.is-drawing.is-sampled img {
-      animation: sampled-breathe-light 2.8s ease-in-out infinite;
-    }
-    :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
-      animation: sampled-breathe 2.8s ease-in-out infinite;
-    }
-    /* The peeks either side are already dimmed to .38 — breathing out there
-       too made the whole strip shimmer. Only what you can actually look at
-       breathes. */
-    .engine-carousel .is-peek .sound-art.is-drawing.is-sampled img,
-    .engine-carousel .is-far .sound-art.is-drawing.is-sampled img {
-      animation: none;
+    .is-landing.is-scan .sound-art.is-drawing.is-sampled::before {
+      content: '';
+      position: absolute;
+      left: var(--scan-left); top: var(--scan-top);
+      width: var(--scan-w); height: var(--scan-span);
+      /* Hard stops, not a falloff. A smooth gradient reads as something out of
+         focus; a digital readout has EDGES — a bright core with a defined
+         band either side of it, and a 1px scanline texture across the whole
+         thing so it looks generated rather than lit (Daniel, 2026-08-13). */
+      background-image:
+        repeating-linear-gradient(to bottom,
+          rgba(255, 255, 255, .55) 0 1px,
+          transparent 1px 2px),
+        linear-gradient(to bottom,
+          transparent 0 14%,
+          color-mix(in srgb, var(--sampled) 55%, transparent) 14% 34%,
+          #fff 34% 66%,
+          color-mix(in srgb, var(--sampled) 55%, transparent) 66% 86%,
+          transparent 86% 100%);
+      /* The silhouette. Prefixed too — this has to hold on whatever Chromium
+         the packaged app ships with. */
+      -webkit-mask-image: var(--art-src); mask-image: var(--art-src);
+      -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      /* INVISIBLE unless the animation is driving it. The keyframes clip it to
+         a band, but the moment the animation ends the clip reverts to none and
+         it paints unclipped — a white silhouette of the instrument sitting on
+         top of the instrument (Daniel, 2026-08-13). The base state has to be
+         "nothing", so that whenever the animation is not running there is
+         nothing to see. */
+      opacity: 0; clip-path: inset(100% 0 0 0);
+      pointer-events: none; z-index: 2;
+      animation: sampled-line 550ms linear var(--scan-delay, 0ms) 1;
     }
     @media (prefers-reduced-motion: reduce) {
-      .sound-art.is-drawing.is-sampled img,
-      :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
-        animation: none;
-      }
+      .is-landing .sound-art.is-drawing.is-sampled img { animation: none; }
+      .is-landing .sound-art.is-drawing.is-sampled::before { display: none; }
     }
     .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
     .pick-note {
@@ -1365,6 +1378,15 @@
     :root[data-theme="dark"] .engine-carousel .car-face.is-landing .sound-art {
       animation: car-land 420ms cubic-bezier(.22, 1, .36, 1) both,
                  car-afterglow-dark 900ms ease-out both;
+    }
+    /* A SAMPLED instrument gets the scan and nothing else — no settle, no
+       afterglow (Daniel, 2026-08-13). At 550ms the scan is a single quick
+       statement, and anything running alongside it only blurred that. Modeled
+       instruments keep both: they have no scan, so the settle and the glow are
+       the only things saying the choice landed. */
+    .engine-carousel .car-face.is-landing .sound-art.is-sampled,
+    :root[data-theme="dark"] .engine-carousel .car-face.is-landing .sound-art.is-sampled {
+      animation: none;
     }
     @media (prefers-reduced-motion: reduce) {
       /* The afterglow stays — it is a light coming up, not motion — but it

@@ -321,7 +321,93 @@
   // the pictures simply changed where they stood, which reads as a jump cut
   // rather than a wheel (Daniel, 2026-08-12).
   const TURN_MS = 340;
-  const LAND_MS = 940; // settle + afterglow; see car-land/car-afterglow
+  const SCAN_MS = 550;         // must match sampled-reveal / sampled-line in index.html
+  const LAND_MS = SCAN_MS + 400; // the class outlasts the animation
+
+  // A landing in progress, so it can be picked up again if the panel is
+  // re-rendered underneath it. Choosing a sound sends 0x46 and the Seven
+  // BROADCASTS the change back; that arrives a moment later, sets liveSound
+  // and re-renders — which replaced the element the scan was running on and
+  // left the rest of the instrument to simply appear (Daniel, 2026-08-13).
+  let sampledLanding = null; // { startedAt, name }
+
+  // A sampled instrument is REVEALED by the scan that crosses it: nothing is
+  // there, the line passes, and the instrument exists behind it.
+  const SAMPLED_ARRIVAL = 'scan';
+
+  // Where the picture ACTUALLY is inside its box.
+  //
+  // The art is object-fit: contain, so a wide flat instrument fills the box's
+  // width and leaves empty bands above and below, while a tall one fills the
+  // height. A scan animated over the BOX therefore spends much of its travel
+  // crossing nothing. CSS cannot see a contained image's drawn rect, so it is
+  // measured here and handed over as custom properties.
+  //
+  // Three things this has to get right, and each one broke it once:
+  //
+  //   LAYOUT PIXELS, NOT SCREEN PIXELS. The hero is transform: scale(1.12)
+  //   while the carousel is open, so getBoundingClientRect() returns 143px for
+  //   a 128px box. Those numbers then land back in CSS, which applies them
+  //   before the transform — a 12% overshoot that made the reveal finish early
+  //   and left the last of the instrument to simply appear. offsetWidth /
+  //   offsetHeight are layout sizes and ignore transforms.
+  //
+  //   A DECODED IMAGE. naturalWidth is 0 until the picture is decoded, and a
+  //   fresh render can be measured before that happens. Measuring then gives a
+  //   fallback span, which is wrong for anything that is not square.
+  //
+  //   NO SLIVER AT THE END. Sub-pixel rounding can leave a hairline unrevealed,
+  //   so the travel finishes a pixel past the bottom edge.
+  //
+  // Everything is derived from the image's own dimensions, so an instrument
+  // added later needs no work here: drop the PNG in, and the scan fits it.
+  function measureScanBox(wrap) {
+    const img = wrap.querySelector('img');
+    if (!img) return false;
+    const boxW = img.offsetWidth;
+    const boxH = img.offsetHeight;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh || !boxW || !boxH) return false;
+    const scale = Math.min(boxW / nw, boxH / nh); // `contain`
+    const drawnH = nh * scale;
+    const drawnW = nw * scale;
+    const set = (k, v) => wrap.style.setProperty(k, v);
+    set('--scan-top', `${((boxH - drawnH) / 2).toFixed(2)}px`);
+    set('--scan-span', `${(drawnH + 1).toFixed(2)}px`); // +1: no hairline left over
+    set('--scan-left', `${((boxW - drawnW) / 2).toFixed(2)}px`);
+    set('--scan-w', `${drawnW.toFixed(2)}px`);
+    // The instrument's own picture, handed to CSS as a MASK — that is what
+    // makes the line follow the silhouette instead of running the full width.
+    set('--art-src', `url("${img.src}")`);
+    return true;
+  }
+
+  // Measure, then start. If the picture has not decoded yet the animation
+  // waits for it rather than running against a guess — a few milliseconds
+  // later is invisible, a mis-measured scan is not.
+  function startSampledArrival(hero, name) {
+    const wrap = hero.querySelector('.sound-art.is-sampled');
+    const begin = () => {
+      if (wrap) {
+        sampledLanding = { startedAt: Date.now(), name };
+        wrap.style.setProperty('--scan-delay', '0ms');
+      }
+      hero.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
+      setTimeout(() => {
+        hero.classList.remove('is-landing', `is-${SAMPLED_ARRIVAL}`);
+        sampledLanding = null;
+      }, LAND_MS);
+    };
+    if (!wrap) { begin(); return; }          // modeled: no scan to size
+    if (measureScanBox(wrap)) { begin(); return; }
+    const img = wrap.querySelector('img');
+    if (!img) { begin(); return; }
+    const go = () => { measureScanBox(wrap); begin(); };
+    if (img.decode) img.decode().then(go, go);
+    else img.addEventListener('load', go, { once: true });
+  }
+
   let turning = false;
   // Whether the wheel is open. A STATE rather than a :hover query, because a
   // turn re-renders the faces and fresh nodes are not hovered until the
@@ -337,7 +423,6 @@
     const car = document.querySelector('[data-carousel]');
     if (car) car.classList.toggle('is-open', inside);
   });
-
   // Where the wheel is now: liveSound when the instrument is holding something
   // other than what the file names, otherwise the file's own sound. Counting
   // from the FILE swallowed the first turn after a selection — the wheel
@@ -347,6 +432,26 @@
     const patch = currentPatch();
     return soundIndexOf((liveSound && liveSound.name) || (patch && patch.soundName));
   };
+
+  // Re-apply an in-flight scan to the freshly rendered face. A NEGATIVE delay
+  // is what makes this a continuation rather than a restart: the animation
+  // starts already that far through, so the line is where it would have been
+  // had nothing interrupted it.
+  function resumeSampledArrival() {
+    if (!sampledLanding) return;
+    const elapsed = Date.now() - sampledLanding.startedAt;
+    if (elapsed >= SCAN_MS) { sampledLanding = null; return; }
+    const hero = document.querySelector('[data-carousel] .is-hero');
+    if (!hero) return;
+    // Only if it is still the same instrument — a scan must never be handed
+    // to whatever happens to be in the middle now.
+    if (hero.dataset.carName !== sampledLanding.name) return;
+    const wrap = hero.querySelector('.sound-art.is-sampled');
+    if (!wrap || hero.classList.contains('is-landing')) return;
+    measureScanBox(wrap);
+    wrap.style.setProperty('--scan-delay', `${-elapsed}ms`);
+    hero.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
+  }
 
   function turnCarousel(dir) {
     if (turning) return;
@@ -476,8 +581,7 @@
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');
     if (hero) {
-      hero.classList.add('is-landing');
-      setTimeout(() => hero.classList.remove('is-landing'), LAND_MS);
+      startSampledArrival(hero, name);
     }
   }
 
@@ -965,6 +1069,7 @@
     lastDetailKey = key;
     updateKnobRings();
     dressParamSelects(detailEl);
+    resumeSampledArrival();
   }
 
   // Enum rows keep their <select> and gain a picker in front of it.
