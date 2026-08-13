@@ -47,7 +47,11 @@
     const days = Math.floor((Date.now() - then.getTime()) / 86400000);
     if (days <= 0) return 'today';
     if (days === 1) return '1 day ago';
-    if (days < 30) return `${days} days ago`;
+    if (days < 14) return `${days} days ago`;
+    if (days < 60) {
+      const weeks = Math.round(days / 7);
+      return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+    }
     const months = Math.round(days / 30.44);
     if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
     const years = Math.round(days / 365.25);
@@ -238,11 +242,18 @@
   }
 
   function renderAllPatches(data, state) {
-    const list = data.patches.filter((e) => matches(e, state.search));
+    // YOUR patches — the ones made outside a backup run. A captured patch
+    // belongs to the backup it came from, and listing it here too made the
+    // three tabs overlap (Daniel, 2026-08-13). The cost, accepted: you cannot
+    // browse every Rhodes you have ever had in one place; a captured one is
+    // reached through its backup.
+    const list = data.patches.filter(
+      (e) => (e.origin || {}).kind !== 'backup' && matches(e, state.search)
+    );
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
         ? 'No patches match the search.'
-        : 'Patches you back up or import live here. They\u2019re files on your computer, not slots on the instrument.'}</div>`;
+        : 'Patches you save or import live here. Ones read off the Seven live under Backups.'}</div>`;
     }
     // FLAT, sorted by name. It used to group by bank with dated headings —
     // which is exactly what a backup is, so the two tabs showed the same list
@@ -419,7 +430,7 @@
       .join('');
     const create = state.creatingSetlist
       ? `<div class="lib-row lib-setlist-renaming"><input class="setlist-input lib-autofocus" data-setlist-create type="text" placeholder="Setlist name…" spellcheck="false"></div>`
-      : `<button type="button" class="lib-new-setlist">＋ New setlist</button>`;
+      : `<button type="button" class="lib-new-setlist">＋ Create new setlist</button>`;
     const empty = !data.setlists.length && !state.creatingSetlist
       ? `<div class="lib-empty">No setlists yet. A setlist is a bank’s worth of patches — 8 slots — staged for a gig or a transfer.</div>`
       : '';
@@ -484,7 +495,13 @@
   function renderPicker(data, state, sounds, allSounds) {
     const slot = state.picking;
     const q = state.pickSearch || '';
-    const list = data.patches.filter((e) => !e.invalid && matches(e, q));
+    // Bank 1's eight are the FACTORY presets: you cannot edit them and you
+    // cannot write back to them, and the Instruments tab beside this one
+    // offers those same eight sounds directly. Listing them here as patches
+    // was the same eight things twice (Daniel, 2026-08-13). A patch you MADE
+    // from one of them is your own and stays.
+    const list = data.patches.filter((e) => !e.invalid && matches(e, q)
+      && !((e.origin || {}).kind === 'backup' && e.origin.bank === 1));
     // FLAT, by name — the same inventory the Patches tab shows. It grouped by
     // "13 August · Bank 2 / Created here / Imported", which is the structure
     // the Backups tab now owns, so choosing a patch met the same shape a third
@@ -509,21 +526,30 @@
             const auto = /^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/;
             const own = String(e.name || '').replace(auto, '').trim();
             const o = e.origin || {};
-            const from = o.copiedFrom;
-            const where = o.kind === 'backup'
-              ? `Bank ${o.bank} · Preset ${o.preset}`
-              : from && typeof from.bank === 'number'
-                ? `copy of Bank ${from.bank} · Preset ${from.preset}`
-                : (o.kind === 'created' && o.date ? fmtDate(o.date) : '');
+            // WHEN, not where. The slot a patch was captured from is history
+            // and belongs to the Backups tab — but two tiles for the same slot
+            // are two genuinely different patches (the run dedupes identical
+            // ones), so they need something that tells them apart, and the age
+            // does it: "1 day ago" against "2 weeks ago"
+            // (Daniel, 2026-08-13).
+            // "from today", "from 1 week ago" — the tile is a patch you are
+            // choosing, and where it comes from is the useful half of that
+            // sentence, not the verb (Daniel, 2026-08-13).
+            const where = o.date ? `from ${ago(o.date)}` : '';
             // The second line must say something the first does not. A name
             // like "Electric Grand Piano copy" under a title of "Electric
             // Grand Piano" is the same fact twice, and truncation made the two
             // lines read as identical (Daniel, 2026-08-13) — so a name is only
             // used when it is not just the instrument with a suffix on it.
             const bare = own.replace(/\s+copy(\s*\d+)?$/i, '').trim().toLowerCase();
+            // A NAME YOU CHOSE leads. "Commander Piano w/ pad" is what you
+            // call that patch; the instrument under it is the supporting fact
+            // (Daniel, 2026-08-13). Only where there is no name of its own —
+            // most backup patches, auto-named after their sound — does the
+            // instrument take the headline.
             const named = bare && bare !== String(e.soundName).trim().toLowerCase();
-            const name = e.soundName || own;
-            const second = named ? own : where;
+            const name = named ? own : (e.soundName || own);
+            const second = named ? e.soundName : where;
             return (
               `<button type="button" class="pick-tile" data-pick-file="${esc(e.file)}" ` +
               `style="--tile:${colour}" title="${esc(e.name)} — ${esc(e.soundName)}">` +

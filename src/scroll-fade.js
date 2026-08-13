@@ -47,6 +47,15 @@
       if (el.firstElementChild) ro.observe(el.firstElementChild);
     }
     update();
+    // And again after layout. On first load the heights are not final when
+    // this runs, so a list that fits measured as one that does not and wore a
+    // fade until something else forced a re-check — which is why switching
+    // tabs and coming back "fixed" it (Daniel, 2026-08-13).
+    requestAnimationFrame(update);
+    // Fonts land later still, and they change how tall a list is.
+    if (global.document && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(update, () => {});
+    }
     return update;
   }
 
