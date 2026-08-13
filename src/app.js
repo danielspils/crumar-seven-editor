@@ -321,27 +321,69 @@
   // the pictures simply changed where they stood, which reads as a jump cut
   // rather than a wheel (Daniel, 2026-08-12).
   const TURN_MS = 340;
+  const LAND_MS = 940; // settle + afterglow; see car-land/car-afterglow
   let turning = false;
+  // Whether the wheel is open. A STATE rather than a :hover query, because a
+  // turn re-renders the faces and fresh nodes are not hovered until the
+  // pointer moves — so the carousel shut itself the moment you used it
+  // (Daniel, 2026-08-12). It opens when the pointer arrives and closes when it
+  // leaves, and it survives everything in between.
+  let carouselOpen = false;
+
+  document.addEventListener('pointerover', (e) => {
+    const inside = !!e.target.closest('[data-carousel]');
+    if (inside === carouselOpen) return;
+    carouselOpen = inside;
+    const car = document.querySelector('[data-carousel]');
+    if (car) car.classList.toggle('is-open', inside);
+  });
+
+  // Where the wheel is now: liveSound when the instrument is holding something
+  // other than what the file names, otherwise the file's own sound. Counting
+  // from the FILE swallowed the first turn after a selection — the wheel
+  // stepped one place from where it used to be, landing back where it already
+  // was (Daniel, 2026-08-12).
+  const carouselHome = () => {
+    const patch = currentPatch();
+    return soundIndexOf((liveSound && liveSound.name) || (patch && patch.soundName));
+  };
 
   function turnCarousel(dir) {
     if (turning) return;
     const car = document.querySelector('[data-carousel]');
-    const patch = currentPatch();
-    const from = carouselAt == null ? soundIndexOf(patch && patch.soundName) : carouselAt;
+    const from = carouselAt == null ? carouselHome() : carouselAt;
     if (!car) { carouselAt = from + dir; renderDetail(); return; }
     turning = true;
     // Two classes: one selects the direction, the other doubles the rule's
     // specificity so a pointer resting on the face it just clicked cannot pin
     // it in its hover position while the wheel turns.
     car.classList.add('is-turning', dir > 0 ? 'is-turning-next' : 'is-turning-prev');
+    car.classList.add('is-open');
     setTimeout(() => {
       turning = false;
       carouselAt = from + dir;
       renderDetail();
+      // The rebuilt faces inherit the open state; without this the wheel
+      // vanished under a stationary cursor. They inherit it WITHOUT the waking
+      // animation, or every turn would end with the neighbours fading in all
+      // over again.
+      const fresh = document.querySelector('[data-carousel]');
+      if (fresh && carouselOpen) {
+        fresh.classList.add('is-open', 'no-anim');
+        void fresh.offsetWidth; // settle the open state before animating again
+        requestAnimationFrame(() => fresh.classList.remove('no-anim'));
+      }
     }, TURN_MS);
   }
 
   document.addEventListener('click', (e) => {
+    // The Select button under the wheel does what clicking the middle does.
+    const sel = e.target.closest('[data-car-select]');
+    if (sel) {
+      const hero = document.querySelector('[data-carousel] .is-hero');
+      if (hero) chosenFromCarousel(hero.dataset.carName);
+      return;
+    }
     // Clicking a neighbour ADVANCES to it; only the one in the middle is a
     // choice. Reaching past the centre to pick something would make the
     // carousel a row of buttons rather than a wheel you turn.
@@ -355,11 +397,31 @@
       const carousel = face.closest('[data-carousel]');
       const target = carousel.dataset;
       const name = face.dataset.carName;
+      // What the instrument is actually holding — which after a selection is
+      // liveSound, not what the patch file still says.
       const patch = currentPatch();
-      if (patch && name === patch.soundName) return; // already this one
+      const loaded = (liveSound && liveSound.name) || (patch && patch.soundName);
+      if (name === loaded) return; // already playing this one
       chosenFromCarousel(name);
       return;
     }
+
+    // Clicking away from the wheel puts it back where it was. Turning it is a
+    // QUESTION — you spin two places to look at something, decide against it,
+    // and there is no cancel button to press; the only exits were choosing
+    // one or living with a stranger in the middle. Anywhere else on the page
+    // is now the way out, and it rolls back to the instrument that is
+    // actually playing rather than the one you were browsing.
+    //
+    // The pad counts as inside: it is a pseudo-element of the carousel, so a
+    // click on the empty space either side of the pictures targets the
+    // carousel itself and is not "away" (Daniel, 2026-08-12).
+    if (turning) return;
+    if (carouselAt === null && !carouselOpen) return;
+    if (e.target.closest('[data-carousel]')) return;
+    carouselAt = null;
+    carouselOpen = false;
+    renderDetail();
   });
 
   // What clicking the centred instrument means depends on what is selected —
@@ -411,18 +473,15 @@
     liveSound = soundList.find((x) => x.name === name) || null;
     audition.beginLive();
     renderDetail();
-    quietCarousel();
+    // Land the choice on the freshly rendered face — the old one is gone.
+    const hero = document.querySelector('[data-carousel] .is-hero');
+    if (hero) {
+      hero.classList.add('is-landing');
+      setTimeout(() => hero.classList.remove('is-landing'), LAND_MS);
+    }
   }
 
-  // After a pick the pointer is still on the carousel, so it re-renders under
-  // the cursor already in its hover state — which reads as though the click
-  // did nothing. Hold it shut until the pointer leaves and comes back.
-  function quietCarousel() {
-    const car = document.querySelector('[data-carousel]');
-    if (!car) return;
-    car.classList.add('is-quiet');
-    car.addEventListener('pointerleave', () => car.classList.remove('is-quiet'), { once: true });
-  }
+
 
   // ---- Arrow keys walk whichever list you last touched --------------------
   // The instrument's own rows recall as you land on them, exactly as clicking
@@ -905,6 +964,37 @@
     detailEl.scrollTop = keepScroll;
     lastDetailKey = key;
     updateKnobRings();
+    dressParamSelects(detailEl);
+  }
+
+  // Enum rows keep their <select> and gain a picker in front of it.
+  //
+  // The select is not replaced, only hidden: every listener that matters hangs
+  // off it — the live path in audition.js, the not-live path here, undo, and
+  // the UI scenarios — all delegating on a `change` event from `.param-select`.
+  // Swapping the element would have meant rewriting the live-edit path, which
+  // is hardware-verified. Setting the value and firing `change` means none of
+  // them can tell the difference, and the OS menu is still gone.
+  function dressParamSelects(root) {
+    for (const sel of root.querySelectorAll('.param-select')) {
+      if (sel.dataset.dressed) continue;
+      sel.dataset.dressed = '1';
+      const options = [...sel.options].map((o) => ({ value: Number(o.value), label: o.textContent }));
+      const pick = SevenPicker.create({
+        value: Number(sel.value),
+        options,
+        label: sel.closest('.param')?.querySelector('.param-label')?.textContent || undefined,
+        disabled: sel.disabled,
+        onChange: (v) => {
+          sel.value = String(v);
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+      });
+      pick.classList.add('picker-param');
+      const wrap = sel.closest('.select-wrap') || sel;
+      wrap.classList.add('is-dressed');
+      wrap.after(pick);
+    }
   }
 
   // Audition mode and live editing (src/audition.js). It owns the live session;
@@ -1653,70 +1743,111 @@
     };
     // ---- Instrument settings (the nine globals) ---------------------------
     // Every slot is shown, because a raw value is worth seeing even when we
-    // cannot name it. Only the three whose meaning is PINNED against the
-    // device offer a switch; the rest are read-only and say so. The names for
-    // the other six come from the manufacturer editor's page order, which is
-    // an assumption — marked as one rather than presented as fact.
+    // cannot name it. As of 2026-08-12 every global's name AND every one of its
+    // values has been read off the instrument (sweep + nine dropdown
+    // photographs, docs/protocol.md), so all nine are real named choices here.
     const settingsBtn = document.getElementById('settings-button');
     const settingsPanel = document.getElementById('settings-panel');
-    const GLB_NAMES = [
-      'Channel', 'Alt. Channel', 'Send CC', 'Send PC', 'MIDI Soft-Thru',
-      'Sustain Polarity', 'Volume Type', 'Velocity Curve', 'Memory Protect',
-    ];
-    // What a value MEANS is only known for the switches: 1 = on, captured as
-    // the editor's Send PC went to YES. Everything else keeps its raw number.
-    const SWITCHES = new Set([2, 3, 8]);
+    // The field table comes from the main process WITH the values — one
+    // source of truth, sitting beside the wire guard that enforces it, so a
+    // label this panel can show is exactly a value the instrument will accept.
+    // Nothing here knows what a global means on its own.
+    // What counts as "off" — the device's words, so the switch shows its
+    // vocabulary rather than ours.
+    const OFF_WORDS = new Set(['OFF', 'No']);
 
     const renderSettings = (g) => {
       const rows = settingsPanel.querySelector('.settings-rows');
       const writable = new Set(g.writable || []);
+      const fields = g.fields || [];
       rows.replaceChildren(...g.glb.map((value, index) => {
+        const field = fields[index] || { name: `Global ${index}`, labels: {} };
+        const canWrite = writable.has(index) && field.complete;
         const row = document.createElement('div');
-        row.className = `set-row${writable.has(index) ? '' : ' is-unverified'}`;
+        row.className = `set-row${canWrite ? '' : ' is-unverified'}`;
         const name = document.createElement('span');
         name.className = 'set-name';
-        name.textContent = GLB_NAMES[index] || `Global ${index}`;
-        if (!writable.has(index)) {
-          const tag = document.createElement('span');
-          tag.className = 'set-guess';
-          tag.textContent = 'name unverified';
-          tag.title = 'This slot\u2019s meaning has not been confirmed against the ' +
-            'instrument, so the app will not write it.';
-          name.appendChild(tag);
-        }
+        name.textContent = field.name;
         row.appendChild(name);
-        if (writable.has(index) && SWITCHES.has(index)) {
+
+        // A two-value field whose LOW value is an off-word gets a switch. The
+        // test is on the device's own label, not on the range: Sustain Pol.
+        // (N.C./N.O.) and Volume Type (From Preset/Global) are two-valued too,
+        // and neither has an off — a switch would invent one and leave you
+        // guessing which end "on" meant.
+        const isSwitch = canWrite && field.max === 1 && OFF_WORDS.has(field.labels[0]);
+
+        if (isSwitch) {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'set-toggle';
-          const on = value === 1;
-          btn.setAttribute('aria-pressed', String(on));
-          btn.textContent = on ? 'On' : 'Off';
+          btn.setAttribute('aria-pressed', String(value === 1));
+          // The instrument's word for the state it is in — "Yes", not our "On".
+          btn.textContent = field.labels[value];
           btn.addEventListener('click', async () => {
             btn.disabled = true;
-            const r = await window.sevenAPI.midi.setGlobal(index, on ? 0 : 1);
+            const r = await window.sevenAPI.midi.setGlobal(index, value === 1 ? 0 : 1);
             btn.disabled = false;
             if (!r.ok) return toast(r.error || 'The Seven refused that change');
-            // Re-read rather than assume: the row shows what the instrument
-            // reports it now holds, not what we asked for.
             const fresh = await window.sevenAPI.midi.globals();
             if (fresh.ok) renderSettings(fresh);
           });
           row.appendChild(btn);
+        } else if (canWrite) {
+          const options = [];
+          for (let v = 0; v <= field.max; v++) options.push({ value: v, label: field.labels[v] });
+          const pick = SevenPicker.create({
+            value, options, label: field.name,
+            onChange: async (wanted) => {
+              pick.disabled = true;
+              const r = await window.sevenAPI.midi.setGlobal(index, wanted);
+              pick.disabled = false;
+              if (!r.ok) {
+                toast(r.error || 'The Seven refused that change');
+                renderSettings(g); // put the control back to what the device holds
+                return;
+              }
+              // Re-read rather than assume: the panel shows what the instrument
+              // reports it now holds, not what we asked for.
+              const fresh = await window.sevenAPI.midi.globals();
+              if (fresh.ok) renderSettings(fresh);
+            },
+          });
+          row.appendChild(pick);
         } else {
+          // A field whose values are not all named stays readable and stays
+          // unwritable — the number is still worth seeing.
+          const tag = document.createElement('span');
+          tag.className = 'set-guess';
+          tag.textContent = 'not all values named';
+          tag.title = 'Some of this setting\u2019s values have not been read off the ' +
+            'instrument, so the app will not write it.';
+          name.appendChild(tag);
           const val = document.createElement('span');
           val.className = 'set-value';
-          val.textContent = value;
+          val.textContent = field.labels[value] !== undefined ? field.labels[value] : value;
           row.appendChild(val);
         }
+
         return row;
       }));
-      settingsPanel.querySelector('.settings-foot').textContent =
-        `Tuning ${g.tun} Hz. Six of the nine settings are shown read-only: their ` +
-        'names come from the manufacturer editor\u2019s page order, which this project ' +
-        'has not confirmed against the instrument, and writing a slot whose meaning ' +
-        'is a guess could change any setting on your Seven. A transfer borrows Send PC ' +
-        'while it runs and puts it back.';
+      // Tuning stays, as a row with the settings it belongs to. The prose that
+      // used to sit under them explained that instrument settings live on the
+      // instrument, which the panel already says by being the instrument's
+      // settings (Daniel, 2026-08-12).
+      const tuning = document.createElement('div');
+      tuning.className = 'set-row';
+      const tName = document.createElement('span');
+      tName.className = 'set-name';
+      tName.textContent = 'Tuning';
+      const tVal = document.createElement('span');
+      tVal.className = 'set-value';
+      tVal.textContent = `${g.tun} Hz`;
+      tuning.append(tName, tVal);
+      rows.appendChild(tuning);
+      const foot = settingsPanel.querySelector('.settings-foot');
+      foot.textContent = '';
+      foot.hidden = true;
     };
 
     const setSettingsOpen = async (open) => {
@@ -1729,7 +1860,9 @@
       // without one — but the gear stays put and says so, rather than
       // disappearing and leaving you hunting for it.
       settingsPanel.querySelector('.settings-rows').replaceChildren();
-      settingsPanel.querySelector('.settings-foot').textContent =
+      const foot = settingsPanel.querySelector('.settings-foot');
+      foot.hidden = false;
+      foot.textContent =
         'These are the Seven\u2019s own settings, read from the instrument. Connect it to see them.';
     };
     settingsBtn.addEventListener('click', () => setSettingsOpen(settingsPanel.hidden));

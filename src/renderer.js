@@ -40,12 +40,18 @@
     // patch is", so selecting another patch brings the carousel with it.
     const at = view.carouselAt == null ? home : ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
     const wrap = (i) => sounds[((i % sounds.length) + sounds.length) % sounds.length];
-    // No `title`: the OS decides when a native tooltip appears and it is
-    // slow, and this one is the label for the thing under the pointer — it
-    // has to arrive at the speed of pointing. The name rides on the element
-    // and CSS draws it.
+    // No label on the face. A name pill in the middle covered the very
+    // instrument it named, and the ones on the neighbours crowded the panel —
+    // so the SOUND ENGINE heading does the naming instead, following whatever
+    // is in the centre (Daniel, 2026-08-12). data-car-name stays: it is how a
+    // click knows which sound it means.
+    // The art key rides along so CSS can treat a shape differently — a wide,
+    // flat instrument fitted to the box's WIDTH ends up short, and standing it
+    // on the floor line leaves it sitting low against instruments that have
+    // legs (Daniel, 2026-08-12).
     const face = (s, cls) =>
-      `<span class="car-face ${cls}" data-car-name="${esc(s.name)}">` +
+      `<span class="car-face ${cls}" data-car-name="${esc(s.name)}" ` +
+      `data-car-art="${esc(art.artKeyFor(s.name, s.sampled))}">` +
       `${art.iconFor(s.name, s.sampled)}</span>`;
     const here = wrap(at);
     const moved = here.name !== patch.soundName;
@@ -65,6 +71,12 @@
       face(here, 'is-hero') +
       face(wrap(at + 1), 'is-peek is-next') +
       face(wrap(at + 2), 'is-far is-far-next') +
+      // Under the wheel, and only while the middle is something other than
+      // what the instrument holds: with nothing to install, a Select button
+      // would be a control that does nothing.
+      (moved
+        ? '<button type="button" class="car-select" data-car-select>Select</button>'
+        : '') +
       `</div>`
     );
   }
@@ -313,7 +325,19 @@
       );
     }
 
-    // Display-order override: parameter display follows the HARDWARE where the
+    // The key-range table, read once. It is a schema file, not live device
+  // state, so re-reading it on every render would be work for nothing.
+  let keyRanges = null;
+  function keyRangeData() {
+    if (keyRanges === null) {
+      keyRanges = (typeof window !== 'undefined' && window.sevenAPI && window.sevenAPI.getKeyRanges)
+        ? window.sevenAPI.getKeyRanges()
+        : { keybed: null, ranges: {} };
+    }
+    return keyRanges;
+  }
+
+  // Display-order override: parameter display follows the HARDWARE where the
     // hardware has an order; otherwise schema (ID) order. The Clavinet D6 tabs
     // — and our panel strip's yellow legends — run BRILLIANT, TREBLE, MEDIUM,
     // SOFT, C/D, A/B, the reverse of schema ID order. Display only: the schema
@@ -360,6 +384,50 @@
       const group = engineGroupFor(patch);
       const label = groupLabels[group] || group;
       const missing = isMissing(patch);
+      // What the heading names: the carousel's centre when it has been turned
+      // away from the loaded sound, otherwise the loaded sound itself. A
+      // candidate is muted — the instrument is not playing it yet.
+      const shownSound = (() => {
+        const sounds = (view && view.sounds) || [];
+        if (view && view.carouselAt != null && sounds.length) {
+          const i = ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
+          const s = sounds[i];
+          if (s && s.name !== patch.soundName) {
+            const g = engineGroupFor({ soundName: s.name, sampled: s.sampled });
+            return {
+              name: s.name, sampled: !!s.sampled, candidate: true,
+              label: groupLabels[g] || g,
+            };
+          }
+        }
+        return { name: patch.soundName, sampled: !!patch.sampled, candidate: false, label };
+      })();
+      // Some sounds answer to only part of the keyboard — the modeled
+      // Wurlitzer and the Vibraphone among them. Nothing on the wire says so
+      // (see schema/key-ranges-1.37.json), so this draws only what has been
+      // played and heard, and draws nothing at all otherwise. An absent range
+      // is an unheard one, not a full one.
+      const keyRangeStrip = (soundName) => {
+        const kr = typeof window !== 'undefined' && window.SevenKeyRange;
+        const data = typeof window !== 'undefined' && window.sevenAPI &&
+          window.sevenAPI.getKeyRanges && keyRangeData();
+        if (!kr || !data || !data.keybed) return '';
+        const range = data.ranges[soundName];
+        if (!range) return '';
+        const svg = kr.render({ low: range.low, high: range.high, keybed: data.keybed });
+        if (!svg) return '';
+        return (
+          '<div class="param engine-keyrange">' +
+          '<span class="param-label keyrange-label">Restricted range</span>' +
+          // The tooltip repeats what was HEARD, in the words it was heard in.
+          // The frame this is drawn on is the right length but has never been
+          // played, so an absolute note name here would be a measurement we
+          // have not taken.
+          `<span class="keyrange-keys" title="Plays ${esc(range.heard || '')}">${svg}</span>` +
+          '</div>'
+        );
+      };
+
       const pos =
         view && view.bankLabel
           ? `<div class="engine-pos">${esc(view.bankLabel)} · Preset ${view.patchNumber}</div>`
@@ -374,9 +442,15 @@
         // them rather than above: stacked, the picture pushed every parameter
         // down the page, and the parameters are what the view is for.
         `<div class="engine-head-text">` +
-        `<div class="engine-sound">${esc(patch.soundName)} ` +
-        `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">${patch.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
-        `<div class="engine-sub"><span class="engine-group">${esc(label)}</span></div>` +
+        // The heading names whatever is in the middle of the carousel, even
+        // before it is chosen — muted while it is only a candidate, full
+        // strength once the instrument actually holds it. That is what lets
+        // the pictures go unlabelled.
+        `<div class="engine-sound${shownSound.candidate ? ' is-candidate' : ''}">` +
+        `${esc(shownSound.name)} ` +
+        `<span class="badge ${shownSound.sampled ? 'badge-sampled' : 'badge-modeled'}">` +
+        `${shownSound.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
+        `<div class="engine-sub"><span class="engine-group">${esc(shownSound.label)}</span></div>` +
         pos +
         `</div>` +
         // The same illustration the picker uses. A patch is easier to place by
@@ -413,6 +487,12 @@
         // [].every() is vacuously true, so the warning fired for every
         // Clavi patch.
         `<div class="params">${rowsFor(group, patch, view)}</div>` +
+        // Under the controls, laid out like one. In the header it competed
+        // with the name, the badge and — on an instrument slot — the bank and
+        // preset line, which is a lot of small print in one corner; here it
+        // reads as what it is, one more fact about this engine
+        // (Daniel, 2026-08-12).
+        keyRangeStrip(shownSound.name) +
         // BELOW the controls, not above them. It appears and disappears as the
         // switches are flipped, and from the header it shoved every row down
         // mid-gesture — moving the switch out from under the pointer that just

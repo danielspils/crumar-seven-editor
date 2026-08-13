@@ -53,7 +53,6 @@
       --shade: rgba(255, 255, 255, .05);   /* hover */
       --shade-hard: rgba(255, 255, 255, .08);
       --card-border: transparent;
-      --range-fill: #6f6f78;
       --d6-frame-bg: #101012;
       --d6-frame-border: #000;
     }
@@ -97,7 +96,6 @@
       --shade: rgba(0, 0, 0, .045);
       --shade-hard: rgba(0, 0, 0, .075);
       --card-border: #ddd5c4;
-      --range-fill: #b3a68c;
       --d6-frame-bg: transparent;
       --d6-frame-border: transparent;
     }
@@ -275,22 +273,31 @@
     #settings-button:hover, #settings-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #settings-panel {
       position: absolute; top: 100%; right: 12px; z-index: 30;
-      min-width: 430px; max-height: 70vh; overflow-y: auto;
+      /* Nine short rows of label + dropdown. It was sized like the sounds
+         table beside it, which is a 24-row grid and needs the room; this is a
+         list of switches and was mostly air (Daniel, 2026-08-12). */
+      min-width: 280px; max-width: 320px; max-height: 70vh; overflow-y: auto;
       background: var(--bg-raised); border: 1px solid var(--line);
       border-top: none; border-radius: 0 0 6px 6px;
       box-shadow: 0 12px 28px rgba(0,0,0,0.5);
-      padding: 12px 16px 10px;
+      padding: 10px 12px 8px;
+      /* The tray hangs inside #connection-row, which hard-codes near-black text
+         for the brushed-metal strip — the metal is the same in both themes, so
+         its ink cannot follow one. A panel is not the metal, and inheriting
+         that ink painted the labels near-black on the dark panel
+         (Daniel, 2026-08-12). */
+      color: var(--text);
     }
     .settings-head {
-      font-size: 12px; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
+      font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px;
     }
     .set-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 5px 0; border-top: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 0; border-top: 1px solid var(--line);
     }
     .set-row:first-child { border-top: none; }
-    .set-name { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+    .set-name { flex: 1 1 auto; min-width: 0; font-size: 12px; }
     /* A name we have not pinned against the device is shown, because the raw
        value is still worth seeing — but it is marked, and it cannot be
        written. */
@@ -303,6 +310,7 @@
     .set-toggle {
       flex: none; font: inherit; font-size: 11px; font-weight: 700;
       letter-spacing: .05em; text-transform: uppercase;
+      min-width: 52px; text-align: center;
       padding: 2px 10px; border-radius: 10px; cursor: pointer;
       color: var(--text-muted); background: none; border: 1px solid var(--line);
     }
@@ -310,6 +318,75 @@
       color: var(--action-ink); background: var(--action); border-color: var(--action);
     }
     .set-toggle:disabled { opacity: .5; cursor: default; }
+    /* Every global is a named list on the instrument, so it is a named list
+       here. A switch reading On/Off would have been our word for it; these are
+       the device's own — "N.O.", "From Preset", "TX OFF". */
+    /* The app's dropdown (src/picker.js). A native select can be styled shut
+       and not styled open — the list belongs to the OS — so a tray in the
+       app's colours dropped a grey macOS menu out of itself. */
+    .picker {
+      flex: none; display: inline-flex; align-items: center; gap: 6px;
+      font: inherit; font-size: 11px; line-height: 1.6;
+      padding: 1px 6px; border-radius: 5px; cursor: pointer;
+      color: var(--text); background: var(--bg); border: 1px solid var(--line);
+    }
+    .picker:hover:not(:disabled) { border-color: var(--text-dim); }
+    .picker:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+    .picker:disabled { opacity: .5; cursor: default; }
+    .picker-text { white-space: nowrap; }
+    .picker-caret { color: var(--text-dim); font-size: 13px; line-height: 0; }
+    /* Fixed, not absolute: the trays this opens in scroll and clip, and a
+       dropdown's whole job is to leave its container. */
+    .picker-list {
+      position: fixed; z-index: 100; overflow-y: auto;
+      padding: 4px; border-radius: 6px;
+      background: var(--bg-raised); border: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, .5);
+    }
+    .picker-option {
+      padding: 3px 8px; border-radius: 4px; cursor: pointer;
+      font-size: 11px; color: var(--text); white-space: nowrap;
+    }
+    .picker-option.is-active { background: var(--action); color: var(--action-ink); }
+    /* The current value stays marked even while the pointer is elsewhere in
+       the list — otherwise moving the mouse loses your place. */
+    .picker-option[aria-selected="true"] { font-weight: 700; }
+    .picker-option[aria-selected="true"]::after {
+      content: ' ✓'; color: var(--text-dim);
+    }
+    .picker-option.is-active[aria-selected="true"]::after { color: var(--action-ink); }
+    /* Which keys a sound answers to. Drawn only where a limit has been HEARD
+       on the instrument — see schema/key-ranges-1.37.json. */
+    /* A parameter row in everything but kind: same grid, same label column, so
+       it lines up with the controls above it instead of floating under them. */
+    .engine-keyrange { align-items: center; }
+    .keyrange-label { color: var(--text-muted); }
+    .keyrange-keys { grid-column: 2; display: block; min-width: 0; }
+    /* Sized by HEIGHT, letting the viewBox set the width — 61 keys at their
+       drawn size ran past the panel and over the section list beside it. Its
+       own width/height attributes are a starting size, not a claim on the
+       layout. */
+    .key-range {
+      display: block; height: 22px; width: auto; max-width: 100%;
+      border: 1px solid var(--line); border-radius: 2px;
+    }
+    .kr-white { fill: var(--bg-raised); stroke: var(--line); stroke-width: .4; }
+    .kr-black { fill: var(--text); }
+    /* Outside the range the keyboard INVERTS: white keys go dark, black keys
+       go light. The keys stay drawn — the point is WHICH part of the board is
+       dead, which you cannot see if the dead part is missing — but a fade left
+       the two halves too close to tell apart at 22px tall. A negative reads at
+       a glance (Daniel, 2026-08-12). */
+    .kr-white.is-mute { fill: var(--text); stroke: var(--text); }
+    .kr-black.is-mute { fill: var(--bg-raised); stroke: var(--text); stroke-width: .4; }
+    .keyrange-note {
+      font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+    }
+    /* The dressed select stays in the DOM — hidden, not removed — because
+       every listener and every UI scenario still talks to it. */
+    .select-wrap.is-dressed { display: none; }
+    .picker-param { font-size: 12px; padding: 2px 8px; }
+    .param.is-inert .picker-param { opacity: .55; }
     .settings-foot {
       margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
       font-size: 12px; color: var(--text-dim); line-height: 1.5;
@@ -321,6 +398,7 @@
       border-top: none; border-radius: 0 0 6px 6px;
       box-shadow: 0 12px 28px rgba(0,0,0,0.5);
       padding: 12px 16px 10px;
+      color: var(--text); /* same inherited-metal-ink trap as #settings-panel */
     }
     #sounds-panel .sounds-cols { display: flex; gap: 28px; }
     #sounds-panel .sounds-group { flex: 1; min-width: 0; }
@@ -1126,6 +1204,20 @@
        ordinary patch. 128 also widens the text column enough to un-wrap most
        names — better in both dimensions at once. */
     .engine-art { flex: none; width: 128px; margin: -2px 0 0; }
+    /* Under the wheel, appearing only when the middle is a candidate. */
+    .car-select {
+      /* Tucked against the foot of the instrument, not floating below the box:
+         at -30px it landed on the first parameter row. */
+      position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+      z-index: 4; font: inherit; font-size: 11px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      padding: 4px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap;
+      color: var(--action-ink); background: var(--action); border: 1px solid var(--action);
+    }
+    .car-select:hover { filter: brightness(1.08); }
+    .car-select:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+    /* A name the instrument is not playing yet. */
+    .engine-sound.is-candidate { color: var(--text-muted); }
     /* The picture as a carousel. At rest it is one instrument: the sound this
        patch names. On hover its neighbours slide out either side under arrows,
        so choosing a different instrument is paging through pictures rather
@@ -1133,15 +1225,114 @@
        box (overflow visible, high z-index) so the resting layout keeps its
        128px and nothing reflows when the pointer arrives. */
     .engine-carousel {
+      /* A FIXED box. The centre picture used to sit in normal flow, so the
+         whole panel rose and fell as instruments of different proportions took
+         the middle — a grand is tall, a stack of synths is wide and flat
+         (Daniel, 2026-08-12). Now the box never moves and each instrument is
+         fitted inside it, standing on the same floor. */
       position: relative; overflow: visible; isolation: isolate;
+      height: 128px;
     }
     .engine-carousel .car-face {
-      /* Unhurried: the peeks sliding out is the thing that says "there are
-         more of these", and at .22s it read as a flinch rather than a
-         movement. */
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+    }
+    .engine-carousel .car-face .sound-art.is-drawing { height: 100%; }
+    /* Specific enough to beat `.engine-art .sound-art.is-drawing img`, which
+       sets height:auto — without that the tall instruments (the Venice grand)
+       ignored the box and spilled over the parameter rows. */
+    .engine-carousel .car-face .sound-art.is-drawing img,
+    .engine-carousel .car-face .sound-art.is-drawing svg,
+    .engine-carousel .car-face img, .engine-carousel .car-face svg {
+      width: 100%; height: 100%;
+      /* Centred, not stood on the floor. Every drawing is trimmed tight to its
+         canvas, so `contain` scales a wide instrument by WIDTH and it comes out
+         short — floor-aligned, the flatter it is the lower it sits, which is the
+         order Daniel picked out by eye: combo (2.67:1) sank furthest, then the
+         MKS rack, the Clavi, the CP. Rhodes and Wurly looked right because they
+         are tall enough to fill the box. Matching centres leaves those two
+         exactly where they were and lifts the rest to meet them. */
+      object-fit: contain; object-position: center;
+    }
+    /* Choosing settles the instrument into place and glows once behind it.
+       The picture does not travel — the one you pick is already in the middle —
+       so the movement is not about WHERE it went. Three things change at the
+       same instant: Select disappears, the heading stops being a candidate and
+       goes solid, and the wheel closes. Without a beat between them the panel
+       simply blinks and you are left to work out whether the click took. The
+       settle says it took; the afterglow says the instrument is now the one
+       playing.
+
+       Both ride the .sound-art WRAPPER, not the face and not the image. The
+       face carries the hover and turn transforms (scale 1.12 when open), so
+       animating it would fight them and snap back when the class comes off;
+       the image carries the resting drop-shadow that lifts a cut-out off the
+       panel, and a filter here composes with that instead of replacing it. */
+    @keyframes car-land {
+      from { transform: translateY(5px) scale(.9); }
+      55%  { transform: translateY(0) scale(1.035); }
+      to   { transform: none; }
+    }
+    /* The glow inverts with the theme, for the same reason the resting halo
+       does: light on dark reads as a lamp coming up behind the instrument, and
+       on the cream panel it is simply invisible. Light theme gets the negative
+       — a warm shadow blooming and receding under it. Two keyframe sets rather
+       than one parameterised by a custom property, because an unregistered
+       custom property does not interpolate and the bloom would step instead of
+       swell. */
+    @keyframes car-afterglow {
+      from { filter: drop-shadow(0 0 0 rgba(58, 44, 26, 0)); }
+      30%  { filter: drop-shadow(0 2px 13px rgba(58, 44, 26, .5))
+                     drop-shadow(0 4px 32px rgba(58, 44, 26, .26)); }
+      to   { filter: drop-shadow(0 0 0 rgba(58, 44, 26, 0)); }
+    }
+    @keyframes car-afterglow-dark {
+      from { filter: drop-shadow(0 0 0 rgba(255, 246, 224, 0)); }
+      30%  { filter: drop-shadow(0 0 16px rgba(255, 246, 224, .55))
+                     drop-shadow(0 0 38px rgba(255, 236, 196, .3)); }
+      to   { filter: drop-shadow(0 0 0 rgba(255, 246, 224, 0)); }
+    }
+    .engine-carousel .car-face.is-landing .sound-art {
+      animation: car-land 420ms cubic-bezier(.22, 1, .36, 1) both,
+                 car-afterglow 900ms ease-out both;
+    }
+    :root[data-theme="dark"] .engine-carousel .car-face.is-landing .sound-art {
+      animation: car-land 420ms cubic-bezier(.22, 1, .36, 1) both,
+                 car-afterglow-dark 900ms ease-out both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      /* The afterglow stays — it is a light coming up, not motion — but it
+         comes up where the instrument already is. */
+      .engine-carousel .car-face.is-landing .sound-art {
+        animation: car-afterglow 900ms ease-out both;
+      }
+      :root[data-theme="dark"] .engine-carousel .car-face.is-landing .sound-art {
+        animation: car-afterglow-dark 900ms ease-out both;
+      }
+    }
+    /* The peeks are drawn OUTSIDE this box — that is what keeps the resting
+       layout at 128px — so the pointer left the carousel the moment it reached
+       one, hover ended and the wheel shut in your face (Daniel, 2026-08-12).
+       This pad extends the hover area over them without moving anything: a
+       pseudo-element counts as part of the element for :hover, and it sits
+       under every face so it never eats a click meant for a picture. */
+    .engine-carousel::before {
+      content: ''; position: absolute; z-index: 0;
+      top: -16px; bottom: -22px; left: -104px; right: -104px;
+    }
+    .engine-carousel .is-hero { position: relative; z-index: 3; }
+    /* Waking up: the centre grows a little and the neighbours fade in, rather
+       than appearing all at once. Turning gets its own, longer curve below.
+       And after a turn the faces are REBUILT — so the waking animation would
+       replay every time the wheel moved, which is what .no-anim suppresses
+       (Daniel, 2026-08-12). */
+    .engine-carousel .car-face {
       display: block;
+      transition: transform .26s cubic-bezier(.3, 1, .5, 1), opacity .26s ease;
+    }
+    .engine-carousel.is-turning .car-face {
       transition: transform .42s cubic-bezier(.22, .9, .3, 1), opacity .38s ease;
     }
+    .engine-carousel.no-anim .car-face { transition: none; }
     .engine-carousel .car-face .sound-art.is-drawing { display: block; width: 100%; }
     .engine-carousel .car-face img, .engine-carousel .car-face svg {
       display: block; width: 100%; height: auto;
@@ -1150,30 +1341,33 @@
        then move out and dim. Pointer-events off until then, or an invisible
        peek would eat the hero's clicks. */
     .engine-carousel .is-peek, .engine-carousel .is-far {
-      position: absolute; top: 0; left: 0; width: 100%;
-      opacity: 0; pointer-events: none; cursor: pointer; z-index: -1;
+      /* Bottom-aligned, not top: the instruments are different shapes, and a
+         wide flat one (the stacked synths) rendered at the same WIDTH is much
+         shorter — hung from the top it floated above the others. Sharing a
+         floor line is what makes a row of instruments look like a row of
+         instruments. */
+      transform-origin: bottom center;
+      opacity: 0; pointer-events: none; cursor: pointer; z-index: 1;
     }
+    .engine-carousel .is-hero { transform-origin: bottom center; }
+    .engine-carousel .is-far { z-index: 0; }
     /* Parked out of sight either side. Never visible at rest — their whole job
        is to arrive during a turn. */
     .engine-carousel .is-far-prev { transform: translateX(-140%) scale(.6); }
     .engine-carousel .is-far-next { transform: translateX(140%) scale(.6); }
-    /* Just picked: the pointer is still sitting on the carousel, so :hover is
-       true and it stays open — which reads as "nothing happened". Quiet until
-       the pointer leaves and comes back. */
-    .engine-carousel.is-quiet .is-peek { opacity: 0 !important; pointer-events: none; }
-    .engine-carousel.is-quiet .is-hero { transform: none !important; }
-    .engine-carousel:hover .is-peek, .engine-carousel:focus-within .is-peek {
+
+    .engine-carousel.is-open .is-peek, .engine-carousel:focus-within .is-peek {
       opacity: .38; pointer-events: auto;
     }
-    .engine-carousel:hover .is-prev, .engine-carousel:focus-within .is-prev {
+    .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
       transform: translateX(-72%) scale(.74);
     }
-    .engine-carousel:hover .is-next, .engine-carousel:focus-within .is-next {
+    .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
       transform: translateX(72%) scale(.74);
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
-    .engine-carousel:hover .is-hero, .engine-carousel:focus-within .is-hero {
+    .engine-carousel.is-open .is-hero, .engine-carousel:focus-within .is-hero {
       transform: scale(1.12);
     }
     /* Turning the wheel: every face moves one position along, so the picture
@@ -1185,8 +1379,8 @@
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
-    .engine-carousel:hover .is-prev:hover { transform: translateX(-72%) scale(.82); }
-    .engine-carousel:hover .is-next:hover { transform: translateX(72%) scale(.82); }
+    .engine-carousel.is-open .is-prev:hover { transform: translateX(-72%) scale(.82); }
+    .engine-carousel.is-open .is-next:hover { transform: translateX(72%) scale(.82); }
     .engine-carousel.is-turning.is-turning-next .is-next,
     .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
     .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
@@ -1198,29 +1392,9 @@
     .engine-carousel.is-turning.is-turning-prev .is-far-prev { transform: translateX(-72%) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-far-prev { transform: translateX(-210%) scale(.5); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-far-next { transform: translateX(210%) scale(.5); opacity: 0; }
-    .engine-carousel .is-far { transition: transform .42s cubic-bezier(.22, .9, .3, 1), opacity .38s ease; }
-    /* The name of whatever is under the pointer. Not a native title: the OS
-       holds those back for a second or more, and this is a label for the thing
-       you are pointing AT — it has to keep up with the pointer. 90ms is long
-       enough not to flicker while sweeping across the three faces. */
-    .car-face { position: relative; }
-    .car-face::after {
-      content: attr(data-car-name);
-      /* ON the instrument, not under it. Below the picture it landed on the
-         parameter rows; and several sounds share one photograph — every Venice
-         grand is the same piano — so the name has to sit where the eye already
-         is rather than somewhere it has to go looking. */
-      /* Below centre, out of the arrows' line: at 50% the name ran straight
-         through both of them and the three read as one string. */
-      position: absolute; left: 50%; top: 68%; transform: translate(-50%, -50%);
-      white-space: nowrap; z-index: 4; pointer-events: none;
-      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-      color: #fff; background: rgba(20, 20, 22, .72);
-      border-radius: 4px; padding: 3px 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
-      opacity: 0; transition: opacity .16s ease .12s;
-    }
-    .car-face:hover::after { opacity: 1; }
+
+    /* No labels on the faces: the SOUND ENGINE heading names the centre
+       instead, so nothing is drawn over the instruments. */
     /* The app's micro-label treatment (DESIGN.md type ladder): 10px, bold,
        uppercase, letterspaced. It reads as a LABEL on top of the picture
        rather than as a sentence someone left there. */
@@ -1397,17 +1571,32 @@
       width: 1px; background: var(--text-muted);
     }
     /* Range pair: one track, both handles; amber min→max readout when the
-       range is reversed (min above max reverses the pedal action). */
+       range is reversed (min above max reverses the pedal action).
+       Built from the same parts as an ordinary parameter row — same track,
+       same fill colours, same round handle — because it IS one, read twice.
+       It had its own grey fill and a pair of upright bars, which made the
+       pedal look like a different kind of control than everything around it. */
     .param-rangebar {
       grid-column: 2; position: relative; height: 6px; border-radius: 3px;
       background: var(--bar); pointer-events: none;
     }
-    .range-fill { position: absolute; top: 0; height: 100%; background: var(--range-fill); }
-    .range-handle {
-      position: absolute; top: -3px; width: 4px; height: 12px; border-radius: 2px;
-      background: var(--text); transform: translateX(-50%);
-      box-shadow: 0 0 0 1px var(--bg-raised);
+    .range-fill {
+      position: absolute; top: 0; height: 100%; border-radius: 3px;
+      background: var(--bar-fill);
     }
+    .param.is-changed .range-fill { background: var(--bar-fill-changed); }
+    /* The one deliberate difference from .param-bar-knob: these stay visible.
+       A single value can be read off the length of its fill, but a range's
+       ENDS are the value, and a range of nothing (min == max) would otherwise
+       be an empty track. */
+    .range-handle {
+      position: absolute; top: 50%; width: 11px; height: 11px;
+      margin-left: -5.5px; transform: translateY(-50%);
+      border-radius: 50%; background: var(--bar-fill);
+      box-shadow: 0 0 0 2px var(--bg);
+    }
+    .param.is-default .range-handle { background: var(--text-dim); }
+    .param.is-changed .range-handle { background: var(--bar-fill-changed); }
     .param-value.range-reversed { color: var(--amber); font-weight: 600; }
     /* Inert parameters: dimmed with the reason inline; section-level override
        notes span the params grid. */
@@ -1611,6 +1800,8 @@
     <script src="scroll-fade.js"></script>
     <script src="modal.js"></script>
     <script src="sound-art.js"></script>
+    <script src="key-range.js"></script>
+    <script src="picker.js"></script>
     <script src="library-view.js"></script>
   <script src="app.js"></script>
 </body>
