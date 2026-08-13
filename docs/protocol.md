@@ -237,6 +237,21 @@ by polling because the device will not tell us when a hand moves one.
 
 ### Set sound (`0x46`) → confirmation `0x45` + name reply `0x47` — verified
 
+**Audibly confirmed 2026-08-13.** Everything below was wire evidence — the `0x45`, the
+`0x47`, and a read-back — and none of it proved the instrument actually *sounds*
+different. It does: with the buffer set to sound 6, Daniel played and heard a
+vibraphone. Worth having written down, because "the device echoed our write" and "the
+write did something" are different claims, and this protocol has at least one parameter
+(`dly_mf`/`dly_ml`, open item 5b) where the first is true and the second is not.
+
+**A sound change keeps the rest of the patch.** The engine swaps; the effects chain, EQ
+and pad stay exactly as they were. That is the documented behaviour and it is what makes
+auditioning a sound *on a preset* meaningful — but it has a consequence worth designing
+around: a Vibraphone loaded onto a Clavi patch arrives through the Clavi's Pedal Wha-Wha
+and its Synth Pad layer, and the result can be unrecognisable as either. This is what
+made a working sound change read as "nothing happened, I still hear the old patch"
+(Daniel, 2026-08-13), which cost an hour of chasing an app bug that was never there.
+
 The last previously-unobserved opcode, captured 2026-08-09 from the editor's SELECT
 PIANO page (outbound frames in `captures/editor-tap-set-sound-2026-08-09-notes.md`,
 device replies in `captures/set-sound-2026-08-09T19-53-37.jsonl`):
