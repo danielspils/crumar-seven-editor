@@ -338,22 +338,61 @@ tun=440;glb=0,1,1,0,0,1,0,1,0;wfp=00000000
 > **`wfp` returns the instrument's Wi-Fi password in the clear.** Redact it from any log,
 > capture file, or crash report your app produces. Do not commit a raw globals dump.
 
-The nine `glb` slots correspond, in order, to the editor's home-page dropdowns: Channel,
-Alt. Channel, Send CC, Send PC, Midi Soft-Thru, Sustain Polarity, Volume Type, Velocity
-Curve, Memory Protect. A full nine-index sweep confirmed that **`0x30 <index>` addresses
-`glb[index]` 1:1 for all nine slots** — each index moved exactly its own slot (snapshot then
-restored), so the set-global index and the get-globals array position are the same numbering, no
-permutation. The **name↔index mapping is still UNVERIFIED as a whole**; three names are pinned
-against the display: **index 2 = Send CC** (captured `0x30` frame), **index 3 = Send PC**
-(captured `30 03 01` at the moment the editor's Send PC was flipped to YES —
-`captures/editor-tap-send-pc-2026-08-09-notes.md`), and **index 8 = Memory Protect** (toggling it
-OFF→ON moved slot 8, nothing else). All three match the assumed DOM order. Keep `orderUnverified`
-until all nine names are pinned against the panel — **the app may only WRITE a pinned index**,
-which today means 2, 3 and 8, and in practice only 3 (the transfer borrows Send PC).
+The nine `glb` slots correspond, in order, to the editor's home-page dropdowns. A full
+nine-index sweep confirmed that **`0x30 <index>` addresses `glb[index]` 1:1 for all nine
+slots** — each index moved exactly its own slot (snapshot then restored), so the set-global
+index and the get-globals array position are the same numbering, no permutation.
 
-`glb` values are **not uniformly 0-based dropdown indices** — the encoding is per-field and
-partly unknown. Slot 1 reads `1` while Alt. Channel displays "Ch. 1", so that field is offset or
-1-based. Record raw values; do not assume value == displayed position.
+**All nine names are now pinned (2026-08-12).** Daniel worked down the panel's GLOBAL
+OPTIONS page top to bottom, changing one field at a time while a passive `0x32` watcher
+sampled the array; each field moved exactly one slot, in page order, and a photograph of
+the page taken at the same moment as a wire read gives the label↔value pairs below. The
+sweep also exposed each field's full range by cycling it until it wrapped. Every field was
+left as found (`glb = [0, 1, 1, 1, 0, 1, 0, 1, 0]` before and after).
+
+| index | label on the panel | values |
+| ----- | ------------------ | ------ |
+| 0 | Channel | `0`–`15` = "Ch. 1"–"Ch. 16", `16` = "TX OFF" |
+| 1 | Alt.Channel | `0`–`15` = "Ch. 1"–"Ch. 16" |
+| 2 | Send CC | `0` = "No", `1` = "Yes" |
+| 3 | Send PC | `0` = "No", `1` = "Yes" |
+| 4 | Midi Soft-Thru | `0` = "OFF", `1` = "ON" |
+| 5 | Sustain Pol. | `0` = "N.C.", `1` = "N.O." |
+| 6 | Volume Type | `0` = "From Preset", `1` = "Global" |
+| 7 | Velocity Curve | `0` = "Softer", `1` = "Soft", `2` = "Normal", `3` = "Hard", `4` = "Harder" |
+| 8 | Memory Protect | `0` = "OFF", `1` = "ON" |
+
+**This table is complete.** `orderUnverified` is CLEARED and so is the value-encoding gap:
+every field's whole range has been read off the instrument, so the app may write any of the
+nine. Two things made that possible without guessing:
+
+- **Every dropdown was photographed open with a checkmark on a value already known from the
+  wire.** A tick on a known value pins the rest of that list by position. Reading a list
+  without that anchor would only give the labels, not which number produces which.
+- **Cycling each field until it wrapped gave its range**, which is how a list can be declared
+  complete rather than merely long.
+
+Three findings that would each have shipped a bug:
+
+- **Channels are 0-based.** `0` displays "Ch. 1". An earlier note in this file claimed the
+  opposite and concluded the field was 1-based; it is not. A dropdown built on that note
+  would have been one channel off on every entry.
+- **Send CC and Send PC list their values in REVERSE order.** Both dropdowns put "Yes" above
+  "No" while `1` is Yes and `0` is No — pinned by the captured editor writes `30 02 00` (No)
+  and `30 02 01` (Yes). Every other field on the page lists 0, 1, 2… downward. Deriving these
+  two from list position inverts both switches.
+- **Channel has seventeen entries and Alt.Channel sixteen** — "TX OFF" exists only on Channel.
+  The sweep alone could not establish this: slot 1 wrapped `15 → 0` inside one 1.2 s sample,
+  and the same run caught a `10 → 12` jump, so "shorter list" and "missed step" were
+  indistinguishable from the wire. Opening the dropdown was the only thing that separated
+  them. **Where a sampler cannot distinguish two explanations, do not pick one.**
+
+One operational note for anything that writes these: **Memory Protect ON prevents the
+three-second panel hold from storing**, which is the only way to keep a patch. It is the one
+global that can silently disable saving.
+
+The remaining `wfp` rule is unchanged and unconditional: slot names and values may be logged;
+the password may not.
 
 ### Set one global (`0x30`) — verified
 

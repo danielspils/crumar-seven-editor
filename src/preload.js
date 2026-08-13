@@ -48,6 +48,18 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     }
     return out;
   },
+  // Which keys each sound answers to (schema/key-ranges-1.37.json). Version
+  // gated like every other schema file: a range heard on 1.37 says nothing
+  // about any other firmware. Missing or malformed is not an error — it means
+  // no keyboard is drawn, which is the correct answer when nothing has been
+  // heard yet.
+  getKeyRanges: () => {
+    try {
+      return JSON.parse(readText(path.join('schema', 'key-ranges-1.37.json')));
+    } catch {
+      return { keybed: null, ranges: {} };
+    }
+  },
   // Self-hosted fonts as data: URIs — path-independent and fully offline.
   getFontCss: () => {
     const face = (family, rel, { weight = '100 900', style = 'normal' } = {}) => {

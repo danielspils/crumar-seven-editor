@@ -45,19 +45,52 @@ const OP = {
 
 const GLB_SEND_PC = 3; // pinned by a captured editor write (30 03 01, ack 31 03)
 
-// The nine globals are addressed 1:1 by index (verified sweep), but WHICH
-// setting each index is has only been pinned for three of them, against the
-// manufacturer editor's own display:
+// The nine globals are addressed 1:1 by index (verified sweep), and every
+// index's NAME is now pinned against the instrument — Daniel worked down the
+// panel's GLOBAL OPTIONS page one field at a time while a passive 0x32 watcher
+// sampled the array, and each field moved exactly one slot in page order
+// (2026-08-12; docs/protocol.md).
 //
-//   2 = Send CC        captured 0x30 frame
-//   3 = Send PC        captured 30 03 01 as the editor's Send PC went to YES
-//   8 = Memory Protect toggling OFF->ON moved slot 8 and nothing else
+// So the gate is no longer about names. It is about VALUES. A field's numbers
+// mean nothing until they have been read off the panel beside their labels,
+// and sending a number nobody here can describe is how you change a stranger's
+// sustain pedal to something neither of you can name. `labels` therefore holds
+// only what has actually been SEEN, and a field is offered as a choice only
+// when its labels cover its whole range.
 //
-// The other six match that editor's page order, which is an assumption and not
-// evidence (docs/protocol.md keeps `orderUnverified`). Writing an index whose
-// meaning is a guess could change any setting on someone's instrument, so the
-// gate is here, at the wire, rather than in the UI that happens to call it.
-const PINNED_GLOBALS = new Set([2, GLB_SEND_PC, 8]);
+// As of 2026-08-12 every field is complete: all nine dropdowns were opened and
+// photographed, and each shot carries a checkmark on a value already known from
+// the wire, which pins the rest of that list by position.
+const GLB_FIELDS = [
+  { name: 'Channel', max: 16, labels: Object.fromEntries(
+    [...Array(16)].map((_, i) => [i, `Ch. ${i + 1}`]).concat([[16, 'TX OFF']])) },
+  { name: 'Alt. Channel', max: 15, labels: Object.fromEntries(
+    [...Array(16)].map((_, i) => [i, `Ch. ${i + 1}`])) },
+  // Note the ORDER. Every other field lists its values in numeric order, but
+  // these two put "Yes" above "No" while Yes is 1 — pinned by the editor being
+  // captured writing `30 02 00` for No and `30 02 01` for Yes. Read off list
+  // position instead and both switches come out backwards.
+  { name: 'Send CC', max: 1, labels: { 0: 'No', 1: 'Yes' } },
+  { name: 'Send PC', max: 1, labels: { 0: 'No', 1: 'Yes' } },
+  { name: 'Midi Soft-Thru', max: 1, labels: { 0: 'OFF', 1: 'ON' } },
+  { name: 'Sustain Pol.', max: 1, labels: { 0: 'N.C.', 1: 'N.O.' } },
+  { name: 'Volume Type', max: 1, labels: { 0: 'From Preset', 1: 'Global' } },
+  { name: 'Velocity Curve', max: 4, labels:
+    { 0: 'Softer', 1: 'Soft', 2: 'Normal', 3: 'Hard', 4: 'Harder' } },
+  { name: 'Memory Protect', max: 1, labels: { 0: 'OFF', 1: 'ON' } },
+];
+
+// Fully named: every value in range has been read off the panel.
+const glbComplete = (f) => {
+  for (let v = 0; v <= f.max; v++) if (f.labels[v] === undefined) return false;
+  return true;
+};
+GLB_FIELDS.forEach((f) => { f.complete = glbComplete(f); });
+
+const PINNED_GLOBALS = new Set(
+  GLB_FIELDS.map((f, i) => (f.complete || f.writable ? i : -1)).filter((i) => i >= 0)
+);
+
 const STRING_FIRMWARE = 4; // string index 4 = firmware/build string
 const WFP_REDACTED = '[wfp redacted]';
 const MAX_VALID_PARAM_ID = 109;
@@ -114,9 +147,10 @@ function parseGlobals(text) {
 class SevenMidi extends EventEmitter {
   // userDataDir: where the pending-restore marker lives (userData root).
   // midiBackend: injectable for tests; defaults to @julusian/midi.
-  constructor({ userDataDir, midiBackend = null, timeout = 600 } = {}) {
+  constructor({ userDataDir, midiBackend = null, timeout = 600, emitNotes = false } = {}) {
     super();
     this.userDataDir = userDataDir;
+    this.emitNotes = emitNotes; // see _handleNonSysex — off unless a tool asks
     this.midi = midiBackend || require('@julusian/midi');
     this.timeout = timeout;
     this.state = 'disconnected';
@@ -359,6 +393,15 @@ class SevenMidi extends EventEmitter {
 
   _handleNonSysex(msg) {
     const status = msg[0] & 0xf0;
+    // Note-on is OFF by default. The app has no use for it and a played chord
+    // would push a dozen events per second through the IPC that carries recall
+    // bursts — noise in the one channel that has to stay legible. The key-range
+    // tool asks for it explicitly, because naming the key you just pressed is
+    // the whole job there.
+    if (this.emitNotes && status === 0x90 && msg[2] > 0) {
+      this.emit('event', { type: 'note-on', note: msg[1], velocity: msg[2] });
+      return;
+    }
     if (status === 0xb0) {
       if (this._burst) this._burst.ccs.push([msg[1], msg[2]]);
       this.emit('event', { type: 'panel-cc', cc: msg[1], value: msg[2] });
@@ -514,8 +557,17 @@ class SevenMidi extends EventEmitter {
   // player made is not borrowed.
   async setGlobalOption(index, value) {
     if (this.state !== 'connected') throw new Error('not connected');
+    const field = GLB_FIELDS[index];
     if (!PINNED_GLOBALS.has(index)) {
-      throw new Error(`glb ${index} has no verified meaning — refusing to write it`);
+      throw new Error(
+        `glb ${index} (${field ? field.name : 'unknown'}) has values this project has ` +
+        'not seen named — refusing to write it'
+      );
+    }
+    // Range as observed by cycling the field until it wrapped. A value past it
+    // has never been seen at all, so it is not ours to send either.
+    if (!Number.isInteger(value) || value < 0 || value > field.max) {
+      throw new Error(`glb ${index} (${field.name}) has no value ${value} — refusing to write it`);
     }
     await this._setGlobal(index, value);
     this.globals = await this.readGlobals();
@@ -574,4 +626,5 @@ class SevenMidi extends EventEmitter {
 
 module.exports = {
   SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_SEND_PC, PINNED_GLOBALS,
+  GLB_FIELDS,
 };

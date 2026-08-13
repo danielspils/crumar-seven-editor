@@ -277,11 +277,21 @@ function registerEditIpc() {
   ipcMain.handle('midi:globals', async () => {
     const midi = getMidi();
     if (midi.state !== 'connected') return { ok: false };
-    const { PINNED_GLOBALS } = require('./seven-midi');
+    const { PINNED_GLOBALS, GLB_FIELDS } = require('./seven-midi');
     const g = midi.globals || await midi.readGlobals();
     // glb and tun only — the reply also carries wfp, which the parse layer has
     // already replaced and which must never travel further than this process.
-    return { ok: true, tun: g.tun, glb: g.glb.slice(), writable: [...PINNED_GLOBALS] };
+    //
+    // The field table travels WITH the values so the renderer never keeps its
+    // own copy of what a global means. One table, beside the guard that
+    // enforces it: a label the UI can show is exactly a value the wire will
+    // accept, and neither can drift from the other.
+    return {
+      ok: true, tun: g.tun, glb: g.glb.slice(), writable: [...PINNED_GLOBALS],
+      fields: GLB_FIELDS.map((f) => ({
+        name: f.name, max: f.max, labels: { ...f.labels }, complete: f.complete,
+      })),
+    };
   });
 
   ipcMain.handle('midi:setGlobal', async (_e, { index, value }) => {
@@ -443,6 +453,11 @@ function registerNotesIpc() {
 function forwardMidiEvents() {
   getMidi().on('event', (ev) => {
     for (const win of BrowserWindow.getAllWindows()) {
+      // A window can be torn down between the device sending and us
+      // forwarding — the instrument keeps talking while the app closes. The
+      // send then throws from inside a MIDI callback, where there is no
+      // caller to catch it.
+      if (win.isDestroyed() || win.webContents.isDestroyed()) continue;
       win.webContents.send('midi-event', ev);
     }
   });

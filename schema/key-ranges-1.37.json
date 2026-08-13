@@ -1,0 +1,37 @@
+{
+  "firmware": "1.37",
+  "what": "Which keys each sound actually answers to, as MIDI note numbers, inclusive.",
+  "why": "The instrument does not publish this. There is no key-range field in seven-1.37.json, no opcode that reports one, and nothing in a recall burst that names a lowest or highest note. It is the one thing this app draws that cannot be read off the wire.",
+  "method": "Played on the instrument and heard, and described in the player's own terms (\"lowest A on the bed\", \"the top C\") rather than as note numbers. tools/key-range.js will name keys as they are pressed if an exact figure is ever wanted. NOTHING here comes from the v1.22 manual \u2014 that manual is three firmware releases stale.",
+  "rules": [
+    "A sound with no entry draws no keyboard. An absent range is not a full range \u2014 it is an unheard one, and a picture claiming a limit nobody has played is worse than no picture.",
+    "Ranges are per SOUND NAME, matching how patches store their sound (see soundsNote in seven-1.37.json). Never key them by sound id: ids differ between units.",
+    "keybed is an observation too. Nobody has counted this keyboard on the wire, and a keyboard drawn to the wrong length misplaces every fade on it.",
+    "low/high are positions in the drawing frame above, good for drawing a shape. They are NOT note-name evidence \u2014 `heard` is what was actually observed, and it is what the UI shows."
+  ],
+  "keybed": {
+    "low": 40,
+    "high": 100,
+    "keys": 61
+  },
+  "keybedNote": "Reported by Daniel at the instrument (2026-08-12): the lowest key is an E, the highest key is an E, five full octaves \u2014 61 keys. The octave NUMBERS here are a drawing frame only (E2-E7 chosen arbitrarily); nobody has read an absolute note off this keyboard, so the UI prints no note names for these ranges and neither should anything else. The shape is measured; the names are not.",
+  "ranges": {
+    "Reed Piano": {
+      "low": 45,
+      "high": 96,
+      "heard": "the lowest A on the keybed up to the highest C",
+      "observedBy": "Daniel, played and heard",
+      "observedOn": "2026-08-12",
+      "derivation": "lowest A above the bottom E = 45; highest C below the top E = 96"
+    },
+    "Vibraphone": {
+      "low": 60,
+      "high": 96,
+      "heard": "the second C from the bottom up to the top C",
+      "observedBy": "Daniel, played and heard",
+      "observedOn": "2026-08-12",
+      "derivation": "C's on an E-E board are 48, 60, 72, 84, 96 \u2014 second from the bottom is 60, top is 96"
+    }
+  },
+  "coverage": "Daniel, 2026-08-12: these two are believed to be the only restricted sounds on this unit. Recorded as his judgement, not as a sweep \u2014 no sound-by-sound survey was run, and the sampled expansions in particular have not been played end to end. The UI is unaffected either way: a sound with no entry still draws nothing, so a restriction missed here shows up as an absent picture rather than a wrong one."
+}
