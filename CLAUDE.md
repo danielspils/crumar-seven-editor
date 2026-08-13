@@ -235,11 +235,35 @@ already verified, so this is app work, not reverse-engineering:
    and `verified` to now — those values came back from the instrument itself.
    Verified on hardware 2026-08-11: `rho_atk` 64 → 32 echoed, 41 live rows,
    0 after disconnect.
-3. **Task 10 — Sound selection UI**, fed by the live sound table.
-4. **Task 9 — Transfer**: walk a setlist's slots, loading each and prompting
-   the three-second panel hold. Bank 1 blocked outright.
+3. ~~**Task 10 — Sound selection UI**~~ **DONE.** The instrument picture is a
+   carousel: turn it, and the sound engine's heading follows the centre —
+   muted while it is only a candidate, solid once the instrument holds it.
+   Choosing sends `0x46` and drops straight into playing it. It NEVER
+   rewrites a file; five of Daniel's backup records were silently renamed by
+   what he thought was auditioning (2026-08-12), and a file is edited by
+   asking to edit it.
+4. ~~**Task 9 — Transfer**~~ **DONE.** Walks a setlist's slots, pre-selecting
+   the bank so a three-second hold cannot land in the wrong one, and
+   auto-advancing: a store announces nothing of its own, but the recall burst
+   after it carries what was just written, so a changed fingerprint is the
+   store. Bank 1 blocked outright.
 5. **A/B compare and undo** — edit-buffer snapshots; the two things the
-   manufacturer's editor lacks.
+   manufacturer's editor lacks. Undo exists for library acts; the edit-buffer
+   half is what's left.
+
+### There are no modes (settled 2026-08-12)
+
+Audition mode is gone as a concept, not renamed. A patch is live the moment it
+is selected, because selecting it loads it — so the controls are always live
+and there is no state to explain. What replaced the mode is one rule about
+consequences: **navigating away discards.** No prompt, no rescue, and the
+library file is left exactly as it was; in exchange the instrument goes back to
+playing whatever is on screen. The only visible state is a dot and a Save
+button once something has actually changed.
+
+Daniel lived with it and confirmed it (2026-08-12). Two softenings were
+deliberately deferred and stay deferred until they bite: a warning before
+discarding, and a "Load sound" button for library patches.
 
 **Storing is always a physical three-second panel hold** — no store opcode
 exists. The UI says so plainly rather than pretending to work around it.
