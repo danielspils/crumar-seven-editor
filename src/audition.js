@@ -543,6 +543,21 @@
       liveEdit.patchIndex = patchIndex;
     }
     await window.sevenAPI.library.saveParams(file, patchIndex, liveEdit.params);
+
+    // The SOUND goes with the settings. It used not to: audition a Vibraphone
+    // onto a Tine patch, save, and the file kept "Tine Piano" over Vibraphone
+    // settings — a record of a patch that had never existed (Daniel, raised
+    // twice). The params alone were never the patch; the instrument playing
+    // them is half of it.
+    //
+    // Written only when it actually differs, so an ordinary parameter save
+    // does not restamp a field it had no opinion about.
+    const live = deps.getLiveSound && deps.getLiveSound();
+    const previousSound = entry.soundName || null;
+    const soundChanged = live && live.name && live.name !== previousSound;
+    if (soundChanged) {
+      await window.sevenAPI.library.saveSound(file, patchIndex, live.name, !!live.sampled);
+    }
     liveEdit.dirty = false;
     auditionNote = {
       kind: 'is-ok',
@@ -552,6 +567,13 @@
     await deps.refreshLibrary();
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
+      // Undo puts the sound back too, or undoing a save would leave the file
+      // in the very state this fix exists to prevent.
+      if (soundChanged && previousSound) {
+        await window.sevenAPI.library.saveSound(
+          file, patchIndex, previousSound, !!entry.sampled
+        );
+      }
       await deps.refreshLibrary();
       deps.renderDetail();
     });

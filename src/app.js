@@ -1033,6 +1033,10 @@
     // Referenced by audition.js and MISSING until now, which is why leaving
     // audition mode left you still hearing the sound you were trying out.
     getSlot: () => (deviceSel ? { bank: deviceSel.bank, preset: deviceSel.preset } : null),
+    // What the edit buffer is actually PLAYING, which after a trip through the
+    // carousel is not what the patch file says. Saving without this wrote the
+    // new settings under the old instrument's name.
+    getLiveSound: () => liveSound,
     undoStack,
     schema, // for a parameter's display name in the undo label
   });

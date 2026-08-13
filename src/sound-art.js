@@ -90,10 +90,18 @@
   // Name → art. Ordered: the first match wins, so "Sampled Tine Piano" gets the
   // tine drawing rather than the generic sampled waveform.
   const RULES = [
+    // Felt BEFORE plain upright: "Venice Upright U1 Felt" is an upright too, and
+    // whichever rule comes first wins. The felt strip is the whole difference
+    // between the two sounds, so it gets its own picture (Daniel, 2026-08-13).
+    [/felt/i, 'uprightFelt'],
     [/upright/i, 'upright'],
     [/tine/i, 'tine'],
     [/reed|wurl/i, 'reed'],
-    [/electric grand|\b70b\b|\bcp\b/i, 'grandLegs'],
+    // The 70B XL is its own machine, not a CP-80 — and its name contains
+    // "Electric Grand", so this has to come first or the CP rule claims it
+    // (Daniel, 2026-08-13).
+    [/\b70b\b/i, 'grand70b'],
+    [/electric grand|\bcp\b/i, 'grandLegs'],
     [/clavi/i, 'clavi'],
     [/\bdx\b/i, 'synth'],
     [/\bmks\b/i, 'rack'],
@@ -107,6 +115,10 @@
     // it sounds like a stack of DX7s, and the picture says exactly that rather
     // than borrowing the acoustic grand it would otherwise fall into.
     [/combo/i, 'combo'],
+    // "Venice Grand" exactly — the plain one, lid closed. It has to precede the
+    // catch-all venice rule, which would otherwise take every Venice sound
+    // including this one (Daniel, 2026-08-13).
+    [/^venice grand$/i, 'veniceClosed'],
     [/venice/i, 'venice'],
     [/grand|piano/i, 'grand'],
   ];
@@ -134,6 +146,9 @@
     grand: 'grand',
     venice: 'venice',
     upright: 'upright',
+    uprightFelt: 'upright_felt',
+    grand70b: 'cp70',
+    veniceClosed: 'venice_closed',
   };
 
   let drawings = null; // { name: {kind, markup|src} }, loaded once via preload
@@ -158,10 +173,17 @@
       // The alt is empty and the wrapper aria-hidden: the sound's NAME is
       // right beside it, and a screen reader repeating it as a picture caption
       // would say the same thing twice.
-      return '<span class="sound-art is-drawing" aria-hidden="true">' +
-        `<img src="${drawn.src}" alt=""></span>`;
+      // The engine rides on the wrapper so the halo can be tinted: blue for
+      // modeled, green for sampled — the same two colours as the badge, so
+      // nobody has to be taught a new one. It matters most in the carousel,
+      // which has no labels by design.
+      return `<span class="sound-art is-drawing ${sampled ? 'is-sampled' : 'is-modeled'}" ` +
+        'aria-hidden="true">' + `<img src="${drawn.src}" alt=""></span>`;
     }
-    if (drawn) return `<span class="sound-art is-drawing" aria-hidden="true">${drawn.markup}</span>`;
+    if (drawn) {
+      return `<span class="sound-art is-drawing ${sampled ? 'is-sampled' : 'is-modeled'}" ` +
+        `aria-hidden="true">${drawn.markup}</span>`;
+    }
     return (
       '<svg class="sound-art" viewBox="0 0 48 32" width="46" height="31" aria-hidden="true" ' +
       'fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" ' +

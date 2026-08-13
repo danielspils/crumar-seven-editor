@@ -992,6 +992,73 @@
               drop-shadow(0 0 26px rgba(255, 255, 255, .07))
               drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
     }
+    /* SAMPLED sounds glow in the badge's own green (--sampled), so the mark
+       and the word are the same colour and nobody has to be taught a second
+       vocabulary. Modeled keeps the neutral halo: a mark should MEAN something,
+       and "no mark" is a cleaner default than a second colour competing with
+       it — it also means the cue survives red/green colour blindness, since it
+       is presence against absence rather than hue against hue.
+       color-mix keeps it tied to the token: change --sampled and the glow
+       follows, in both themes.
+
+       Light and dark are two different effects, not one at two strengths. On
+       the dark panel the halo is a LIGHT SOURCE — wide and soft, with darkness
+       to fall into. On cream there is no darkness to occupy, so the same green
+       has to arrive as a coloured SHADOW: tighter, stronger, dropped a little,
+       so the instrument sits on the page instead of hovering over it. */
+    .sound-art.is-drawing.is-sampled img {
+      filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--sampled) 70%, transparent))
+              drop-shadow(0 0 8px color-mix(in srgb, var(--sampled) 55%, transparent))
+              drop-shadow(0 1px 2px rgba(0, 0, 0, .25));
+    }
+    :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
+      filter: drop-shadow(0 0 12px color-mix(in srgb, var(--sampled) 60%, transparent))
+              drop-shadow(0 0 30px color-mix(in srgb, var(--sampled) 28%, transparent))
+              drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
+    }
+    /* A slow breath on EVERY sampled instrument, wherever it is drawn — the
+       carousel, the engine panel, the picker's 24 tiles (Daniel, 2026-08-13).
+       Animating drop-shadow repaints each element every frame and the shadow
+       traces the PNG's alpha, so this is genuinely more work than a static
+       glow; it is affordable because the boxes are small and the period is
+       long. If the picker ever feels heavy, that grid is the first place to
+       scope it back — measure before assuming. Slow enough (2.8s) to read as
+       breathing rather than blinking. */
+    @keyframes sampled-breathe {
+      0%, 100% { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--sampled) 42%, transparent))
+                         drop-shadow(0 0 22px color-mix(in srgb, var(--sampled) 18%, transparent))
+                         drop-shadow(0 2px 4px rgba(0, 0, 0, .55)); }
+      50%      { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--sampled) 72%, transparent))
+                         drop-shadow(0 0 38px color-mix(in srgb, var(--sampled) 34%, transparent))
+                         drop-shadow(0 2px 4px rgba(0, 0, 0, .55)); }
+    }
+    @keyframes sampled-breathe-light {
+      0%, 100% { filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--sampled) 55%, transparent))
+                         drop-shadow(0 0 7px color-mix(in srgb, var(--sampled) 40%, transparent))
+                         drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+      50%      { filter: drop-shadow(0 3px 7px color-mix(in srgb, var(--sampled) 85%, transparent))
+                         drop-shadow(0 0 12px color-mix(in srgb, var(--sampled) 62%, transparent))
+                         drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+    }
+    .sound-art.is-drawing.is-sampled img {
+      animation: sampled-breathe-light 2.8s ease-in-out infinite;
+    }
+    :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
+      animation: sampled-breathe 2.8s ease-in-out infinite;
+    }
+    /* The peeks either side are already dimmed to .38 — breathing out there
+       too made the whole strip shimmer. Only what you can actually look at
+       breathes. */
+    .engine-carousel .is-peek .sound-art.is-drawing.is-sampled img,
+    .engine-carousel .is-far .sound-art.is-drawing.is-sampled img {
+      animation: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sound-art.is-drawing.is-sampled img,
+      :root[data-theme="dark"] .sound-art.is-drawing.is-sampled img {
+        animation: none;
+      }
+    }
     .pick-tile-art .tile-name { -webkit-line-clamp: 2; }
     .pick-note {
       margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
