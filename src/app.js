@@ -521,6 +521,10 @@
     const modal = SevenModal.open({
       title: 'Save a Sound to the Seven',
       bodyHtml:
+        // The same instructions on every bank (Daniel, 2026-08-13). Both save
+        // paths are offered everywhere rather than one of them changing shape
+        // on Bank 1.
+        //
         // Only draw the panel when we know which button to light. A picture
         // with nothing lit would be decoration, and this one is instructions.
         (bank ? SevenPanelMini.render(bank, preset) : '') +
@@ -598,9 +602,13 @@
     // backup records were silently renamed by what he thought was auditioning
     // (2026-08-12). A file is edited by asking to edit it, not by listening.
     if (!isConnected()) return toast('Connect the Seven to try another instrument');
-    if (!deviceSel || deviceSel.bank === 0) {
-      return toast('Choose a preset in Bank 2, 3 or 4 to try an instrument on it');
-    }
+    // Bank 1 is allowed here. It cannot be SAVED to, but trying a sound stores
+    // nothing — the slot is recalled and a sound is loaded into the edit
+    // buffer, which the next recall replaces. Refusing the picker there meant
+    // the factory presets, the eight sounds a player is most likely to want to
+    // hear, were the only ones you could not try anything on
+    // (Daniel, 2026-08-13).
+    if (!deviceSel) return toast('Choose a preset to try an instrument on it');
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const bank = deviceSel.bank + 1;
     const preset = deviceSel.preset + 1;
@@ -1095,15 +1103,13 @@
             // why on hover instead. A button that opens only to refuse is a
             // dead end dressed as an offer.
             //
-            // It IS offered with nothing plugged in, though: that refusal is
-            // temporary and actionable ("connect the Seven"), where Bank 1's
-            // is permanent. Hiding it there is what made it unfindable.
-            canPickSound: deviceSel.bank === 0
-              ? null
-              : { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
+            // Bank 1 included: hearing an instrument on a factory preset stores
+            // nothing, and those eight are the ones a player most wants to try
+            // things against. What Bank 1 cannot do is KEEP the result, and the
+            // save controls say so rather than the picker refusing to open.
+            canPickSound: { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
             sounds: soundList,
             carouselAt,
-            noPickReason: deviceSel.bank === 0 ? 'Works on banks 2, 3 and 4' : null,
           }
           : {};
     const emptyMsg =
@@ -1568,6 +1574,82 @@
           if (i >= 0) await window.sevenAPI.setlists.rename(i, oldName);
           await refreshLibrary();
         });
+      },
+      // A patch, from the row's own trash icon. Same confirm the context
+      // menu's Delete uses.
+      async trashPatch(entry) {
+        // Name what uses it, or say nothing. The old wording warned that "any
+        // setlist that references it will show the slot as missing" whether or
+        // not one did — which is noise on the common case and, worse, never
+        // mentioned BACKUPS at all, so the one deletion you cannot undo by
+        // reassigning was the quietest (Daniel, 2026-08-13).
+        const BACKUP = /^Bank [1-4] setlist \((\d{4}-\d{2}-\d{2})(, partial)?\)$/;
+        const setlists = [];
+        const backups = new Set();
+        for (const sl of libData.setlists || []) {
+          if (!(sl.slots || []).includes(entry.file)) continue;
+          const m = BACKUP.exec(sl.name);
+          if (m) backups.add(m[1]);
+          else setlists.push(sl.name);
+        }
+        const fmt = (iso) => {
+          const d = iso.split('-');
+          const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return `${Number(d[2])} ${MON[Number(d[1]) - 1]}`;
+        };
+        // "the Long Winters gig setlist and the 13 Aug backup"
+        const parts = [
+          ...setlists.map((n) => `the ${n} setlist`),
+          ...[...backups].sort().reverse().map((d) => `the ${fmt(d)} backup`),
+        ];
+        const list = parts.length > 1
+          ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+          : parts[0];
+        const used = parts.length
+          ? `“${entry.name}” is used in ${list}. ` +
+            (backups.size
+              // A backup is a record of a day. A hole in it cannot be filled
+              // by reassigning, only by another run — which records TODAY.
+              ? 'Those slots will show as missing, and the backup will no longer ' +
+                'be a complete record of that day.\n\n'
+              : 'Those slots will show as missing.\n\n')
+          : '';
+        const ok = await SevenModal.confirm({
+          title: `Delete “${entry.name}”?`,
+          body: `${used}The file moves to the Trash.`,
+          confirmLabel: 'Delete patch',
+          cancelLabel: 'Cancel',
+          tone: 'is-warning',
+        });
+        if (!ok) return;
+        await window.sevenAPI.library.trash(entry.file);
+        if (libSelected && libSelected.file === entry.file) libSelected = null;
+        await refreshLibrary();
+      },
+      // A whole backup RUN: the four per-bank lists it is stored as go
+      // together, because one of them alone is not a thing the player has.
+      async deleteBackup(date) {
+        const re = new RegExp(`^Bank [1-4] setlist \\(${date}(, partial)?\\)$`);
+        const hits = libData.setlists
+          .map((s2, i) => ({ s2, i }))
+          .filter(({ s2 }) => re.test(s2.name));
+        if (!hits.length) return;
+        const ok = await SevenModal.confirm({
+          title: 'Delete this backup?',
+          body: `This removes the record of what the Seven held that day — ${hits.length} ` +
+            'bank' + (hits.length === 1 ? '' : 's') + '. The patches themselves stay in ' +
+            'your library.\n\nThis cannot be undone.',
+          confirmLabel: 'Delete backup',
+          cancelLabel: 'Cancel',
+          tone: 'is-warning',
+        });
+        if (!ok) return;
+        // Descending, or each delete renumbers the ones after it.
+        for (const { i } of hits.sort((a, b) => b.i - a.i)) {
+          await window.sevenAPI.setlists.delete(i);
+        }
+        await refreshLibrary();
       },
       // Shared by the trash icon and the context menu's Delete — one confirm,
       // one path. Deleting a setlist never touches the patches it references.
@@ -2164,6 +2246,7 @@
           `<p class="bk-time">(${esc(counts)})</p>`,
         confirmLabel: 'Done',
         cancelLabel: 'Close', // the corner X's accessible name, not a button
+        tone: 'is-announce',
       });
     };
 
@@ -2191,6 +2274,7 @@
         bodyHtml: plan.bodyHtml,
         confirmLabel: plan.confirmLabel,
         cancelLabel: 'Cancel',
+        tone: 'is-announce',
       });
       if (!go) return;
       const { started } = await window.sevenAPI.midi.backup();

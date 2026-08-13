@@ -27,8 +27,31 @@
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fmtDate = (iso) => {
-    const d = new Date(iso);
+    // "2026-08-13" parses as UTC midnight, which is 13 Aug only east of
+    // Greenwich — here it rendered as 12 Aug (Daniel, 2026-08-13). Date-only
+    // strings are calendar dates, so read them as local.
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
     return Number.isNaN(d.getTime()) ? '' : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  };
+
+  // How long ago, in the units a person would use. "Created 13 Aug" makes you
+  // work out how old that is; "created 3 days ago" is the answer
+  // (Daniel, 2026-08-13). Absolute dates stay where they identify a thing
+  // rather than describe its age — a backup is "13 Aug", because that is its
+  // name.
+  const ago = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    const then = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+    if (Number.isNaN(then.getTime())) return '';
+    const days = Math.floor((Date.now() - then.getTime()) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return '1 day ago';
+    if (days < 30) return `${days} days ago`;
+    const months = Math.round(days / 30.44);
+    if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+    const years = Math.round(days / 365.25);
+    return `${years} year${years === 1 ? '' : 's'} ago`;
   };
 
   // Origin line under every patch name: where this file-side patch came from.
@@ -40,7 +63,7 @@
       return `Bank ${o.bank} · Preset ${o.preset}${o.date ? ` · ${fmtDate(o.date)}` : ''}`;
     }
     if (o && o.kind === 'created' && o.date) {
-      return `Created ${fmtDate(o.date)}`;
+      return `Created ${ago(o.date)}`;
     }
     return `Imported · ${entry.file}`;
   }
@@ -52,22 +75,31 @@
   // as in the bank list) — only the display drops the part its own row already
   // states, and the sound cell goes quiet when it would echo the name.
   function displayName(entry) {
-    const o = entry.origin;
-    if (!o || o.kind !== 'backup') return entry.name || '';
-    const re = new RegExp(`^Bank ${o.bank} Preset ${o.preset}\\s*—\\s*`);
-    return (entry.name || '').replace(re, '');
+    // Any "Bank N Preset M — " prefix, not only one matching this patch's own
+    // origin: a COPY keeps the prefix in its stored name while having no slot
+    // of its own, and showed up as "Bank 1 …" truncated (Daniel, 2026-08-13).
+    return String(entry.name || '').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
   }
 
+  // The pill holds BOTH words and shows one at a time: "Model" at rest, the
+  // instrument's name while the pointer is on it. The sound had a column of
+  // its own, which on most rows repeated the patch's name and on the rest
+  // took width from it — so the fact moved into the badge that was already
+  // there to classify it (Daniel, 2026-08-13).
   function badge(entry) {
+    const kind = entry.sampled ? 'Sample' : 'Model';
     return (
-      `<span class="badge ${entry.sampled ? 'badge-sampled' : 'badge-modeled'}">${entry.sampled ? 'Sampled' : 'Modeled'}</span>` +
+      `<span class="badge ${entry.sampled ? 'badge-sampled' : 'badge-modeled'}" ` +
+      `title="${esc(entry.soundName || kind)}">` +
+      `<span class="badge-kind">${kind}</span>` +
+      `<span class="badge-sound">${esc(entry.soundName || kind)}</span></span>` +
       (entry.missing
         ? `<span class="badge badge-warn" title="Sound not in the schema sound list">⚠ Not installed</span>`
         : `<span class="badge-gap"></span>`)
     );
   }
 
-  function renderPatchRow(entry, state) {
+  function renderPatchRow(entry, state, opts = {}) {
     if (entry.invalid) {
       return (
         `<div class="lib-row lib-row-invalid" title="${esc(entry.error || 'Unreadable file')}">` +
@@ -93,16 +125,71 @@
     // Bank and date live in the group header, so the row carries only what is
     // its own: which preset slot, what it is called, what sound it uses. A
     // patch with no slot (created or imported here) shows its date instead.
-    const lead = o.kind === 'backup' ? String(o.preset) : '';
-    const context = o.kind === 'backup' ? '' : originLine(entry);
+    // The preset number and the bank BOTH belong to a row only where the view
+    // does not already say them. Inside a backup run the bank is the group
+    // heading, so the row carries the number alone; in the flat Patches list
+    // there is no heading at all, so the row must say where it came from and
+    // the bare number means nothing (Daniel, 2026-08-13).
+    const inRun = !!opts.inRun;
+    // Inside a backup the number is the PRESET — that is the record. In the
+    // flat list it is just the row's position, to give the eye something to
+    // count down (Daniel, 2026-08-13); it renumbers as you search, because it
+    // describes the list you are looking at rather than the patch.
+    const lead = inRun && o.kind === 'backup' ? String(o.preset)
+      : (opts.n ? String(opts.n) : '');
+    // A patch you made carries its date in the TOOLTIP, not in the row. It is
+    // the least useful fact on the line and it was taking a column from things
+    // that identify the patch (Daniel, 2026-08-13).
+    // Where it came FROM is history and belongs to the Backups tab — but how
+    // OLD it is belongs here, for the patches you made: "created 3 days ago"
+    // is the answer to a question a date makes you work out
+    // (Daniel, 2026-08-13). A captured patch says nothing: its row is already
+    // identified by the backup it came from.
+    // Every patch says its age, and the verb says how it got here — in the
+    // words the app already uses elsewhere. "Captured" was the file format's
+    // internal term leaking into the window; the button says "Back up
+    // instrument", so the row says "backed up" (Daniel, 2026-08-13).
+    const context = !o.date ? ''
+      : `${o.kind === 'backup' ? 'backed up' : 'created'} ${ago(o.date)}`;
+    // The sound cell is NEWS, not a column that must be filled: it appears
+    // only when the instrument differs from what the patch is called. Most
+    // rows are quiet, because a backup patch is auto-named after its own
+    // sound — and where it does speak, something happened worth seeing ("Reed
+    // Piano copy" holding an Electric Grand means that patch was auditioned
+    // onto a different instrument and saved).
+    //
+    // A trailing "copy" does not make it news, which is why it is stripped
+    // before comparing (Daniel, 2026-08-13).
+    const name = displayName(entry);
+    const bare = name.replace(/\s+copy(\s*\d+)?$/i, '').trim().toLowerCase();
+    const echoes = bare === String(entry.soundName).trim().toLowerCase();
+    // Only when it says something the row does not. It was repeating the
+    // name back at you on every row (Daniel, 2026-08-13).
+    const tip = echoes ? '' : entry.soundName;
     return (
-      `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
+      `<span class="lib-row-wrap">` +
+      `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true"${tip ? ` title="${esc(tip)}"` : ''}>` +
       `<span class="patch-num">${lead}</span>` +
-      `<span class="patch-name">${esc(displayName(entry))}</span>` +
+      `<span class="patch-name">${esc(name)}</span>` +
       `<span class="lib-origin">${esc(context)}</span>` +
-      `<span class="patch-sound">${esc(entry.soundName)}</span>` +
-      `<span class="lib-badges">${badge(entry)}</span>` +
-      `</button>`
+      `<span class="patch-sound"></span>` +
+      // The Patches list carries NO pill. Which engine a patch uses is
+      // answered the moment you select it — the centre column says it in
+      // words, with the instrument drawn beside it — so in a list of forty
+      // rows it was forty repetitions of something you learn on click
+      // (Daniel, 2026-08-13). Rows inside a backup keep theirs.
+      `<span class="lib-badges">${opts.flat ? '' : badge(entry)}</span>` +
+      `</button>` +
+      // A button cannot contain a button, so the delete is a SIBLING and the
+      // wrapper positions it over the row's right edge.
+      `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
+      `data-pi="${entry.patchIndex}" title="Delete “${esc(name)}”">` +
+      '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
+        '<path d="M4.2 4.3l.7 8.2a.9.9 0 0 0 .9.8h4.4a.9.9 0 0 0 .9-.8l.7-8.2"/>' +
+        '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg>' + '</button>' +
+      `</span>`
     );
   }
 
@@ -157,13 +244,13 @@
         ? 'No patches match the search.'
         : 'Patches you back up or import live here. They\u2019re files on your computer, not slots on the instrument.'}</div>`;
     }
-    return libraryGroups(list)
-      .map(
-        (g) =>
-          `<div class="lib-group"><div class="lib-group-title">${esc(g.title)}</div>` +
-          g.rows.map((e) => renderPatchRow(e, state)).join('') +
-          `</div>`
-      )
+    // FLAT, sorted by name. It used to group by bank with dated headings —
+    // which is exactly what a backup is, so the two tabs showed the same list
+    // twice (Daniel, 2026-08-13). Here it is an inventory: every patch you
+    // own, found by name or by searching, with its origin on the row.
+    return [...list]
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
+      .map((e, i) => renderPatchRow(e, state, { flat: true, n: i + 1 }))
       .join('');
   }
 
@@ -187,14 +274,111 @@
     return `0:${String(10000 + i).padStart(6, '0')}`;
   };
 
+  // A backup RUN is one dated thing containing four banks — the runner writes
+  // it as four per-bank setlists, which is a storage detail rather than what a
+  // player has (Daniel, 2026-08-13). Group them back into runs by date.
+  function backupRuns(data) {
+    const runs = new Map(); // date -> { date, partial, banks: [{bank, index, name}] }
+    data.setlists.forEach((s, i) => {
+      const m = BACKUP_NAME.exec(s.name);
+      if (!m) return;
+      const date = m[2];
+      if (!runs.has(date)) runs.set(date, { date, partial: false, banks: [] });
+      const run = runs.get(date);
+      if (m[3]) run.partial = true;
+      run.banks.push({ bank: Number(m[1]), index: i, name: s.name });
+    });
+    for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
+    return [...runs.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  // Everything a run captured, in bank order — the same shape the patches list
+  // used to show for the whole library, which is where it belonged all along.
+  function renderBackupRun(data, state) {
+    const run = backupRuns(data).find((r) => r.date === state.backupDate);
+    if (!run) return renderBackupList(data, state);
+    const byFile = new Map();
+    for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
+    const banks = run.banks.map((b) => {
+      const slots = (data.setlists[b.index] || {}).slots || [];
+      const rows = slots
+        .map((f) => (f ? byFile.get(f) : null))
+        .map((e, i) => (e
+          // No pill here either: a backup is a list of forty rows the same
+          // way, and selecting one answers the question in the centre column
+          // (Daniel, 2026-08-13). The preset NUMBER still leads the row —
+          // that is what a backup is a record of.
+          ? renderPatchRow(e, state, { inRun: true, flat: true })
+          : `<div class="lib-row lib-slot-empty"><span class="patch-num">${i + 1}</span>` +
+            '<span class="lib-empty-slot">empty</span></div>'))
+        .join('');
+      // One Send per BANK, not one per run: a transfer walks eight slots into
+      // one bank, and the target bank is chosen in the dialog — so this offers
+      // "these eight patches, onto a bank of your choosing" (Daniel,
+      // 2026-08-13). Bank 1's eight are offered too: they cannot be written
+      // BACK to Bank 1, but sending the factory eight to Bank 3 is a
+      // perfectly ordinary thing to want.
+      return (
+        '<div class="lib-group">' +
+        `<div class="lib-group-title lib-group-title-row">Bank ${b.bank}` +
+        `<button type="button" class="setlist-send" data-setlist-send="${b.index}" ` +
+        `title="Load these eight patches onto a bank on the Seven">Send to Seven →</button>` +
+        '</div>' + rows + '</div>'
+      );
+    }).join('');
+    return (
+      '<div class="lib-setlist-head">' +
+      '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
+      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
+      `${run.partial ? ' · partial' : ''}</span>` +
+      '</div>' + banks
+    );
+  }
+
+  // The runs themselves: one row per backup, newest first.
+  function renderBackupList(data, state) {
+    const runs = backupRuns(data);
+    if (!runs.length) {
+      return '<div class="lib-empty">No backups yet. “Back up instrument” reads all ' +
+        '32 presets and writes down what the Seven held.</div>';
+    }
+    return runs.map((r, i) => {
+      const slots = r.banks.reduce((n, b) => n +
+        ((data.setlists[b.index] || {}).slots || []).filter(Boolean).length, 0);
+      return (
+        '<div class="lib-row lib-setlist-row">' +
+        `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
+        `<span class="patch-num">${i + 1}</span>` +
+        `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
+        `<span class="lib-setlist-count">${slots} preset${slots === 1 ? '' : 's'}` +
+        `${r.partial ? ' · partial' : ''}</span></button>` +
+        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
+        `title="Delete the ${esc(fmtDate(r.date))} backup (the patches stay in the library)">` +
+        '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
+        '<path d="M4.2 4.3l.7 8.2a.9.9 0 0 0 .9.8h4.4a.9.9 0 0 0 .9-.8l.7-8.2"/>' +
+        '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg>' + '</button>' +
+        '<span class="lib-setlist-chev">›</span>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function renderSetlistList(data, state) {
     // The original index travels with each row: everything downstream (rename,
     // delete, send, open) addresses setlists by their position in the FILE, so
     // this ordering is display only and never renumbers anything.
     const rows = data.setlists
       .map((s, i) => ({ s, i, key: touchKey(s, i) }))
+      // A setlist is something YOU made. The dated records a backup writes are
+      // backups, and they live under their own tab (Daniel, 2026-08-13).
+      .filter(({ s }) => !BACKUP_NAME.test(s.name))
+      // Numbered by POSITION in the list you are looking at, like the other
+      // two tabs — not by the setlist's index in the file, which is storage.
+      .map((row, n) => ({ ...row, n: n + 1 }))
       .sort((a, b) => (a.key === b.key ? a.i - b.i : (a.key < b.key ? 1 : -1)))
-      .map(({ s, i }) => {
+      .map(({ s, i, n }) => {
         if (state.renamingSetlist === i) {
           return (
             `<div class="lib-row lib-setlist-renaming" data-setlist="${i}">` +
@@ -212,11 +396,15 @@
           // A row is a <button>, so the icon is a sibling, not a nested button.
           `<div class="lib-row lib-setlist-row">` +
           `<button type="button" class="lib-setlist" data-setlist="${i}">` +
+          `<span class="patch-num">${n}</span>` +
           `<span class="patch-name">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
           `</button>` +
-          `<button type="button" class="setlist-send" data-setlist-send="${i}" ` +
-          `title="Load “${esc(s.name)}” onto a bank on the Seven">Send to Seven →</button>` +
+          // No Send here. The row already carries a name, a count, a delete
+          // and a chevron, and sending is the one action with an instrument on
+          // the other end of it — it belongs on the detail page, where you
+          // have opened the setlist and can see what you are about to send
+          // (Daniel, 2026-08-13).
           `<button type="button" class="setlist-delete" data-setlist-delete="${i}" ` +
           `title="Delete “${esc(s.name)}” (the patches stay in the library)">` +
           '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -247,33 +435,19 @@
   // "sample player" family, which painted the whole Sampled section one colour
   // while the icons underneath varied. Modeled vs sampled is already carried
   // by the section headings and the (m)/(s) tag.
-  const TILE_COLOUR = {
-    tine: '#e0a03a', reed: '#d9744f', grandLegs: '#5b8fd9', clavi: '#a279d9',
-    synth: '#4fc3d9', rack: '#4bb39b', vibes: '#6fbf5f', grand: '#9aa3b2',
-    wave: '#4caf6d', keys: '#8b8b93',
-  };
-
+  // ONE distinction, in the colours the app already uses for it: blue is
+  // modeled, green is sampled — the badge colours (--modeled / --sampled).
+  //
+  // It used to be a colour per instrument FAMILY: thirteen pastels, which read
+  // as decoration because nothing told you what they meant, and they competed
+  // with the MODELED and SAMPLED headings the grid is already grouped under
+  // (Daniel, 2026-08-13). A family palette needs thirteen legends; this one
+  // needs none, because anyone who has seen a badge already knows it.
   const tileColour = (name, sampled) =>
-    TILE_COLOUR[window.SevenSoundArt.artKeyFor(name, sampled)] || '#8b8b93';
+    (sampled ? 'var(--sampled)' : 'var(--modeled)');
 
   // Group patches the way the user thinks of them: which backup, which bank.
   // Browsing beats searching when you can't recall a name.
-  function pickGroups(list, fmt) {
-    const groups = new Map();
-    for (const e of list) {
-      const o = e.origin || {};
-      const key = o.kind === 'backup'
-        ? `${o.date ? fmt(o.date) : 'Backup'} · Bank ${o.bank}`
-        : o.kind === 'created' ? 'Created here' : 'Imported';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(e);
-    }
-    for (const rows of groups.values()) {
-      rows.sort((a, b) => ((a.origin || {}).preset || 0) - ((b.origin || {}).preset || 0));
-    }
-    return groups;
-  }
-
   // The instrument grid: every sound the schema knows, illustrated. Choosing
   // one assigns the SOUND, not a patch — see SOUND_REF above for why that is
   // the only honest "unedited" option we can offer.
@@ -281,9 +455,12 @@
     const q = (state.pickSearch || '').trim().toLowerCase();
     const list = sounds.filter((s) => !q || s.name.toLowerCase().includes(q));
     if (!list.length) return `<div class="lib-empty">No instrument matches “${esc(q)}”.</div>`;
-    const section = (title, rows) =>
+    // The heading carries the engine's colour and is the size of a real
+    // heading, because it is the one thing telling you which half of the grid
+    // you are in (Daniel, 2026-08-13).
+    const section = (title, rows, kind) =>
       rows.length
-        ? `<div class="pick-group"><div class="pick-group-title">${title}</div>` +
+        ? `<div class="pick-group"><div class="pick-group-title ${kind}">${title}</div>` +
           `<div class="pick-grid pick-grid-art">` +
           rows.map((s) => {
             const colour = tileColour(s.name, s.sampled);
@@ -296,8 +473,8 @@
           }).join('') + `</div></div>`
         : '';
     return (
-      section('Modeled', list.filter((s) => !s.sampled)) +
-      section('Sampled', list.filter((s) => s.sampled)) +
+      section('Model', list.filter((s) => !s.sampled), 'is-modeled') +
+      section('Sample', list.filter((s) => s.sampled), 'is-sampled') +
       `<div class="pick-note">Choosing an instrument sets the sound only — every ` +
       `parameter keeps its current setting, which is what the Seven itself does ` +
       `when the sound changes.</div>`
@@ -308,23 +485,57 @@
     const slot = state.picking;
     const q = state.pickSearch || '';
     const list = data.patches.filter((e) => !e.invalid && matches(e, q));
-    const groups = pickGroups(list, fmtDate);
+    // FLAT, by name — the same inventory the Patches tab shows. It grouped by
+    // "13 August · Bank 2 / Created here / Imported", which is the structure
+    // the Backups tab now owns, so choosing a patch met the same shape a third
+    // time (Daniel, 2026-08-13). One way to browse patches everywhere; the
+    // search above does the finding.
     const body = list.length
-      ? [...groups.entries()].map(([title, rows]) =>
-          `<div class="pick-group"><div class="pick-group-title">${esc(title)}</div>` +
-          `<div class="pick-grid">` +
-          rows.map((e) => {
+      ? (`<div class="pick-grid">` +
+          [...list]
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
+            .map((e) => {
             const colour = tileColour(e.soundName, e.sampled);
+            // The INSTRUMENT leads; the slot is the subhead (Daniel,
+            // 2026-08-13). A backup patch is auto-named "Bank 1 Preset 3 —
+            // Electric Grand Piano", so the tile led with five words every
+            // tile shared, truncated the instrument, and then repeated it
+            // underneath. Two tiles could look identical while naming
+            // different patches.
+            //
+            // The auto-name is stripped wherever it appears — including on a
+            // COPY, which carries the prefix in its stored name but has no
+            // slot of its own, so the origin-aware displayName cannot see it.
+            const auto = /^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/;
+            const own = String(e.name || '').replace(auto, '').trim();
+            const o = e.origin || {};
+            const from = o.copiedFrom;
+            const where = o.kind === 'backup'
+              ? `Bank ${o.bank} · Preset ${o.preset}`
+              : from && typeof from.bank === 'number'
+                ? `copy of Bank ${from.bank} · Preset ${from.preset}`
+                : (o.kind === 'created' && o.date ? fmtDate(o.date) : '');
+            // The second line must say something the first does not. A name
+            // like "Electric Grand Piano copy" under a title of "Electric
+            // Grand Piano" is the same fact twice, and truncation made the two
+            // lines read as identical (Daniel, 2026-08-13) — so a name is only
+            // used when it is not just the instrument with a suffix on it.
+            const bare = own.replace(/\s+copy(\s*\d+)?$/i, '').trim().toLowerCase();
+            const named = bare && bare !== String(e.soundName).trim().toLowerCase();
+            const name = e.soundName || own;
+            const second = named ? own : where;
             return (
               `<button type="button" class="pick-tile" data-pick-file="${esc(e.file)}" ` +
               `style="--tile:${colour}" title="${esc(e.name)} — ${esc(e.soundName)}">` +
-              `<span class="tile-name">${esc(e.name)}</span>` +
-              `<span class="tile-sound">${esc(e.soundName)}<span class="sound-tag">` +
-              `${e.sampled ? ' (s)' : ' (m)'}</span></span>` +
+              `<span class="tile-name">${esc(name)}</span>` +
+              // No (s)/(m): the tile's colour says which engine it is —
+              // blue modeled, green sampled, the badge colours
+              // (Daniel, 2026-08-13).
+              `<span class="tile-sound">${esc(second)}</span>` +
               `</button>`
             );
           }).join('') +
-          `</div></div>`).join('')
+          `</div>`)
       : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
     const shown = sounds
       ? renderSoundTiles(state, allSounds || [])
@@ -333,7 +544,7 @@
       `<div class="pick-overlay">` +
       `<div class="pick-modal" role="dialog" aria-label="Choose a patch">` +
       `<div class="pick-modal-head">` +
-      `<span class="pick-title">Slot ${slot + 1}</span>` +
+      `<span class="pick-title">Assigning Slot ${slot + 1}</span>` +
       `<div class="pick-modes">` +
       `<button type="button" class="pick-mode${sounds ? '' : ' on'}" data-pick-mode="patches">Patches</button>` +
       `<button type="button" class="pick-mode${sounds ? ' on' : ''}" data-pick-mode="sounds">Instruments</button>` +
@@ -390,7 +601,7 @@
     // Kind reads as a quiet parenthetical after the sound name — "(m)" for
     // modeled, "(s)" for sampled — with the full word on hover.
     const soundTag = (entry) => {
-      const kind = entry.sampled ? 'Sampled' : 'Modeled';
+      const kind = entry.sampled ? 'Sample' : 'Model';
       return (
         ` <span class="sound-tag" title="${kind}" aria-label="${kind}">(${entry.sampled ? 's' : 'm'})</span>` +
         (entry.missing
@@ -418,12 +629,23 @@
           const name = soundRefName(file);
           const spec = (opts.sounds || []).find((x) => x.name === name);
           return (
-            `<div class="lib-slot lib-slot-patch lib-slot-sound${pulse(i)}" data-slot="${i}">` +
+            // A TAG, not a sentence. This slot holds an instrument rather
+            // than a patch, and the difference only matters at one moment —
+            // when the setlist is sent, this slot changes the sound and leaves
+            // the settings alone while every other slot replaces everything.
+            // That is worth marking and not worth explaining in the row
+            // (Daniel, 2026-08-13); the tooltip carries the why.
+            `<div class="lib-slot lib-slot-patch lib-slot-sound${pulse(i)}" data-slot="${i}" ` +
+            `title="${esc(name)} — an instrument, not a patch. Sending this slot ` +
+            `changes the sound and leaves every setting as it is.">` +
             `${num}<span class="patch-name">${esc(name)}</span>` +
+            // No pill: the rows around this one say the engine with a small
+            // (m)/(s), and the italic name already marks this slot as holding
+            // an instrument rather than a patch (Daniel, 2026-08-13).
             `<span class="lib-badges"></span>` +
-            `<span class="lib-origin">Sound only · settings stay as they are</span>` +
-            `<span class="patch-sound">${esc(name)}` +
-            ` <span class="sound-tag" title="${spec && spec.sampled ? 'Sampled' : 'Modeled'}">` +
+            `<span class="lib-origin"></span>` +
+            `<span class="patch-sound">Instrument` +
+            ` <span class="sound-tag" title="${spec && spec.sampled ? 'Sample' : 'Model'}">` +
             `(${spec && spec.sampled ? 's' : 'm'})</span></span>` +
             `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
           );
@@ -481,17 +703,35 @@
 
   function renderBody(data, state, sounds) {
     const tab = (id, label) =>
-      `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`;
+      `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}"><span class="seg-label">${label}</span></button>`;
     const listHtml =
-      state.tab === 'setlists'
-        ? state.setlistIndex == null
-          ? renderSetlistList(data, state)
-          : renderSetlistSlots(data, state, { sounds })
-        : renderAllPatches(data, state);
+      state.tab === 'backups'
+        ? (state.backupDate == null
+          ? renderBackupList(data, state)
+          : renderBackupRun(data, state))
+        : state.tab === 'setlists'
+          ? (state.setlistIndex == null
+            ? renderSetlistList(data, state)
+            : renderSetlistSlots(data, state, { sounds }))
+          : renderAllPatches(data, state);
     return (
       `<div class="lib-bar">` +
-      `<div class="lib-seg">${tab('patches', 'All Patches')}${tab('setlists', 'Setlists')}</div>` +
-      `<input class="lib-search" type="search" placeholder="Search name or sound…" value="${esc(state.search)}">` +
+      `<div class="lib-seg">${tab('backups', 'Backups')}${tab('patches', 'Patches')}` +
+      `${tab('setlists', 'Setlists')}</div>` +
+      // No search on Backups: there are a handful of dated runs and you pick
+      // one by looking (Daniel, 2026-08-13). It is a magnifier elsewhere until
+      // it is wanted — the field sat open in the bar all day for something
+      // reached for occasionally.
+      (state.tab === 'backups'
+        ? ''
+        : (state.searchOpen || state.search
+        ? `<input class="lib-search lib-autofocus" type="search" ` +
+          `placeholder="Search name or sound…" value="${esc(state.search)}">`
+        : '<button type="button" class="lib-search-open" data-search-open ' +
+          'aria-label="Search" title="Search">' +
+          '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" ' +
+          'stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
+          '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button>')) +
       `</div>` +
       `<div class="lib-list">${listHtml}</div>`
     );
@@ -500,9 +740,13 @@
   // Controller: owns view state, renders into `el`, wires delegated events.
   function createLibraryView({ el, on = {} }) {
     const state = {
-      tab: 'patches',
+      // Backups opens first: it is the reason the app exists, and the newest
+      // run is the thing most likely to be wanted (Daniel, 2026-08-13).
+      tab: 'backups',
       search: '',
       setlistIndex: null,
+      backupDate: null,   // which dated run is open, if any
+      searchOpen: false,  // the magnifier has been clicked
       selected: null,
       renaming: null,
       renamingSetlist: null,
@@ -536,7 +780,7 @@
     const updateFade = () => { fadeList(); fadePicker(); };
 
     function render() {
-      const viewKey = `${state.tab}:${state.setlistIndex}`;
+      const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupDate}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
       el.innerHTML = renderBody(data, state, on.sounds);
@@ -600,13 +844,21 @@
       if (seg) {
         state.tab = seg.dataset.tab;
         state.setlistIndex = null;
+        state.backupDate = null;
+        if (state.tab === 'backups') { state.search = ''; state.searchOpen = false; }
         render();
         return;
       }
       if (e.target.closest('.lib-back') && !e.target.closest('.pick-cancel')) {
         state.setlistIndex = null;
+        state.backupDate = null;
         state.lastCleared = null;
         state.picking = null;
+        render();
+        return;
+      }
+      if (e.target.closest('[data-search-open]')) {
+        state.searchOpen = true;
         render();
         return;
       }
@@ -691,8 +943,28 @@
         if (on.clearSlot) on.clearSlot(state.setlistIndex, slot);
         return;
       }
+      const backupDel = e.target.closest('[data-backup-delete]');
+      if (backupDel) {
+        if (on.deleteBackup) on.deleteBackup(backupDel.dataset.backupDelete);
+        return;
+      }
+      const patchDel = e.target.closest('[data-patch-delete]');
+      if (patchDel) {
+        const entry = data.patches.find((x) => x.file === patchDel.dataset.patchDelete
+          && String(x.patchIndex) === patchDel.dataset.pi);
+        if (entry && on.trashPatch) on.trashPatch(entry);
+        return;
+      }
       const setlistRow = e.target.closest('.lib-setlist');
       if (setlistRow) {
+        // A BACKUP row shares this class but carries a date instead of a
+        // setlist index. This handler ran first and set setlistIndex to NaN,
+        // so clicking a backup did nothing at all (Daniel, 2026-08-13).
+        if (setlistRow.dataset.backup) {
+          state.backupDate = setlistRow.dataset.backup;
+          render();
+          return;
+        }
         const index = Number(setlistRow.dataset.setlist);
         state.setlistIndex = index;
         // Opening counts as touching it: the thing you just looked at is the
@@ -759,11 +1031,6 @@
         state.setlistIndex = null;
         render();
         return;
-      }
-      const setlistRow = e.target.closest('.lib-setlist');
-      if (setlistRow) {
-        state.setlistIndex = Number(setlistRow.dataset.setlist);
-        render();
       }
     });
     el.addEventListener('dragover', (e) => {

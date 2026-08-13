@@ -425,6 +425,24 @@ Sets **one** global, not the array. Index and value are single bytes immediately
 opcode — **no `0x00` pad** (unlike parameter addressing, which is `0x00, idHi, idLo`). Do not
 share an address encoder between them. The ack carries only the index.
 
+### Bank 1 does not accept a store — confirmed by the owner
+
+The three-second panel hold stores to Banks 2, 3 and 4 only; **Bank 1 cannot be
+written from the panel at all, by design** (Daniel, 2026-08-13, confirming from
+his own use of the instrument). It holds the factory presets.
+
+Worth recording because this project has carried the opposite note for weeks:
+Bank 1 was described as blocked "by project rule, not a device limitation",
+which left the app telling people the Seven would not save there while its own
+docs said that was our choice rather than the instrument's. It is the
+instrument's.
+
+What follows for the app: refusing to transfer a patch into Bank 1 matches the
+hardware rather than merely being cautious, and the line in the save
+instructions — "(the Seven will not save to Bank 1)" — is a fact about the
+device. Auditioning a sound on a Bank 1 preset stays allowed: that stores
+nothing.
+
 ## Bulk dump caveat
 
 `F0 73 26 14 12 00 00 F7` streams all specs in batches. Observed behaviour: it works once,

@@ -14,7 +14,7 @@
 //     is re-read before deciding which;
 //   - the app's own recall echo is not the player reaching for the panel;
 //   - nothing here stores anything: the three-second panel hold is the only
-//     way onto the instrument, and Save to Library the only way onto disk.
+//     way onto the instrument, and Save to Computer the only way onto disk.
 //
 // app.js supplies the selection model and rendering through `deps`; this
 // module owns everything about the live session itself.
@@ -64,7 +64,7 @@
       `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
       `<span class="save-actions">` +
       `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
-      'Save to Library</button>' +
+      'Save to Computer</button>' +
       `<span class="save-sep" aria-hidden="true">·</span>` +
       `<button type="button" class="save-seven-link" data-save-to-seven>Save to Seven</button>` +
       `</span>` +
@@ -226,7 +226,10 @@
       const r = await window.sevenAPI.midi.readParam(key);
       if (r && r.ok && liveEdit.params[key] !== r.value) {
         liveEdit.params[key] = r.value;
-        liveEdit.dirty = true; // the buffer no longer matches the saved patch
+        // Follow the value either way — the panel is the truth about the
+        // buffer. But only call it UNSAVED WORK if it was not the recall's own
+        // burst describing what it just loaded.
+        if (!settling()) liveEdit.dirty = true;
         deps.renderDetail();
       }
     }, 80));
@@ -535,8 +538,7 @@
     if (!isBackup) {
       answer = await SevenModal.confirm({
         title: `Save “${esc(entry.name || 'this patch')}”`,
-        body: 'Overwrite this patch on this computer, or keep it and save your ' +
-          'changes as a copy?',
+        body: 'Overwrite this patch, or keep it and save your changes as a copy?',
         confirmLabel: 'Overwrite patch',
         secondaryLabel: 'Save a copy',
         cancelLabel: 'Cancel',
@@ -573,15 +575,27 @@
       await window.sevenAPI.library.saveSound(file, patchIndex, live.name, !!live.sampled);
     }
     liveEdit.dirty = false;
-    auditionNote = {
-      kind: 'is-ok',
-      // Say WHY there is suddenly a new patch, when the app chose that for
-      // you: a backup record was left alone deliberately.
-      text: isBackup
-        ? 'Saved as a new patch — the backup record is unchanged.'
-        : (answer === 'secondary' ? 'Saved as a copy.' : 'Saved to the library.'),
-      file,
-    };
+    // A modal, not a line of status text under the controls. Saving is the
+    // one thing in this column with a consequence on disk, and a note that
+    // appeared where the hint used to be read as another piece of furniture
+    // rather than an answer (Daniel, 2026-08-13). Notes stay for PROBLEMS —
+    // a lost cable, a refused write — which is what that line is for.
+    auditionNote = null;
+    SevenModal.confirm({
+      title: 'Sound saved to computer!',
+      bodyHtml:
+        `<p class="bk-sum">${esc(entry.name || 'This patch')}</p>` +
+        // Say WHY there is suddenly a new patch, when the app chose that for
+        // you: a backup record was left alone deliberately.
+        (isBackup
+          ? '<p class="bk-time">Saved as a new patch — the backup record is unchanged.</p>'
+          : (answer === 'secondary'
+            ? '<p class="bk-time">Saved as a copy.</p>'
+            : '')),
+      confirmLabel: 'Done',
+      cancelLabel: 'Close',
+      tone: 'is-announce',
+    });
     await deps.refreshLibrary();
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
@@ -619,6 +633,20 @@
   // Open a session on whatever is selected, from a caller that has just made
   // the buffer match it. The one rule it must not break is the rule the whole
   // module exists for: live means the buffer holds what is on screen.
+  // A recall broadcasts 22 panel CCs describing the patch it just loaded. Those
+  // are not the player turning anything — but the CC handler cannot tell the
+  // difference, so it read each one back, found it differed from the file, and
+  // marked the brand-new session dirty before anyone had touched the
+  // instrument (Daniel, 2026-08-13; it is also why switch-patch-guard failed
+  // intermittently — the race is between the burst and the fresh session).
+  //
+  // So a session ignores CCs for a moment after it opens. Long enough for a
+  // recall's burst to land, short enough that a knob turned straight afterwards
+  // still counts.
+  const SETTLE_MS = 700;
+  let settlingUntil = 0;
+  const settling = () => Date.now() < settlingUntil;
+
   function beginLiveForTarget() {
     const target = auditionTarget();
     const patch = deps.getPatch();
@@ -630,6 +658,7 @@
       touched: new Set(),
       dirty: false,
     };
+    settlingUntil = Date.now() + SETTLE_MS;
     rememberWhereWeWere();
     startPanelPoll();
     return true;

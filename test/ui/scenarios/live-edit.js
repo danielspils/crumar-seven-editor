@@ -28,7 +28,7 @@
   // The dot is gone: the save controls are always present and come ALIVE when
   // there is something to save, which is the signal now (2026-08-13).
   ui.check(!!ui.$('.audition-bar.is-live'), 'the save controls come alive');
-  ui.check(!ui.$('#save-live-btn[disabled]'), 'Save to Library can be pressed');
+  ui.check(!ui.$('#save-live-btn[disabled]'), 'Save to Computer can be pressed');
 
   // The instrument agrees with the screen.
   const read = await window.sevenAPI.midi.readParam(key);

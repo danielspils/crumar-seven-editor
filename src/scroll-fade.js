@@ -21,6 +21,10 @@
   // A couple of pixels of slack: fractional scroll heights mean scrollTop
   // rarely lands exactly on the maximum.
   function atEnd(el) {
+    // A list that FITS is at its end by definition — there is nothing below
+    // the fold for a fade to hint at, and one drawn anyway made a short list
+    // look truncated (Daniel, 2026-08-13).
+    if (el.scrollHeight - el.clientHeight <= 2) return true;
     return el.scrollHeight - el.clientHeight - el.scrollTop <= 2;
   }
 

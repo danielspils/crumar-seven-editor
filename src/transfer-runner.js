@@ -238,7 +238,15 @@ class TransferRunner extends EventEmitter {
   //
   // `ref` is a library file name, or "sound:<name>" for a bare sound.
   preflightSlot(bank, preset, ref) {
-    if (bank === BLOCKED_BANK) {
+    // Bank 1 is blocked from being WRITTEN to — it holds the factory presets
+    // and the Seven will not store there anyway. But trying a sound on one of
+    // them stores nothing: it recalls the slot and loads a sound into the edit
+    // buffer, which the next recall replaces. So a bare sound is allowed in
+    // Bank 1 and a patch is not (Daniel, 2026-08-13). The player can hear the
+    // factory Rhodes through any instrument on the list; they simply cannot
+    // keep it there.
+    const soundOnly = String(ref).startsWith('sound:');
+    if (bank === BLOCKED_BANK && !soundOnly) {
       return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
     }
     if (!Number.isInteger(bank) || bank < 1 || bank > 4) {

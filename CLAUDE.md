@@ -246,7 +246,7 @@ already verified, so this is app work, not reverse-engineering:
    the bank so a three-second hold cannot land in the wrong one, and
    auto-advancing: a store announces nothing of its own, but the recall burst
    after it carries what was just written, so a changed fingerprint is the
-   store. Bank 1 blocked outright.
+   store. Bank 1 blocked outright — and that matches the hardware: the Seven does not accept a store into Bank 1 at all (owner-confirmed 2026-08-13). Auditioning a sound there is still allowed, since it stores nothing.
 5. **A/B compare and undo** — edit-buffer snapshots; the two things the
    manufacturer's editor lacks. Undo exists for library acts; the edit-buffer
    half is what's left.

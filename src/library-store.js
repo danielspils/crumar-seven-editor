@@ -322,6 +322,10 @@ class LibraryStore {
             kind: 'created',
             date: p.verified || p.origin.created,
             created: p.origin.created,
+            // Where a copy came from, so the UI can say something the patch's
+            // own name does not already say — "Electric Grand Piano copy" is
+            // no use under a title that reads "Electric Grand Piano".
+            copiedFrom: p.origin.copiedFrom || null,
           };
         } else {
           origin = { kind: 'imported' }; // absent or unrecognised — never "Created"
@@ -430,9 +434,39 @@ class LibraryStore {
     if (!patch) throw new Error('No such patch in file');
     const copy = JSON.parse(JSON.stringify(patch));
     copy.name = `${copy.name || 'Patch'} copy`;
+    // A copy is NOT a backup record. It kept origin.kind='backup' from the
+    // patch it was cloned from, so it filed itself under the bank heading of
+    // the capture it came from and could not be found among your own patches
+    // (Daniel, 2026-08-13). Where it CAME from is worth keeping — that is
+    // provenance — but the claim to be a capture of the instrument on a date
+    // is not the copy's to make.
+    // A copy is a patch YOU made, not another capture of the instrument. It
+    // used to inherit the source's `origin` wholesale, so a copy of a backup
+    // record filed itself under that bank's heading and could not be found
+    // among your own patches (Daniel, 2026-08-13).
+    //
+    // The test is `origin.bank`, not `origin.kind`. `kind` is DERIVED in list()
+    // from whether a bank number is present and never written to the file — so
+    // checking for kind==='backup' here matched nothing at all, and the first
+    // version of this fix silently did nothing.
+    //
+    // Written the way list() recognises a created patch: `origin.created`.
+    // Where it came from is kept beside it as provenance.
+    if (copy.origin && typeof copy.origin.bank === 'number') {
+      copy.origin = {
+        created: new Date().toISOString(),
+        copiedFrom: { bank: copy.origin.bank, preset: copy.origin.preset },
+      };
+    }
     const target = this.uniqueFile(copy.name);
     fs.writeFileSync(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(copy)));
-    return target;
+    // { file, patchIndex }, not a bare filename. audition.js reads copy.file
+    // to follow the live session onto the copy, and against a string that was
+    // always undefined — so every save that took the copy path failed with
+    // "Could not make a copy" even though the file had been written
+    // (Daniel, 2026-08-13). It surfaced the moment backup records started
+    // always copying; the mismatch was there long before.
+    return { file: target, patchIndex: 0 };
   }
 
   absPath(file) {

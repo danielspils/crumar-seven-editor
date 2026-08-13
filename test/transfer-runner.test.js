@@ -495,3 +495,16 @@ test('a modeled sound with no factory backup falls back to a silent chain', asyn
     fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0,
   });
 });
+
+// Bank 1 cannot be WRITTEN to, but trying a sound on one of its presets
+// stores nothing — it recalls the slot and loads a sound into the edit
+// buffer, which the next recall replaces (Daniel, 2026-08-13).
+test('a bare sound is allowed in Bank 1; a patch is not', () => {
+  const { store, midi, sender, entries } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  assert.strictEqual(runner.preflightSlot(1, 1, 'sound:Clavi Piano').ok, true,
+    'hearing an instrument on a factory preset is allowed');
+  const patch = runner.preflightSlot(1, 1, entries[0].file);
+  assert.strictEqual(patch.ok, false, 'sending a patch to Bank 1 is still refused');
+  assert.match(patch.error, /factory presets/);
+});

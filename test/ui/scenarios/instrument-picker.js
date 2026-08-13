@@ -37,8 +37,14 @@
   const row = ui.$$('.lib-slot')[slot];
   ui.note(`slot ${slot + 1}: ${row?.textContent.replace(/\s+/g, ' ').trim().slice(0, 60)}`);
   ui.check(!!ui.$('.lib-slot-sound'), 'the slot renders as sound-only');
+  // The sentence became a TAG plus a tooltip: a slot holding an instrument
+  // is marked "Instrument", and the why lives in the title (2026-08-13).
   ui.check(
-    (row?.textContent || '').includes('settings stay as they are'),
-    'the slot says what a sound-only entry does'
+    (row?.textContent || '').includes('Instrument'),
+    'the slot is marked as holding an instrument'
+  );
+  ui.check(
+    (row?.getAttribute('title') || '').includes('leaves every setting as it is'),
+    'and the tooltip says what sending it does'
   );
 })()

@@ -449,7 +449,7 @@
         `<div class="engine-sound${shownSound.candidate ? ' is-candidate' : ''}">` +
         `${esc(shownSound.name)} ` +
         `<span class="badge ${shownSound.sampled ? 'badge-sampled' : 'badge-modeled'}">` +
-        `${shownSound.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
+        `${shownSound.sampled ? 'Sample' : 'Model'}</span></div>` +
         `<div class="engine-sub"><span class="engine-group">${esc(shownSound.label)}</span></div>` +
         pos +
         // Saving belongs to the sound, so it sits with it. Above the panel it
@@ -599,8 +599,13 @@
         `<button class="patch-row${index === selectedIndex ? ' selected' : ''}${stale ? ' is-stale' : ''}" data-index="${index}" type="button"${title}>` +
         `<span class="patch-num">${index + 1}</span>` +
         `<span class="patch-name">${esc(patch.name)}</span>` +
-        `<span class="patch-sound">${esc(patch.soundName)}</span>` +
-        `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}">${patch.sampled ? 'Sampled' : 'Modeled'}</span>` +
+        `<span class="patch-sound"></span>` +
+        // The pill names the instrument on hover; see badge() in
+        // library-view.js for why the sound column went away.
+        `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}" ` +
+        `title="${esc(patch.soundName)}">` +
+        `<span class="badge-kind">${patch.sampled ? 'Sample' : 'Model'}</span>` +
+        `<span class="badge-sound">${esc(patch.soundName)}</span></span>` +
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
         `</button>`
       );

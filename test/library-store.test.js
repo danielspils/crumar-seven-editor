@@ -253,3 +253,31 @@ test('a patch’s sound can be changed without disturbing its parameters', () =>
   assert.strictEqual(after.verified, before.verified, 'verified is not re-stamped by an app-side edit');
   assert.notStrictEqual(after.captured, undefined);
 });
+
+// A copy is a NEW patch, not another capture of the instrument, and the caller
+// needs to know where it landed (Daniel, 2026-08-13).
+test('duplicate returns where the copy went, and does not claim to be a backup', () => {
+  const { store } = freshStore();
+  // Give it a patch that IS a backup record, which is the case that mattered:
+  // saving edits on one of those always copies now.
+  const src = byName(store, 'Alpha');
+  const parsed = store.readFile(src.file);
+  // As a backup record is actually stored: a bank and preset, no `kind` —
+  // that is derived when listing.
+  parsed.library.patches[0].origin = { bank: 2, preset: 4 };
+  fs.writeFileSync(path.join(store.dir, src.file), JSON.stringify(parsed.library, null, 2));
+
+  const made = store.duplicate(src.file, 0);
+  assert.strictEqual(typeof made, 'object', 'returns a location, not a bare filename');
+  assert.ok(made.file, 'names the file it wrote');
+  assert.strictEqual(made.patchIndex, 0);
+
+  const copy = store.readFile(made.file).library.patches[0];
+  assert.ok(copy.origin.created, 'a copy is a patch you made');
+  assert.strictEqual(copy.origin.bank, undefined, 'and claims no slot on the instrument');
+  assert.deepStrictEqual(copy.origin.copiedFrom, { bank: 2, preset: 4 },
+    'but it remembers where it came from');
+  // And the LIST must file it away from the bank groups.
+  const listed = entries(store).find((e) => e.file === made.file);
+  assert.strictEqual(listed.origin.kind, 'created');
+});

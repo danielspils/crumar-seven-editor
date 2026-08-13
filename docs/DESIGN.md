@@ -62,7 +62,7 @@ from a designer's preference.
 
 | Role | Variable | Source | Used for |
 |---|---|---|---|
-| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | filled buttons that DO something: Start Audition, Save to Library, the AUDITION MODE chip, the live bar's edge |
+| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | anything that DOES something: filled buttons, and the Save to Computer link in the engine column |
 | Destructive | `--accent` | panel LED red | the selected-row edge, and any confirm that destroys something |
 | Navigation | `--amber` | the panel's amber legends | which tab or segment is selected, focus rings, an open rename field |
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
@@ -80,8 +80,19 @@ palette of its own to protect.
 
 **Filled means action; outlined means state.** A filled green button does
 something when pressed. An outlined green badge is a label. The Sampled badge
-and the Save to Library button are both green and never read as the same kind
-of thing, because one is a filled control and the other is an outline.
+and a green button are never read as the same kind of thing, because one is a
+filled control and the other is an outline.
+
+**Shape says what a thing is: squared presses, pill labels.** Every action —
+buttons in the connection row, in modals, the carousel's Select — is a 5px
+squared rectangle. Every pill is state: the Modeled/Sampled badges, the ON/OFF
+chips, the Settings toggles. One radius each, so the two never blur.
+
+**Not every action needs a button, though.** Saving sits in a column of 12px
+labels, and a filled button there was the loudest thing on the panel for
+something you do occasionally — so "Save to Computer · Save to Seven" are text,
+carrying the action green and a heavier weight instead of a fill. A control
+earns chrome by how often it is reached for, not by how important it sounds.
 
 **Amber is for where you ARE, not for what to press.** The active bank tab, the
 active segment, a focus ring, a field being edited. It was doing double duty as

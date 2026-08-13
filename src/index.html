@@ -455,7 +455,11 @@
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
-    .patch-row:hover { background: var(--bg-raised); }
+    /* --shade-hard, not --bg-raised: a translucent overlay lifts a row on
+       WHATEVER it sits on. The library's rows are already the raised colour,
+       so hovering them to that same colour did nothing at all, and the two
+       lists answered a pointer differently (Daniel, 2026-08-13). */
+    .patch-row:hover { background: var(--shade-hard); }
     .patch-row.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
     .patch-num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
     .patch-row .patch-sound { text-align: right; }
@@ -466,6 +470,23 @@
       font-size: 10px; font-weight: 700; letter-spacing: .06em;
       padding: 1px 6px; border-radius: 7px; white-space: nowrap;
     }
+    /* One pill, two labels: the kind at rest, the instrument on hover. */
+    .lib-row-wrap { position: relative; display: block; }
+    .patch-delete {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; padding: 0; cursor: pointer;
+      color: var(--text-dim); background: none; border: none; border-radius: 4px;
+      opacity: 0; transition: opacity .12s;
+    }
+    .lib-row-wrap:hover .patch-delete, .patch-delete:focus-visible { opacity: 1; }
+    .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
+    /* The swap happens on the PILL itself, not on the row. Row-wide hover
+       flipped every badge you passed over on the way somewhere else, which
+       made the list twitch (Daniel, 2026-08-13). */
+    .badge-sound { display: none; white-space: nowrap; }
+    .badge:hover .badge-kind { display: none; }
+    .badge:hover .badge-sound { display: inline; }
     .badge-modeled { color: var(--modeled); border: 1px solid var(--modeled); }
     .badge-sampled { color: var(--sampled); border: 1px solid var(--sampled); }
     .badge-warn { color: #16130b; background: var(--warn); }
@@ -572,16 +593,39 @@
       padding: 2px 8px; cursor: pointer; flex: none;
     }
     .lib-reveal:hover { color: var(--text); border-color: var(--text-muted); }
-    .lib-bar { display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px; }
-    .lib-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; flex: none; }
-    .seg-btn {
-      font: inherit; font-size: 12px; font-weight: 600;
-      background: transparent; border: none; color: var(--text-muted);
-      padding: 3px 10px; cursor: pointer;
+    .lib-bar {
+      display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px;
+      border-bottom: 1px solid var(--line);
     }
-    .seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+    /* TABS, like the bank tabs above — one navigation metaphor in the app
+       rather than tabs in one region and a segmented button in the other
+       (Daniel, 2026-08-13). Same amber underline, same active panel colour. */
+    /* The SAME tabs as #bank-tabs: same padding, same weight and tracking,
+       same underline, and the row carries the same bottom rule. The library's
+       were smaller and tighter, which read as a different control doing the
+       same job (Daniel, 2026-08-13). They share the row with the search, so
+       they size to their labels rather than splitting the width. */
+    .lib-seg { display: inline-flex; flex: none; gap: 0; }
+    .seg-btn {
+      background: transparent; border: none; padding: 9px 16px 7px;
+      color: var(--text-muted); font: inherit; font-weight: 600; letter-spacing: .08em;
+      cursor: pointer;
+    }
     .seg-btn.active { background: var(--bg-panel); color: var(--amber); }
+    .seg-btn.active .seg-label { border-bottom-color: var(--amber); }
+    .seg-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
     .seg-btn:hover:not(.active) { color: var(--text); }
+    /* Search is a magnifier until it is wanted. */
+    /* Right-hand end of the bar, away from the tabs it is not part of. */
+    .lib-search-open { margin-left: auto; }
+    .lib-bar > .lib-search { margin-left: auto; }
+    .lib-search-open {
+      flex: none; display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 24px; padding: 0; cursor: pointer;
+      color: var(--text-muted); background: none;
+      border: 1px solid transparent; border-radius: 5px;
+    }
+    .lib-search-open:hover { color: var(--text); border-color: var(--line); }
     .lib-search {
       flex: 1; min-width: 0; font: inherit; font-size: 12px;
       background: var(--bg-panel); color: var(--text);
@@ -607,7 +651,15 @@
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
-    .lib-row:hover { background: var(--bg-raised); }
+    /* The same hover the BANK rows use — a lit row under the pointer, in the
+       raised panel colour, so every list in the app answers a hover the same
+       way (Daniel, 2026-08-13). The library's rows are buttons and wrappers
+       both, so the setlist and backup rows need it named explicitly: their
+       clickable part is a child, and hovering the row never reached it. */
+    .lib-row:hover,
+    .lib-setlist-row:hover,
+    .lib-setlist-row:hover .lib-setlist { background: var(--shade-hard); }
+    .lib-setlist-row { cursor: pointer; }
     /* Selected library patch wears the same red edge marker as a selected
        bank row — one vocabulary for "selected patch" (docs/DESIGN.md). */
     .lib-row.selected, .lib-slot-patch.selected { background: var(--bg-panel); box-shadow: inset 3px 0 0 var(--accent); }
@@ -634,6 +686,10 @@
       color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums;
     }
     .lib-group + .lib-group { margin-top: 4px; }
+    /* A group heading that carries an action sits on one line with it. */
+    .lib-group-title-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
     .lib-group-title {
       position: sticky; top: 0; z-index: 1;
       background: var(--bg); padding: 7px 6px 5px;
@@ -661,13 +717,18 @@
     /* A setlist row is a button plus its own delete control, so the row is a
        container rather than one button. */
     .lib-setlist-row { display: flex; align-items: center; gap: 6px; padding: 0; }
+    /* Three columns where a row is numbered — the number, the name, the
+       count. Two columns wrapped the count onto its own line as soon as the
+       number arrived (Daniel, 2026-08-13). */
     .lib-setlist-row .lib-setlist {
       display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
       flex: 1; min-width: 0; padding: 7px 6px;
       background: none; border: none; color: var(--text); font: inherit;
       text-align: left; cursor: pointer;
     }
-    .lib-setlist-row:hover { background: var(--bg-raised); }
+    .lib-setlist-row .lib-setlist:has(.patch-num) {
+      grid-template-columns: 1.9rem 1fr auto;
+    }
     .setlist-send {
       font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
       background: none; border: 1px solid var(--line); border-radius: 4px;
@@ -695,6 +756,9 @@
        rule above hides .setlist-send until its ROW is hovered, and there is no
        row here to hover — so it was present and invisible. */
     .lib-setlist-head .setlist-send { margin-left: auto; opacity: 1; }
+    /* Same reason inside a backup: a bank heading is not a hoverable row, so
+       its Send would have stayed invisible (Daniel, 2026-08-13). */
+    .lib-group-title-row .setlist-send { opacity: 1; }
     .lib-back {
       font: inherit; font-size: 12px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
@@ -804,6 +868,17 @@
       color: var(--text-dim);
     }
     .seven-modal.is-transfer .seven-modal-body { text-align: center; margin-top: 18px; }
+    /* The same treatment for an announcement — the backup asking, and the
+       backup reporting. DESIGN.md: a header never competes with what it
+       introduces. Left at 15/700 over a centred body, the title WAS the focal
+       point and the copy underneath had nothing to anchor it
+       (Daniel, 2026-08-13). */
+    .seven-modal.is-announce .seven-modal-title {
+      text-align: center; padding: 0 28px;
+      font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .seven-modal.is-announce .seven-modal-body { text-align: center; margin-top: 18px; }
     .seven-modal-body .tx-from, .seven-modal-body .tx-to {
       margin: 0; font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.3;
     }
@@ -834,12 +909,21 @@
     .seven-modal-body .tx-alarm { margin-top: 0; color: var(--accent); }
     /* The backup summary reads as a little diagram — the count, an arrow, the
        destination — so it is centred and the arrow stands alone. */
-    .seven-modal-body .bk-sum { text-align: center; margin: 0; }
-    .seven-modal-body .bk-arrow {
-      text-align: center; margin: 4px 0; font-size: 18px; line-height: 1;
-      color: var(--text-muted);
+    /* "32 presets → computer" is a from/to, exactly as a transfer is, so it
+       carries the same weight: the two ends large, the arrow between them
+       quiet, and the supporting lines small. */
+    .seven-modal-body .bk-sum {
+      text-align: center; margin: 0;
+      font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.3;
     }
-    .seven-modal-body .bk-time { text-align: center; margin-top: 18px; }
+    .seven-modal-body .bk-arrow {
+      text-align: center; margin: 2px 0; font-size: 16px; line-height: 1;
+      color: var(--text-dim);
+    }
+    .seven-modal-body .bk-time {
+      text-align: center; margin: 16px 0 0; font-size: 12px; color: var(--text-muted);
+    }
+    .seven-modal-body .bk-time + .bk-time { margin-top: 4px; }
     /* The walk's step: which patch, then where it goes, then the panel. */
     .seven-modal-body .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
     /* Sits ON the name, not under the block: the patch is already playing, and
@@ -976,6 +1060,13 @@
       font-size: 12px; font-weight: 700; letter-spacing: .12em;
       text-transform: uppercase; color: var(--text-muted);
     }
+    /* The instrument grid's two halves are named in their own colour, at a
+       size that reads as a heading rather than a caption. */
+    .pick-group-title.is-modeled, .pick-group-title.is-sampled {
+      font-size: 15px; letter-spacing: .08em; padding-bottom: 8px;
+    }
+    .pick-group-title.is-modeled { color: var(--modeled); }
+    .pick-group-title.is-sampled { color: var(--sampled); }
     .pick-grid {
       display: grid; gap: 8px;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1003,19 +1094,32 @@
        own picker shell (one preset on the instrument, not a setlist slot). */
     .pick-inline { max-height: 54vh; overflow-y: auto; margin-top: 12px; text-align: left; }
     .pick-tile-art {
-      align-items: center; text-align: center; gap: 6px; padding: 12px 8px 10px;
+      align-items: center; text-align: center; gap: 4px; padding: 8px 8px 8px;
       /* A wash of the family colour behind the picture. Sounds that share an
          instrument — every Venice Grand is an acoustic grand sample — share a
          drawing, so the tile's colour and its name are what tell them apart. */
       background: color-mix(in srgb, var(--tile) 14%, var(--bg-raised));
     }
     .pick-tile-art:hover { background: color-mix(in srgb, var(--tile) 26%, var(--bg-raised)); }
-    .tile-art { color: var(--tile); display: block; line-height: 0; }
+    /* A FIXED picture area, with the instrument centred in it. The art was
+       sized by its own aspect, so a short wide one (the MKS rack) floated
+       against the top of a tall box and every label sat at a different height
+       down the row (Daniel, 2026-08-13). One box, one baseline for the names. */
+    .tile-art {
+      color: var(--tile); display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 92px; line-height: 0;
+    }
     /* A drawn instrument brings its own colours; only the fallback line art is
        tinted with the family colour. */
-    .tile-art .sound-art.is-drawing { display: block; width: 100%; }
+    .tile-art .sound-art.is-drawing {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+    }
     .tile-art .sound-art.is-drawing svg,
-    .tile-art .sound-art.is-drawing img { display: block; width: 100%; height: auto; }
+    .tile-art .sound-art.is-drawing img {
+      display: block; width: 100%; height: 100%;
+      object-fit: contain; object-position: center;
+    }
     /* A photograph with a transparent background reads as a cut-out pasted on
        — hardest on the dark theme, where the silhouette meets near-black with
        nothing between them. drop-shadow follows the ALPHA rather than the box,
@@ -1223,11 +1327,14 @@
        button and a link, which put two button shapes in one column and made
        saving look louder than the patch it belonged to (Daniel, 2026-08-13).
        They stand out by COLOUR and WEIGHT — nothing else. */
-    .save-actions { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    /* Column-first: these two stack, because the column is narrow and a row
+       wrapped more often than not — leaving the separator dangling at the end
+       of the first line. Stacked, they need no separator at all. */
+    .save-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .save-sep { display: none; }
     /* Never break a label across lines — "Save to Seven" came out three lines
-       tall in a narrow column (Daniel, 2026-08-13). The pair wraps as two
-       whole labels instead. */
-    #save-live-btn, .save-seven-link, .save-sep { white-space: nowrap; }
+       tall in a narrow column (Daniel, 2026-08-13). */
+    #save-live-btn, .save-seven-link { white-space: nowrap; }
     .save-sep { color: var(--text-dim); font-size: 12px; }
     #save-live-btn, .save-seven-link {
       font: inherit; font-size: 12px; font-weight: 600;
@@ -1273,8 +1380,11 @@
       display: block; margin-top: 6px; min-width: 0; font-size: 12px; line-height: 1.45;
       text-align: left;
     }
-    /* Quiet: the pair dims together and neither can be pressed. */
-    .save-slot .audition-bar.is-idle { opacity: .5; }
+    /* Quiet: the two ACTIONS dim and neither can be pressed. The note does
+       not — it is what just happened, and saving is precisely what makes the
+       controls go quiet, so the confirmation was arriving already greyed out
+       (Daniel, 2026-08-13). */
+    .save-slot .audition-bar.is-idle .save-actions { opacity: .5; }
 
     .audition-bar {
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -1522,6 +1632,13 @@
 
     .engine-carousel.is-open .is-peek, .engine-carousel:focus-within .is-peek {
       opacity: .38; pointer-events: auto;
+      /* ABOVE the hero while open, so the whole neighbour is a target. The
+         hero's box is a full-width square scaled to 1.12, and it was covering
+         most of each peek — how much depended on the instrument's proportions,
+         so a wide one like the Clavi or the DX7 left almost nothing to aim at
+         (Daniel, 2026-08-13). The hero keeps the middle, which is where you
+         click to choose it. */
+      z-index: 4;
     }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
       transform: translateX(-72%) scale(.74);
@@ -1946,7 +2063,7 @@
           <span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="fx-title">On this computer</span>
           <span id="library-count" class="lib-count"></span>
-          <button type="button" id="library-reveal" class="lib-reveal" title="Reveal the library folder in Finder">Reveal Library Folder</button>
+          <button type="button" id="library-reveal" class="lib-reveal" title="Open the library folder in Finder">Open Library Folder</button>
         </div>
         <div class="fx-body"><div class="fx-body-inner">
           <div id="library-body"></div>

@@ -395,7 +395,7 @@ function registerBackupIpc() {
         '<p class="bk-arrow" aria-hidden="true">\u2193</p>' +
         '<p class="bk-sum">computer</p>' +
         '<p class="bk-time">It takes about 60 seconds.</p>' +
-        '<p class="bk-sum">Any unsaved edits will be lost.</p>',
+        '<p class="bk-time">Any unsaved edits will be lost.</p>',
       confirmLabel: 'Back Up',
     };
   });
