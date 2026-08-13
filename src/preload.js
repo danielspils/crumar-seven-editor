@@ -106,6 +106,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     status: () => ipcRenderer.invoke('midi:status'),
     present: () => ipcRenderer.invoke('midi:present'),
     onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
+    // Two steps: the wording (which needs main-process knowledge of what the
+    // panel has told us) and the run. The dialog itself is the app's own.
+    backupPlan: () => ipcRenderer.invoke('backup:plan'),
     backup: () => ipcRenderer.invoke('backup:start'),
     // Audition: load a patch (or a bare sound) into the edit buffer so it can
     // be heard. Stores nothing — keeping it needs a three-second panel hold.
@@ -152,6 +155,6 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     clear: (index, slot) => ipcRenderer.invoke('setlist:clear', { index, slot }),
     move: (index, from, to) => ipcRenderer.invoke('setlist:move', { index, from, to }),
     contextMenu: () => ipcRenderer.invoke('setlist:contextMenu'),
-    confirmDelete: (name) => ipcRenderer.invoke('setlist:confirmDelete', { name }),
+    deletePrompt: (name) => ipcRenderer.invoke('setlist:deletePrompt', { name }),
   },
 });

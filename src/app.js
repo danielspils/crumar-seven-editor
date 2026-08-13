@@ -416,12 +416,40 @@
   // leaves, and it survives everything in between.
   let carouselOpen = false;
 
-  document.addEventListener('pointerover', (e) => {
-    const inside = !!e.target.closest('[data-carousel]');
-    if (inside === carouselOpen) return;
-    carouselOpen = inside;
-    const car = document.querySelector('[data-carousel]');
-    if (car) car.classList.toggle('is-open', inside);
+  // Opening and staying open are DIFFERENT areas.
+  //
+  // The wheel used to claim a hit pad 104px to either side, so that a pointer
+  // travelling out to a peek did not leave it and shut it. But that pad also
+  // reached into the effects column, and coming up past Master Volume or FX1
+  // opened the carousel without going near it (Daniel, 2026-08-13).
+  //
+  // So: it OPENS only when the pointer is over the carousel itself, and it
+  // stays open until the pointer leaves a margin around it. Measured against
+  // the box rather than hit-tested against an element, because the peeks are
+  // drawn outside the box on purpose and an element big enough to cover them
+  // is an element big enough to catch passing traffic.
+  const OPEN_MARGIN_X = 96; // far enough to reach a peek
+  const OPEN_MARGIN_Y = 22;
+  let pointerQueued = false;
+  document.addEventListener('pointermove', (e) => {
+    if (pointerQueued) return;
+    pointerQueued = true;
+    // One test per frame: this fires on every mouse move.
+    requestAnimationFrame(() => {
+      pointerQueued = false;
+      const car = document.querySelector('[data-carousel]');
+      if (!car) { carouselOpen = false; return; }
+      const r = car.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      const over = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const near = x >= r.left - OPEN_MARGIN_X && x <= r.right + OPEN_MARGIN_X
+        && y >= r.top - OPEN_MARGIN_Y && y <= r.bottom + OPEN_MARGIN_Y;
+      const want = carouselOpen ? near : over;
+      if (want === carouselOpen) return;
+      carouselOpen = want;
+      car.classList.toggle('is-open', want);
+    });
   });
   // Where the wheel is now: liveSound when the instrument is holding something
   // other than what the file names, otherwise the file's own sound. Counting
@@ -480,6 +508,35 @@
       }
     }, TURN_MS);
   }
+
+  // "Save to Seven?" — the panel hold, explained the way the transfer explains
+  // it: the same picture of the panel with the bank LED and the button lit
+  // where they will light, and the same short lines under it. The player is
+  // looking at the instrument, so "hold THAT one" is a location rather than a
+  // sentence (Daniel, 2026-08-13).
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-save-to-seven]')) return;
+    const bank = deviceSel ? deviceSel.bank + 1 : null;
+    const preset = deviceSel ? deviceSel.preset + 1 : null;
+    const modal = SevenModal.open({
+      title: 'Save a Sound to the Seven',
+      bodyHtml:
+        // Only draw the panel when we know which button to light. A picture
+        // with nothing lit would be decoration, and this one is instructions.
+        (bank ? SevenPanelMini.render(bank, preset) : '') +
+        '<p class="tx-note">Hold a preset button for 3 seconds.</p>' +
+        '<p class="tx-note">The lights will run to confirm the save.</p>' +
+        '<p class="tx-note">(the Seven will not save to Bank 1)</p>',
+      confirmLabel: 'Got it!',
+      cancelLabel: 'Close',
+      tone: 'is-transfer',
+    });
+    // The picture performs the instruction on a loop: the button lights, the
+    // hold elapses, the lights run. Stopped when the modal goes, or the timers
+    // keep firing at nodes that are no longer on the page.
+    const stop = bank ? SevenPanelMini.playSave(modal.body, preset) : null;
+    modal.action().then(() => { if (stop) stop(); modal.close(); });
+  });
 
   document.addEventListener('click', (e) => {
     // The Select button under the wheel does what clicking the middle does.
@@ -576,7 +633,13 @@
 
     carouselAt = null;
     liveSound = soundList.find((x) => x.name === name) || null;
-    audition.beginLive();
+    // Dirty from the moment the instrument differs from what the slot stores —
+    // the save instructions belong here, not one parameter edit later.
+    const stored = (currentPatch() || {}).soundName;
+    // The runner silences the effects chain with the sound; the working copy
+    // has to follow, or the panel would show FX the instrument is no longer
+    // running. It reports what it sent rather than us keeping a second list.
+    audition.beginLive({ dirty: name !== stored, params: step.params });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');
@@ -1007,6 +1070,7 @@
   }
 
   let lastDetailKey = null;
+  let lastSaveBar = false; // was the save block showing on the previous render?
 
   function renderDetail() {
     const patch = currentPatch();
@@ -1062,8 +1126,20 @@
     // change of patch starts at the top, which is what detailKey tracks.
     const key = `${lastTouched}:${(currentTarget() || {}).file || ''}:${patch && patch.name}`;
     const keepScroll = key === lastDetailKey ? detailEl.scrollTop : 0;
+    // The save controls live INSIDE the sound engine column now, under the
+    // bank line — above the whole panel they pushed both columns down, which
+    // read as the layout breaking rather than something arriving
+    // (Daniel, 2026-08-13). Only the parameters move.
+    const saveBar = patch ? audition.renderBar(patch, live) : '';
+    // The block is always there; what changes is whether it is LIVE. Animate
+    // only on the change from quiet to live — every edit re-renders this
+    // panel and a fresh node replays its animation, so without this the
+    // controls would flare on every drag.
+    const nowActive = !!patch && audition.saveIsActive();
+    const saveBarNew = nowActive && !lastSaveBar;
+    lastSaveBar = nowActive;
     detailEl.innerHTML = patch
-      ? audition.renderBar(patch, live) + R.renderDetail(shown, { showRaw, collapsed, live, ...pos })
+      ? R.renderDetail(shown, { showRaw, collapsed, live, saveBar, saveBarNew, ...pos })
       : `<div class="placeholder">${emptyMsg}</div>`;
     detailEl.scrollTop = keepScroll;
     lastDetailKey = key;
@@ -1496,7 +1572,15 @@
       // Shared by the trash icon and the context menu's Delete — one confirm,
       // one path. Deleting a setlist never touches the patches it references.
       async deleteSetlist(index, name) {
-        if (await window.sevenAPI.setlists.confirmDelete(name)) {
+        const prompt = await window.sevenAPI.setlists.deletePrompt(name);
+        const ok = await SevenModal.confirm({
+          title: prompt.title,
+          body: prompt.body,
+          confirmLabel: prompt.confirmLabel,
+          cancelLabel: 'Cancel',
+          tone: 'is-warning',
+        });
+        if (ok) {
           // Keep the whole thing — a setlist is a name and eight references,
           // so putting it back is exact, not approximate.
           const gone = JSON.parse(JSON.stringify(libData.setlists[index] || { name, slots: [] }));
@@ -1627,7 +1711,15 @@
           libView.beginSetlistRename(index);
         } else if (action === 'delete') {
           // Confirm first; deleting a setlist never touches the patches.
-          if (await window.sevenAPI.setlists.confirmDelete(name)) {
+          const prompt = await window.sevenAPI.setlists.deletePrompt(name);
+        const ok = await SevenModal.confirm({
+          title: prompt.title,
+          body: prompt.body,
+          confirmLabel: prompt.confirmLabel,
+          cancelLabel: 'Cancel',
+          tone: 'is-warning',
+        });
+        if (ok) {
             await window.sevenAPI.setlists.delete(index);
             await refreshLibrary();
           }
@@ -2058,6 +2150,21 @@
         ? `Backup cancelled at ${ev.slots}/32 — ${counts} · ${where}`
         : `Backed up 32/32 in ${fmtElapsed(ev.durationMs)} — ${counts} · ${where}`;
       refreshLibrary();
+      // Say it plainly, not only in the connection row. A backup is the thing
+      // this app exists for, and it finishing deserves more than a line of
+      // status text changing behind you (Daniel, 2026-08-13). Cancelled runs
+      // get the same shape with the honest number — they DID save what they
+      // reached, and that is worth confirming rather than treating as a
+      // failure.
+      const n = ev.cancelled ? ev.slots : 32;
+      SevenModal.confirm({
+        title: ev.cancelled ? 'Backup cancelled' : 'Backup completato!',
+        bodyHtml:
+          `<p class="bk-sum">${n} preset${n === 1 ? '' : 's'} backed up<br>to your computer</p>` +
+          `<p class="bk-time">(${esc(counts)})</p>`,
+        confirmLabel: 'Done',
+        cancelLabel: 'Close', // the corner X's accessible name, not a button
+      });
     };
 
     backupBtn.addEventListener('click', async () => {
@@ -2074,6 +2181,18 @@
       // Clav. The record was wrong, not the Seven, which is the worse failure
       // of the two — a backup that lies is worse than one that refuses.
       if (audition.endSession()) await new Promise((r) => setTimeout(r, 600));
+      // Confirm in one of our own modals. The wording comes from the main
+      // process, which is the only side that knows whether the panel has told
+      // us which preset the Seven is sitting on.
+      const plan = await window.sevenAPI.midi.backupPlan();
+      if (!plan || !plan.ok) return;
+      const go = await SevenModal.confirm({
+        title: plan.title,
+        bodyHtml: plan.bodyHtml,
+        confirmLabel: plan.confirmLabel,
+        cancelLabel: 'Cancel',
+      });
+      if (!go) return;
       const { started } = await window.sevenAPI.midi.backup();
       if (started) {
         backupRunning = true;

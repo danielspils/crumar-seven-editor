@@ -208,7 +208,7 @@
     #connection-row.failed .conn-dot { background: #a8221c; }
     #conn-button {
       margin-left: auto;
-      background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 4px;
+      background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 5px;
       color: #26262a; font: inherit; font-size: 12px;
       padding: 2px 10px; cursor: pointer;
     }
@@ -832,6 +832,14 @@
     /* What the instrument never told us, said quietly rather than dropped. */
     .seven-modal-body .tx-fine { font-size: 12px; color: var(--text-dim); }
     .seven-modal-body .tx-alarm { margin-top: 0; color: var(--accent); }
+    /* The backup summary reads as a little diagram — the count, an arrow, the
+       destination — so it is centred and the arrow stands alone. */
+    .seven-modal-body .bk-sum { text-align: center; margin: 0; }
+    .seven-modal-body .bk-arrow {
+      text-align: center; margin: 4px 0; font-size: 18px; line-height: 1;
+      color: var(--text-muted);
+    }
+    .seven-modal-body .bk-time { text-align: center; margin-top: 18px; }
     /* The walk's step: which patch, then where it goes, then the panel. */
     .seven-modal-body .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
     /* Sits ON the name, not under the block: the patch is already playing, and
@@ -869,7 +877,12 @@
     /* Which button to press is carried by the GROUP's class, so stepping to
        the next one is a toggle on living nodes and every one of these can
        cross-fade rather than cut. */
-    .panel-mini .pm-active .pm-face { fill: #34343a; stroke: #8d8d97; stroke-width: 1.4; }
+    /* The button to press is visibly LIGHTER, not just outlined — against
+       seven identical dark caps a faint lift did not register as selected
+       (Daniel, 2026-08-13). The cap catches more light with it, the way a
+       pressed key does. */
+    .panel-mini .pm-active .pm-face { fill: #4e4e57; stroke: #b6b6c0; stroke-width: 1.4; }
+    .panel-mini .pm-active .pm-cap { fill: rgba(255, 255, 255, .12); }
     /* The one lit LED blinks, the way a preset waiting to be stored asks for
        attention on the instrument itself. */
     .panel-mini .pm-active .pm-led { fill: #ff3b30; animation: pm-blink 1.05s steps(1, end) infinite; }
@@ -879,6 +892,31 @@
        where it is. */
     .panel-mini .pm-dim { opacity: .5; }
     .panel-mini .pm-active { opacity: 1; }
+    /* The confirmation run: after the hold, the Seven's lights travel down the
+       row. ONLY the LEDs move — the buttons themselves stay exactly as they
+       are, because on the instrument nothing but the lights is doing anything
+       (Daniel, 2026-08-13). Lighting the whole group made the caps flicker as
+       though eight buttons were being pressed. Not the blinking .pm-active
+       LED either — this is the instrument answering, not asking. */
+    /* The run is as bright as the held light. It was not, and the reason was
+       not its colour: those buttons carry .pm-dim, whose opacity halves
+       EVERYTHING inside the group — a child cannot out-shine its parent's
+       opacity (Daniel, 2026-08-13).
+       So the group goes to full opacity for the run, and the face, cap and
+       number are held at the values they rendered at while dimmed. The button
+       looks untouched; only the light changes. */
+    .panel-mini .pm-run { opacity: 1; }
+    .panel-mini .pm-run .pm-face { fill: #1d1d21; stroke: #313136; }
+    .panel-mini .pm-run .pm-cap { fill: rgba(255, 255, 255, .022); }
+    .panel-mini .pm-run .pm-idx { fill: #494950; }
+    .panel-mini .pm-run .pm-led {
+      fill: #ffe9e6;
+      filter: drop-shadow(0 0 3px #ff3b30) drop-shadow(0 0 7px #ff3b30);
+    }
+    /* In the demonstration the held button's light is SOLID. The blink belongs
+       to the transfer walk, where the panel is asking for a press. */
+    .panel-mini.pm-demo .pm-active .pm-led { animation: none; fill: #ff3b30; }
+    .panel-mini .pm-btn .pm-led { transition: fill .12s ease; }
     .panel-mini .pm-btn { transition: opacity .26s ease; }
     .panel-mini .pm-btn .pm-face { transition: fill .26s ease, stroke .26s ease; }
     /* The legend travels the row rather than being redrawn over the next
@@ -1181,6 +1219,63 @@
        horizontally; the stable gutter keeps content width constant whether or
        not a classic scrollbar is showing. */
     /* Audition bar: only rendered while an instrument is connected. */
+    /* Two text links, sized like the lines above them. They were a filled
+       button and a link, which put two button shapes in one column and made
+       saving look louder than the patch it belonged to (Daniel, 2026-08-13).
+       They stand out by COLOUR and WEIGHT — nothing else. */
+    .save-actions { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    /* Never break a label across lines — "Save to Seven" came out three lines
+       tall in a narrow column (Daniel, 2026-08-13). The pair wraps as two
+       whole labels instead. */
+    #save-live-btn, .save-seven-link, .save-sep { white-space: nowrap; }
+    .save-sep { color: var(--text-dim); font-size: 12px; }
+    #save-live-btn, .save-seven-link {
+      font: inherit; font-size: 12px; font-weight: 600;
+      background: none; border: none; padding: 0; cursor: pointer;
+      text-decoration: none; text-align: left;
+    }
+    /* The one that writes to disk carries the action colour; the one that only
+       explains something is quieter. */
+    #save-live-btn { color: var(--action); }
+    .save-seven-link { color: var(--text-muted); font-weight: 500; }
+    #save-live-btn:hover:not(:disabled), .save-seven-link:hover {
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    #save-live-btn:focus-visible, .save-seven-link:focus-visible {
+      outline: 2px solid var(--action); outline-offset: 2px; border-radius: 3px;
+    }
+    #save-live-btn:disabled { cursor: default; }
+
+
+    /* Coming alive is an ANIMATION, not a transition: the panel is re-rendered
+       on every live edit, so the node is new each time and has no previous
+       state to transition from. .is-appearing is set only on the render where
+       it goes live, or it would flare on every drag. */
+    .save-slot { overflow: hidden; }
+    @keyframes save-wake {
+      from { opacity: .35; }
+      to   { opacity: 1; }
+    }
+    .save-slot.is-appearing .audition-bar { animation: save-wake 340ms ease-out both; }
+    @media (prefers-reduced-motion: reduce) {
+      .save-slot.is-appearing .audition-bar { animation: none; }
+    }
+    /* In-column: left-aligned with the bank line above, and every decoration
+       the old full-width bar carried is undone here or it draws a stray rule
+       across the column. */
+    .save-slot .audition-bar,
+    .save-slot .audition-bar.is-live {
+      display: block; position: static; z-index: auto; text-align: left;
+      margin: 12px 0 0; padding: 0;
+      background: none; border: none; box-shadow: none;
+    }
+    .save-slot .audition-bar .audition-note {
+      display: block; margin-top: 6px; min-width: 0; font-size: 12px; line-height: 1.45;
+      text-align: left;
+    }
+    /* Quiet: the pair dims together and neither can be pressed. */
+    .save-slot .audition-bar.is-idle { opacity: .5; }
+
     .audition-bar {
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
       margin: -4px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
@@ -1195,13 +1290,6 @@
     .audition-note { font-size: 12px; color: var(--text-muted); flex: 1; min-width: 12rem; }
     .audition-note.is-ok { color: var(--modeled); }
     .audition-note.is-error { color: var(--warn-text, #c0392b); }
-    #save-live-btn {
-      font: inherit; font-size: 12px; font-weight: 600;
-      color: var(--action-ink); background: var(--action);
-      border: 1px solid var(--action); border-radius: 5px;
-      padding: 5px 12px; cursor: pointer; flex: none;
-    }
-    #save-live-btn:disabled { opacity: .6; cursor: default; }
     /* A live row is interactive: the bar becomes a track you can press
        anywhere along, and switches/selectors respond to a click. */
     .param.is-live .param-bar { cursor: ew-resize; }
@@ -1236,7 +1324,6 @@
       padding: 3px 8px; border-radius: 4px; flex: none;
     }
     .audition-patch { font-weight: 600; font-size: 13px; flex: none; }
-    .audition-dirty { color: var(--action); margin-left: 6px; font-size: 15px; line-height: 1; }
     #audition-btn.is-secondary { font-weight: 400; color: var(--text-muted); }
     /* The note's height is reserved, so swapping its text (hint, result,
        error) never reflows the row beneath it. */
@@ -1245,7 +1332,6 @@
     .audition-bar.is-live .audition-note {
       flex: 0 0 100%; min-width: 0; min-height: 1.4em; margin-top: 2px;
     }
-    #save-live-btn:disabled { opacity: .45; cursor: default; background: var(--line); border-color: var(--line); color: var(--text-muted); }
     /* Leaving audition mode is a close control at the bar's right edge, the
        same affordance the modal uses — not a button beside Save. */
     #done-live-btn {
@@ -1258,7 +1344,6 @@
       color: var(--text-dim); cursor: pointer;
     }
     #done-live-btn:hover { color: var(--text); background: var(--shade-hard); }
-    #detail:has(.audition-bar.is-live) { box-shadow: inset 0 0 0 1px var(--amber); }
 
     #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
     #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
@@ -1397,16 +1482,6 @@
       :root[data-theme="dark"] .engine-carousel .car-face.is-landing .sound-art {
         animation: car-afterglow-dark 900ms ease-out both;
       }
-    }
-    /* The peeks are drawn OUTSIDE this box — that is what keeps the resting
-       layout at 128px — so the pointer left the carousel the moment it reached
-       one, hover ended and the wheel shut in your face (Daniel, 2026-08-12).
-       This pad extends the hover area over them without moving anything: a
-       pseudo-element counts as part of the element for :hover, and it sits
-       under every face so it never eats a click meant for a picture. */
-    .engine-carousel::before {
-      content: ''; position: absolute; z-index: 0;
-      top: -16px; bottom: -22px; left: -104px; right: -104px;
     }
     .engine-carousel .is-hero { position: relative; z-index: 3; }
     /* Waking up: the centre grows a little and the neighbours fade in, rather

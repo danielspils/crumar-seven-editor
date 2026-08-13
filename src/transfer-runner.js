@@ -43,6 +43,46 @@ const BURST_TAIL_MS = 400;
 // glb index 3, pinned by a captured editor write (see seven-midi.js).
 const SEND_PC_INDEX = 3;
 
+// Trying an instrument replaces the effects chain it lands in.
+//
+// A sound change carries the sound and nothing else (verified 0x46, and again
+// 2026-08-13: Acoustic Piano arrived still wearing the previous patch's Pedal
+// Wha-Wha at depth 97). That is right when auditioning a sound FOR a preset
+// and wrong when you want to hear the instrument — a Vibraphone under a Clavi
+// patch's distortion, wha and pad sounds like the Clavi, and reads as the
+// sound not having changed at all.
+//
+// What replaces it depends on whether the instrument HAS a chain of its own:
+//
+//   MODELED — yes. Bank 1 is the factory bank and its eight presets are the
+//     eight modeled sounds, each with its own effects: the Wurlitzer has
+//     tremolo, amp and reverb; the MKS has chorus; the Rhodes is dry. Those are
+//     read off the player's own backup of Bank 1, so this is their instrument's
+//     values rather than anything invented here.
+//
+//   SAMPLED — no. The sixteen sampled sounds appear in no factory preset and
+//     carry no effects anywhere, so there is nothing to restore and the chain
+//     goes off.
+//
+// Master Volume/EQ is excluded from both paths: veq_vol is the output level,
+// and moving it on a sound change would be alarming rather than helpful.
+const FX_RESET = Object.freeze({
+  fx1_sw: 0, // FX1
+  fx2_sw: 0, // FX2
+  amp_sw: 0, // Amp Simulator
+  rev_sw: 0, // Reverb
+  pad_sw: 0, // Synth Pad
+});
+
+// Every parameter in the effects chain, taken from the schema so a firmware
+// that adds one is covered without a list here going stale. veq_* is excluded
+// on purpose: that group is Master Volume/EQ, and veq_vol is the output level.
+function chainKeys(schema) {
+  return (schema.parameters || schema.params || [])
+    .filter((p) => /^efx_/.test(p.group) && !/^veq_/.test(p.key))
+    .map((p) => p.key);
+}
+
 class TransferRunner extends EventEmitter {
   constructor({ midi, store, sender }) {
     super();
@@ -258,7 +298,7 @@ class TransferRunner extends EventEmitter {
       if (slot.action !== 'send' && slot.action !== 'send-sound') continue;
       st.index = i;
       const patch = slot.action === 'send-sound'
-        ? { sound: { name: slot.soundName }, params: {} }
+        ? { sound: { name: slot.soundName }, params: this._chainFor(slot.soundName) }
         : this._patchFor(slot.ref);
       // Move the instrument to the slot FIRST — a recall replaces the edit
       // buffer, so doing it after the load would throw the load away.
@@ -283,6 +323,9 @@ class TransferRunner extends EventEmitter {
         bank: st.bank,
         name: slot.name,
         soundName: slot.soundName,
+        // What was sent alongside the sound, so the panel can show the buffer
+        // as it now IS rather than as the file still describes it.
+        params: slot.action === 'send-sound' ? { ...patch.params } : null,
         // The instruction is the point of the whole feature.
         instruction: `Hold preset ${i + 1} on the Seven for three seconds.`,
         done: false,
@@ -437,6 +480,60 @@ class TransferRunner extends EventEmitter {
     this.state = null;
     this.emit('event', report);
     return report;
+  }
+
+  // What effects a bare sound arrives with.
+  //
+  // MODELED sounds have a factory chain and it is on the instrument: Bank 1 is
+  // the factory bank and its eight presets are the eight modeled sounds — the
+  // Wurlitzer with tremolo, amp and reverb, the MKS with chorus, the Rhodes
+  // dry. Read from the player's own backup of Bank 1, so these are their
+  // instrument's values and not something invented here. Confirmed unedited:
+  // three separate backup runs produced byte-identical patches (2026-08-13).
+  //
+  // SAMPLED sounds appear in no factory preset and carry no effects anywhere,
+  // so there is nothing to restore and the chain goes off.
+  //
+  // Modeled with no Bank 1 backup on disk falls back to off. That is the
+  // honest answer rather than a guess — better a dry instrument than one
+  // wearing settings we made up — and it is why the step reports what it sent.
+  _chainFor(soundName) {
+    const table = this.midi && this.midi.soundTable;
+    const known = table && table.sounds.find((s) => s.name === soundName);
+    // Unknown sounds are refused upstream by the sender, which resolves by
+    // name against this same table; treating one as sampled here is only a
+    // safe default for a case that should not arrive.
+    if (!known || known.sampled) return { ...FX_RESET };
+
+    const factory = this._factoryPatchFor(soundName);
+    if (!factory) return { ...FX_RESET };
+
+    const keys = chainKeys(this.store.schema || {});
+    const out = {};
+    for (const k of keys) {
+      if (factory.params[k] !== undefined) out[k] = factory.params[k];
+    }
+    // A Bank 1 patch with no chain values at all is not evidence of silence,
+    // it is a file we could not read properly — fall back rather than send an
+    // empty object and leave the previous patch's effects standing.
+    return Object.keys(out).length ? out : { ...FX_RESET };
+  }
+
+  // The Bank 1 backup for a modeled sound, by SOUND NAME rather than by slot
+  // position — the two agree today, and the name is what the format treats as
+  // a patch's identity.
+  _factoryPatchFor(soundName) {
+    let listing;
+    try { listing = this.store.list(); } catch { return null; }
+    // list() returns { dir, patches, setlists } — the entries are `patches`.
+    const hit = ((listing && listing.patches) || []).find(
+      (x) => x.origin && x.origin.bank === 1 && x.soundName === soundName
+    );
+    if (!hit) return null;
+    try {
+      const parsed = this.store.readFile(hit.file);
+      return (parsed.library.patches[hit.patchIndex || 0]) || null;
+    } catch { return null; }
   }
 
   _patchFor(file) {

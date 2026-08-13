@@ -47,43 +47,53 @@
   // screen", which selecting a patch now guarantees on its own. What is left
   // is the fact the app cannot do for you: storing needs your hands on the
   // panel (Daniel, 2026-08-12).
-  const SAVE_HINT = 'In banks 2, 3, or 4, hold a button for 3 seconds to save';
 
   function renderAuditionBar(patch, live) {
     const target = auditionTarget();
     if (!target) return '';
+
+    // Two words of text, not two buttons. A filled button sat in a column of
+    // 12px labels and read as the loudest thing on the panel, and it was
+    // competing for shape with everything else (Daniel, 2026-08-13). These are
+    // links: the same size as the lines above them, told apart by colour and
+    // weight rather than by chrome.
+    //
+    // Both are always present, dimmed and inert until there is something to
+    // save. The note, when there is one, goes on its own line underneath.
+    const bar = (live, note, kind = '') =>
+      `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
+      `<span class="save-actions">` +
+      `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
+      'Save to Library</button>' +
+      `<span class="save-sep" aria-hidden="true">·</span>` +
+      `<button type="button" class="save-seven-link" data-save-to-seven>Save to Seven</button>` +
+      `</span>` +
+      (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
+      `</div>`;
+
     // Losing the cable is not the same as walking away from a patch: you did
     // not choose it, so the edits stay and the bar keeps a way to save them.
     const stranded =
       !isConnected() && liveEdit && liveEdit.dirty && liveEdit.file === target.file;
     if (stranded) {
-      return (
-        `<div class="audition-bar">` +
-        `<button type="button" id="save-live-btn">Save to Library</button>` +
-        `<span class="audition-note is-error">The Seven disconnected. These edits ` +
-        `are still here — save them to keep them.</span>` +
-        `</div>`
-      );
+      return bar(true, 'The Seven disconnected. These edits are still here — save them to keep them.', 'is-error');
     }
-    if (!isConnected()) return '';
+    if (!isConnected()) return bar(false, '');
+
     const mine = auditionNote && auditionNote.file === target.file;
-    // A real problem always gets said. Otherwise the bar is silent until an
-    // edit exists to lose.
     const dirty = !!(live && liveEdit && liveEdit.dirty);
-    if (!mine && !dirty) return '';
-    if (mine && !dirty) {
-      return `<div class="audition-bar"><span class="audition-note ${auditionNote.kind}">` +
-        `${esc(auditionNote.text)}</span></div>`;
-    }
-    return (
-      `<div class="audition-bar is-live">` +
-      `<span class="audition-dirty" title="Edited, and not saved">•</span>` +
-      `<button type="button" id="save-live-btn">Save to Library</button>` +
-      (mine
-        ? `<span class="audition-note ${auditionNote.kind}">${esc(auditionNote.text)}</span>`
-        : `<span class="audition-note">${SAVE_HINT}</span>`) +
-      `</div>`
-    );
+    // A note about what just happened (saved, copied) belongs on the quiet
+    // state too — it is news, not an alarm.
+    return bar(dirty, mine ? esc(auditionNote.text) : '', mine ? auditionNote.kind : '');
+  }
+
+  // Is there anything to save right now? The panel uses it to decide whether
+  // the controls have just come alive and should say so.
+  function saveIsActive() {
+    const target = auditionTarget();
+    if (!target) return false;
+    if (!isConnected()) return !!(liveEdit && liveEdit.dirty && liveEdit.file === target.file);
+    return !!(liveEdit && liveEdit.dirty);
   }
 
   // The working copy of a patch that the instrument's edit buffer is known to
@@ -513,22 +523,26 @@
     const previous = { ...(entry.params || {}) };
     let { file, patchIndex } = liveEdit;
 
-    // Two ways to keep it, and the app should not pick for you. Overwriting is
-    // right when you are refining a patch; a copy is right when you are making
-    // a variant — and it is the only safe answer on a BACKUP record, which is
-    // a dated account of what the instrument held that day rather than a patch
-    // you were working on.
-    const answer = await SevenModal.confirm({
-      title: `Save “${esc(entry.name || 'this patch')}”`,
-      body: entry.origin && entry.origin.kind === 'backup'
-        ? 'This patch is a backup record — what the Seven held on the day it was ' +
-          'captured. Overwriting changes that record; a copy leaves it alone.'
-        : 'Overwrite this patch, or keep it and save your changes as a copy?',
-      confirmLabel: 'Overwrite patch',
-      secondaryLabel: 'Save a copy',
-      cancelLabel: 'Cancel',
-    });
-    if (!answer) return;
+    // A BACKUP RECORD IS NEVER OVERWRITTEN. It is a dated account of what the
+    // instrument held on the day it was captured, and the value of a record is
+    // that it does not change — so saving edits made on top of one always
+    // produces a new patch, with no question asked (Daniel, 2026-08-13).
+    // Anything else in the library is yours, and there the choice is real:
+    // overwriting is right when refining a patch, a copy when making a
+    // variant.
+    const isBackup = !!(entry.origin && entry.origin.kind === 'backup');
+    let answer = 'secondary'; // = save a copy
+    if (!isBackup) {
+      answer = await SevenModal.confirm({
+        title: `Save “${esc(entry.name || 'this patch')}”`,
+        body: 'Overwrite this patch on this computer, or keep it and save your ' +
+          'changes as a copy?',
+        confirmLabel: 'Overwrite patch',
+        secondaryLabel: 'Save a copy',
+        cancelLabel: 'Cancel',
+      });
+      if (!answer) return;
+    }
     if (answer === 'secondary') {
       const copy = await window.sevenAPI.library.duplicate(file, patchIndex);
       if (!copy || !copy.file) {
@@ -561,7 +575,11 @@
     liveEdit.dirty = false;
     auditionNote = {
       kind: 'is-ok',
-      text: answer === 'secondary' ? 'Saved as a copy.' : 'Saved to the library.',
+      // Say WHY there is suddenly a new patch, when the app chose that for
+      // you: a backup record was left alone deliberately.
+      text: isBackup
+        ? 'Saved as a new patch — the backup record is unchanged.'
+        : (answer === 'secondary' ? 'Saved as a copy.' : 'Saved to the library.'),
       file,
     };
     await deps.refreshLibrary();
@@ -684,8 +702,17 @@
       // the send — for a caller that has ALREADY put the right thing in the
       // edit buffer and knows it. The one rule this must not break is the one
       // audition exists for: live means the buffer holds what is on screen.
-      beginLive() {
+      beginLive(opts) {
         const ok = beginLiveForTarget();
+        // Changing the INSTRUMENT is an unsaved change, exactly as moving a
+        // parameter is: the buffer no longer matches the stored preset, and
+        // keeping it needs the same three-second hold. The bar used to wait
+        // for a parameter edit, so a player who had picked a different sound
+        // and wanted to keep it was told nothing (Daniel, 2026-08-13).
+        if (ok && opts && opts.dirty) liveEdit.dirty = true;
+        // Values the caller has ALREADY put in the buffer — the working copy
+        // must agree with the instrument, not with the file.
+        if (ok && opts && opts.params) Object.assign(liveEdit.params, opts.params);
         if (ok) deps.renderDetail();
         return ok;
       },
@@ -727,6 +754,7 @@
       onPanelCc,
       recallOnDevice,
       saveLiveToLibrary,
+      saveIsActive,
       // A Program Change while live is ambiguous — see checkBufferAfterRecall.
       // Returns true when the app caused it, so the caller ignores its echo.
       onProgramChange(ev) {

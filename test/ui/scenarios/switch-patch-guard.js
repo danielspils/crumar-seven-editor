@@ -22,7 +22,9 @@
     bubbles: true, cancelable: true, clientX: r.left + r.width * 0.75, clientY: r.top + r.height / 2,
   }));
   window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-  if (!(await ui.waitFor(() => !!ui.$('.audition-dirty'), { what: 'an unsaved change' }))) return;
+  // The save controls waking up is what "unsaved" looks like now — the dot
+  // was removed once loading a sound counted as an edit too (2026-08-13).
+  if (!(await ui.waitFor(() => !!ui.$('.audition-bar.is-live'), { what: 'an unsaved change' }))) return;
   const edited = Number(ui.$(`.param[data-key="${key}"] .param-value`).textContent);
   ui.check(edited !== before, `the parameter moved (${before} → ${edited})`);
 

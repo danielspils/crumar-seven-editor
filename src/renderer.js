@@ -452,6 +452,11 @@
         `${shownSound.sampled ? 'Sampled' : 'Modeled'}</span></div>` +
         `<div class="engine-sub"><span class="engine-group">${esc(shownSound.label)}</span></div>` +
         pos +
+        // Saving belongs to the sound, so it sits with it. Above the panel it
+        // pushed BOTH columns down; here only the parameters move.
+        (view && view.saveBar
+          ? `<div class="save-slot${view.saveBarNew ? ' is-appearing' : ''}">${view.saveBar}</div>`
+          : '') +
         `</div>` +
         // The same illustration the picker uses. A patch is easier to place by
         // the instrument it is than by its name — and using one picture in

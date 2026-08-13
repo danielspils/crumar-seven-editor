@@ -159,13 +159,31 @@ test('empty slots are stepped over, leaving those presets alone', async () => {
   assert.strictEqual(sent.length, 2);
 });
 
-test('a sound-only slot sends the sound and no parameters', async () => {
+// Trying an instrument silences the chain it lands in. A sound change keeps
+// everything else in the buffer, so a Vibraphone arriving through a Clavi
+// patch's distortion, wha and pad sounds like the Clavi — which reads as the
+// sound not having changed at all (Daniel, 2026-08-13).
+test('a sound-only slot sends the sound and silences the effects chain', async () => {
   const { store, midi, sender, sent } = setup();
   const list = setlistWith(store, ['sound:Clavi Piano']);
   const runner = new TransferRunner({ midi, store, sender });
   runner.start(list, 2);
   await runner.nextSlot();
-  assert.deepStrictEqual(sent[0], { sound: { name: 'Clavi Piano' }, params: {} });
+  assert.deepStrictEqual(sent[0], {
+    sound: { name: 'Clavi Piano' },
+    params: { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 },
+  });
+});
+
+// The master volume is NOT one of them. veq_vol is the output level, and
+// moving it on a sound change would be alarming rather than helpful.
+test('silencing the chain never touches the master volume', async () => {
+  const { store, midi, sender, sent } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
+  await runner.nextSlot();
+  assert.ok(!('veq_vol' in sent[0].params), 'veq_vol is left alone');
+  assert.ok(!('veq_byp' in sent[0].params), 'the EQ is left alone');
 });
 
 test('stopping partway reports what was stored and what was only loaded', async () => {
@@ -410,7 +428,20 @@ test('a single slot can be a bare sound', async () => {
   const runner = new TransferRunner({ midi, store, sender });
   runner.startSlot(2, 1, 'sound:Clavi Piano');
   await runner.nextSlot();
-  assert.deepStrictEqual(sent[0], { sound: { name: 'Clavi Piano' }, params: {} });
+  assert.deepStrictEqual(sent[0], {
+    sound: { name: 'Clavi Piano' },
+    params: { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 },
+  });
+});
+
+// The step reports what it sent, so the panel can show the buffer as it now
+// IS rather than as the patch file still describes it.
+test('a bare-sound step reports the parameters it sent', async () => {
+  const { store, midi, sender } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
+  const step = await runner.nextSlot();
+  assert.deepStrictEqual(step.params, { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 });
 });
 
 test('refuses without a connection', () => {
@@ -419,4 +450,48 @@ test('refuses without a connection', () => {
   const r = new TransferRunner({ midi, store, sender }).preflight(list, 2);
   assert.strictEqual(r.ok, false);
   assert.match(r.error, /not connected/);
+});
+
+// A modeled sound arrives with its FACTORY chain, read off Bank 1 — the Wurly
+// with its tremolo, the Rhodes dry — rather than wearing whatever the previous
+// patch was running (Daniel, 2026-08-13).
+test('a modeled sound brings its Bank 1 factory effects', async () => {
+  const { store, midi, sender, sent } = setup();
+  // A Bank 1 backup for Clavi Piano, with a chain on it.
+  store.list = () => ({
+    dir: '/tmp', setlists: [],
+    patches: [{
+      file: 'factory-clavi.sevenlib.json', patchIndex: 0,
+      soundName: 'Clavi Piano', origin: { bank: 1, preset: 4 },
+    }],
+  });
+  store.readFile = () => ({
+    library: { patches: [{ params: { rev_sw: 1, rev_lv: 40, fx1_sw: 0, veq_vol: 99 } }] },
+  });
+  store.schema = {
+    parameters: [
+      { group: 'efx_rev', key: 'rev_sw' }, { group: 'efx_rev', key: 'rev_lv' },
+      { group: 'efx_fx1', key: 'fx1_sw' }, { group: 'efx_veq', key: 'veq_vol' },
+    ],
+  };
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
+  await runner.nextSlot();
+  assert.strictEqual(sent[0].params.rev_sw, 1, 'the factory reverb comes with it');
+  assert.strictEqual(sent[0].params.rev_lv, 40, 'at the factory level');
+  assert.strictEqual(sent[0].params.fx1_sw, 0, 'and FX1 is explicitly off');
+  assert.ok(!('veq_vol' in sent[0].params), 'the master volume is never sent');
+});
+
+// With no Bank 1 backup to read, the chain goes off. A dry instrument is a
+// better answer than one wearing values we invented.
+test('a modeled sound with no factory backup falls back to a silent chain', async () => {
+  const { store, midi, sender, sent } = setup();
+  store.list = () => ({ dir: '/tmp', setlists: [], patches: [] });
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
+  await runner.nextSlot();
+  assert.deepStrictEqual(sent[0].params, {
+    fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0,
+  });
 });

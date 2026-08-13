@@ -99,30 +99,30 @@ function registerLibraryIpc() {
   // record is the only thing that remembers that day's arrangement as a whole.
   const BACKUP_SETLIST = /^Bank ([1-4]) setlist \((\d{4})-(\d{2})-(\d{2})(, partial)?\)$/;
 
-  ipcMain.handle('setlist:confirmDelete', async (e, { name }) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
+  // The WORDING is composed here — it needs the backup-record pattern above —
+  // and the dialog is drawn in the renderer as one of the app's own modals.
+  // It was dialog.showMessageBox, an OS panel with its own typeface, button
+  // order and warning triangle, in an app that has its own language
+  // (Daniel, 2026-08-13).
+  ipcMain.handle('setlist:deletePrompt', async (_e, { name }) => {
     const m = BACKUP_SETLIST.exec(String(name));
     const when = m
       ? new Date(`${m[2]}-${m[3]}-${m[4]}T12:00:00Z`).toLocaleDateString([], {
           day: 'numeric', month: 'long', year: 'numeric',
         })
       : null;
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: [m ? 'Delete Backup Record' : 'Delete Setlist', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      message: m
+    return {
+      title: m
         ? `Delete the backup record of Bank ${m[1]} from ${when}?`
-        : `Delete the setlist “${name}”?`,
-      detail: m
+        : `Delete the setlist \u201C${name}\u201D?`,
+      body: m
         ? `This is what a backup run saw in Bank ${m[1]} on that date. Deleting it ` +
           'removes the record of that day\u2019s arrangement — the eight patches ' +
           'themselves stay in your library, and each one still records the slot it ' +
           'came from.\n\nThis cannot be undone.'
         : 'Only the setlist is deleted — the patches it references stay in the library.',
-    });
-    return response === 0;
+      confirmLabel: m ? 'Delete backup record' : 'Delete setlist',
+    };
   });
 }
 
@@ -371,36 +371,39 @@ function registerTransferIpc() {
 }
 
 function registerBackupIpc() {
-  // Confirm EVERY run — no "don't show again". The dialog states where the
-  // instrument will be left before anything is sent.
-  ipcMain.handle('backup:start', async (e) => {
+  // Confirm EVERY run — no "don't show again". The confirmation states where
+  // the instrument will be left before anything is sent.
+  //
+  // The WORDING is composed here and the dialog is drawn in the renderer, as
+  // one of the app's own modals. It used to be dialog.showMessageBox, which is
+  // an OS panel: a different typeface, a different button order, and a yellow
+  // warning triangle in an app that has its own visual language. Only the
+  // TEXT needs main-process knowledge — whether the panel has told us which
+  // preset it is on — so only the text comes from here.
+  ipcMain.handle('backup:plan', async () => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false };
+    // Daniel's copy, 2026-08-13. One thing the previous wording carried is
+    // deliberately not here: where the Seven is left afterwards, and the tip
+    // about pressing a preset button first so the run can come back to it.
+    // Flagged to him; his call.
+    return {
+      ok: true,
+      title: 'Backing up 32 presets',
+      bodyHtml:
+        '<p class="bk-sum">4 banks x 8 buttons = 32 presets</p>' +
+        '<p class="bk-arrow" aria-hidden="true">\u2193</p>' +
+        '<p class="bk-sum">computer</p>' +
+        '<p class="bk-time">It takes about 60 seconds.</p>' +
+        '<p class="bk-sum">Any unsaved edits will be lost.</p>',
+      confirmLabel: 'Back Up',
+    };
+  });
+
+  // Starting is separate from confirming, and stays gated on the connection.
+  ipcMain.handle('backup:start', async () => {
     const midi = getMidi();
     if (midi.state !== 'connected') return { started: false };
-    const sendPcOn = midi.globals && midi.globals.glb[3] === 1;
-    const knowPrior = sendPcOn && midi.lastPanelProgram != null;
-    // The Seven has no "which preset are you on?" opcode. The app learns the
-    // slot only when the panel BROADCASTS one — which happens on a preset
-    // press while connected. Selecting a preset before launching the app is
-    // invisible to it, so the run can't come back to it. Say how to fix that
-    // here, where the user can still act on it, instead of only stating the
-    // outcome afterwards.
-    const slot = midi.lastPanelProgram;
-    const endState = knowPrior
-      ? `When it finishes, the Seven is returned to Bank ${Math.floor(slot / 8) + 1}, ` +
-        `Preset ${(slot % 8) + 1} — where it is now.`
-      : 'When it finishes, the Seven is left on Bank 4, Preset 8 (the last slot backed up).\n\n' +
-        'To come back to the preset you are on instead, press its button on the ' +
-        'panel once before you start — that is how the Seven tells the app where it is.';
-    const win = BrowserWindow.fromWebContents(e.sender);
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      buttons: ['Back Up', 'Cancel'],
-      defaultId: 0,
-      cancelId: 1,
-      message: 'Back up all 32 presets?',
-      detail: `This recalls all 32 presets on the Seven. Any unsaved edits on the instrument will be lost.\n\n${endState}`,
-    });
-    if (response !== 0) return { started: false };
     const runner = getBackupRunner();
     runner.run().catch((err) => {
       for (const w of BrowserWindow.getAllWindows()) {

@@ -25,7 +25,10 @@
   const after = Number(ui.$(`.param[data-key="${key}"] .param-value`).textContent);
   ui.note(`${key}: ${before} -> ${after}`);
   ui.check(Math.abs(after - 32) <= 1, `${key} landed near the pressed position (got ${after})`);
-  ui.check(!!ui.$('.audition-dirty'), 'the bar marks unsaved changes');
+  // The dot is gone: the save controls are always present and come ALIVE when
+  // there is something to save, which is the signal now (2026-08-13).
+  ui.check(!!ui.$('.audition-bar.is-live'), 'the save controls come alive');
+  ui.check(!ui.$('#save-live-btn[disabled]'), 'Save to Library can be pressed');
 
   // The instrument agrees with the screen.
   const read = await window.sevenAPI.midi.readParam(key);

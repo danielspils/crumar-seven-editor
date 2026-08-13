@@ -88,7 +88,14 @@
   // screen and the highlight travels, which is what the player's own hand is
   // about to do. `root` is any element containing the panel.
   function setPreset(root, preset) {
-    const svg = root && root.querySelector('.panel-mini');
+    // `root` is either a container holding the panel or the panel itself —
+    // playSave already has the <svg> in hand, and passing it here silently did
+    // nothing, because querySelector only looks at DESCENDANTS. The button
+    // never lit (Daniel, 2026-08-13).
+    const svg = !root ? null
+      : (root.classList && root.classList.contains('panel-mini')
+        ? root
+        : root.querySelector('.panel-mini'));
     if (!svg) return;
     for (const g of svg.querySelectorAll('[data-preset]')) {
       const on = Number(g.dataset.preset) === preset;
@@ -100,5 +107,78 @@
     svg.setAttribute('aria-label', holdLabel(Number(svg.dataset.bank), preset));
   }
 
-  global.SevenPanelMini = { render, setPreset };
+  // Play the save, on an already-rendered panel: the button you hold comes up,
+  // it stays up for the length of the hold, and then the lights run down the
+  // row to confirm it — 8 back to 2, quickly and overlapping, which is what
+  // the Seven does (Daniel, 2026-08-13, watched).
+  //
+  // Bank 1 is not in the run because the Seven will not store there.
+  //
+  // The demonstration waits 2s where the copy says 3. Daniel timed the real
+  // hold at about two seconds but chose to keep telling people three, which is
+  // the safer instruction — hold too long and it still stores, let go early
+  // and it does not. The picture shows the shorter, true wait so the loop does
+  // not stall; the words ask for the one that cannot fail.
+  //
+  // Returns a stop() so a modal closing mid-cycle does not leave timers firing
+  // at nodes that are gone.
+  const HOLD_MS = 3000;   // the hold, matching what the copy asks for
+  const RUN_STEP = 45;    // gap between lights — they overlap
+  const RUN_LIT = 150;    // how long each stays up
+  const REST_MS = 900;    // pause before it plays again
+
+  function playSave(root, preset, { loop = true } = {}) {
+    const svg = root && root.querySelector('.panel-mini');
+    if (!svg) return () => {};
+    // A demonstration, not an instruction: the lit button holds a SOLID light
+    // here. The blinking LED is the transfer walk asking for a press, and a
+    // blink in the middle of a sequence that is itself about lights would say
+    // two things at once (Daniel, 2026-08-13).
+    svg.classList.add('pm-demo');
+
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    const led = (n) => svg.querySelector(`[data-preset="${n}"]`);
+    const allOff = () => {
+      for (const g of svg.querySelectorAll('[data-preset]')) {
+        g.classList.remove('pm-run', 'pm-active');
+        g.classList.add('pm-dim');
+      }
+    };
+
+    const cycle = () => {
+      // The held button is lit from the start — the picture opens showing the
+      // button you are being asked to hold, and the wait IS the hold
+      // (Daniel, 2026-08-13). Going dark first made you watch it arrive before
+      // anything could begin.
+      allOff();
+      setPreset(svg, preset);
+      // Then the lights run to it, ALWAYS FROM THE FAR END — whichever of
+      // button 1 or button 8 is further away, so the sweep is as long as the
+      // row allows and reads as travelling rather than nudging. Saving to 5
+      // runs 1 → 5; saving to 4 runs 8 → 4 (Daniel, 2026-08-13).
+      //
+      // The target is not in the run: it is already lit, and the sweep
+      // arriving there ends the sequence rather than flashing it again.
+      const fromLow = (preset - 1) > (8 - preset);
+      const step = fromLow ? 1 : -1;
+      let t = HOLD_MS;
+      for (let n = fromLow ? 1 : 8; n !== preset; n += step) {
+        const g = led(n);
+        if (!g) continue;
+        at(t, () => g.classList.add('pm-run'));
+        at(t + RUN_LIT, () => g.classList.remove('pm-run'));
+        t += RUN_STEP;
+      }
+      if (loop) at(t + REST_MS, cycle);
+    };
+    cycle();
+
+    return () => {
+      for (const id of timers) clearTimeout(id);
+      svg.classList.remove('pm-demo');
+    };
+  }
+
+  global.SevenPanelMini = { render, setPreset, playSave };
 })(window);
