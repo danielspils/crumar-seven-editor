@@ -495,6 +495,21 @@ The July 2021 manual documents v1.22. On v1.37:
    (the "Max" in both names), or a firmware quirk. Do not label them inert in
    the UI until the condition is demonstrated — the app currently shows them as
    ordinary controls, which is what the device reports them to be.
+
+   **Re-checked 2026-08-12, second run.** Same result on a different patch and
+   different starting values: `dly_mf` read 113, was written to 20, echoed 20,
+   read back 20 on a fresh `0x22`, and restored. `dly_ml` read 127, same round
+   trip. FX2 was on and in Delay mode at the time (`fx2_sw` 1, `fx2_md` 3,
+   `fx2_dp` 47, `fx2_sp` 72). The write path is not in question.
+
+   The run also turned up a **display discrepancy worth chasing separately**:
+   the app's panel showed Speed, Max Feedback and Max Level all as 0 while the
+   instrument reported 72, 113 and 127. Depth and Stereo Spread matched
+   exactly, so it is not the whole section. If the panel is showing 0 for a
+   parameter the device holds at 113, "adjusting it does nothing" has a second
+   possible cause that has nothing to do with the delay: dragging from a value
+   that was never there. Establish which panel state produced that before
+   attributing any of it to the instrument.
 6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
    digit of the sound ID in all 23 captured frames — rendering quirk or something else?
    Also unexplained: the doubled `B0 01` pair closing every recall burst.
