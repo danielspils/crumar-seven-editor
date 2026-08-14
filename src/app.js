@@ -1961,9 +1961,40 @@
   // The two regions expand mutually exclusively: opening the Library
   // collapses the bank rows to the strip; re-expanding the banks collapses
   // the Library back to its header. View state, persisted across launches.
+  // The two trays trade places, and the point of animating it is that the
+  // player SEES there are two (Daniel, 2026-08-13: "it happens so fast that
+  // it's not clear what's going on"). One slides shut exactly as the other
+  // slides open, so the space is visibly handed over rather than repainted.
+  //
+  // Measure, switch, measure, animate between the two — the only way to tween
+  // a height that is `auto` at one end and driven by flex at the other. The
+  // animation never writes a style of its own (fill defaults to none), so the
+  // layout after it is whatever the CSS says, not whatever the animation left
+  // behind.
+  const SWAP_MS = 260;
+  function animateSwap(apply) {
+    const trays = [document.getElementById('bank-tray'), libSection.querySelector('.fx-body')]
+      .filter(Boolean);
+    const reduced = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || !trays.length || !trays[0].animate) { apply(); return; }
+    const from = trays.map((el) => el.getBoundingClientRect().height);
+    apply();
+    const to = trays.map((el) => el.getBoundingClientRect().height);
+    trays.forEach((el, i) => {
+      if (Math.abs(from[i] - to[i]) < 1) return;
+      el.animate(
+        [{ height: `${from[i]}px` }, { height: `${to[i]}px` }],
+        { duration: SWAP_MS, easing: 'cubic-bezier(.32,.72,0,1)' }
+      );
+    });
+  }
+
   function setLibraryOpen(open, opts = {}) {
-    libSection.classList.toggle('collapsed', !open);
-    libRoot.classList.toggle('lib-open', open);
+    animateSwap(() => {
+      libSection.classList.toggle('collapsed', !open);
+      libRoot.classList.toggle('lib-open', open);
+    });
     updateBankStrip();
     localStorage.setItem(LIB_OPEN_KEY, open ? '1' : '0');
     // Never open below the fold.

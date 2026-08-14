@@ -547,7 +547,14 @@
     .strip-asof { font-size: 12px; color: var(--text-dim); flex: none; }
     /* One title line only: while the strip is showing, it IS the header. */
     #library.lib-open #seven-head { display: none; }
-    #library.lib-open #bank-tabs, #library.lib-open #patch-list { display: none; }
+    /* The tray clips its own content and collapses to nothing, rather than
+       the rows blinking out via display:none. Both trays are then plain boxes
+       with a height, which is what lets one slide open as the other closes. */
+    #bank-tray {
+      display: flex; flex-direction: column; min-height: 0;
+      overflow: hidden; flex: 1 1 auto;
+    }
+    #library.lib-open #bank-tray { height: 0; flex: none; }
     #library.lib-open #bank-strip { display: flex; }
     /* Drag handle between the regions. Only meaningful while the Library is
        open; the chosen split persists across launches (app.js). */
@@ -2123,9 +2130,14 @@
            Transfer means moving between them, so BOTH stay visible at all
            times — when the Library expands, the bank rows collapse to a
            one-line summary strip (never hidden). -->
-      <div class="region-head" id="seven-head">On the Seven</div>
-      <div id="bank-tabs"></div>
-      <div id="patch-list"></div>
+      <!-- One tray, so the three parts slide together. Height is what
+           animates; display:none cannot tween, which is why the swap used to
+           happen in a single frame (Daniel, 2026-08-13). -->
+      <div id="bank-tray">
+        <div class="region-head" id="seven-head">On the Seven</div>
+        <div id="bank-tabs"></div>
+        <div id="patch-list"></div>
+      </div>
       <!-- Collapsed, the bank region reads exactly like the collapsed library
            header: chevron, region name, then its one-line summary. Its own
            region-head is hidden so there is only ever one title line. -->
