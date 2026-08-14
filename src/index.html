@@ -527,7 +527,15 @@
     .region-head {
       font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted); padding: 8px 14px 4px;
+      /* A row now, because it carries a chevron. Same hover and cursor as
+         .fx-head so the two region headers are the same control. */
+      display: flex; align-items: center; cursor: pointer;
     }
+    #seven-head:hover { background: var(--shade); color: var(--text); }
+    /* Nudged so this chevron starts on the same x as the Library's: the two
+       headers have different left padding, and measured left edges were 8 vs
+       18. Two region headers one above the other make any offset obvious. */
+    .region-head .fx-chevron { margin-left: 4px; }
     .region-head .asof {
       font-weight: 400; letter-spacing: normal; text-transform: none;
       color: var(--text-dim); margin-left: 6px;
@@ -593,7 +601,12 @@
        Tradeoff: the height half of the open animation is skipped for this
        section (the body snaps to the flexed size; the opacity fade
        remains). */
-    #library-section:not(.collapsed) { display: flex; flex-direction: column; flex: 0 1 auto; }
+    /* GROWS. With the bank region sized to its content, nothing else claims
+       the leftover height — the open Library sat at 174px inside a 531px
+       column and clipped its own list (Daniel, 2026-08-13). Before the tray
+       wrapper existed, the bank rows' `flex: 1 1 auto` swallowed that space,
+       which is the same bug wearing the opposite face. */
+    #library-section:not(.collapsed) { display: flex; flex-direction: column; flex: 1 1 auto; }
     #library-section:not(.collapsed) .fx-head { flex: none; }
     #library-section:not(.collapsed) .fx-body { flex: 0 1 auto; min-height: 0; }
     /* The list scrolls inside a fixed height, so a cut-off row can look like

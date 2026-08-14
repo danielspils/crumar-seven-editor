@@ -1267,9 +1267,15 @@
       const d = new Date(iso);
       return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
     };
+    // The chevron is part of the header, not decoration on the collapsed
+    // strip: expanded, this header used to lose it and with it any sign that
+    // the region closes at all, while "On this computer" kept its chevron in
+    // both states (Daniel, 2026-08-13). Both regions now say the same thing
+    // the same way.
+    const chev = '<span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
     sevenHead.innerHTML = banksAsOf
-      ? `On the Seven <span class="asof">as of last backup · ${fmt(banksAsOf)}</span>`
-      : `On the Seven <span class="asof">not yet backed up</span>`;
+      ? `${chev}<span>On the Seven</span> <span class="asof">as of last backup · ${fmt(banksAsOf)}</span>`
+      : `${chev}<span>On the Seven</span> <span class="asof">not yet backed up</span>`;
   }
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
@@ -2038,6 +2044,10 @@
     setLibraryOpen(libSection.classList.contains('collapsed'));
   });
   bankStrip.addEventListener('click', () => setLibraryOpen(false));
+  // Clicking the expanded header closes this region, which — the two being
+  // mutually exclusive — means opening the Library. Same gesture the Library
+  // header has always had.
+  sevenHead.addEventListener('click', () => setLibraryOpen(true));
   libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
 
   // Divider drag: sets the Library list height (--lib-split), persisted as a
@@ -2058,7 +2068,21 @@
       libRoot.style.removeProperty('--lib-split');
       return;
     }
-    const h = Math.max(80, Math.round(libRoot.clientHeight * splitFraction));
+    const h = Math.round(libRoot.clientHeight * splitFraction);
+    // A split that has collapsed onto its own floor is not a choice anybody
+    // made — it is a fraction saved against a taller window, and honouring it
+    // caps the list at 80px in a column with hundreds to spare (Daniel,
+    // 2026-08-13: "setlist tray length is now truncated"). Below the floor the
+    // saved value carries no usable information, so the list fills instead.
+    // Proportional, not just the absolute floor: this fraction was saved
+    // against a different layout, and at ~15% of the column it caps the list
+    // at two rows inside hundreds of pixels of room. A split that small is a
+    // stale value rather than a preference — dragging the divider sets a real
+    // one again, and anything from a fifth of the column up is honoured.
+    if (h < Math.max(80, libRoot.clientHeight * 0.2)) {
+      libRoot.style.removeProperty('--lib-split');
+      return;
+    }
     libRoot.style.setProperty('--lib-split', `${h}px`);
   }
   applySplit();
