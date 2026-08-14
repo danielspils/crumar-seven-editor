@@ -143,7 +143,7 @@
     // have a hardware twin, which is what the row's tooltip says.
     const PANEL_MIRRORED = new Set(['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab']);
 
-    function paramRow(p, rawValue, view, opts) {
+    function paramRow(p, rawValue, view, opts, soundName) {
       const value = rawValue == null ? 0 : rawValue;
       // Identity + range on every row, so the interaction layer can work from
       // the DOM without a second copy of the taxonomy. `live` is set only when
@@ -160,7 +160,10 @@
       const live = view && view.live && !(opts && opts.inertReason);
       const attrs = `data-key="${p.key}" data-max="${p.max}"${panelTitle}`;
       const liveCls = live ? ' is-live' : '';
-      const isDefault = value === defaultFor(p);
+      // null means "no factory evidence for this sound" — such a row renders
+      // normally rather than claiming to be stock.
+      const factory = defaultFor(p, soundName);
+      const isDefault = factory !== null && value === factory;
       const pct = p.max > 0 ? Math.max(0, Math.min(100, (value / p.max) * 100)) : 0;
       const label = p.values && p.values[value] != null ? p.values[value] : null;
       // Conditional/inert overlay (docs/DESIGN.md item: show when a parameter
@@ -311,7 +314,9 @@
       const hi = Math.max(mn, mx);
       const loPct = (lo / p.max) * 100;
       const widthPct = ((hi - lo) / p.max) * 100;
-      const bothDefault = mn === defaultFor(p) && mx === defaultFor(partner);
+      const dLo = defaultFor(p, patch.soundName);
+      const dHi = defaultFor(partner, patch.soundName);
+      const bothDefault = dLo !== null && dHi !== null && mn === dLo && mx === dHi;
       return (
         `<div class="param param-range ${bothDefault ? 'is-default' : 'is-changed'}">` +
         `<span class="param-label">Range</span>` +
@@ -375,7 +380,7 @@
                 },
               }
               : undefined;
-          return paramRow(p, patch.params[p.key], view, opts);
+          return paramRow(p, patch.params[p.key], view, opts, patch.soundName);
         })
         .join('');
     }

@@ -17,6 +17,12 @@ const readText = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 contextBridge.exposeInMainWorld('sevenAPI', {
   // Static reference data (parameter map + panel artwork), not device state.
   getSchema: () => readJson('schema/seven-1.37.json'),
+  // Per-sound factory values, read off Bank 1 (which cannot be stored to).
+  // Version gated like every other schema file. Missing is survivable: the
+  // renderer then marks nothing as factory, which is the honest failure.
+  getFactoryDefaults: () => {
+    try { return readJson('schema/factory-defaults-1.37.json'); } catch { return null; }
+  },
   // The SVG's internal @font-face uses a path relative to assets/ so the file
   // renders standalone; inlined into the DOM it would resolve against src/ and
   // 404 (masking the app-supplied face). Strip it — getFontCss() provides the

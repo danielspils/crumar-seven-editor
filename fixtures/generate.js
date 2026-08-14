@@ -6,7 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { defaultFor } = require('../src/defaults.js');
+const { seedValue } = require('../src/defaults.js');
 const schema = require('../schema/seven-1.37.json');
 
 const params = schema.parameters;
@@ -30,7 +30,7 @@ function engineGroup(soundName, sampled) {
 
 function baseline() {
   const o = {};
-  for (const p of params) o[p.key] = defaultFor(p);
+  for (const p of params) o[p.key] = seedValue(p);
   return o;
 }
 
@@ -40,7 +40,7 @@ function vary(vals, keys, seed) {
     const p = byKey.get(k);
     if (!p) return;
     const off = ((seed * 37 + i * 13 + 11) % 51) - 25; // -25..25, deterministic
-    vals[k] = clamp(defaultFor(p) + off, p);
+    vals[k] = clamp(seedValue(p) + off, p);
   });
 }
 
