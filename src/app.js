@@ -1010,9 +1010,17 @@
       const n = Number(preset.id.replace('preset-', ''));
       if (n >= 1 && n <= 8) {
         deviceSel = { bank: bankIndex, preset: n - 1 };
+        // Same act as clicking the slot in the list, so it does the same
+        // thing: these buttons are a PICTURE OF THE PANEL, and pressing the
+        // panel moves the instrument. They only moved the app's selection,
+        // which left the app showing one preset while the Seven played
+        // another (Daniel, 2026-08-13).
+        carouselAt = null;
+        liveSound = null;
         lastTouched = 'device';
         resetCollapsed();
         renderAll();
+        audition.recallOnDevice(deviceSel.bank, deviceSel.preset);
       }
     }
   });
@@ -1678,17 +1686,30 @@
       },
       // A whole backup RUN: the four per-bank lists it is stored as go
       // together, because one of them alone is not a thing the player has.
-      async deleteBackup(date) {
-        const re = new RegExp(`^Bank [1-4] setlist \\(${date}(, partial)?\\)$`);
+      // `dates` is a comma-joined list: one library row can stand for several
+      // runs that read identically (see backupRuns), and the row is all of
+      // them — so deleting it deletes all of them.
+      async deleteBackup(dates) {
+        const list = String(dates).split(',').filter(Boolean);
+        if (!list.length) return;
+        const re = new RegExp(`^Bank [1-4] setlist \\((${list.join('|')})(, partial)?\\)$`);
         const hits = libData.setlists
           .map((s2, i) => ({ s2, i }))
           .filter(({ s2 }) => re.test(s2.name));
         if (!hits.length) return;
+        const days = list.length > 1
+          // Naming the count matters: the row shows ONE date span, so "this
+          // backup" would undersell what the button is about to remove.
+          ? `what the Seven held on ${list.length} days` : 'what the Seven held that day';
+        const span = list.length > 1
+          ? '\n\nThose runs read identically, which is why the library shows them as one ' +
+            'row. Deleting them loses the record of how far back that state goes.'
+          : '';
         const ok = await SevenModal.confirm({
-          title: 'Delete this backup?',
-          body: `This removes the record of what the Seven held that day — ${hits.length} ` +
+          title: list.length > 1 ? 'Delete these backups?' : 'Delete this backup?',
+          body: `This removes the record of ${days} — ${hits.length} ` +
             'bank' + (hits.length === 1 ? '' : 's') + '. The patches themselves stay in ' +
-            'your library.\n\nThis cannot be undone.',
+            `your library.${span}\n\nThis cannot be undone.`,
           confirmLabel: 'Delete backup',
           cancelLabel: 'Cancel',
           tone: 'is-warning',
