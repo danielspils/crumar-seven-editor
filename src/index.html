@@ -550,6 +550,10 @@
     /* The tray clips its own content and collapses to nothing, rather than
        the rows blinking out via display:none. Both trays are then plain boxes
        with a height, which is what lets one slide open as the other closes. */
+    #bank-region {
+      display: flex; flex-direction: column; min-height: 0;
+      overflow: hidden; flex: 0 0 auto;
+    }
     #bank-tray {
       display: flex; flex-direction: column; min-height: 0;
       overflow: hidden;
@@ -2139,6 +2143,14 @@
       <!-- One tray, so the three parts slide together. Height is what
            animates; display:none cannot tween, which is why the swap used to
            happen in a single frame (Daniel, 2026-08-13). -->
+      <!-- Tray AND strip in one animated box. The strip appears the instant the
+           tray collapses (display cannot tween), so with only the tray
+           animated its ~40px vanished in one frame and everything below
+           jumped up before the tray grew back down over it — the OTC header
+           travelling up and then down (Daniel, 2026-08-13). Inside a box whose
+           height is tweened between measured before/after, the exchange is
+           just part of the slide. -->
+      <div id="bank-region">
       <div id="bank-tray">
         <div class="region-head" id="seven-head">On the Seven</div>
         <div id="bank-tabs"></div>
@@ -2153,6 +2165,7 @@
         <span id="bank-strip-label" class="lib-count"></span>
         <span id="bank-strip-asof" class="strip-asof"></span>
       </button>
+      </div>
       <!-- Drag handle between the regions; the split persists across
            launches. Active only while the Library is expanded. -->
       <div id="split-divider" title="Drag to resize the Library"></div>

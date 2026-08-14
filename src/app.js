@@ -1980,7 +1980,10 @@
   // one block (Daniel, 2026-08-13).
   const SWAP_STAGGER_MS = 110;
   function animateSwap(apply) {
-    const trays = [document.getElementById('bank-tray'), libSection.querySelector('.fx-body')]
+    // #bank-region, not #bank-tray: the region contains the collapsed strip
+    // too, so the strip appearing or vanishing is inside the height being
+    // animated rather than a step change beside it.
+    const trays = [document.getElementById('bank-region'), libSection.querySelector('.fx-body')]
       .filter(Boolean);
     const reduced = window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
