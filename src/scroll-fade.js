@@ -68,7 +68,20 @@
       if (el) refresh(el, flagOn || el);
     };
     root.addEventListener('scroll', update, true);
+    // Scroll and re-render are not the only ways the answer changes. The
+    // viewport can be resized around a list that never scrolled and never
+    // re-rendered — a dragged window, the section above collapsing, the detail
+    // panel growing — and the class then describes a geometry that is gone
+    // (Daniel, 2026-08-13: "stale scroll state fade"). watch() has observed
+    // size all along; this flavour did not, which is the whole difference.
+    //
+    // Observing the ROOT rather than the scroller: the scroller is replaced on
+    // every render, so an observer on it would be watching a detached node
+    // after the first one.
+    if (global.ResizeObserver) new ResizeObserver(update).observe(root);
     update();
+    // Same reason as watch(): heights are not final in the frame that mounts.
+    if (global.requestAnimationFrame) requestAnimationFrame(update);
     return update;
   }
 
