@@ -104,6 +104,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
     // The Patches list's hand-placed order: the whole visible sequence as
     // `file#patchIndex` keys, or cleared to go back to sorting by recency.
+    // What a generated patch would copy its values from, and the write itself.
+    donorsFor: (name) => ipcRenderer.invoke('library:donorsFor', { name }),
+    generateFromSound: (name, donorFile) =>
+      ipcRenderer.invoke('library:generateFromSound', { name, donorFile }),
     setPatchOrder: (keys) => ipcRenderer.invoke('library:patchOrder', { keys }),
     clearPatchOrder: () => ipcRenderer.invoke('library:clearPatchOrder'),
   },

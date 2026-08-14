@@ -1229,6 +1229,80 @@
     return p && p.file ? { file: p.file, patchIndex: 0 } : null;
   }
 
+  // Generating a patch from an instrument: say what it will be copied FROM
+  // before writing anything, and let that be changed. Resolves the new file, or
+  // null if the dialog was dismissed.
+  //
+  // The starting point is never guessed at from filename shape or rename
+  // status — those are proxies for something the user knows directly, so the
+  // question is asked instead (Daniel, 2026-08-14).
+  async function generateFromInstrument(name) {
+    const info = await window.sevenAPI.library.donorsFor(name);
+    if (!info || !info.ok) {
+      toast((info && info.error) || `Could not read the library for ${name}`);
+      return null;
+    }
+    const label = (d) => `Bank ${d.bank} Preset ${d.preset} — ${d.file.replace(/\.sevenlib\.json$/, '')}`;
+    let donor = info.donors[0] || null;
+
+    if (donor) {
+      const answer = await SevenModal.confirm({
+        title: `New patch from ${name}`,
+        bodyHtml:
+          `<p class="bk-sum">Starting from: ${esc(label(donor))}</p>` +
+          `<p class="bk-time">${info.donors.length === 1
+            ? 'The only reading of this sound in your library.'
+            : `${info.donors.length} readings of this sound are in your library.`}</p>`,
+        confirmLabel: 'Create patch',
+        secondaryLabel: 'Change',
+        cancelLabel: 'Cancel',
+        tone: 'is-announce',
+      });
+      if (!answer) return null;
+      if (answer === 'secondary') {
+        const picked = await SevenModal.choose({
+          title: 'Start from which capture?',
+          bodyHtml: `<p>Every reading of ${esc(name)} in your library.</p>`,
+          choices: info.donors.map((d) => ({
+            value: d.file,
+            label: `Bank ${d.bank} Preset ${d.preset} · ${d.file.replace(/\.sevenlib\.json$/, '')}` +
+              (d.date ? ` · ${new Date(d.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : ''),
+          })),
+          cancelLabel: 'Cancel',
+          tone: 'is-choice',
+        });
+        if (!picked) return null;
+        donor = info.donors.find((d) => d.file === picked) || donor;
+      }
+    } else {
+      // No reading of this sound anywhere. Say exactly what the values will be
+      // instead, and how many are seeds — a patch built from seeds is never
+      // written silently.
+      const { factory, seeded } = info.withoutDonor;
+      const ok = await SevenModal.confirm({
+        title: `New patch from ${name}`,
+        bodyHtml:
+          '<p class="bk-sum">No capture of this sound in your library</p>' +
+          `<p class="bk-time">${factory
+            ? `${factory} values come from Bank 1, the factory bank. `
+            : ''}${seeded} of ${factory + seeded} would be seeded — placeholder numbers, ` +
+          'not values read from your instrument.</p>' +
+          '<p class="bk-time">Backing up a preset that uses this sound would give it real values.</p>',
+        confirmLabel: 'Create anyway',
+        cancelLabel: 'Cancel',
+        tone: 'is-warning',
+      });
+      if (!ok) return null;
+    }
+
+    const made = await window.sevenAPI.library.generateFromSound(name, donor ? donor.file : null);
+    if (!made || !made.ok) {
+      toast((made && made.error) || `Could not create a patch from ${name}`);
+      return null;
+    }
+    return made.file;
+  }
+
   const audition = SevenAudition.create({
     el: detailEl,
     getTarget: currentTarget,
@@ -1917,6 +1991,15 @@
       },
       async assignSlot(index, slot, file) {
         const prev = ((libData.setlists[index] || {}).slots || [])[slot] || null;
+        // Choosing an instrument GENERATES a patch, and a generated patch is a
+        // copy of some reading of that sound. Which reading is a real question
+        // with a real answer, so it is asked rather than guessed
+        // (Daniel, 2026-08-14).
+        if (String(file).startsWith('sound:')) {
+          const made = await generateFromInstrument(String(file).slice('sound:'.length));
+          if (!made) return; // cancelled at the dialog
+          file = made;
+        }
         await window.sevenAPI.setlists.assign(index, slot, file);
         await refreshLibrary();
         undoStack.push(`fill slot ${slot + 1}`, async () => {

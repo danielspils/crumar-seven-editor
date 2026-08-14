@@ -83,6 +83,16 @@ function registerLibraryIpc() {
   ipcMain.handle('setlist:touch', (_e, { index }) => getStore().touchSetlist(index));
   // Hand-placed order, for both lists. `order` takes the whole displayed
   // sequence; `clearOrder` puts the list back to sorting itself.
+  // Generating a patch from an instrument, in two steps so the UI can show
+  // what it is about to copy from: what the donors are, then the write.
+  ipcMain.handle('library:donorsFor', (_e, { name }) => {
+    try { return { ok: true, ...getStore().donorsFor(name) }; }
+    catch (err) { return { ok: false, error: String(err.message || err) }; }
+  });
+  ipcMain.handle('library:generateFromSound', (_e, { name, donorFile }) => {
+    try { return { ok: true, ...getStore().createPatchFromSound(name, { donorFile }) }; }
+    catch (err) { return { ok: false, error: String(err.message || err) }; }
+  });
   ipcMain.handle('library:patchOrder', (_e, { keys }) => getStore().writePatchOrder(keys));
   ipcMain.handle('library:clearPatchOrder', () => getStore().clearPatchOrder());
   ipcMain.handle('setlist:order', (_e, { indexes }) => getStore().writeSetlistOrder(indexes));

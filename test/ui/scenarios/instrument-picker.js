@@ -33,6 +33,16 @@
 
   const name = tiles[0].dataset.pickSound;
   ui.click(tiles[0], `the ${name} tile`);
+
+  // Choosing an instrument now says what the new patch will be COPIED FROM
+  // before it writes anything, and that has to be answered (Daniel,
+  // 2026-08-14). Accepting the default is what a person does most of the time.
+  const start = await ui.waitEl('.seven-modal', 'the starting-point dialog');
+  ui.note(`starting point: ${start?.textContent.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
+  ui.check(/Starting from:|No capture of this sound/.test(start?.textContent || ''),
+    'it says where the values will come from');
+  ui.click(start.querySelector('.seven-modal-ok'), 'Create patch');
+  await ui.waitFor(() => !ui.$('.seven-modal'), { what: 'the dialog to close' });
   await ui.sleep(1000);
   const row = ui.$$('.lib-slot')[slot];
   ui.note(`slot ${slot + 1}: ${row?.textContent.replace(/\s+/g, ' ').trim().slice(0, 60)}`);
