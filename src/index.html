@@ -552,7 +552,13 @@
        with a height, which is what lets one slide open as the other closes. */
     #bank-tray {
       display: flex; flex-direction: column; min-height: 0;
-      overflow: hidden; flex: 1 1 auto;
+      overflow: hidden;
+      /* Content-sized, like the #patch-list it wraps. `flex: 1 1 auto` made
+         the tray absorb every spare pixel and shove the "On this computer"
+         header to the floor of the window, a long gap below the eighth row
+         (Daniel, 2026-08-13). The collapsed header belongs directly under the
+         tray above it; leftover space belongs below BOTH of them. */
+      flex: 0 0 auto;
     }
     #library.lib-open #bank-tray { height: 0; flex: none; }
     #library.lib-open #bank-strip { display: flex; }
