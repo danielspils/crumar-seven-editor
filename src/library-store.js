@@ -491,7 +491,33 @@ class LibraryStore {
   // name and the modeled/sampled flag and nothing else. The parameters stay:
   // the Seven keeps engine settings across a sound change (verified 2026-08-09,
   // 0x46), so the app does the same.
+  // A Crumar factory capture is not edited in place.
+  //
+  // A patch whose origin names bank 1 came off the factory bank, and
+  // createPatchFromSound seeds every generated patch of that model from it.
+  // Editing one silently changes what every future generated patch is built
+  // from, and nothing on screen connects the two acts. The app duplicates
+  // first and edits the copy; this is the layer that makes that a rule rather
+  // than a habit — the UI is where a guard is easiest to route around
+  // (Daniel, 2026-08-14).
+  //
+  // RENAME AND DELETE ARE NOT BLOCKED. A name is not a value, and a file you
+  // no longer want is yours to remove; only the numbers a generated patch
+  // would inherit are protected.
+  _refuseIfFactoryCapture(file, patchIndex, what) {
+    let parsed;
+    try { parsed = this.readFile(file); } catch { return; } // unreadable is another error's job
+    const patch = parsed.library && parsed.library.patches[patchIndex];
+    if (patch && patch.origin && patch.origin.bank === 1) {
+      throw new Error(
+        `${what} would edit a Crumar factory preset in place (${file}). ` +
+        'Duplicate it and edit the copy — generated patches are seeded from this file.'
+      );
+    }
+  }
+
   savePatchSound(file, patchIndex, soundName, sampled) {
+    this._refuseIfFactoryCapture(file, patchIndex, 'Changing the sound');
     const parsed = this.readFile(file);
     if (!parsed.library) throw new Error('File is not readable');
     const patch = parsed.library.patches[patchIndex];
@@ -507,6 +533,7 @@ class LibraryStore {
   }
 
   savePatchParams(file, patchIndex, params) {
+    this._refuseIfFactoryCapture(file, patchIndex, 'Saving parameters');
     const parsed = this.readFile(file);
     if (!parsed.library) throw new Error('File is not readable');
     const patch = parsed.library.patches[patchIndex];

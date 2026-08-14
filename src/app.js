@@ -245,10 +245,23 @@
   // coming from a setlist's position.
   async function sendPatchToSlot(entry) {
     if (!isConnected()) return toast('Connect the Seven to send a patch to it');
+    // The same chooser the setlist send uses: all four banks, Bank 1 shown and
+    // unpickable. Two dialogs asking one question answered it two ways — one
+    // hid Bank 1, the other greyed it — and hiding it left the reader to work
+    // out whether it existed (Daniel, 2026-08-14).
     const bank = await SevenModal.choose({
-      title: `Send “${entry.name}” to the Seven`,
-      body: 'Which bank? Bank 1 is not offered: it holds the factory presets.',
-      choices: [{ value: 2, label: 'Bank 2' }, { value: 3, label: 'Bank 3' }, { value: 4, label: 'Bank 4' }],
+      title: 'Select Bank',
+      bodyHtml:
+        '<p>Select which bank to send</p>' +
+        `<p><em>${esc(entry.name)}</em></p>`,
+      choices: [
+        { value: 1, label: 'Bank 1', disabled: true },
+        { value: 2, label: 'Bank 2' },
+        { value: 3, label: 'Bank 3' },
+        { value: 4, label: 'Bank 4' },
+      ],
+      note: 'Bank 1 is for factory presets',
+      tone: 'is-choice',
     });
     if (!bank) return;
     const preset = await SevenModal.choose({
@@ -273,6 +286,42 @@
     return transferWalk(started.slots, bank);
   }
 
+  // A Crumar preset, copied so the copy can be edited. Offered UP FRONT rather
+  // than happening quietly at save time: a copy discovered after the edits is
+  // a surprise, and the thing being protected — a file every generated patch
+  // of that model is seeded from — is worth naming while there is still a
+  // choice (Daniel, 2026-08-14).
+  //
+  // Resolves { file, patchIndex } for the copy, or null if declined.
+  async function duplicateForEditing(entry, what) {
+    const ok = await SevenModal.confirm({
+      title: 'Duplicate and edit',
+      bodyHtml:
+        `<p class="bk-sum">${esc(entry.name || 'This patch')}</p>` +
+        '<p class="bk-time">This is a Crumar factory preset, captured from Bank 1. Every patch ' +
+        'generated from this model is built from it, so it is kept as it is.</p>' +
+        `<p class="bk-time">${esc(what || 'Your changes')} on a copy instead?</p>`,
+      confirmLabel: 'Duplicate and edit',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return null;
+    const copy = await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex || 0);
+    if (!copy || !copy.file) {
+      toast('Could not make a copy');
+      return null;
+    }
+    await refreshLibrary();
+    // Land on the copy: what you go on editing is the thing you just made.
+    const made = libEntries.find(
+      (e) => e.file === copy.file && (e.patchIndex || 0) === (copy.patchIndex || 0)
+    );
+    if (made) {
+      libView.reveal(copy.file, copy.patchIndex, { tab: 'patches' });
+      selectLibraryEntry(made);
+    }
+    return copy;
+  }
+
   // Choosing the sound a stored PATCH names. The parameters stay: the Seven
   // keeps engine settings across a sound change (verified on the device), so
   // the file does too. Undoable, like every other library edit.
@@ -280,6 +329,20 @@
     const chosen = await chooseSound('Choose this patch’s sound',
       'The settings stay as they are — only which instrument the patch names changes.');
     if (!chosen) return;
+    // A DONOR is copied, not rewritten — the same rule saving parameters
+    // follows, for the same reason. A Bank 1 capture seeds every generated
+    // patch of that model, and changing which instrument it names changes
+    // what those patches are built from, silently and retroactively
+    // (Daniel, 2026-08-14).
+    const entry = libEntries.find(
+      (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
+    );
+    if (entry && entry.origin && entry.origin.bank === 1) {
+      const copy = await duplicateForEditing(entry, `Give it the ${chosen.name} sound`);
+      if (!copy) return;
+      file = copy.file;
+      patchIndex = copy.patchIndex || 0;
+    }
     const r = await window.sevenAPI.library.saveSound(file, patchIndex, chosen.name, chosen.sampled);
     const was = r && r.previous && r.previous.name;
     if (was) {
@@ -518,6 +581,16 @@
   // where they will light, and the same short lines under it. The player is
   // looking at the instrument, so "hold THAT one" is a location rather than a
   // sentence (Daniel, 2026-08-13).
+  // "Duplicate and edit", from the save bar on a Crumar capture.
+  document.addEventListener('click', async (e) => {
+    if (!e.target.closest('[data-duplicate-edit]')) return;
+    const t = currentTarget();
+    const entry = t && libEntries.find(
+      (x) => x.file === t.file && (x.patchIndex || 0) === (t.patchIndex || 0)
+    );
+    if (entry) await duplicateForEditing(entry, 'Make your changes');
+  });
+
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-save-to-seven]')) return;
     const bank = deviceSel ? deviceSel.bank + 1 : null;
@@ -525,16 +598,16 @@
     const modal = SevenModal.open({
       title: 'Save a Sound to the Seven',
       bodyHtml:
-        // The same instructions on every bank (Daniel, 2026-08-13). Both save
-        // paths are offered everywhere rather than one of them changing shape
-        // on Bank 1.
+        // The same instructions on every bank that can be written to. Bank 1
+        // no longer reaches here at all: the control is absent on the factory
+        // bank rather than present with a parenthetical saying it will not
+        // work (Daniel, 2026-08-14).
         //
         // Only draw the panel when we know which button to light. A picture
         // with nothing lit would be decoration, and this one is instructions.
         (bank ? SevenPanelMini.render(bank, preset) : '') +
         '<p class="tx-note">Hold a preset button for 3 seconds.</p>' +
-        '<p class="tx-note">The lights will run to confirm the save.</p>' +
-        '<p class="tx-note">(the Seven will not save to Bank 1)</p>',
+        '<p class="tx-note">The lights will run to confirm the save.</p>',
       confirmLabel: 'Got it!',
       cancelLabel: 'Close',
       tone: 'is-transfer',
@@ -1088,7 +1161,7 @@
             `value="${String(p.name).replace(/"/g, '&quot;')}">` +
             `</div>`
           : p
-          ? R.renderPatchRow(p, i, sel)
+          ? R.renderPatchRow(p, i, sel, undefined, bankIndex + 1)
           : `<button class="patch-row empty-slot${i === sel ? ' selected' : ''}" data-index="${i}" type="button">` +
             `<span class="patch-num">${i + 1}</span>` +
             `<span class="patch-name">Not backed up</span>` +
@@ -1317,6 +1390,10 @@
     // Referenced by audition.js and MISSING until now, which is why leaving
     // audition mode left you still hearing the sound you were trying out.
     getSlot: () => (deviceSel ? { bank: deviceSel.bank, preset: deviceSel.preset } : null),
+    // Whether the panel is showing that slot, as opposed to a library patch.
+    // The save bar needs it to tell "a Bank 1 preset is on screen" from "a
+    // patch is on screen and a Bank 1 slot happens to be selected too".
+    lastTouchedDevice: () => lastTouched === 'device',
     // What the edit buffer is actually PLAYING, which after a trip through the
     // carousel is not what the patch file says. Saving without this wrote the
     // new settings under the old instrument's name.

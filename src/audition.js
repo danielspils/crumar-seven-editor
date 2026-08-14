@@ -60,13 +60,39 @@
     //
     // Both are always present, dimmed and inert until there is something to
     // save. The note, when there is one, goes on its own line underneath.
+    // NOT on Bank 1. The Seven refuses a store there — the bank is hardware
+    // write-protected — so the control offered a walkthrough of a hold that
+    // cannot work and then said so in brackets underneath. A control that
+    // explains why it will fail should not be a control (Daniel, 2026-08-14).
+    //
+    // Everything else about Bank 1 stays: the slot loads, its parameters are
+    // live, the carousel changes its sound. All of that is the edit buffer,
+    // which the instrument allows. Only KEEPING it there is refused, so only
+    // the control that offers to keep it goes away.
+    const slot = deps.getSlot && deps.getSlot();
+    const onFactoryBank = !!slot && slot.bank === 0 && deps.lastTouchedDevice && deps.lastTouchedDevice();
+
+    // A Crumar capture on disk. Editing it in place is refused — it seeds
+    // every generated patch of its model — so the way to edit it is offered
+    // here, BEFORE any editing, rather than turning up as a copy you did not
+    // ask for at save time (Daniel, 2026-08-14).
+    const donorEntry = (deps.getEntries() || []).find(
+      (e) => e.file === target.file && (e.patchIndex || 0) === (target.patchIndex || 0)
+    );
+    const isDonorFile = !!(donorEntry && donorEntry.origin && donorEntry.origin.bank === 1);
     const bar = (live, note, kind = '') =>
       `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
       `<span class="save-actions">` +
       `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
       'Save to Computer</button>' +
-      `<span class="save-sep" aria-hidden="true">·</span>` +
-      `<button type="button" class="save-seven-link" data-save-to-seven>Save to Seven</button>` +
+      (onFactoryBank
+        ? ''
+        : `<span class="save-sep" aria-hidden="true">·</span>` +
+          `<button type="button" class="save-seven-link" data-save-to-seven>Save to Seven</button>`) +
+      (isDonorFile
+        ? `<span class="save-sep" aria-hidden="true">·</span>` +
+          `<button type="button" class="save-seven-link" data-duplicate-edit>Duplicate and edit</button>`
+        : '') +
       `</span>` +
       (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
       `</div>`;
@@ -534,8 +560,20 @@
     // overwriting is right when refining a patch, a copy when making a
     // variant.
     const isBackup = !!(entry.origin && entry.origin.kind === 'backup');
+    // A DONOR IS NEVER OVERWRITTEN EITHER, and this is its own rule rather
+    // than a side effect of the one above (Daniel, 2026-08-14).
+    //
+    // A library patch captured from Bank 1 is what every generated patch of
+    // that model is seeded from — see createPatchFromSound in
+    // library-store.js. Editing one in place changes every patch generated
+    // from that model afterwards, with nothing on screen to connect the two.
+    // It was already safe, because a Bank 1 patch is also a backup record and
+    // backups always copy; but that is a rule about RECORDS that happened to
+    // cover donors, and the day it changes the donors lose their protection
+    // silently. So the reason is written down where it applies.
+    const isDonor = !!(entry.origin && entry.origin.bank === 1);
     let answer = 'secondary'; // = save a copy
-    if (!isBackup) {
+    if (!isBackup && !isDonor) {
       answer = await SevenModal.confirm({
         title: `Save “${esc(entry.name || 'this patch')}”`,
         body: 'Overwrite this patch, or keep it and save your changes as a copy?',

@@ -103,6 +103,17 @@
   // its own, which on most rows repeated the patch's name and on the rest
   // took width from it — so the fact moved into the badge that was already
   // there to classify it (Daniel, 2026-08-13).
+  // A capture of the factory bank. It is worth marking on the row because
+  // those files behave differently from everything around them: they seed
+  // every generated patch of that model, so the app copies rather than edits
+  // them in place (Daniel, 2026-08-14).
+  const isFactoryCapture = (entry) => !!(entry.origin && entry.origin.bank === 1);
+  const factoryBadge = (entry) => (isFactoryCapture(entry)
+    ? '<span class="badge badge-factory" title="Crumar factory preset, captured from Bank 1. ' +
+      'Generated patches of this model are seeded from it, so edits are made on a copy.">' +
+      'Crumar preset</span>'
+    : '');
+
   function badge(entry) {
     const kind = entry.sampled ? 'Sample' : 'Model';
     return (
@@ -110,6 +121,7 @@
       `title="${esc(entry.soundName || kind)}">` +
       `<span class="badge-kind">${kind}</span>` +
       `<span class="badge-sound">${esc(entry.soundName || kind)}</span></span>` +
+      factoryBadge(entry) +
       (entry.missing
         ? `<span class="badge badge-warn" title="Sound not in the schema sound list">⚠ Not installed</span>`
         : `<span class="badge-gap"></span>`)
@@ -195,7 +207,7 @@
       // words, with the instrument drawn beside it — so in a list of forty
       // rows it was forty repetitions of something you learn on click
       // (Daniel, 2026-08-13). Rows inside a backup keep theirs.
-      `<span class="lib-badges">${opts.flat ? '' : badge(entry)}</span>` +
+      `<span class="lib-badges">${opts.flat ? factoryBadge(entry) : badge(entry)}</span>` +
       `</button>` +
       // A button cannot contain a button, so the delete is a SIBLING and the
       // wrapper positions it over the row's right edge.
@@ -770,7 +782,7 @@
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name">${esc(displayName(entry))}</span>` +
-          `<span class="lib-badges"></span>` +
+          `<span class="lib-badges">${factoryBadge(entry)}</span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`

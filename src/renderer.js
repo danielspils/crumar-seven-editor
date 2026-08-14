@@ -603,7 +603,9 @@
     // what the two-line library row does cheaply: the sound sits in the right
     // column beside the badge, so both regions read the same way across.
     // A slot older than the region header says so on hover, not in the row.
-    function renderPatchRow(patch, index, selectedIndex, asOf) {
+    // `bank` is 1-based and optional: only the bank list passes it, and only
+    // bank 1 changes what the row draws.
+    function renderPatchRow(patch, index, selectedIndex, asOf, bank) {
       const missing = isMissing(patch);
       const stale = patch.date && asOf && patch.date < asOf;
       const title = stale ? ` title="Backed up ${esc(fmtDay(patch.date))} — older than the rest of this bank"` : '';
@@ -618,6 +620,13 @@
         `title="${esc(patch.soundName)}">` +
         `<span class="badge-kind">${patch.sampled ? 'Sample' : 'Model'}</span>` +
         `<span class="badge-sound">${esc(patch.soundName)}</span></span>` +
+        // Bank 1 is the factory bank, hardware write-protected. Marked here as
+        // well as in the library, because the same eight patches appear in
+        // both lists and should read the same way (Daniel, 2026-08-14).
+        (bank === 1
+          ? '<span class="badge badge-factory" title="Crumar factory preset. The Seven does not ' +
+            'allow writing to Bank 1.">Crumar preset</span>'
+          : '') +
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
         `</button>`
       );

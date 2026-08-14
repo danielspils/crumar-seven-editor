@@ -571,3 +571,69 @@ test('order survives a read/write round trip', () => {
   const s = store.readSetlists().find((x) => x.name === 'Keeps');
   assert.strictEqual(s.order, 0, 'the position is still there after an unrelated write');
 });
+
+// ---- Crumar factory captures are not edited in place -----------------------
+// A patch whose origin names bank 1 seeds every generated patch of that model
+// (createPatchFromSound). Editing one changes what future generated patches
+// are built from, silently. The app duplicates first; the store makes it a
+// rule rather than a habit (Daniel, 2026-08-14).
+
+const factoryCapture = (store, sound = 'Tine Piano', preset = 1) => store.saveBackupPatch({
+  name: `Bank 1 Preset ${preset} — ${sound}`,
+  sound: { name: sound, sampled: false },
+  params: Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(64, p.max)])),
+  origin: { bank: 1, preset, soundId: 0 },
+  captured: new Date().toISOString(),
+});
+
+test('saving parameters onto a Bank 1 capture is refused', () => {
+  const { store } = freshStore();
+  const file = factoryCapture(store);
+  assert.throws(
+    () => store.savePatchParams(file, 0, { rho_atk: 99 }),
+    /factory preset in place/,
+    'the store refuses'
+  );
+  assert.strictEqual(store.readFile(file).library.patches[0].params.rho_atk, 64, 'and nothing moved');
+});
+
+test('changing the sound of a Bank 1 capture is refused too', () => {
+  const { store } = freshStore();
+  const file = factoryCapture(store);
+  assert.throws(() => store.savePatchSound(file, 0, 'Clavi Piano', false), /factory preset in place/);
+  assert.strictEqual(store.readFile(file).library.patches[0].sound.name, 'Tine Piano');
+});
+
+// Only the values are protected. A name is not a value, and a file you no
+// longer want is yours to remove.
+test('renaming and deleting a Bank 1 capture stay allowed', () => {
+  const { store, dir } = freshStore();
+  const file = factoryCapture(store);
+  const renamed = store.rename(file, 0, 'My Rhodes');
+  assert.notStrictEqual(renamed, file, 'the rename went through');
+  assert.strictEqual(store.readFile(renamed).library.patches[0].name, 'My Rhodes');
+  fs.unlinkSync(path.join(dir, renamed)); // delete is shell.trashItem in the app
+  assert.ok(!fs.existsSync(path.join(dir, renamed)));
+});
+
+// The copy is a patch of your own: freely editable, and no longer a donor.
+test('a duplicate of a Bank 1 capture is editable and loses the origin', () => {
+  const { store } = freshStore();
+  const file = factoryCapture(store);
+  const copy = store.duplicate(file, 0);
+  const written = store.readFile(copy.file).library.patches[0];
+  assert.ok(!('bank' in written.origin), 'the copy does not claim to be a capture');
+  assert.ok(written.origin.created, 'it is a patch you made');
+  store.savePatchParams(copy.file, 0, { rho_atk: 99 });
+  assert.strictEqual(store.readFile(copy.file).library.patches[0].params.rho_atk, 99, 'and it edits');
+});
+
+// The guard must not block a backup RUN, which stamps and rewrites Bank 1
+// captures by design.
+test('a backup run can still stamp a Bank 1 capture as verified', () => {
+  const { store } = freshStore();
+  const file = factoryCapture(store);
+  const when = new Date().toISOString();
+  store.touchVerified(file, 0, when);
+  assert.strictEqual(store.readFile(file).library.patches[0].verified, when);
+});
