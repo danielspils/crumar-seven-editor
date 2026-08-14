@@ -29,6 +29,72 @@ class LibraryStore {
 
   setlistsFile() { return path.join(this.dir, 'setlists.json'); }
 
+  // ---- hand-placed order ---------------------------------------------------
+  //
+  // Both lists sort by recency UNTIL you drag a row; from then on they hold
+  // the order you put them in (Daniel, 2026-08-14). Two different homes for
+  // the same idea, because the two things are stored differently: a setlist is
+  // an entry in setlists.json and carries its own `order`, while patches are
+  // one file each and cannot carry a list-wide position without rewriting
+  // every one of them on every drag — so their order is a manifest beside
+  // them, listing `file#patchIndex` keys.
+  //
+  // In BOTH cases the rule for something the order has never seen — a patch
+  // you just saved, a setlist you just made — is the same: it is not in the
+  // order, so it floats to the top, newest first. That is what makes "new
+  // ones at the top" fall out rather than needing a hook on every create.
+  patchOrderFile() { return path.join(this.dir, 'patch-order.json'); }
+
+  readPatchOrder() {
+    const f = this.patchOrderFile();
+    if (!fs.existsSync(f)) return [];
+    try {
+      const raw = JSON.parse(fs.readFileSync(f, 'utf8'));
+      return Array.isArray(raw.order) ? raw.order.filter((k) => typeof k === 'string') : [];
+    } catch (err) {
+      // An unreadable manifest is a lost preference, not a lost patch: fall
+      // back to recency rather than failing the list.
+      console.warn('[library] patch-order.json unreadable:', String(err.message || err));
+      return [];
+    }
+  }
+
+  // The whole visible order, as the list now reads. Handing over the complete
+  // sequence rather than one move is what pins the floaters: anything that was
+  // sitting at the top because the order had never seen it now has a place.
+  writePatchOrder(keys) {
+    this.ensureSeeded();
+    const order = (keys || []).filter((k) => typeof k === 'string');
+    fs.writeFileSync(this.patchOrderFile(), `${JSON.stringify({ order }, null, 2)}\n`);
+    return order;
+  }
+
+  // Back to recency. The manifest is removed rather than emptied, so "no
+  // manual order" is one state on disk instead of two.
+  clearPatchOrder() {
+    const f = this.patchOrderFile();
+    if (fs.existsSync(f)) fs.unlinkSync(f);
+  }
+
+  // Same idea for setlists, written onto the entries themselves. `indexes` is
+  // the displayed order given as positions in the file array — the array's own
+  // order is identity everywhere else and must not move.
+  writeSetlistOrder(indexes) {
+    const setlists = this.readSetlists();
+    (indexes || []).forEach((idx, position) => {
+      if (setlists[idx]) setlists[idx].order = position;
+    });
+    this.writeSetlists(setlists);
+    return setlists;
+  }
+
+  clearSetlistOrder() {
+    const setlists = this.readSetlists();
+    for (const s of setlists) delete s.order;
+    this.writeSetlists(setlists);
+    return setlists;
+  }
+
   // One-time migration from the pre-rename manifest: if setlists.json is
   // absent and sets.json exists, convert it (key `sets` -> `setlists`) and
   // leave the original in place.
@@ -126,6 +192,9 @@ class LibraryStore {
           // is silently lost on every read — which is what happened to the
           // first version of touchedAt. Anything added here must be listed.
           ...(typeof s.touchedAt === 'string' ? { touchedAt: s.touchedAt } : {}),
+          // The hand-placed position, once you have dragged one. Absent on
+          // every setlist means nobody has, and the list sorts by recency.
+          ...(Number.isFinite(s.order) ? { order: s.order } : {}),
           slots: Array.from({ length: 8 }, (_, i) => {
             const v = s.slots[i];
             if (v == null) return null;
@@ -201,11 +270,18 @@ class LibraryStore {
   // A slot may also hold "sound:<name>" — a sound with no stored parameters,
   // which sends 0x46 alone and leaves the engine settings untouched (the
   // device's own behaviour). Sounds are referenced by name, never by id.
+  // A slot holds a PATCH FILE, and only that. The picker still offers
+  // instruments — choosing one is a real thing to want — but choosing it makes
+  // the patch here rather than storing a second kind of reference for the rest
+  // of the app to special-case (Daniel, 2026-08-14).
   assignSlot(index, slot, file) {
     const setlists = this.readSetlists();
     if (!setlists[index] || slot < 0 || slot > 7) throw new Error('Bad slot');
-    setlists[index].slots[slot] = String(file);
+    let value = String(file);
+    if (value.startsWith('sound:')) value = this.createPatchFromSound(value.slice('sound:'.length)).file;
+    setlists[index].slots[slot] = value;
     this.writeSetlists(this._touch(setlists, index));
+    return value;
   }
 
   clearSlot(index, slot) {
@@ -218,11 +294,23 @@ class LibraryStore {
   // Reorder by swap — dropping on an occupied slot exchanges the two, never
   // overwrites; dropping on an empty slot is the same swap with null (a
   // move). Empty slots are legal anywhere; nothing auto-compacts.
+  // REORDER, not swap. Dragging slot 5 to slot 2 used to exchange the two and
+  // leave everything between them where it was, so building a running order
+  // meant a chain of swaps and arithmetic (Daniel, 2026-08-14). Now the
+  // dragged patch lands at `to` and the ones it passes close up behind it,
+  // which is what dragging a row into a position means everywhere else.
+  //
+  // The array stays eight long — one removed, one inserted — so slots keep
+  // mapping to the bank's eight presets, empties included: an empty slot is a
+  // position in the running order too, and dragging past one moves it.
+  // Undo is still moveSlot(to, from): removing the patch from `to` and
+  // inserting it at `from` puts every displaced slot back where it was.
   moveSlot(index, from, to) {
     const setlists = this.readSetlists();
     const s = setlists[index];
     if (!s || from < 0 || from > 7 || to < 0 || to > 7) throw new Error('Bad slot');
-    [s.slots[from], s.slots[to]] = [s.slots[to], s.slots[from]];
+    const [moved] = s.slots.splice(from, 1);
+    s.slots.splice(to, 0, moved);
     this.writeSetlists(this._touch(setlists, index));
   }
 
@@ -276,6 +364,10 @@ class LibraryStore {
   // it displays with the Sampled badge alongside the not-installed warning.
   list() {
     this.ensureSeeded();
+    // One-time, and idempotent: any `sound:NAME` slot left by an older build
+    // becomes the patch that assignment makes today, so nothing downstream has
+    // to know the old kind ever existed.
+    this.migrateSoundSlots();
     const entries = [];
     const files = fs.readdirSync(this.dir)
       .filter((f) => f.endsWith('.sevenlib.json'))
@@ -344,7 +436,13 @@ class LibraryStore {
         });
       });
     }
-    return { dir: this.dir, patches: entries, setlists: this.readSetlists() };
+    return {
+      dir: this.dir,
+      patches: entries,
+      setlists: this.readSetlists(),
+      // Empty means nobody has dragged a patch yet, so the list sorts itself.
+      patchOrder: this.readPatchOrder(),
+    };
   }
 
   rename(file, patchIndex, newName) {
@@ -467,6 +565,84 @@ class LibraryStore {
     // (Daniel, 2026-08-13). It surfaced the moment backup records started
     // always copying; the mismatch was there long before.
     return { file: target, patchIndex: 0 };
+  }
+
+  // An instrument, made into a patch.
+  //
+  // Assigning a sound to a setlist slot used to store a `sound:NAME` reference
+  // — a second kind of thing a slot could hold, which the row then had to
+  // explain to the reader ("Instrument"), and which behaved differently from
+  // every patch beside it. It is a patch now: that model, with the effects it
+  // comes with (Daniel, 2026-08-14).
+  //
+  // WHERE THE VALUES COME FROM, and why this is not the invention the
+  // sound-only slot existed to avoid: schema/factory-defaults-1.37.json, taken
+  // off Bank 1 of the player's own instrument — the factory bank, which cannot
+  // be stored to. Eight modeled sounds are covered. For anything else there is
+  // no evidence, so the patch carries the effects chain OFF rather than
+  // borrowed numbers: a sampled sound appears in no factory preset and has no
+  // chain to restore.
+  createPatchFromSound(name, { factoryDefaults } = {}) {
+    const sound = this.soundByName.get(name);
+    if (!sound) throw new Error(`Unknown sound: ${name}`);
+    if (!factoryDefaults && !this.factoryDefaults) {
+      // Version-gated like every other schema file, and optional: a build
+      // without it writes sounds with the chain off rather than failing.
+      try {
+        this.factoryDefaults = JSON.parse(fs.readFileSync(
+          path.join(__dirname, '..', 'schema', 'factory-defaults-1.37.json'), 'utf8'
+        ));
+      } catch {
+        this.factoryDefaults = { sounds: {} };
+      }
+    }
+    const factory = (factoryDefaults || this.factoryDefaults || {}).sounds || {};
+    const known = factory[name];
+    const params = known
+      ? { ...known }
+      // No factory evidence: the chain goes off and nothing else is claimed.
+      : { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 };
+    const patch = {
+      name,
+      sound: { name, sampled: !!sound.sampled },
+      soundName: name,
+      sampled: !!sound.sampled,
+      params,
+      origin: { created: new Date().toISOString(), fromInstrument: name },
+    };
+    // The folder may not exist yet — nothing guarantees a list() came first,
+    // and a write into a missing directory throws ENOENT. Same guard
+    // writeSetlists carries, for the same reason.
+    this.ensureSeeded();
+    const target = this.uniqueFile(name);
+    fs.writeFileSync(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(patch)));
+    return { file: target, patchIndex: 0, name, params };
+  }
+
+  // Setlists written before instruments became patches still hold
+  // `sound:NAME` in a slot. Convert each one ONCE, into exactly the patch an
+  // assignment would make today, so no setlist is left holding the old second
+  // kind of thing. Returns how many it converted.
+  migrateSoundSlots() {
+    const setlists = this.readSetlists();
+    let converted = 0;
+    const made = new Map(); // one file per sound, however many slots want it
+    for (const s of setlists) {
+      s.slots.forEach((v, i) => {
+        if (typeof v !== 'string' || !v.startsWith('sound:')) return;
+        const name = v.slice('sound:'.length);
+        try {
+          if (!made.has(name)) made.set(name, this.createPatchFromSound(name).file);
+          s.slots[i] = made.get(name);
+          converted++;
+        } catch {
+          // A sound this schema does not know: leave the slot alone rather
+          // than dropping what it referenced.
+        }
+      });
+    }
+    if (converted) this.writeSetlists(setlists);
+    return converted;
   }
 
   absPath(file) {

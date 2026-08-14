@@ -102,6 +102,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     export: (file, suggestedName) => ipcRenderer.invoke('library:export', { file, suggestedName }),
     reveal: () => ipcRenderer.invoke('library:reveal'),
     contextMenu: () => ipcRenderer.invoke('library:contextMenu'),
+    // The Patches list's hand-placed order: the whole visible sequence as
+    // `file#patchIndex` keys, or cleared to go back to sorting by recency.
+    setPatchOrder: (keys) => ipcRenderer.invoke('library:patchOrder', { keys }),
+    clearPatchOrder: () => ipcRenderer.invoke('library:clearPatchOrder'),
   },
   // Real MIDI (src/seven-midi.js in the main process). The renderer speaks
   // only in decoded events and high-level calls — it never learns what SysEx
@@ -160,6 +164,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     assign: (index, slot, file) => ipcRenderer.invoke('setlist:assign', { index, slot, file }),
     clear: (index, slot) => ipcRenderer.invoke('setlist:clear', { index, slot }),
     move: (index, from, to) => ipcRenderer.invoke('setlist:move', { index, from, to }),
+    // The Setlists list's own hand-placed order — the displayed sequence as
+    // positions in the file array, which stays put because it is identity.
+    setOrder: (indexes) => ipcRenderer.invoke('setlist:order', { indexes }),
+    clearOrder: () => ipcRenderer.invoke('setlist:clearOrder'),
     contextMenu: () => ipcRenderer.invoke('setlist:contextMenu'),
     deletePrompt: (name) => ipcRenderer.invoke('setlist:deletePrompt', { name }),
   },

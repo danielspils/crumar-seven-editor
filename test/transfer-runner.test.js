@@ -103,6 +103,8 @@ test('a sound this instrument lacks blocks the run before anything is sent', () 
 
 test('preflight describes every slot, including the empty ones', () => {
   const { store, midi, sender, entries } = setup();
+  // Assigning an instrument MAKES a patch (2026-08-14), so a setlist holds
+  // three patches and a gap — there is no sound-only slot to describe.
   const list = setlistWith(store, [entries[0].file, null, 'sound:Clavi Piano']);
   const plan = new TransferRunner({ midi, store, sender }).preflight(list, 3);
 
@@ -110,9 +112,20 @@ test('preflight describes every slot, including the empty ones', () => {
   assert.strictEqual(plan.slots[0].action, 'send');
   assert.strictEqual(plan.slots[1].action, 'skip');
   assert.match(plan.slots[1].reason, /left alone/);
-  assert.strictEqual(plan.slots[2].action, 'send-sound');
+  assert.strictEqual(plan.slots[2].action, 'send', 'the instrument is a patch like any other');
   assert.strictEqual(plan.willWrite, 2);
   assert.match(plan.warning, /will be replaced/);
+});
+
+// Assigning an instrument writes the patch it means: that model, with the
+// effects it comes with, taken off Bank 1 of the player's own instrument.
+test('assigning an instrument puts a real patch in the slot', () => {
+  const { store, midi, sender } = setup();
+  const list = setlistWith(store, ['sound:Clavi Piano']);
+  const slot = store.readSetlists()[list].slots[0];
+  assert.ok(slot && !slot.startsWith('sound:'), `the slot holds a file (${slot})`);
+  const plan = new TransferRunner({ midi, store, sender }).preflight(list, 2);
+  assert.strictEqual(plan.slots[0].action, 'send');
 });
 
 test('a missing patch file blocks rather than silently skipping', () => {
@@ -163,11 +176,14 @@ test('empty slots are stepped over, leaving those presets alone', async () => {
 // everything else in the buffer, so a Vibraphone arriving through a Clavi
 // patch's distortion, wha and pad sounds like the Clavi — which reads as the
 // sound not having changed at all (Daniel, 2026-08-13).
-test('a sound-only slot sends the sound and silences the effects chain', async () => {
+// Sending a bare SOUND to one preset is still a thing the app does — the
+// picker's Instruments tab, and the carousel. A setlist no longer holds one
+// (assigning an instrument writes a patch), so this drives startSlot directly,
+// which is the path that survives (Daniel, 2026-08-14).
+test('a bare sound sends the sound and silences the effects chain', async () => {
   const { store, midi, sender, sent } = setup();
-  const list = setlistWith(store, ['sound:Clavi Piano']);
   const runner = new TransferRunner({ midi, store, sender });
-  runner.start(list, 2);
+  runner.startSlot(2, 1, 'sound:Clavi Piano');
   await runner.nextSlot();
   assert.deepStrictEqual(sent[0], {
     sound: { name: 'Clavi Piano' },

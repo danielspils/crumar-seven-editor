@@ -81,6 +81,12 @@ function registerLibraryIpc() {
   ipcMain.handle('setlist:create', (_e, { name }) => getStore().createSetlist(name));
   // Opening one counts as using it — the list is ordered by last touched.
   ipcMain.handle('setlist:touch', (_e, { index }) => getStore().touchSetlist(index));
+  // Hand-placed order, for both lists. `order` takes the whole displayed
+  // sequence; `clearOrder` puts the list back to sorting itself.
+  ipcMain.handle('library:patchOrder', (_e, { keys }) => getStore().writePatchOrder(keys));
+  ipcMain.handle('library:clearPatchOrder', () => getStore().clearPatchOrder());
+  ipcMain.handle('setlist:order', (_e, { indexes }) => getStore().writeSetlistOrder(indexes));
+  ipcMain.handle('setlist:clearOrder', () => getStore().clearSetlistOrder());
   ipcMain.handle('setlist:rename', (_e, { index, name }) => getStore().renameSetlist(index, name));
   ipcMain.handle('setlist:delete', (_e, { index }) => getStore().deleteSetlist(index));
   ipcMain.handle('setlist:assign', (_e, { index, slot, file }) => getStore().assignSlot(index, slot, file));

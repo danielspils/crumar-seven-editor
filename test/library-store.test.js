@@ -91,12 +91,57 @@ test('setlist slots follow a renamed file', () => {
     'the slot points at the new filename, not a file that no longer exists');
 });
 
-test('slots hold a sound reference as well as a file', () => {
+// A slot holds a PATCH FILE and nothing else. Choosing an instrument used to
+// store "sound:NAME" — a second kind of thing every row and every send had to
+// special-case — and now writes the patch it means (Daniel, 2026-08-14).
+test('assigning an instrument writes a patch and stores its file', () => {
   const { store } = freshStore();
   store.createSetlist('Gig');
   const gig = listIndex(store, 'Gig');
   store.assignSlot(gig, 0, 'sound:Tine Piano');
-  assert.strictEqual(listNamed(store, 'Gig').slots[0], 'sound:Tine Piano');
+  const slot = listNamed(store, 'Gig').slots[0];
+  assert.ok(slot && !slot.startsWith('sound:'), `the slot holds a file (${slot})`);
+  const made = store.list().patches.find((e) => e.file === slot);
+  assert.ok(made, 'and that file is in the library');
+  assert.strictEqual(made.soundName, 'Tine Piano');
+  assert.strictEqual(made.origin.kind, 'created', 'it is a patch you made, not a capture');
+});
+
+// The effects it comes with, from Bank 1 of the player's own instrument —
+// evidence, not invented defaults.
+test('an instrument patch carries its factory effects', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', {
+    factoryDefaults: { sounds: { 'Tine Piano': { rev_sw: 1, rev_lvl: 44, fx1_sw: 0 } } },
+  });
+  assert.deepEqual(made.params, { rev_sw: 1, rev_lvl: 44, fx1_sw: 0 });
+});
+
+// No evidence, no guess: a sound Bank 1 never held gets the chain OFF rather
+// than numbers borrowed from a different instrument.
+test('an instrument with no factory evidence gets a silent chain', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  assert.deepEqual(made.params, { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 });
+});
+
+// Setlists written by the old build still hold sound refs. They convert once,
+// into exactly what an assignment makes today.
+test('old sound-only slots migrate to patches', () => {
+  const { store } = freshStore();
+  store.createSetlist('Legacy');
+  const i = listIndex(store, 'Legacy');
+  // Write the old shape straight to disk, as an older build would have.
+  const setlists = store.readSetlists();
+  setlists[i].slots[0] = 'sound:Tine Piano';
+  setlists[i].slots[1] = 'sound:Tine Piano';
+  store.writeSetlists(setlists);
+
+  store.list(); // the migration runs on read
+  const after = listNamed(store, 'Legacy').slots;
+  assert.ok(!String(after[0]).startsWith('sound:'), 'the slot holds a file');
+  assert.strictEqual(after[0], after[1], 'two slots on one instrument share one patch file');
+  assert.strictEqual(store.migrateSoundSlots(), 0, 'and it does not run again');
 });
 
 test('clear, move and delete behave', () => {
@@ -280,4 +325,105 @@ test('duplicate returns where the copy went, and does not claim to be a backup',
   // And the LIST must file it away from the bank groups.
   const listed = entries(store).find((e) => e.file === made.file);
   assert.strictEqual(listed.origin.kind, 'created');
+});
+
+// Dragging a slot REORDERS: the patch lands where it was dropped and the ones
+// it passes close up behind it. It used to swap the two ends and leave the
+// middle untouched (Daniel, 2026-08-14).
+test('moving a slot inserts it, shifting the ones it passes', () => {
+  const { store } = freshStore();
+  store.createSetlist('Order');
+  const gig = listIndex(store, 'Order');
+  const a = byName(store, 'Alpha');
+  const b = byName(store, 'Beta');
+  const c = byName(store, 'Gamma') || byName(store, 'Beta');
+  store.assignSlot(gig, 0, a.file);
+  store.assignSlot(gig, 1, b.file);
+  store.assignSlot(gig, 2, c.file);
+
+  // Third patch to the front: the two above it move down one, not sideways.
+  store.moveSlot(gig, 2, 0);
+  let slots = listNamed(store, 'Order').slots;
+  assert.deepEqual(slots.slice(0, 3), [c.file, a.file, b.file]);
+  assert.strictEqual(slots.length, 8, 'a setlist is always eight slots');
+
+  // And back: the same move in reverse restores every displaced slot, which
+  // is what the undo step relies on.
+  store.moveSlot(gig, 0, 2);
+  slots = listNamed(store, 'Order').slots;
+  assert.deepEqual(slots.slice(0, 3), [a.file, b.file, c.file]);
+});
+
+test('moving a slot past an empty one carries the empty with it', () => {
+  const { store } = freshStore();
+  store.createSetlist('Gaps');
+  const gig = listIndex(store, 'Gaps');
+  const a = byName(store, 'Alpha');
+  store.assignSlot(gig, 3, a.file);
+  store.moveSlot(gig, 3, 0);
+  const slots = listNamed(store, 'Gaps').slots;
+  assert.strictEqual(slots[0], a.file, 'it lands where it was dropped');
+  assert.strictEqual(slots[1], null, 'the empties it passed follow behind it');
+  assert.strictEqual(slots.length, 8);
+});
+
+// ---- hand-placed order ------------------------------------------------------
+// Both lists sort by recency until a drag; after one, they hold what you set.
+
+test('a patch order is written, read back, and cleared', () => {
+  const { store } = freshStore();
+  assert.deepEqual(store.readPatchOrder(), [], 'nothing set means sort yourself');
+  store.writePatchOrder(['b.json#0', 'a.json#0']);
+  assert.deepEqual(store.readPatchOrder(), ['b.json#0', 'a.json#0']);
+  assert.deepEqual(store.list().patchOrder, ['b.json#0', 'a.json#0'], 'and it reaches the renderer');
+  store.clearPatchOrder();
+  assert.deepEqual(store.readPatchOrder(), [], 'cleared is the same state as never set');
+});
+
+test('a setlist order rides on the setlists, leaving the file order alone', () => {
+  const { store } = freshStore();
+  store.createSetlist('First');
+  store.createSetlist('Second');
+  store.createSetlist('Third');
+  const before = store.readSetlists().map((s) => s.name);
+  // Display them back to front.
+  const i = (name) => store.readSetlists().findIndex((s) => s.name === name);
+  store.writeSetlistOrder([i('Third'), i('Second'), i('First')]);
+  const after = store.readSetlists();
+  assert.deepEqual(after.map((s) => s.name), before,
+    'the array is identity everywhere else and must not move');
+  const byOrder = [...after].sort((a, b) => a.order - b.order).map((s) => s.name);
+  assert.deepEqual(byOrder, ['Third', 'Second', 'First']);
+});
+
+test('a setlist made after an order exists carries none, so it floats', () => {
+  const { store } = freshStore();
+  store.createSetlist('One');
+  store.createSetlist('Two');
+  const i = (name) => store.readSetlists().findIndex((s) => s.name === name);
+  store.writeSetlistOrder([i('Two'), i('One')]);
+  store.createSetlist('Fresh');
+  const fresh = store.readSetlists().find((s) => s.name === 'Fresh');
+  assert.ok(!Number.isFinite(fresh.order), 'no position means it goes to the top of the list');
+});
+
+test('clearing the setlist order strips every position', () => {
+  const { store } = freshStore();
+  store.createSetlist('One');
+  store.createSetlist('Two');
+  const i = (name) => store.readSetlists().findIndex((s) => s.name === name);
+  store.writeSetlistOrder([i('Two'), i('One')]);
+  store.clearSetlistOrder();
+  assert.ok(store.readSetlists().every((s) => !Number.isFinite(s.order)));
+});
+
+// The reader rebuilds each setlist from scratch, so a field it does not name
+// is lost on the next read — which is how the first touchedAt disappeared.
+test('order survives a read/write round trip', () => {
+  const { store } = freshStore();
+  store.createSetlist('Keeps');
+  store.writeSetlistOrder([store.readSetlists().findIndex((s) => s.name === 'Keeps')]);
+  store.touchSetlist(0); // any other mutation rewrites the file
+  const s = store.readSetlists().find((x) => x.name === 'Keeps');
+  assert.strictEqual(s.order, 0, 'the position is still there after an unrelated write');
 });
