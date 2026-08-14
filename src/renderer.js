@@ -438,6 +438,15 @@
         `<div class="engine">` +
         `<div class="col-title">Sound engine</div>` +
         `<div class="engine-head">` +
+        `<div class="engine-head-text">` +
+        // The heading names whatever is in the middle of the carousel, even
+        // before it is chosen — muted while it is only a candidate, full
+        // strength once the instrument actually holds it. That is what lets
+        // the pictures go unlabelled.
+        `<div class="engine-sound${shownSound.candidate ? ' is-candidate' : ''}">` +
+        `${esc(shownSound.name)} ` +
+        `<span class="badge ${shownSound.sampled ? 'badge-sampled' : 'badge-modeled'}">` +
+        `${shownSound.sampled ? 'Sample' : 'Model'}</span></div>` +
         // The same illustration the picker uses. A patch is easier to place by
         // the instrument it is than by its name — and using one picture in
         // both views means choosing a sound and looking at it afterwards are
@@ -462,15 +471,6 @@
         // Name, description and slot in a column, with the instrument BESIDE
         // them rather than above: stacked, the picture pushed every parameter
         // down the page, and the parameters are what the view is for.
-        `<div class="engine-head-text">` +
-        // The heading names whatever is in the middle of the carousel, even
-        // before it is chosen — muted while it is only a candidate, full
-        // strength once the instrument actually holds it. That is what lets
-        // the pictures go unlabelled.
-        `<div class="engine-sound${shownSound.candidate ? ' is-candidate' : ''}">` +
-        `${esc(shownSound.name)} ` +
-        `<span class="badge ${shownSound.sampled ? 'badge-sampled' : 'badge-modeled'}">` +
-        `${shownSound.sampled ? 'Sample' : 'Model'}</span></div>` +
         `<div class="engine-sub"><span class="engine-group">${esc(shownSound.label)}</span></div>` +
         pos +
         // Saving belongs to the sound, so it sits with it. Above the panel it

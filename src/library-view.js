@@ -558,6 +558,10 @@
               // blue modeled, green sampled, the badge colours
               // (Daniel, 2026-08-13).
               `<span class="tile-sound">${esc(second)}</span>` +
+              // A named patch shows its age on a THIRD line — the second is
+              // already spent on the instrument, and the age is what tells
+              // two captures of the same slot apart.
+              (named && where ? `<span class="tile-when">${esc(where)}</span>` : '') +
               `</button>`
             );
           }).join('') +

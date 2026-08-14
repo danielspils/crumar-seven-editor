@@ -1079,6 +1079,16 @@
       border-radius: 5px; background: var(--bg-raised); color: var(--text);
       font: inherit; cursor: pointer; min-width: 0;
     }
+    /* One line, clipped. A long name wrapped to two and made its tile taller
+       than the row around it (Daniel, 2026-08-13); the full name is in the
+       tile's tooltip. */
+    .pick-tile .tile-name {
+      display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pick-tile .tile-sound, .pick-tile .tile-when {
+      display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pick-tile .tile-when { color: var(--text-dim); font-size: 11px; }
     .pick-tile:hover { background: var(--shade-hard); border-color: var(--text-dim); }
     .pick-modes { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
     .pick-mode {
@@ -1457,7 +1467,14 @@
 
     #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
     #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
-    .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    /* minmax(0, 1fr): a plain 1fr never shrinks below its content's minimum,
+       so a patch whose widest word was narrower got a narrower column — 287px
+       against 294 (Daniel, 2026-08-13). Now both halves are exactly half,
+       whatever is in them. */
+    .detail-cols {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px; align-items: start;
+    }
     .col-title {
       font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 10px;
@@ -1475,7 +1492,11 @@
          and only the shorter lines below sit beside the instrument. A flex
          row gave the text a fixed column, and no offset or size could stop
          "Venice Upright U1 Felt" wrapping in it (Daniel, 2026-08-13). */
-      display: block; margin-bottom: 12px;
+      /* flow-root: the header CONTAINS its float. A ::after clearfix was not
+         enough once the picture moved inside the text column — the parameter
+         grid below was laying out beside it, squeezed to 132px with the
+         labels truncated (Daniel, 2026-08-13). */
+      display: flow-root; margin-bottom: 12px;
       /* The picture is pushed down, so the row is as tall as the picture's
          offset plus itself — pull that back off the bottom. */
       margin-bottom: -6px;
@@ -1503,7 +1524,12 @@
        which the FLOAT already does — the text flows past the picture, so its
        width costs the name nothing (Daniel, 2026-08-13). The carousel shares
        this class, so shrinking it shrank the wheel too. */
-    .engine-art { float: right; width: 128px; margin: 34px 0 6px 14px; }
+    /* No margin-top. Text avoids a float's MARGIN box, not its border box, so
+       an offset here reserved space beside the heading while merely drawing
+       the picture lower — which is why pushing it down never freed the name's
+       line (Daniel, 2026-08-13). The picture is emitted AFTER the heading
+       instead: a float only affects what follows it. */
+    .engine-art { float: right; width: 128px; margin: 0 0 6px 14px; }
     /* Under the wheel, appearing only when the middle is a candidate. */
     .car-select {
       /* Tucked against the foot of the instrument, not floating below the box:
@@ -1941,10 +1967,15 @@
        takes ALL remaining width. Bar start therefore differs between groups
        (engine vs each effects section) but aligns within one — intended. */
     .params {
-      /* fit-content, not max-content: the label column still shrinks to its
-         content, but one long label can no longer stretch it — and with it
-         every row — past a sane share of the column. */
-      display: grid; grid-template-columns: fit-content(46%) 1fr minmax(40px, max-content);
+      /* A FIXED label column. It was fit-content(46%), which sized itself to
+         whichever label happened to be longest in the group on screen — so the
+         bars started at 624px on a Tine Piano and 610 on a Venice, and every
+         patch you clicked nudged the layout (Daniel, 2026-08-13, asking for
+         fit and finish). One width for every engine and every effects
+         section: the bars now start in the same place all the way down the
+         panel and across patches. Long labels ellipsize (.param-label already
+         clips). */
+      display: grid; grid-template-columns: 116px 1fr minmax(40px, max-content);
       column-gap: 10px;
     }
     .param {
