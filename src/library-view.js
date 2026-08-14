@@ -40,11 +40,24 @@
   // (Daniel, 2026-08-13). Absolute dates stay where they identify a thing
   // rather than describe its age — a backup is "13 Aug", because that is its
   // name.
-  const ago = (iso) => {
+  const ago = (iso, now = new Date()) => {
+    // Not merely tidiness: `new Date(null)` is the EPOCH, not an invalid date,
+    // so a missing stamp reaching here rendered "57 years ago" rather than
+    // nothing at all.
+    if (iso == null || iso === '') return '';
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
     const then = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
     if (Number.isNaN(then.getTime())) return '';
-    const days = Math.floor((Date.now() - then.getTime()) / 86400000);
+    // CALENDAR days in local time, not 24-hour blocks. Stamps are full UTC
+    // instants (`verified`/`captured`), and dividing the elapsed milliseconds
+    // called a patch verified at 12:04 yesterday "today" until lunchtime, and
+    // one from Tuesday evening "2 days ago" on Friday morning (Daniel,
+    // 2026-08-14 — measured against his own library). A person counting days
+    // counts date changes, so this counts date changes.
+    const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    // Rounded, not floored: a day boundary is 23 or 25 hours across a DST
+    // change, and flooring that turns one of them into zero.
+    const days = Math.round((midnight(now) - midnight(then)) / 86400000);
     if (days <= 0) return 'today';
     if (days === 1) return '1 day ago';
     if (days < 14) return `${days} days ago`;
@@ -255,14 +268,56 @@
         ? 'No patches match the search.'
         : 'Patches you save or import live here. Ones read off the Seven live under Backups.'}</div>`;
     }
-    // FLAT, sorted by name. It used to group by bank with dated headings —
-    // which is exactly what a backup is, so the two tabs showed the same list
-    // twice (Daniel, 2026-08-13). Here it is an inventory: every patch you
-    // own, found by name or by searching, with its origin on the row.
-    return [...list]
-      .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
+    // FLAT, newest first. It used to group by bank with dated headings — which
+    // is exactly what a backup is, so the two tabs showed the same list twice
+    // (Daniel, 2026-08-13).
+    //
+    // It then sorted by NAME, and the name it sorted by was the stored one:
+    // a copy keeps its "Bank 1 Preset 4 — " prefix, which the row strips
+    // before drawing it. So six patches whose visible names run Tine, Reed,
+    // Clavi, DX, MKS, Vibraphone were in perfect order — by an invisible
+    // string — and looked shuffled (Daniel, 2026-08-14).
+    //
+    // Sorted by the date the row itself shows, so the order and the "created
+    // …" column tell the same story, and the newest thing you saved is at the
+    // top where you left it. Same rule as the Setlists tab. Ties fall back to
+    // the name you can SEE.
+    return orderedPatches(list, data)
       .map((e, i) => renderPatchRow(e, state, { flat: true, n: i + 1 }))
       .join('');
+  }
+
+  // ---- ordering ------------------------------------------------------------
+  //
+  // Both lists sort by RECENCY until you drag a row, and then they hold the
+  // order you put them in (Daniel, 2026-08-14). One rule covers the awkward
+  // case in both: something the order has never seen — a patch saved since,
+  // a setlist just made — is not in it, so it goes to the TOP, newest of them
+  // first. New things arrive where you are looking rather than at the bottom
+  // of a list you have arranged.
+  const patchKey = (e) => `${e.file}#${e.patchIndex || 0}`;
+  const patchWhen = (e) => String((e.origin || {}).date || '');
+
+  // Whether the tab in front of you is holding an order somebody set.
+  const hasManualOrder = (data, state) => (
+    state.tab === 'patches' ? !!(data.patchOrder && data.patchOrder.length)
+      : state.tab === 'setlists' ? data.setlists.some((s) => Number.isFinite(s.order))
+        : false
+  );
+
+  function orderedPatches(list, data) {
+    const order = (data && data.patchOrder) || [];
+    const byRecency = (a, b) => (patchWhen(a) === patchWhen(b)
+      ? displayName(a).localeCompare(displayName(b), undefined, { numeric: true })
+      : (patchWhen(a) < patchWhen(b) ? 1 : -1));
+    if (!order.length) return [...list].sort(byRecency);
+    const at = new Map(order.map((k, i) => [k, i]));
+    const placed = [];
+    const fresh = [];
+    for (const e of list) (at.has(patchKey(e)) ? placed : fresh).push(e);
+    placed.sort((a, b) => at.get(patchKey(a)) - at.get(patchKey(b)));
+    fresh.sort(byRecency);
+    return [...fresh, ...placed];
   }
 
   // "Bank 2 setlist (2026-08-12)" — a dated RECORD written by a backup run, as
@@ -302,64 +357,15 @@
     for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
     const sorted = [...runs.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
 
-    // COLLAPSE RUNS THAT READ IDENTICALLY. Back up two evenings running and
-    // nothing changed, and you get two rows saying the same thing — which was
-    // Daniel's objection (2026-08-13). Deleting the older one is the obvious
-    // fix and the wrong one: two identical runs together say "unchanged from
-    // the 12th THROUGH the 13th", and keeping only the newest throws away the
-    // start of that span. It is the only thing that can answer "how long has
-    // it been like this?".
-    //
-    // So the DATA keeps every run and the LIST shows one row per span. Only
-    // ADJACENT runs merge: a change and a change back are two different spans
-    // and must stay apart, or the row would claim a stretch that never held.
-    // Signed by CONTENTS, not by filename. A slot's file can change while the
-    // instrument did not: delete a patch and back up again and it comes back
-    // under a fresh name, which made two identical nights read as two
-    // different records (Daniel, 2026-08-13 — it is why his 12th and 13th did
-    // not merge). The question a span asks is "did the Seven hold the same
-    // thing", and that is about the patch, not about which file holds it.
-    // The backup runner already dedupes on sound+params; this is the same
-    // identity, asked at display time.
-    const byFile = new Map();
-    for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
-    const slotKey = (f) => {
-      if (!f) return 'empty';
-      const e = byFile.get(f);
-      // A file the library no longer has cannot be compared by contents. Fall
-      // back to its name: unknown is not the same as equal.
-      if (!e || !e.params) return `file:${f}`;
-      const params = Object.keys(e.params).sort().map((k) => `${k}=${e.params[k]}`).join(',');
-      return `${e.soundName || ''}|${params}`;
-    };
-    const sig = (run) => JSON.stringify(
-      run.banks.map((b) => [b.bank, ((data.setlists[b.index] || {}).slots || []).map(slotKey)])
-    );
-    const out = [];
-    for (const run of sorted) {
-      const prev = out[out.length - 1];
-      // The representative is the NEWEST run of the span: its bank indices are
-      // what the row expands to and what Send uses, and newest is the one that
-      // is certainly still true.
-      if (prev && prev.sig === sig(run) && prev.partial === run.partial) {
-        prev.dates.push(run.date);
-        prev.since = run.date;
-      } else {
-        out.push(Object.assign(run, { sig: sig(run), dates: [run.date], since: run.date }));
-      }
-    }
-    return out;
+    // ONE ROW PER RUN. Identical consecutive runs used to collapse into a
+    // dated span ("13-14 Aug · unchanged") so two quiet evenings did not read
+    // as two rows saying the same thing. Daniel asked for that and then
+    // reversed it (2026-08-14): a backup is an event, and the list of them is
+    // a history — so each night keeps its own line whether or not the Seven
+    // changed, and "how long has it been like this?" is answered by reading
+    // the dates rather than by the app deciding they are one thing.
+    return sorted;
   }
-
-  // "12-13 Aug" when a span sits in one month, "30 Jul - 2 Aug" when it does
-  // not. A single-day span is just the day.
-  const fmtSpan = (since, until) => {
-    if (!since || since === until) return fmtDate(until);
-    const a = fmtDate(since);
-    const b = fmtDate(until);
-    const sameMonth = a.split(' ')[1] === b.split(' ')[1];
-    return sameMonth ? `${a.split(' ')[0]}\u2013${b}` : `${a} \u2013 ${b}`;
-  };
 
   // Everything a run captured, in bank order — the same shape the patches list
   // used to show for the whole library, which is where it belonged all along.
@@ -398,8 +404,7 @@
     return (
       '<div class="lib-setlist-head">' +
       '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtSpan(run.since, run.date))}` +
-      `${run.dates && run.dates.length > 1 ? ' · unchanged' : ''}` +
+      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
       `${run.partial ? ' · partial' : ''}</span>` +
       '</div>' + banks
     );
@@ -419,17 +424,11 @@
         '<div class="lib-row lib-setlist-row">' +
         `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
         `<span class="patch-num">${i + 1}</span>` +
-        `<span class="lib-setlist-name">${esc(fmtSpan(r.since, r.date))} Backup</span>` +
+        `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
         `<span class="lib-setlist-count">${slots} preset${slots === 1 ? '' : 's'}` +
-        // Say WHY one row covers several days, or a span reads as a backup
-        // that somehow took two days to run.
-        `${r.dates.length > 1 ? ' · unchanged' : ''}` +
         `${r.partial ? ' · partial' : ''}</span></button>` +
-        // Every date in the span: the row IS all of them, so the trash icon
-        // has to remove all of them. Handing it only the newest would leave
-        // the older runs behind with nothing on screen pointing at them.
-        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.dates.join(','))}" ` +
-        `title="Delete the ${esc(fmtSpan(r.since, r.date))} backup${r.dates.length > 1 ? 's' : ''} ` +
+        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
+        `title="Delete the ${esc(fmtDate(r.date))} backup ` +
         `(the patches stay in the library)">` +
         '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
         'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
@@ -451,10 +450,29 @@
       // A setlist is something YOU made. The dated records a backup writes are
       // backups, and they live under their own tab (Daniel, 2026-08-13).
       .filter(({ s }) => !BACKUP_NAME.test(s.name))
-      // Numbered by POSITION in the list you are looking at, like the other
-      // two tabs — not by the setlist's index in the file, which is storage.
+      // SORT FIRST, then number. Numbering before the sort assigned the file's
+      // order to rows that were about to be rearranged, so the newest setlist
+      // sat at the top wearing the number 2 (Daniel, 2026-08-14). The intent
+      // below was always position in the list you are looking at; it just ran
+      // a step too early.
+      //
+      // Hand-placed order wins once one exists, with anything it has never
+      // seen floating to the top by recency — the same rule the Patches tab
+      // uses, so dragging means one thing in this app.
+      .sort((a, b) => {
+        const manual = data.setlists.some((s) => Number.isFinite(s.order));
+        if (manual) {
+          const ao = Number.isFinite(a.s.order) ? a.s.order : -1;
+          const bo = Number.isFinite(b.s.order) ? b.s.order : -1;
+          // Both unplaced: newest first, as in the recency list below.
+          if (ao === -1 && bo === -1) return a.key === b.key ? a.i - b.i : (a.key < b.key ? 1 : -1);
+          if (ao === -1) return -1;
+          if (bo === -1) return 1;
+          return ao - bo;
+        }
+        return a.key === b.key ? a.i - b.i : (a.key < b.key ? 1 : -1);
+      })
       .map((row, n) => ({ ...row, n: n + 1 }))
-      .sort((a, b) => (a.key === b.key ? a.i - b.i : (a.key < b.key ? 1 : -1)))
       .map(({ s, i, n }) => {
         if (state.renamingSetlist === i) {
           return (
@@ -471,7 +489,7 @@
           // Delete was reachable only by right-click, which nothing advertised.
           // Same trash icon a slot uses — one vocabulary for "remove this".
           // A row is a <button>, so the icon is a sibling, not a nested button.
-          `<div class="lib-row lib-setlist-row">` +
+          `<div class="lib-row lib-setlist-row" draggable="true">` +
           `<button type="button" class="lib-setlist" data-setlist="${i}">` +
           `<span class="patch-num">${n}</span>` +
           `<span class="patch-name">${esc(s.name)}</span>` +
@@ -654,13 +672,12 @@
     );
   }
 
-  // A slot may hold a library file OR a bare sound, stored as "sound:<name>".
-  // Sound-only exists because the device supports it exactly: 0x46 changes the
-  // sound and leaves every engine parameter alone (verified 2026-08-09). No
-  // invented "factory default" values are involved — there are none to have.
+  // A slot holds a patch file. It could once hold a bare sound instead,
+  // written as "sound:<name>" — a second kind of thing that every row, every
+  // click and every send had to special-case. Choosing an instrument now
+  // writes the patch it means, so the prefix survives only as the word the
+  // picker hands to the store (Daniel, 2026-08-14).
   const SOUND_REF = 'sound:';
-  const isSoundRef = (v) => typeof v === 'string' && v.startsWith(SOUND_REF);
-  const soundRefName = (v) => v.slice(SOUND_REF.length);
 
   function renderSetlistSlots(data, state, opts = {}) {
     const setlist = data.setlists[state.setlistIndex];
@@ -696,15 +713,17 @@
 
     // Kind reads as a quiet parenthetical after the sound name — "(m)" for
     // modeled, "(s)" for sampled — with the full word on hover.
-    const soundTag = (entry) => {
-      const kind = entry.sampled ? 'Sample' : 'Model';
-      return (
-        ` <span class="sound-tag" title="${kind}" aria-label="${kind}">(${entry.sampled ? 's' : 'm'})</span>` +
-        (entry.missing
-          ? ' <span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">(!)</span>'
-          : '')
-      );
-    };
+    // No (m)/(s) beside the sound. Modeled or sampled is a fact about the
+    // INSTRUMENT, and the row is about the patch — it was two letters in
+    // brackets that had to be learned to be read, on every line of a list you
+    // scan by name (Daniel, 2026-08-14). The badge in the detail panel says it
+    // in a word where there is room for the word.
+    //
+    // (!) stays: a sound this instrument does not have is not a classification
+    // but a problem with the row it is on.
+    const soundTag = (entry) => (entry.missing
+      ? ' <span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">(!)</span>'
+      : '');
 
     const pulse = (i) =>
       state.slotPulse && state.slotPulse.slot === i ? ` slot-${state.slotPulse.kind}` : '';
@@ -721,31 +740,11 @@
             `<span class="slot-controls">${undoBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
-        if (isSoundRef(file)) {
-          const name = soundRefName(file);
-          const spec = (opts.sounds || []).find((x) => x.name === name);
-          return (
-            // A TAG, not a sentence. This slot holds an instrument rather
-            // than a patch, and the difference only matters at one moment —
-            // when the setlist is sent, this slot changes the sound and leaves
-            // the settings alone while every other slot replaces everything.
-            // That is worth marking and not worth explaining in the row
-            // (Daniel, 2026-08-13); the tooltip carries the why.
-            `<div class="lib-slot lib-slot-patch lib-slot-sound${pulse(i)}" data-slot="${i}" ` +
-            `title="${esc(name)} — an instrument, not a patch. Sending this slot ` +
-            `changes the sound and leaves every setting as it is.">` +
-            `${num}<span class="patch-name">${esc(name)}</span>` +
-            // No pill: the rows around this one say the engine with a small
-            // (m)/(s), and the italic name already marks this slot as holding
-            // an instrument rather than a patch (Daniel, 2026-08-13).
-            `<span class="lib-badges"></span>` +
-            `<span class="lib-origin"></span>` +
-            `<span class="patch-sound">Instrument` +
-            ` <span class="sound-tag" title="${spec && spec.sampled ? 'Sample' : 'Model'}">` +
-            `(${spec && spec.sampled ? 's' : 'm'})</span></span>` +
-            `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
-          );
-        }
+        // No branch for a sound-only slot any more. Choosing an instrument
+        // MAKES a patch — that model with the effects it comes with — so a
+        // slot holds one kind of thing and every row below is the same row
+        // (Daniel, 2026-08-14). Old `sound:NAME` slots are converted on read
+        // by the store, so nothing here has to know they existed.
         const entry = byFile.get(file);
         if (!entry) {
           return (
@@ -814,6 +813,12 @@
       `<div class="lib-bar">` +
       `<div class="lib-seg">${tab('backups', 'Backups')}${tab('patches', 'Patches')}` +
       `${tab('setlists', 'Setlists')}</div>` +
+      // No "Sort by recency" control. It appeared once a list had been
+      // dragged, as the way back — and it was a button in the bar earning its
+      // place from a state most people never reach (Daniel, 2026-08-14).
+      // Undo still puts a drag back, and the store keeps the ability to clear
+      // an order if this is ever wanted again.
+
       // No search on Backups: there are a handful of dated runs and you pick
       // one by looking (Daniel, 2026-08-13). It is a magnifier elsewhere until
       // it is wanted — the field sat open in the bar all day for something
@@ -1069,6 +1074,8 @@
         render();
         return;
       }
+      // An instrument slot. It holds a sound rather than a patch, so there is
+      // no entry to select — clicking it plays that instrument.
       const row = e.target.closest('[data-file]');
       if (row && !e.target.closest('.lib-rename-input')) {
         const entry = entryAt(row);
@@ -1108,12 +1115,30 @@
         e.dataTransfer.effectAllowed = 'move';
         return;
       }
+      // A setlist row, dragged to a place in its own list. Matched on the ROW,
+      // then read from the button inside it: the row is what carries
+      // draggable, so a grab on its padding — or anywhere but the button —
+      // started a drag that carried no data at all.
+      const setlistRow = e.target.closest('.lib-setlist-row');
+      if (setlistRow) {
+        const idEl = setlistRow.querySelector('[data-setlist]');
+        if (idEl) {
+          e.dataTransfer.setData('text/seven-setlist', idEl.dataset.setlist);
+          e.dataTransfer.effectAllowed = 'move';
+        }
+        return;
+      }
       const row = e.target.closest('.lib-row[data-file]');
       if (row) {
         const entry = entryAt(row);
         if (entry) {
           e.dataTransfer.setData('text/seven-file', entry.file);
-          e.dataTransfer.effectAllowed = 'copy';
+          // A patch drag means two things depending on where it lands: into a
+          // slot it assigns, within its own list it reorders. The KEY rides
+          // along for the second, because a file can hold more than one patch
+          // and the filename alone cannot say which row moved.
+          e.dataTransfer.setData('text/seven-patch-key', `${entry.file}#${entry.patchIndex || 0}`);
+          e.dataTransfer.effectAllowed = 'copyMove';
         }
       }
     });
@@ -1129,19 +1154,86 @@
         return;
       }
     });
+    // Where a reorder drop would land: above the row under the pointer, or
+    // below it. Half the row each, so the whole list is a target and there is
+    // no dead band between rows to fall into.
+    const clearDropMarks = () => {
+      for (const n of el.querySelectorAll('.drop-above, .drop-below, .drop-target')) {
+        n.classList.remove('drop-above', 'drop-below', 'drop-target');
+      }
+    };
+    const reorderTarget = (e) => {
+      const types = e.dataTransfer.types;
+      if (types.includes('text/seven-setlist')) return e.target.closest('.lib-setlist-row');
+      // A patch reorders only in its own flat list; over a slot it is being
+      // assigned, which is a different act with its own target.
+      if (types.includes('text/seven-patch-key') && state.tab === 'patches' && !e.target.closest('[data-slot]')) {
+        return e.target.closest('.lib-row.lib-patch');
+      }
+      return null;
+    };
+    const dropsBelow = (row, e) => {
+      const r = row.getBoundingClientRect();
+      return e.clientY > r.top + r.height / 2;
+    };
     el.addEventListener('dragover', (e) => {
       const slot = e.target.closest('[data-slot]');
       const types = e.dataTransfer.types;
       if (slot && (types.includes('text/seven-file') || types.includes('text/seven-slot'))) {
         e.preventDefault(); // allow the drop
         slot.classList.add('drop-target');
+        return;
       }
+      const row = reorderTarget(e);
+      if (!row) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropMarks();
+      row.classList.add(dropsBelow(row, e) ? 'drop-below' : 'drop-above');
     });
     el.addEventListener('dragleave', (e) => {
       const slot = e.target.closest('[data-slot]');
       if (slot) slot.classList.remove('drop-target');
+      const row = e.target.closest('.lib-setlist-row, .lib-row.lib-patch');
+      if (row) row.classList.remove('drop-above', 'drop-below');
     });
+    el.addEventListener('dragend', clearDropMarks);
     el.addEventListener('drop', (e) => {
+      // A reorder within a list. The whole displayed sequence is handed over,
+      // not the one move: that is what pins the rows which were only at the
+      // top because no order had ever named them.
+      const target = reorderTarget(e);
+      if (target) {
+        e.preventDefault();
+        clearDropMarks();
+        const below = dropsBelow(target, e);
+        const setlistIdx = e.dataTransfer.getData('text/seven-setlist');
+        if (setlistIdx !== '') {
+          const rows = [...el.querySelectorAll('.lib-setlist-row [data-setlist]')]
+            .map((r) => Number(r.dataset.setlist));
+          const moved = Number(setlistIdx);
+          const targetIdx = Number(target.querySelector('[data-setlist]').dataset.setlist);
+          if (moved === targetIdx) return;
+          const next = rows.filter((i) => i !== moved);
+          const at = next.indexOf(targetIdx);
+          next.splice(below ? at + 1 : at, 0, moved);
+          if (on.reorderSetlists) on.reorderSetlists(next);
+          return;
+        }
+        const key = e.dataTransfer.getData('text/seven-patch-key');
+        if (key) {
+          const rows = [...el.querySelectorAll('.lib-row.lib-patch[data-file]')]
+            .map((r) => `${r.dataset.file}#${r.dataset.pi || 0}`);
+          const targetKey = `${target.dataset.file}#${target.dataset.pi || 0}`;
+          if (key === targetKey) return;
+          const next = rows.filter((k) => k !== key);
+          const at = next.indexOf(targetKey);
+          next.splice(below ? at + 1 : at, 0, key);
+          if (on.reorderPatches) on.reorderPatches(next);
+          return;
+        }
+        return;
+      }
       const slot = e.target.closest('[data-slot]');
       if (!slot) return;
       e.preventDefault();
@@ -1276,7 +1368,16 @@
         render();
       },
       // Scroll a file's row into view on the next render, and select it.
-      reveal(file, patchIndex) {
+      // `tab` moves to the list that HAS that row first: revealing a patch
+      // from a dialog is useless if the library happens to be showing
+      // Backups. A rename passes no tab, because it must reveal the row where
+      // the renaming happened rather than jumping the user somewhere else.
+      reveal(file, patchIndex, { tab } = {}) {
+        if (tab) {
+          state.tab = tab;
+          state.setlistIndex = null;
+          state.backupDate = null;
+        }
         state.revealFile = file;
         state.selected = `${file} ${patchIndex || 0}`;
         render();
@@ -1291,5 +1392,9 @@
 
   // backupRuns is exported for tests: the span collapse has a rule that is
   // easy to state and easy to break — only ADJACENT identical runs merge.
-  return { createLibraryView, renderBody, renderSoundTiles, backupRuns };
+  // `ago` is exported for its own tests: it is one line of arithmetic that
+  // every dated row in the library depends on, and it has been wrong once.
+  // `displayName` is exported so a dialog naming a patch names it the way its
+  // row does — one rule for stripping the slot prefix, in one place.
+  return { createLibraryView, renderBody, renderSoundTiles, backupRuns, ago, displayName };
 });

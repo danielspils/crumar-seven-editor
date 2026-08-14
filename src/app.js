@@ -150,10 +150,9 @@
     for (const s of R.FX_SECTIONS) collapsed[s.group] = true;
   }
 
-  // Long scrollers fade their bottom edge while there is more below. These two
-  // outlive every re-render, so they are watched once.
+  // Long scrollers fade their bottom edge while there is more below. This one
+  // outlives every re-render, so it is watched once.
   window.SevenScrollFade.watch(document.getElementById('detail'));
-  window.SevenScrollFade.watch(document.getElementById('sounds-panel'));
 
   // ---- Undo -----------------------------------------------------------------
   // One stack for the whole app. Each action registers how to put itself back
@@ -690,7 +689,15 @@
     // and nothing else. The move itself goes through the same function a click
     // does, rather than dispatching a fake click and hoping the re-render has
     // not replaced the node underneath it.
-    const rows = [...document.querySelectorAll('#library .lib-row.lib-patch')];
+    // BOTH kinds of patch row. A setlist's slots are `.lib-slot`, not
+    // `.lib-row.lib-patch`, so this found nothing at all inside a setlist and
+    // the arrows did nothing there (Daniel, 2026-08-14) — while line for line
+    // below, `inSetlist` already expected to be walking them. `[data-file]`
+    // is what makes a slot a patch: an empty slot has no file, and a missing
+    // one has nothing to select.
+    const rows = [...document.querySelectorAll(
+      '#library .lib-row.lib-patch, #library .lib-slot[data-file]'
+    )];
     if (!rows.length) return;
     const at = rows.findIndex((r) => r.classList.contains('selected'));
     const next = rows[at < 0 ? (dir > 0 ? 0 : rows.length - 1) : at + dir];
@@ -1240,6 +1247,21 @@
     // carousel is not what the patch file says. Saving without this wrote the
     // new settings under the old instrument's name.
     getLiveSound: () => liveSound,
+    // Take the user to a patch on disk: open the library, land on Patches,
+    // scroll the row in and select it. Saving can CREATE a file — a backup
+    // record is never overwritten, so keeping its edit makes a new patch —
+    // and the dialog that says so now offers to go there (Daniel, 2026-08-14).
+    // Selecting it is the same act as clicking the row, playing included, so
+    // arriving by link and arriving by click leave the app in one state.
+    revealPatch: (file, patchIndex) => {
+      const entry = libEntries.find(
+        (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
+      );
+      if (!entry) return;
+      setLibraryOpen(true);
+      libView.reveal(file, patchIndex, { tab: 'patches' });
+      selectLibraryEntry(entry);
+    },
     undoStack,
     schema, // for a parameter's display name in the undo label
   });
@@ -1695,27 +1717,23 @@
       // `dates` is a comma-joined list: one library row can stand for several
       // runs that read identically (see backupRuns), and the row is all of
       // them — so deleting it deletes all of them.
-      async deleteBackup(dates) {
-        const list = String(dates).split(',').filter(Boolean);
-        if (!list.length) return;
-        const re = new RegExp(`^Bank [1-4] setlist \\((${list.join('|')})(, partial)?\\)$`);
+      // One date, one row, one delete. This took a comma-separated list while
+      // identical runs collapsed into a span and the trash icon had to remove
+      // every night the row stood for; each backup has its own row again
+      // (Daniel, 2026-08-14).
+      async deleteBackup(date) {
+        const day = String(date || '');
+        if (!day) return;
+        const re = new RegExp(`^Bank [1-4] setlist \\(${day}(, partial)?\\)$`);
         const hits = libData.setlists
           .map((s2, i) => ({ s2, i }))
           .filter(({ s2 }) => re.test(s2.name));
         if (!hits.length) return;
-        const days = list.length > 1
-          // Naming the count matters: the row shows ONE date span, so "this
-          // backup" would undersell what the button is about to remove.
-          ? `what the Seven held on ${list.length} days` : 'what the Seven held that day';
-        const span = list.length > 1
-          ? '\n\nThose runs read identically, which is why the library shows them as one ' +
-            'row. Deleting them loses the record of how far back that state goes.'
-          : '';
         const ok = await SevenModal.confirm({
-          title: list.length > 1 ? 'Delete these backups?' : 'Delete this backup?',
-          body: `This removes the record of ${days} — ${hits.length} ` +
+          title: 'Delete this backup?',
+          body: `This removes the record of what the Seven held that day — ${hits.length} ` +
             'bank' + (hits.length === 1 ? '' : 's') + '. The patches themselves stay in ' +
-            `your library.${span}\n\nThis cannot be undone.`,
+            'your library.\n\nThis cannot be undone.',
           confirmLabel: 'Delete backup',
           cancelLabel: 'Cancel',
           tone: 'is-warning',
@@ -1767,16 +1785,24 @@
           return;
         }
         const bank = await SevenModal.choose({
-          title: `Send “${name}” to which bank?`,
-          body:
-            'The patches load one at a time, and you hold that preset button on the Seven for ' +
-            'three seconds to keep each one.\n\n' +
-            'Bank 1 is not offered: it holds the factory presets.',
+          title: 'Select Bank',
+          // The setlist being sent, named under the question rather than
+          // inside it: the heading asks one short thing and the line below
+          // says what it is about (Daniel, 2026-08-14).
+          bodyHtml:
+            '<p>Select which bank to send</p>' +
+            `<p><em>${esc(name)}</em></p>`,
+          // Bank 1 is shown and unpickable. Leaving it out raised the question
+          // of whether it existed; greyed, the answer is on screen with the
+          // reason underneath.
           choices: [
+            { value: 1, label: 'Bank 1', disabled: true },
             { value: 2, label: 'Bank 2' },
             { value: 3, label: 'Bank 3' },
             { value: 4, label: 'Bank 4' },
           ],
+          note: 'Bank 1 is for factory presets',
+          tone: 'is-choice',
         });
         if (!bank) return;
 
@@ -1860,8 +1886,14 @@
       // the top of the list. Deliberately not awaited and not re-rendered: the
       // reorder should be waiting for you when you come BACK to the list, not
       // happen under your eyes as you open it.
-      openSetlist(index) {
-        window.sevenAPI.setlists.touch(index);
+      // The touch is written to disk AND read back. Without the refresh the
+      // stamp landed in the file while the list kept rendering from the copy
+      // it already had, so opening a setlist moved it to the top only after
+      // some unrelated act happened to re-read the library — which read as the
+      // recency order simply not working (Daniel, 2026-08-14).
+      async openSetlist(index) {
+        await window.sevenAPI.setlists.touch(index);
+        await refreshLibrary();
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();
@@ -1903,6 +1935,65 @@
             await refreshLibrary();
           });
         }
+      },
+      // ---- hand-placed order -------------------------------------------------
+      // Both lists sort by recency until a drag says otherwise. The whole
+      // displayed sequence is written, so rows that were floating at the top
+      // (never named by an order) get a place of their own.
+      async reorderPatches(keys) {
+        const previous = (libData.patchOrder || []).slice();
+        await window.sevenAPI.library.setPatchOrder(keys);
+        await refreshLibrary();
+        undoStack.push('reorder patches', async () => {
+          // Back to sorting itself if that is where this started, rather than
+          // to an empty order, which is a different state.
+          if (previous.length) await window.sevenAPI.library.setPatchOrder(previous);
+          else await window.sevenAPI.library.clearPatchOrder();
+          await refreshLibrary();
+        });
+      },
+      async clearPatchOrder() {
+        const previous = (libData.patchOrder || []).slice();
+        await window.sevenAPI.library.clearPatchOrder();
+        await refreshLibrary();
+        undoStack.push('sort patches by recency', async () => {
+          if (previous.length) await window.sevenAPI.library.setPatchOrder(previous);
+          await refreshLibrary();
+        });
+      },
+      async reorderSetlists(indexes) {
+        const previous = libData.setlists.map((s) => (Number.isFinite(s.order) ? s.order : null));
+        await window.sevenAPI.setlists.setOrder(indexes);
+        await refreshLibrary();
+        undoStack.push('reorder setlists', async () => {
+          const had = previous.some((o) => o != null);
+          if (had) {
+            // Rebuild the previous sequence: the positions, in the order they
+            // held.
+            const seq = previous
+              .map((o, i) => ({ o, i }))
+              .filter((x) => x.o != null)
+              .sort((a, b) => a.o - b.o)
+              .map((x) => x.i);
+            await window.sevenAPI.setlists.setOrder(seq);
+          } else {
+            await window.sevenAPI.setlists.clearOrder();
+          }
+          await refreshLibrary();
+        });
+      },
+      async clearSetlistOrder() {
+        const previous = libData.setlists
+          .map((s, i) => ({ o: Number.isFinite(s.order) ? s.order : null, i }))
+          .filter((x) => x.o != null)
+          .sort((a, b) => a.o - b.o)
+          .map((x) => x.i);
+        await window.sevenAPI.setlists.clearOrder();
+        await refreshLibrary();
+        undoStack.push('sort setlists by recency', async () => {
+          if (previous.length) await window.sevenAPI.setlists.setOrder(previous);
+          await refreshLibrary();
+        });
       },
       async moveSlot(index, from, to) {
         await window.sevenAPI.setlists.move(index, from, to);
@@ -2142,17 +2233,27 @@
     const connText = document.getElementById('connection-text');
     const connBtn = document.getElementById('conn-button');
     const backupBtn = document.getElementById('backup-button');
-    const soundsBtn = document.getElementById('sounds-button');
-    const soundsPanel = document.getElementById('sounds-panel');
     let backupRunning = false;
+    // The connected unit's sound table, held so Settings can open it on
+    // demand. Cleared on disconnect: it describes THIS instrument, and a
+    // stale one would be a list of what some other Seven had.
+    let soundTable = null;
 
     // Expansion visibility: the connected unit's own sound table. Ids are
     // unit-specific (they shift with installed expansions), which is exactly
-    // why the panel shows them next to the names — and why backups reference
-    // the table fingerprint shown in the footer.
-    const renderSoundsPanel = (table) => {
-      const cols = soundsPanel.querySelector('.sounds-cols');
-      const foot = soundsPanel.querySelector('.sounds-foot');
+    // why it shows them next to the names — and why backups record the table
+    // fingerprint in the footer.
+    //
+    // Built as NODES, never as an HTML string: every name here came off the
+    // instrument, and textContent is what makes that safe to draw.
+    const buildSoundsTable = (table) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'sounds-table';
+      const cols = document.createElement('div');
+      cols.className = 'sounds-cols';
+      const foot = document.createElement('div');
+      foot.className = 'sounds-foot';
+      wrap.append(cols, foot);
       const group = (title, sounds) => {
         const div = document.createElement('div');
         div.className = 'sounds-group';
@@ -2176,14 +2277,39 @@
         group('Modeled', table.sounds.filter((s) => !s.sampled)),
         group('Sampled — GSP-01 expansions', table.sounds.filter((s) => s.sampled))
       );
+      // Three facts, not a paragraph: when this list was read, which list it
+      // is, and what the list is for. The old sentence spent a line and a half
+      // explaining the mechanism ("backups reference this fingerprint so a
+      // patch can name a sound another Seven lacks") when what a reader needs
+      // is what it is USED for (Daniel, 2026-08-13). The date joins the time
+      // because a sound table outlives the session that read it.
+      //
+      // The closing clause describes THIS LIST, which is the thing that does
+      // the reconciling: a patch names its sound, and `isMissing` in
+      // renderer.js asks whether the connected unit's table holds that name.
+      // It is not a claim about the fingerprint — that is recorded into
+      // backups (backup-runner.js) as provenance and is never read back.
       const when = new Date(table.readAt);
+      const day = when.toLocaleDateString([], { day: 'numeric', month: 'short' });
+      const time = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       foot.textContent =
-        `Read from this unit at ${when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · fingerprint ${table.fingerprint} — backups reference this fingerprint so a patch can name a sound another Seven lacks.`;
+        `Read ${day}, ${time} · fingerprint ${table.fingerprint} · used to reconcile installed models/samples between different Sevens.`;
+      return wrap;
     };
 
-    const setSoundsOpen = (open) => {
-      soundsPanel.hidden = !open;
-      soundsBtn.classList.toggle('open', open);
+    // Opened from the foot of Settings. A modal rather than another tray: the
+    // list is the whole point of the moment, and there is nothing to do with
+    // it but read it and close it.
+    const openSoundsModal = async () => {
+      if (!soundTable) return;
+      const m = window.SevenModal.open({
+        title: `Installed sounds — ${soundTable.sounds.length} on this instrument`,
+        confirmLabel: 'Close',
+        cancelLabel: 'Close',
+      });
+      m.body.appendChild(buildSoundsTable(soundTable));
+      await m.action();
+      m.close();
     };
     // ---- Instrument settings (the nine globals) ---------------------------
     // Every slot is shown, because a raw value is worth seeing even when we
@@ -2289,6 +2415,31 @@
       tVal.textContent = `${g.tun} Hz`;
       tuning.append(tName, tVal);
       rows.appendChild(tuning);
+      // Expansion visibility, filed with the instrument's other facts. It was
+      // a chip of its own in the connection row; this is a row you pass on the
+      // way to somewhere else, which matches how often anyone wants it
+      // (Daniel, 2026-08-13). Only when there is a table to show — the count
+      // is the useful half, so it goes on the row.
+      if (soundTable) {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'set-row set-link';
+        const lName = document.createElement('span');
+        lName.className = 'set-name';
+        lName.textContent = 'Installed sounds';
+        const lVal = document.createElement('span');
+        lVal.className = 'set-value';
+        lVal.textContent = String(soundTable.sounds.length);
+        const chev = document.createElement('span');
+        chev.className = 'set-chev';
+        chev.textContent = '›';
+        link.append(lName, lVal, chev);
+        link.addEventListener('click', () => {
+          setSettingsOpen(false);
+          openSoundsModal();
+        });
+        rows.appendChild(link);
+      }
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.textContent = '';
       foot.hidden = true;
@@ -2315,13 +2466,6 @@
           !settingsBtn.contains(e.target)) setSettingsOpen(false);
     });
 
-    soundsBtn.addEventListener('click', () => setSoundsOpen(soundsPanel.hidden));
-    document.addEventListener('click', (e) => {
-      if (!soundsPanel.hidden && !soundsPanel.contains(e.target) && e.target !== soundsBtn) {
-        setSoundsOpen(false);
-      }
-    });
-
     const showStatus = (s, error) => {
       connRow.className = s.state === 'connected' ? 'connected'
         : s.state === 'connecting' ? 'connecting'
@@ -2344,9 +2488,8 @@
           `<span class="conn-fw" title="${esc(raw)}">${esc(version)}</span>`;
         connBtn.textContent = 'Disconnect';
         if (s.soundTable) {
-          soundsBtn.textContent = `${s.soundTable.sounds.length} sounds`;
+          soundTable = s.soundTable;
           setSoundList(s.soundTable);
-          renderSoundsPanel(s.soundTable);
         }
       } else if (s.state === 'connecting') {
         connText.textContent = 'Connecting…';
@@ -2365,12 +2508,11 @@
       }
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
-      soundsBtn.hidden = s.state !== 'connected' || !s.soundTable;
       // Always offered: a settings gear that vanishes is a settings gear you
       // go looking for. It is the PANEL that reports there is no instrument.
       if (s.state !== 'connected') {
         backupRunning = false;
-        setSoundsOpen(false);
+        soundTable = null;
         setSettingsOpen(false);
       }
     };

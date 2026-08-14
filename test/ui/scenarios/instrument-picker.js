@@ -36,15 +36,18 @@
   await ui.sleep(1000);
   const row = ui.$$('.lib-slot')[slot];
   ui.note(`slot ${slot + 1}: ${row?.textContent.replace(/\s+/g, ' ').trim().slice(0, 60)}`);
-  ui.check(!!ui.$('.lib-slot-sound'), 'the slot renders as sound-only');
-  // The sentence became a TAG plus a tooltip: a slot holding an instrument
-  // is marked "Instrument", and the why lives in the title (2026-08-13).
+  // Choosing an instrument MAKES a patch — that model with the effects it
+  // comes with — so the slot holds a patch file like any other and there is no
+  // sound-only row left to render (Daniel, 2026-08-14).
+  ui.check(!ui.$('.lib-slot-sound'), 'the slot is an ordinary patch row, not a sound-only one');
+  ui.check(!!row?.dataset.file, 'and it references a patch file');
+  // The row names its MODEL in the model column, like every other row. It used
+  // to say "Instrument" there — a kind of sound the Seven does not have — and
+  // carry a three-line tooltip explaining itself (Daniel, 2026-08-14).
   ui.check(
-    (row?.textContent || '').includes('Instrument'),
-    'the slot is marked as holding an instrument'
+    (row?.textContent || '').includes(name),
+    `the slot names its model (${name})`
   );
-  ui.check(
-    (row?.getAttribute('title') || '').includes('leaves every setting as it is'),
-    'and the tooltip says what sending it does'
-  );
+  ui.check(!row?.hasAttribute('title'), 'and explains itself without a tooltip');
+  ui.check(!/\(m\)|\(s\)/.test(row?.textContent || ''), 'with no (m)/(s) either');
 })()

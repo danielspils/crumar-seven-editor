@@ -110,22 +110,32 @@
 
   // A short list of choices, for when the question is "which one" rather than
   // "are you sure". Resolves the chosen value, or null if dismissed.
-  function choose({ title, body, choices, cancelLabel = 'Close' }) {
+  // `note` is a line UNDER the buttons — the rule that explains why one of
+  // them is the way it is, which belongs beside the choice rather than in the
+  // question above it. A choice may be `disabled`: shown, because leaving it
+  // out makes the reader wonder whether it exists, and unpickable, because it
+  // is not on offer (Daniel, 2026-08-14).
+  function choose({ title, body, bodyHtml = '', choices, note = '', cancelLabel = 'Close', tone = '' }) {
     return new Promise((resolve) => {
       const host = document.createElement('div');
       host.className = 'seven-modal-overlay';
       host.innerHTML =
-        `<div class="seven-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">` +
+        `<div class="seven-modal ${tone}" role="dialog" aria-modal="true" aria-label="${esc(title)}">` +
         `<button type="button" class="seven-modal-cancel" aria-label="${esc(cancelLabel)}" ` +
         `title="${esc(cancelLabel)}">` +
         '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
         'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
         '<path d="M4 4l8 8M12 4l-8 8"/></svg></button>' +
         `<div class="seven-modal-title">${esc(title)}</div>` +
-        `<div class="seven-modal-body">${paragraphs(body)}</div>` +
+        `<div class="seven-modal-body">${bodyHtml || paragraphs(body)}</div>` +
         `<div class="seven-modal-actions">` +
-        choices.map((c) => `<button type="button" class="seven-modal-ok" data-choice="${esc(c.value)}">${esc(c.label)}</button>`).join('') +
-        `</div></div>`;
+        choices.map((c) => (
+          `<button type="button" class="seven-modal-ok${c.disabled ? ' is-off' : ''}" ` +
+          `data-choice="${esc(c.value)}"${c.disabled ? ' disabled' : ''}>${esc(c.label)}</button>`
+        )).join('') +
+        `</div>` +
+        (note ? `<p class="seven-modal-note">${esc(note)}</p>` : '') +
+        `</div>`;
 
       const done = (value) => {
         document.removeEventListener('keydown', onKey, true);
@@ -140,7 +150,10 @@
       });
       document.addEventListener('keydown', onKey, true);
       document.body.appendChild(host);
-      host.querySelector('[data-choice]').focus();
+      // The first choice that can actually be taken: focus on a disabled one
+      // would put the keyboard somewhere Enter does nothing.
+      const first = host.querySelector('[data-choice]:not([disabled])');
+      if (first) first.focus();
     });
   }
 

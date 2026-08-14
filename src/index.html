@@ -223,14 +223,6 @@
     }
     #backup-button:hover { color: #6e1a17; border-color: #6e1a17; }
     #backup-button + #conn-button { margin-left: 0; }
-    #sounds-button {
-      margin-left: auto;
-      background: none; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 10px;
-      color: #26262a; font: inherit; font-size: 12px;
-      padding: 1px 9px; cursor: pointer;
-    }
-    #sounds-button:hover, #sounds-button.open { color: #000; border-color: rgba(0, 0, 0, 0.6); }
-    #sounds-button + #backup-button, #sounds-button + #conn-button { margin-left: 0; }
     #connection-row { position: relative; }
     /* Three columns, not two things and a floating third. The toggle used to be
        absolutely centred, which put it out of flow — so a long status line ran
@@ -408,33 +400,49 @@
       margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
       font-size: 12px; color: var(--text-dim); line-height: 1.5;
     }
-    #sounds-panel {
-      position: absolute; top: 100%; right: 12px; z-index: 30;
-      min-width: 460px; max-height: 60vh; overflow-y: auto;
-      background: var(--bg-raised); border: 1px solid var(--line);
-      border-top: none; border-radius: 0 0 6px 6px;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
-      padding: 12px 16px 10px;
-      color: var(--text); /* same inherited-metal-ink trap as #settings-panel */
+    /* The unit's sound table. It was a tray of its own hanging off a chip in
+       the connection row; it is now the body of a modal opened from the
+       bottom of Settings — one less button in the row, for something nobody
+       clicks twice a session (Daniel, 2026-08-13). The list styling is
+       unchanged and class-scoped so it travels with the content. */
+    .sounds-table .sounds-cols { display: flex; gap: 18px; }
+    /* Content-sized, not equal halves: 8 modeled names against 16 sampled ones
+       is not a 50/50 split, and `flex: 1` gave the short column the same width
+       as the long one and left the difference as air. */
+    .sounds-table .sounds-group { flex: 0 1 auto; min-width: 0; }
+    .sounds-table h4 {
+      /* The settings tray's heading treatment (.settings-head). */
+      margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-dim); line-height: 1.3;
     }
-    #sounds-panel .sounds-cols { display: flex; gap: 28px; }
-    #sounds-panel .sounds-group { flex: 1; min-width: 0; }
-    #sounds-panel h4 {
-      margin: 0 0 6px; font-size: 10px; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-dim); font-weight: 600;
-    }
-    #sounds-panel .sound-row {
-      display: flex; gap: 10px; padding: 2px 0; font-size: 12px;
+    /* Hairline-separated rows, like .set-row — one list of facts about the
+       instrument, drawn the way the other one is. */
+    .sounds-table .sound-row {
+      display: flex; gap: 8px; padding: 3px 0; font-size: 12px;
       color: var(--text); white-space: nowrap;
+      border-top: 1px solid var(--line);
     }
-    #sounds-panel .sound-id {
+    /* The first row sits flush under its heading; the heading is not a row. */
+    .sounds-table .sound-row:first-of-type { border-top: none; }
+    .sounds-table .sound-id {
       width: 20px; text-align: right; color: var(--text-dim);
       font-variant-numeric: tabular-nums; flex: none;
     }
-    #sounds-panel .sounds-foot {
+    .sounds-table .sounds-foot {
       margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
-      font-size: 12px; color: var(--text-dim);
+      font-size: 12px; color: var(--text-dim); line-height: 1.5;
     }
+    /* A row that opens something, at the foot of the settings list. It reads
+       as one more row until you hover it, because that is what it is — the
+       instrument's sound table, filed with the instrument's other facts. */
+    .set-link {
+      width: 100%; font: inherit; text-align: left; cursor: pointer;
+      background: none; color: inherit; border: none;
+      border-top: 1px solid var(--line);
+    }
+    .set-link:hover .set-name, .set-link:focus-visible .set-name { color: var(--action); }
+    .set-link:focus-visible { outline: 2px solid var(--action); outline-offset: -2px; }
+    .set-link .set-chev { flex: none; color: var(--text-dim); font-size: 13px; line-height: 1; }
 
     /* Main area: library left, detail right */
     #main { flex: 1; display: flex; min-height: 0; }
@@ -624,11 +632,11 @@
        can't use this: a masked element becomes the containing block for its
        position:fixed children, which would trap the patch picker inside the
        list (src/scroll-fade.js). */
-    #detail, .pick-body, #sounds-panel {
+    #detail, .pick-body {
       -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
       mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
     }
-    #detail.at-end, .pick-body.at-end, #sounds-panel.at-end {
+    #detail.at-end, .pick-body.at-end {
       -webkit-mask-image: none; mask-image: none;
     }
     #library-body .lib-bar { flex: none; }
@@ -728,6 +736,11 @@
     .lib-row.lib-patch {
       grid-template-columns: 22px 1fr auto auto auto;
       row-gap: 0; align-items: center;
+      /* Room for the trash icon, which is positioned over the row's right
+         edge rather than laid out in it — the date ran right up against it
+         (Daniel, 2026-08-14). Reserved whether or not the icon is showing, so
+         the date does not shift under the pointer on hover. */
+      padding-right: 34px;
     }
     .lib-row.lib-patch .patch-num {
       color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums;
@@ -920,6 +933,32 @@
        introduces. Left at 15/700 over a centred body, the title WAS the focal
        point and the copy underneath had nothing to anchor it
        (Daniel, 2026-08-13). */
+    /* A dialog that asks WHICH: a short heading, the thing being acted on
+       under it, the options as buttons, and the rule about them last
+       (Daniel, 2026-08-14). */
+    .seven-modal.is-choice .seven-modal-title {
+      text-align: center; font-size: 26px; font-weight: 700; letter-spacing: -.01em;
+      padding: 0 28px;
+    }
+    .seven-modal.is-choice .seven-modal-body {
+      text-align: center; margin-top: 14px; font-size: 15px; color: var(--text-muted);
+    }
+    .seven-modal.is-choice .seven-modal-body em { font-style: italic; color: var(--text); }
+    .seven-modal.is-choice .seven-modal-actions { gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+    .seven-modal.is-choice .seven-modal-ok { font-size: 14px; padding: 9px 18px; }
+    /* Shown but not on offer, and it has to LOOK unavailable at a glance —
+       a faintly greyed button still reads as a button you may press. */
+    .seven-modal-ok.is-off, .seven-modal-ok:disabled {
+      background: var(--shade-hard); color: var(--text-dim);
+      border: 1px solid var(--line); opacity: .45;
+      cursor: not-allowed; box-shadow: none;
+    }
+    .seven-modal-ok.is-off:hover { filter: none; }
+    /* The rule that explains a greyed choice, under the buttons it is about. */
+    .seven-modal-note {
+      margin: 16px 0 0; text-align: center;
+      font-size: 13px; color: var(--text-muted);
+    }
     .seven-modal.is-announce .seven-modal-title {
       text-align: center; padding: 0 28px;
       font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
@@ -971,6 +1010,23 @@
       text-align: center; margin: 16px 0 0; font-size: 12px; color: var(--text-muted);
     }
     .seven-modal-body .bk-time + .bk-time { margin-top: 4px; }
+    /* "copy" is the app's word, not yours: same size and weight as the name it
+       trails, in the muted ink the rest of the app gives secondary facts. */
+    .seven-modal-body .bk-sum .bk-suffix { color: var(--text-muted); }
+    /* A link inside a dialog, in the app's one link treatment (#save-live-btn
+       and .save-seven-link): a borderless button, action-coloured, underlined
+       on hover only. It is not a second BUTTON — the dialog has one action,
+       and this is a way out of it to somewhere else. */
+    .seven-modal-body .modal-link {
+      display: inline-block; margin: 14px 0 0;
+      font: inherit; font-size: 12px; font-weight: 600;
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: var(--action); text-decoration: none;
+    }
+    .seven-modal-body .modal-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+    .seven-modal-body .modal-link:focus-visible {
+      outline: 2px solid var(--action); outline-offset: 2px; border-radius: 3px;
+    }
     /* The walk's step: which patch, then where it goes, then the panel. */
     .seven-modal-body .tx-step-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
     /* Sits ON the name, not under the block: the patch is already playing, and
@@ -1358,6 +1414,26 @@
     .lib-slot.slot-restored { animation: slot-restored 340ms ease-in-out; }
     /* Drop feedback while dragging a patch or a slot over a target slot. */
     .lib-slot.drop-target { outline: 1px dashed var(--amber); outline-offset: -2px; background: rgba(255, 176, 32, .06); }
+    /* Reordering shows a LINE where the row will land, not a highlight on the
+       row under the pointer: a highlight says "drop onto this", and dropping
+       onto a patch means something else in this app (assign it to that slot).
+       A line between rows can only mean a position. */
+    .lib-row.drop-above, .lib-row.drop-below { position: relative; }
+    .lib-row.drop-above::before, .lib-row.drop-below::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 2px;
+      background: var(--amber); pointer-events: none; z-index: 2;
+    }
+    .lib-row.drop-above::before { top: -1px; }
+    .lib-row.drop-below::after { bottom: -1px; }
+    /* Back to sorting itself. Sits in the bar beside the tabs, and only exists
+       while there is a hand-placed order to undo. */
+    .lib-resort {
+      flex: none; font: inherit; font-size: 11px; font-weight: 600;
+      background: none; border: none; padding: 2px 6px; cursor: pointer;
+      color: var(--text-muted);
+    }
+    .lib-resort:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+    .lib-resort:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; border-radius: 3px; }
     /* Slot rows grew controls; make room without breaking the grid. */
     .lib-slot .slot-num { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
     .lib-slot .patch-name, .lib-slot .slot-text { grid-column: 2; grid-row: 1; }
@@ -2079,6 +2155,15 @@
        empty bar. */
     .param-bar:hover .param-bar-knob { opacity: 1; }
     .param.is-default .param-bar-knob { background: var(--text-dim); }
+    /* A parameter this patch does not carry. The control exists on the
+       instrument — the row stays — but the patch says nothing about it, and an
+       empty bar reading "0" claimed a value it did not have
+       (Daniel, 2026-08-14). Dimmed, with an em dash where the number goes.
+       Dragging it still writes, and the moment it does it holds a real value
+       and stops being unset. */
+    .param.is-unset .param-label, .param.is-unset .param-value { color: var(--text-dim); }
+    .param.is-unset .param-bar-fill { background: none; }
+    .param.is-unset .param-bar-knob { display: none; }
     .param-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--bar-fill); }
     .param-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     /* Enum rows: label left, dropdown right (a choice, not a magnitude).
@@ -2137,24 +2222,20 @@
       <button type="button" data-theme-set="dark">dark</button>
     </div>
     <span class="conn-actions">
-      <button id="sounds-button" type="button" hidden>24 sounds</button>
       <button id="backup-button" type="button" hidden>Back up instrument</button>
       <button id="conn-button" type="button">Connect</button>
       <button id="settings-button" type="button" title="Global settings on the Seven">Settings</button>
     </span>
-    <!-- Expansion visibility: what THIS unit has installed, per the sound
-         table read on connect. Sound ids are unit-specific; the fingerprint
-         is what backups reference. -->
     <!-- The instrument's own global options. Nine slots, three of them with a
-         verified meaning; see seven-midi.js PINNED_GLOBALS. -->
+         verified meaning; see seven-midi.js PINNED_GLOBALS.
+         Expansion visibility lives at the BOTTOM of this tray now, as a row
+         that opens the sound table in a modal — it was a button of its own in
+         the row, and it is not something anyone clicks twice a session
+         (Daniel, 2026-08-13). -->
     <div id="settings-panel" hidden>
       <div class="settings-head">Global settings</div>
       <div class="settings-rows"></div>
       <div class="settings-foot"></div>
-    </div>
-    <div id="sounds-panel" hidden>
-      <div class="sounds-cols"></div>
-      <div class="sounds-foot"></div>
     </div>
   </div>
   <div id="main">

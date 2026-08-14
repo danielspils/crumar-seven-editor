@@ -581,22 +581,59 @@
     // rather than an answer (Daniel, 2026-08-13). Notes stay for PROBLEMS —
     // a lost cable, a refused write — which is what that line is for.
     auditionNote = null;
-    SevenModal.confirm({
+    // Opened rather than confirmed, because the dialog now carries a way OUT
+    // of itself: the file it just wrote may be one the user has never seen —
+    // a backup record's edit becomes a new patch — so it offers to go there.
+    // The library has to be refreshed BEFORE the link can work: the row it
+    // scrolls to does not exist until the list has been re-read.
+    await deps.refreshLibrary();
+    // Name the patch that now EXISTS, not the one that was open. Saving a
+    // backup record's edit writes a new file, and the dialog was announcing
+    // the record's own name — "Bank 1 Preset 4 — Clavi Piano" — for a patch
+    // actually called "Clavi Piano copy" (Daniel, 2026-08-14). The slot prefix
+    // is stripped by the library's own displayName, so the dialog and the row
+    // it sends you to agree.
+    const savedEntry = deps.getEntries().find(
+      (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
+    );
+    const view = typeof window !== 'undefined' ? window.SevenLibraryView : null;
+    const shownName =
+      (view && view.displayName ? view.displayName(savedEntry || entry) : '') ||
+      (savedEntry || entry).name || 'This patch';
+    // "Clavi Piano copy": the instrument leads, and the suffix the app added
+    // is quieter than the name you would say out loud.
+    const copySuffix = /\s(copy(?:\s*\d+)?)$/i.exec(shownName);
+    const nameHtml = copySuffix
+      ? `${esc(shownName.slice(0, copySuffix.index))} <span class="bk-suffix">${esc(copySuffix[1])}</span>`
+      : esc(shownName);
+    const saved = SevenModal.open({
       title: 'Sound saved to computer!',
       bodyHtml:
-        `<p class="bk-sum">${esc(entry.name || 'This patch')}</p>` +
-        // Say WHY there is suddenly a new patch, when the app chose that for
-        // you: a backup record was left alone deliberately.
-        (isBackup
-          ? '<p class="bk-time">Saved as a new patch — the backup record is unchanged.</p>'
-          : (answer === 'secondary'
-            ? '<p class="bk-time">Saved as a copy.</p>'
-            : '')),
+        `<p class="bk-sum">${nameHtml}</p>` +
+        // No line explaining that a backup record was left alone. It said
+        // "Saved as a new patch — the backup record is unchanged", which the
+        // name above it now shows on its own: the dialog names a patch called
+        // "… copy", so nothing was overwritten (Daniel, 2026-08-14).
+        (!isBackup && answer === 'secondary'
+          ? '<p class="bk-time">Saved as a copy.</p>'
+          : '') +
+        '<button type="button" class="modal-link" data-goto-patch>Go to your new patch</button>',
       confirmLabel: 'Done',
       cancelLabel: 'Close',
       tone: 'is-announce',
     });
-    await deps.refreshLibrary();
+    const goto = saved.body.querySelector('[data-goto-patch]');
+    if (goto && deps.revealPatch) {
+      goto.addEventListener('click', () => {
+        // Close first: the list scrolls and the detail panel re-renders
+        // behind the dialog, and arriving somewhere you cannot see is not
+        // arriving.
+        saved.close();
+        deps.revealPatch(file, patchIndex);
+      });
+    }
+    // Done, Escape, the corner X and the backdrop all just dismiss it.
+    saved.action().then(() => saved.close());
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
       // Undo puts the sound back too, or undoing a save would leave the file
