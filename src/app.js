@@ -1693,12 +1693,17 @@
   const libSection = document.getElementById('library-section');
   const libHead = document.getElementById('library-head');
   const libCount = document.getElementById('library-count');
+  const libFiles = document.getElementById('library-files');
   const libReveal = document.getElementById('library-reveal');
   const bankStrip = document.getElementById('bank-strip');
   const bankStripLabel = document.getElementById('bank-strip-label');
   const splitDivider = document.getElementById('split-divider');
   const LIB_OPEN_KEY = 'seven.libraryOpen';
   const LIB_SPLIT_KEY = 'seven.librarySplit';
+  // Which patches the Patches tab lists. A PREFERENCE, so it survives a
+  // launch — the tab you were on and the text in the search box are things
+  // you did, and they do not (Daniel, 2026-08-14).
+  const LIB_SCOPE_KEY = 'seven.patchScope';
 
   // Library selection: when set, the detail view renders this entry instead of
   // the bank patch. Bank/preset clicks clear it.
@@ -1715,7 +1720,15 @@
 
   const libView = SevenLibraryView.createLibraryView({
     el: document.getElementById('library-body'),
+    scope: localStorage.getItem(LIB_SCOPE_KEY),
     on: {
+      scopeChanged: (scope) => localStorage.setItem(LIB_SCOPE_KEY, scope),
+      // The header counts what is on screen; the FOLDER total moved next to
+      // the button that opens the folder, where it belongs.
+      counts: (shown, total) => {
+        libCount.textContent = `— ${shown}`;
+        if (libFiles) libFiles.textContent = `${total} file${total === 1 ? '' : 's'}`;
+      },
       // Every sound the schema knows (read off the instrument, FW 1.37) —
       // the picker's Instruments tab. Sound-only slots reference these by NAME,
       // never by id: ids are not portable across units (schema soundsNote).
@@ -2170,12 +2183,10 @@
     const data = await window.sevenAPI.library.list();
     libData = data; // last known state — undo steps capture from it
     libEntries = data.patches;
+    // update() renders, and the render reports both numbers back through
+    // on.counts — the header follows the list, the folder total follows the
+    // button that opens the folder.
     libView.update(data);
-    // Count the FILES, and say so. It said "35 patches" beside a Patches tab
-    // showing six, because that tab lists only what you made while the region
-    // holds everything on disk — backups included (Daniel, 2026-08-13).
-    const n = data.patches.filter((e) => !e.invalid).length;
-    libCount.textContent = `— ${n} patch file${n === 1 ? '' : 's'}`;
     // The bank region derives from the same list — one fetch feeds both.
     rebuildBanks(data.patches);
     updateSevenHead();

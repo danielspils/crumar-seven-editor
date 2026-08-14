@@ -649,6 +649,34 @@
     #library-body .lib-bar { flex: none; }
     #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
     .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
+    /* The FOLDER total, beside the button that opens the folder. It used to
+       sit in the header over a filtered list, where it was accurate and
+       therefore confusing — "36 patch files" above a tab showing one
+       (Daniel, 2026-08-14). */
+    .lib-files { flex: none; color: var(--text-dim); font-size: 11px; margin-right: 8px; }
+    /* Which patches the list shows. Segments rather than a dropdown: the
+       counts are the point, and a dropdown hides two thirds of them. */
+    /* Its own line, under the tabs it filters — reading as "this tab, shown
+       this way" rather than as a fourth tab. */
+    .lib-scope { display: flex; flex: 1 0 100%; gap: 2px; margin-top: 2px; }
+    .scope-btn {
+      font: inherit; font-size: 11px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px; border-radius: 4px; cursor: pointer;
+      background: none; border: 1px solid transparent; color: var(--text-muted);
+    }
+    .scope-btn:hover { color: var(--text); }
+    .scope-btn.active { color: var(--text); background: var(--shade-hard); border-color: var(--line); }
+    .scope-btn:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+    /* The number is the quieter half — the label says which patches, the
+       count says how many, and they must not read as one word. */
+    .scope-n { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .scope-btn.active .scope-n { color: var(--text-muted); }
+    /* One line above the grid, pointing at the tab that has what this one
+       deliberately leaves out. */
+    .pick-note {
+      margin: 0 0 10px; font-size: 12px; color: var(--text-muted);
+    }
     .lib-reveal {
       font: inherit; font-size: 12px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--line); border-radius: 4px;
@@ -658,6 +686,11 @@
     .lib-bar {
       display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px;
       border-bottom: 1px solid var(--line);
+      /* The scope control wraps to its own line. Three tabs, three scope
+         segments and the search magnifier do not fit across a 480px pane —
+         measured, after "From the Seven" was clipped by the pane edge
+         (Daniel, 2026-08-14). */
+      flex-wrap: wrap;
     }
     /* TABS, like the bank tabs above — one navigation metaphor in the app
        rather than tabs in one region and a segmented button in the other
@@ -2291,6 +2324,7 @@
           <span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="fx-title">On this computer</span>
           <span id="library-count" class="lib-count"></span>
+          <span id="library-files" class="lib-files"></span>
           <button type="button" id="library-reveal" class="lib-reveal" title="Open the library folder in Finder">Open Library Folder</button>
         </div>
         <div class="fx-body"><div class="fx-body-inner">

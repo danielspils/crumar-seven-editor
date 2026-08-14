@@ -273,7 +273,7 @@
     // browse every Rhodes you have ever had in one place; a captured one is
     // reached through its backup.
     const list = data.patches.filter(
-      (e) => (e.origin || {}).kind !== 'backup' && matches(e, state.search)
+      (e) => inScope(e, state.patchScope) && matches(e, state.search)
     );
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
@@ -310,6 +310,32 @@
   const patchKey = (e) => `${e.file}#${e.patchIndex || 0}`;
   const patchWhen = (e) => String((e.origin || {}).date || '');
 
+  // Which patches a scope admits. `mine` is what the tab always showed.
+  const isFromSeven = (e) => (e.origin || {}).kind === 'backup';
+  const inScope = (e, scope) => (
+    scope === 'all' ? !e.invalid
+      : scope === 'seven' ? (!e.invalid && isFromSeven(e))
+        : (!e.invalid && !isFromSeven(e))
+  );
+
+  const scopeCounts = (patches) => ({
+    mine: patches.filter((e) => inScope(e, 'mine')).length,
+    seven: patches.filter((e) => inScope(e, 'seven')).length,
+    all: patches.filter((e) => inScope(e, 'all')).length,
+  });
+
+  // A capture is filed by WHERE IT CAME FROM, not by its name. Five Tine
+  // Pianos and four DX captures sorted alphabetically are a wall of
+  // near-duplicates; in slot order they are a map of the instrument, which is
+  // how someone looks for one (Daniel, 2026-08-14). Your own patches keep the
+  // recency rule — they have no slot — and lead the list when both kinds are
+  // shown together.
+  const bySlot = (a, b) => (
+    (a.origin.bank - b.origin.bank) ||
+    ((a.origin.preset || 0) - (b.origin.preset || 0)) ||
+    String(a.file).localeCompare(String(b.file))
+  );
+
   // Whether the tab in front of you is holding an order somebody set.
   const hasManualOrder = (data, state) => (
     state.tab === 'patches' ? !!(data.patchOrder && data.patchOrder.length)
@@ -322,14 +348,36 @@
     const byRecency = (a, b) => (patchWhen(a) === patchWhen(b)
       ? displayName(a).localeCompare(displayName(b), undefined, { numeric: true })
       : (patchWhen(a) < patchWhen(b) ? 1 : -1));
-    if (!order.length) return [...list].sort(byRecency);
+    // Two kinds of row, two ways of finding one. Yours are found by what you
+    // last touched; the instrument's are found by where they sit on it. When
+    // both are listed, yours lead — they are the shorter half and the one you
+    // named yourself.
+    const byDefault = (a, b) => {
+      const as = isFromSeven(a);
+      const bs = isFromSeven(b);
+      if (as !== bs) return as ? 1 : -1;
+      return as ? bySlot(a, b) : byRecency(a, b);
+    };
+    if (!order.length) return [...list].sort(byDefault);
     const at = new Map(order.map((k, i) => [k, i]));
-    const placed = [];
-    const fresh = [];
-    for (const e of list) (at.has(patchKey(e)) ? placed : fresh).push(e);
-    placed.sort((a, b) => at.get(patchKey(a)) - at.get(patchKey(b)));
-    fresh.sort(byRecency);
-    return [...fresh, ...placed];
+    // The hand-placed order applies WITHIN each kind, not across them. A drag
+    // made while the tab showed only your own patches named seven files; seen
+    // from "All", the other thirty-five were unplaced and floated above them,
+    // so one stale order decided the shape of a list it had never described
+    // (Daniel, 2026-08-14, found by measuring). Splitting first keeps both
+    // rules true: yours lead, and a drag still holds where it was made.
+    const rank = (rows, cmp) => {
+      const placed = [];
+      const fresh = [];
+      for (const e of rows) (at.has(patchKey(e)) ? placed : fresh).push(e);
+      placed.sort((a, b) => at.get(patchKey(a)) - at.get(patchKey(b)));
+      fresh.sort(cmp);
+      return [...fresh, ...placed];
+    };
+    return [
+      ...rank(list.filter((e) => !isFromSeven(e)), byRecency),
+      ...rank(list.filter(isFromSeven), bySlot),
+    ];
   }
 
   // "Bank 2 setlist (2026-08-12)" — a dated RECORD written by a backup run, as
@@ -588,6 +636,20 @@
     );
   }
 
+  // Segments, not a dropdown: three options whose counts are the point, and a
+  // dropdown would hide two thirds of the answer behind a click.
+  function scopePicker(data, state) {
+    const n = scopeCounts(data.patches);
+    const seg = (id, label) =>
+      `<button type="button" class="scope-btn${state.patchScope === id ? ' active' : ''}" ` +
+      `data-scope="${id}">${label}<span class="scope-n">${n[id]}</span></button>`;
+    return (
+      `<div class="lib-scope" role="group" aria-label="Which patches">` +
+      seg('mine', 'My patches') + seg('seven', 'From the Seven') + seg('all', 'All') +
+      `</div>`
+    );
+  }
+
   function renderPicker(data, state, sounds, allSounds) {
     const slot = state.picking;
     const q = state.pickSearch || '';
@@ -603,8 +665,13 @@
     // the Backups tab now owns, so choosing a patch met the same shape a third
     // time (Daniel, 2026-08-13). One way to browse patches everywhere; the
     // search above does the finding.
+    // The eight Bank 1 captures are deliberately absent — the Instruments tab
+    // offers those same sounds directly, and listing them here as patches was
+    // the same eight things twice. That reasoning was only in the source, so
+    // the route it assumes was invisible (Daniel, 2026-08-14).
+    const note = '<p class="pick-note">Bank 1\u2019s factory sounds are on the Instruments tab.</p>';
     const body = list.length
-      ? (`<div class="pick-grid">` +
+      ? (note + `<div class="pick-grid">` +
           [...list]
             .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
             .map((e) => {
@@ -845,14 +912,31 @@
           '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" ' +
           'stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
           '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button>')) +
+      // WHICH patches, on the tab that has more than one answer. The numbers
+      // ride on the segments: three surfaces filtered the same files three
+      // ways and the header count matched none of them, so the control that
+      // chooses is also where the totals reconcile (Daniel, 2026-08-14).
+      //
+      // Emitted AFTER the search on purpose: it wraps to its own line, and
+      // anything after it wraps too — with the scope first, the magnifier was
+      // pushed onto a third row of its own (measured).
+      (state.tab === 'patches' ? scopePicker(data, state) : '') +
       `</div>` +
       `<div class="lib-list">${listHtml}</div>`
     );
   }
 
   // Controller: owns view state, renders into `el`, wires delegated events.
-  function createLibraryView({ el, on = {} }) {
+  function createLibraryView({ el, on = {}, scope } = {}) {
     const state = {
+      // WHICH PATCHES the Patches tab lists: 'mine' (made here), 'seven'
+      // (captured from the instrument) or 'all'. It used to be a hard-coded
+      // filter with no control, so the tab quietly hid 35 of 36 files
+      // (Daniel, 2026-08-14). The default is what it always did.
+      //
+      // Persisted by app.js, unlike the tab and the search box: those are
+      // things you DO, and this is how you want your library to look.
+      patchScope: scope === 'seven' || scope === 'all' ? scope : 'mine',
       // Backups opens first: it is the reason the app exists, and the newest
       // run is the thing most likely to be wanted (Daniel, 2026-08-13).
       tab: 'backups',
@@ -892,6 +976,16 @@
     const fadePicker = window.SevenScrollFade.watchWithin(el, '.pick-body');
     const updateFade = () => { fadeList(); fadePicker(); };
 
+    // How many rows the current tab is showing, in its own units: patches on
+    // Patches, runs on Backups, setlists on Setlists.
+    function visibleCount() {
+      if (state.tab === 'patches') {
+        return data.patches.filter((e) => inScope(e, state.patchScope) && matches(e, state.search)).length;
+      }
+      if (state.tab === 'backups') return backupRuns(data).length;
+      return data.setlists.filter((s2) => !BACKUP_NAME.test(s2.name)).length;
+    }
+
     function render() {
       const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupDate}`;
       const prevList = el.querySelector('.lib-list');
@@ -903,6 +997,10 @@
       }
       lastViewKey = viewKey;
       updateFade();
+      // What is on screen, for the header above it. The count used to be the
+      // FOLDER total on every tab, so "36 patch files" sat over a list of one
+      // (Daniel, 2026-08-14).
+      if (on.counts) on.counts(visibleCount(), data.patches.filter((e) => !e.invalid).length);
       if (state.revealFile) {
         const row = el.querySelector(`[data-file="${CSS.escape(state.revealFile)}"]`);
         state.revealFile = null;
@@ -954,6 +1052,14 @@
       }
 
       const seg = e.target.closest('.seg-btn');
+      const scope = e.target.closest('[data-scope]');
+      if (scope) {
+        state.patchScope = scope.dataset.scope;
+        // app.js owns storage; the view only says what changed.
+        if (on.scopeChanged) on.scopeChanged(state.patchScope);
+        render();
+        return;
+      }
       if (seg) {
         state.tab = seg.dataset.tab;
         state.setlistIndex = null;
