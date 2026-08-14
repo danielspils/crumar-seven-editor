@@ -125,3 +125,24 @@ test('engine grouping maps names to families, sampled or not', () => {
     assert.strictEqual(R.engineGroupFor({ soundName, sampled }), expected, soundName);
   }
 });
+
+// A patch made from an instrument carries the effects chain and nothing else —
+// there is no factory evidence for a sampled sound's engine values. The panel
+// must not turn "we don't know" into "zero" (Daniel, 2026-08-14).
+test('a parameter the patch does not carry renders unset, not zero', () => {
+  const html = R.renderDetail(
+    { name: 'Combo Piano', soundName: 'Combo Piano', sampled: true,
+      params: { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 } },
+    { collapsed: {} }
+  );
+  assert.match(html, /class="param is-unset/, 'the row is marked unset');
+  assert.match(html, /<span class="param-value">—<\/span>/, 'and shows an em dash, not 0');
+});
+
+test('a parameter the patch does carry still renders its number', () => {
+  const html = R.renderDetail(
+    { name: 'Rhodes', soundName: 'Tine Piano', sampled: false, params: { rho_atk: 32 } },
+    { collapsed: {} }
+  );
+  assert.match(html, /<span class="param-value">32<\/span>/);
+});

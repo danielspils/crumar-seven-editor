@@ -144,7 +144,14 @@
     const PANEL_MIRRORED = new Set(['zd6_br', 'zd6_tr', 'zd6_md', 'zd6_sf', 'zd6_cd', 'zd6_ab']);
 
     function paramRow(p, rawValue, view, opts, soundName) {
-      const value = rawValue == null ? 0 : rawValue;
+      // A parameter the patch does not carry is UNSET, not zero. Patches made
+      // from an instrument carry only the effects chain — there is no factory
+      // evidence for a sampled sound's engine values — and drawing a missing
+      // value as 0 said "Level 0" over an instrument that was audibly playing
+      // (Daniel, 2026-08-14). The row still draws, because the parameter
+      // exists on the device; what it does not do is claim a number.
+      const unset = rawValue == null;
+      const value = unset ? 0 : rawValue;
       // Identity + range on every row, so the interaction layer can work from
       // the DOM without a second copy of the taxonomy. `live` is set only when
       // the instrument's edit buffer is known to hold THIS patch — otherwise a
@@ -281,24 +288,24 @@
         const left = Math.min(valPct, centrePct);
         const width = Math.abs(valPct - centrePct);
         return (
-          `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
+          `<div class="param ${unset ? 'is-unset' : (isDefault ? 'is-default' : 'is-changed')}${inertCls}${liveCls}" ${attrs}>` +
           `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
           `<span class="param-bar bipolar"><span class="param-bar-fill" style="left:${left}%;width:${width}%"></span>` +
           `<span class="param-bar-knob" style="left:${valPct}%"></span></span>` +
-          `<span class="param-value">${String(value)}</span>` +
+          `<span class="param-value">${unset ? '\u2014' : String(value)}</span>` +
           `</div>`
         );
       }
       // CONTINUOUS: plain left-origin bar.
       return (
-        `<div class="param ${isDefault ? 'is-default' : 'is-changed'}${inertCls}${liveCls}" ${attrs}>` +
+        `<div class="param ${unset ? 'is-unset' : (isDefault ? 'is-default' : 'is-changed')}${inertCls}${liveCls}" ${attrs}>` +
         `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
         `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span>` +
         // A mark AT the value: something to aim a drag at, and the only way a
         // value of zero shows at all — an empty fill and an empty bar look the
         // same otherwise.
         `<span class="param-bar-knob" style="left:${pct}%"></span></span>` +
-        `<span class="param-value">${String(value)}</span>` +
+        `<span class="param-value">${unset ? '\u2014' : String(value)}</span>` +
         `</div>`
       );
     }
