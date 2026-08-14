@@ -300,8 +300,47 @@
       run.banks.push({ bank: Number(m[1]), index: i, name: s.name });
     });
     for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
-    return [...runs.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const sorted = [...runs.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    // COLLAPSE RUNS THAT READ IDENTICALLY. Back up two evenings running and
+    // nothing changed, and you get two rows saying the same thing — which was
+    // Daniel's objection (2026-08-13). Deleting the older one is the obvious
+    // fix and the wrong one: two identical runs together say "unchanged from
+    // the 12th THROUGH the 13th", and keeping only the newest throws away the
+    // start of that span. It is the only thing that can answer "how long has
+    // it been like this?".
+    //
+    // So the DATA keeps every run and the LIST shows one row per span. Only
+    // ADJACENT runs merge: a change and a change back are two different spans
+    // and must stay apart, or the row would claim a stretch that never held.
+    const sig = (run) => JSON.stringify(
+      run.banks.map((b) => [b.bank, (data.setlists[b.index] || {}).slots || []])
+    );
+    const out = [];
+    for (const run of sorted) {
+      const prev = out[out.length - 1];
+      // The representative is the NEWEST run of the span: its bank indices are
+      // what the row expands to and what Send uses, and newest is the one that
+      // is certainly still true.
+      if (prev && prev.sig === sig(run) && prev.partial === run.partial) {
+        prev.dates.push(run.date);
+        prev.since = run.date;
+      } else {
+        out.push(Object.assign(run, { sig: sig(run), dates: [run.date], since: run.date }));
+      }
+    }
+    return out;
   }
+
+  // "12-13 Aug" when a span sits in one month, "30 Jul - 2 Aug" when it does
+  // not. A single-day span is just the day.
+  const fmtSpan = (since, until) => {
+    if (!since || since === until) return fmtDate(until);
+    const a = fmtDate(since);
+    const b = fmtDate(until);
+    const sameMonth = a.split(' ')[1] === b.split(' ')[1];
+    return sameMonth ? `${a.split(' ')[0]}\u2013${b}` : `${a} \u2013 ${b}`;
+  };
 
   // Everything a run captured, in bank order — the same shape the patches list
   // used to show for the whole library, which is where it belonged all along.
@@ -340,7 +379,8 @@
     return (
       '<div class="lib-setlist-head">' +
       '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
+      `<span class="lib-setlist-name">${esc(fmtSpan(run.since, run.date))}` +
+      `${run.dates && run.dates.length > 1 ? ' · unchanged' : ''}` +
       `${run.partial ? ' · partial' : ''}</span>` +
       '</div>' + banks
     );
@@ -360,11 +400,18 @@
         '<div class="lib-row lib-setlist-row">' +
         `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
         `<span class="patch-num">${i + 1}</span>` +
-        `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
+        `<span class="lib-setlist-name">${esc(fmtSpan(r.since, r.date))} Backup</span>` +
         `<span class="lib-setlist-count">${slots} preset${slots === 1 ? '' : 's'}` +
+        // Say WHY one row covers several days, or a span reads as a backup
+        // that somehow took two days to run.
+        `${r.dates.length > 1 ? ' · unchanged' : ''}` +
         `${r.partial ? ' · partial' : ''}</span></button>` +
-        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
-        `title="Delete the ${esc(fmtDate(r.date))} backup (the patches stay in the library)">` +
+        // Every date in the span: the row IS all of them, so the trash icon
+        // has to remove all of them. Handing it only the newest would leave
+        // the older runs behind with nothing on screen pointing at them.
+        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.dates.join(','))}" ` +
+        `title="Delete the ${esc(fmtSpan(r.since, r.date))} backup${r.dates.length > 1 ? 's' : ''} ` +
+        `(the patches stay in the library)">` +
         '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
         'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
