@@ -116,11 +116,18 @@ Two fences on the new code, in the spirit of Rule 2:
 - **`fixtures/` is never evidence.** `sample-library.json` is generated demo data
   (regenerate with `npm run fixtures`); nothing in it demonstrates anything about
   the device.
-- **Parameter "defaults" in the UI are a heuristic, not device truth.** The schema
-  stores no per-parameter default (the `0x15` `value` field was current state, not
-  factory state). The UI's muted-at-default display uses `min(64, max)` from
-  `src/defaults.js` — the single place to change when real factory defaults are
-  captured from the device. Capturing them is an open item.
+- **Parameter defaults now come from the device, per sound** (2026-08-13). The
+  schema still stores no default (the `0x15` `value` field was current state, not
+  factory state), but **Bank 1 cannot be stored to**, so its eight presets are
+  what shipped — the only readable factory numbers on the instrument.
+  `tools/extract-factory-defaults.js` derives `schema/factory-defaults-1.37.json`
+  from the newest complete Bank 1 backup (eight sounds, 110 params each, every
+  modeled engine). Two rules hold: **coverage is partial and stays that way** —
+  for a sound Bank 1 lacks, `defaultFor` returns `null` and the row renders
+  normally rather than claiming to be stock — and **a factory preset is not a
+  neutral default**; these are the positions the factory chose per sound, which
+  answers "did I change this?" and nothing more. The old `min(64, max)` guess
+  survives only as `seedValue` for `fixtures/`, and is not a default.
 
 ## Status
 
