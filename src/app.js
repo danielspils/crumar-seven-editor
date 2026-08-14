@@ -1978,7 +1978,7 @@
   // The CLOSING tray leads; the opening one follows a beat later, so the eye
   // sees space being given up and then taken, rather than two boxes moving as
   // one block (Daniel, 2026-08-13).
-  const SWAP_STAGGER_MS = 70;
+  const SWAP_STAGGER_MS = 110;
   function animateSwap(apply) {
     const trays = [document.getElementById('bank-tray'), libSection.querySelector('.fx-body')]
       .filter(Boolean);
@@ -1991,7 +1991,16 @@
     trays.forEach((el, i) => {
       if (Math.abs(from[i] - to[i]) < 1) return;
       const closing = to[i] < from[i];
-      el.animate(
+      // Pin the box while it travels. The bank tray is `flex: 1 1 auto` when
+      // open, and flex-grow stretches a flex item to fill regardless of the
+      // height being animated on it — so the opening tray jumped to full size
+      // and sat out its own stagger (measured: 90% there at 60ms with a 110ms
+      // delay). `flex: none` makes height the thing that decides, for exactly
+      // as long as the animation owns it.
+      const prevFlex = el.style.flex;
+      el.style.flex = 'none';
+      const restore = () => { el.style.flex = prevFlex; };
+      const anim = el.animate(
         [{ height: `${from[i]}px` }, { height: `${to[i]}px` }],
         {
           duration: SWAP_MS,
@@ -2007,6 +2016,7 @@
           fill: 'backwards',
         }
       );
+      anim.finished.then(restore, restore);
     });
   }
 
