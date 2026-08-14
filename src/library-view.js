@@ -313,8 +313,27 @@
     // So the DATA keeps every run and the LIST shows one row per span. Only
     // ADJACENT runs merge: a change and a change back are two different spans
     // and must stay apart, or the row would claim a stretch that never held.
+    // Signed by CONTENTS, not by filename. A slot's file can change while the
+    // instrument did not: delete a patch and back up again and it comes back
+    // under a fresh name, which made two identical nights read as two
+    // different records (Daniel, 2026-08-13 — it is why his 12th and 13th did
+    // not merge). The question a span asks is "did the Seven hold the same
+    // thing", and that is about the patch, not about which file holds it.
+    // The backup runner already dedupes on sound+params; this is the same
+    // identity, asked at display time.
+    const byFile = new Map();
+    for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
+    const slotKey = (f) => {
+      if (!f) return 'empty';
+      const e = byFile.get(f);
+      // A file the library no longer has cannot be compared by contents. Fall
+      // back to its name: unknown is not the same as equal.
+      if (!e || !e.params) return `file:${f}`;
+      const params = Object.keys(e.params).sort().map((k) => `${k}=${e.params[k]}`).join(',');
+      return `${e.soundName || ''}|${params}`;
+    };
     const sig = (run) => JSON.stringify(
-      run.banks.map((b) => [b.bank, (data.setlists[b.index] || {}).slots || []])
+      run.banks.map((b) => [b.bank, ((data.setlists[b.index] || {}).slots || []).map(slotKey)])
     );
     const out = [];
     for (const run of sorted) {
@@ -1270,5 +1289,7 @@
     };
   }
 
-  return { createLibraryView, renderBody, renderSoundTiles };
+  // backupRuns is exported for tests: the span collapse has a rule that is
+  // easy to state and easy to break — only ADJACENT identical runs merge.
+  return { createLibraryView, renderBody, renderSoundTiles, backupRuns };
 });
