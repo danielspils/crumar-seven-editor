@@ -6,8 +6,8 @@
   "notADefault": "A factory PRESET is not a neutral default. These are the positions the factory chose for each sound, which is the right comparison for \"did I change this?\" and is not a claim about any origin the instrument reverts to.",
   "coverage": "Eight sounds — the eight Bank 1 holds. Every other sound has no factory evidence and the app must not mark anything as default for it (src/defaults.js returns null).",
   "derivedFrom": {
-    "setlist": "Bank 1 setlist (2026-08-14)",
-    "date": "2026-08-14",
+    "setlist": "Bank 1 setlist (2026-08-13)",
+    "date": "2026-08-13",
     "slots": [
       {
         "preset": 1,
