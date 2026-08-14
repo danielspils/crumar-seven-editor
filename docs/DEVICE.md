@@ -24,7 +24,7 @@ it. That is what's collected here.
 | Document | Version | URL |
 |---|---|---|
 | User's Manual (ENG) | Sep 2020, FW 1.2 | `crumar.it/files/Crumar_Seven_Manual_ENG.pdf` |
-| User's Manual (ENG) | Jul 2021, FW 1.22 | linked from support page — **not yet read** |
+| User's Manual (ENG) | Jul 2021, FW 1.22 | `crumar.it/files/Crumar_Seven_Manual_ENG_july2021.pdf` |
 | Quick Guide | Sep 2020 | `crumar.it/files/Seven_Quick_guide_2020.pdf` |
 | Support / downloads | current | `crumar.it/?a=support&b=36` |
 
@@ -49,7 +49,7 @@ Nine engines: eight real-time synthesis models plus one sample player.
 | DX Digital E.P. | Phase modulation | A0–C7 (21–108) | 28 | Round-robin + voice stealing |
 | MKS Digital E.P. | Hybrid | A0–C7 (21–108) | 90 | Round-robin + voice stealing |
 | Vibraphone | Physical modeling | C2–C6 (48–96) | 49 | Modeling, fully polyphonic |
-| Acoustic Grand | Physical modeling | A0–C7 (21–108) | 40 + 88 | Modeling (hybrid) |
+| Acoustic Grand | Physical modeling | A0–C7 (21–108) | 40 + 88 | Modeling (hybrid) — **experimental** |
 | GSP-01 sample player | Sample playback | A0–C7 (21–108) | 100 | Round-robin + voice stealing |
 | Synth PAD (overlay) | Virtual analog | A0–C7 (21–108) | 16 | Round-robin + voice stealing |
 
@@ -138,6 +138,14 @@ real vibraphone — and no more than four notes at once, since a player has
 four mallets). Mallet hardness controls brightness.
 
 ### Acoustic Grand
+
+**Flagged experimental by Crumar** — added in the Jul 2021 manual and not
+present in the Sep 2020 edition. Crumar states this engine is still
+experimental, should not be considered a key feature of the instrument,
+may not sound fully realistic, and is not problem-free; they direct users
+wanting a realistic acoustic piano to the sampled instruments instead.
+Worth surfacing in the app, since a user comparing it unfavourably against
+the sampled grands is hearing exactly what the manufacturer describes.
 
 The largest parameter group — 243 modeled strings, with the top 17 notes
 undamped and a duplex scale on the soundboard. Shares much of its
@@ -387,16 +395,21 @@ immediately on preset recall.
   100 ms threshold exists so knobs knocked during playing don't toggle.
 - **Quick push** — switches which of two parameters the knob controls.
 
-| # | Parameter 1 | Parameter 2 | Slow push |
-|---|---|---|---|
-| 1 | Volume | — | Local on/off |
-| 2 | Reverb level | Reverb decay | Reverb on/off |
-| 3 | EQ bass | EQ mid | EQ on/off |
-| 4 | EQ treble | EQ mid freq | (EQ reset) |
-| 5 | FX1 depth | FX1 rate | FX1 on/off |
-| 6 | Drive amount | — | Amp/drive on/off |
-| 7 | FX2 depth | FX2 rate | FX2 on/off |
-| 8 | Pad level | Pad blend | Pad on/off |
+| # | Parameter 1 | Parameter 2 | Slow push | Quick push |
+|---|---|---|---|---|
+| 1 | Volume | — | Local on/off | — |
+| 2 | Reverb level | Reverb decay | Reverb on/off | Switch parameter |
+| 3 | EQ bass | EQ mid | EQ on/off | — |
+| 4 | EQ treble | EQ mid freq | EQ reset | Switch parameter |
+| 5 | FX1 depth | FX1 rate | FX1 on/off | Switch parameter |
+| 6 | Drive amount | — | Amp/drive on/off | — |
+| 7 | FX2 depth | FX2 rate | FX2 on/off | Switch parameter |
+| 8 | Pad level | Pad blend | Pad on/off | Switch parameter |
+
+The two manuals disagree on knobs 3 and 4: the Sep 2020 edition gives the
+quick push to knob 3, the Jul 2021 edition to knob 4. The table above
+follows the newer manual. Untested on hardware — verify before relying on
+it for the panel SVG.
 
 When a knob displays FX rate, its blue light pulses in sync with the
 effect's oscillator.
@@ -452,7 +465,43 @@ ready-made Visibility feature.
 
 ---
 
-## 11. Preset export/import (Wi-Fi editor only)
+## 11. Editor access
+
+Two editors, documented as such from the Jul 2021 manual onward. The Sep
+2020 edition described only the Wi-Fi one.
+
+**USB editor** — `https://www.gsidsp.com/Seven`, over the Type-B USB MIDI
+port. Crumar specifies Chrome and warns other browsers may not work
+(WebMIDI). No export function at all.
+
+**Wi-Fi editor** — `http://192.168.1.1`, served by the instrument. Owns
+preset export/import.
+
+### The Wi-Fi editor needs a dongle
+
+The 2020 manual described the Wi-Fi as an internal hot-spot. The 2021
+manual corrects this: it **requires the Crumar Wi-Fi USB adapter** plugged
+into one of the two Type-A System USB ports, and **the adapter must be
+inserted while the instrument is powered off**.
+
+So Wi-Fi is optional hardware, not a built-in feature. Any app copy
+implying every Seven has a Wi-Fi editor is wrong, and a user without the
+dongle has no route to preset export/import at all — which strengthens the
+case for this app rather than weakening it.
+
+SSID is `Seven-xxxxxxxx`, where the suffix is a per-unit hexadecimal
+serial. Range is roughly 5–10 m. One connection at a time.
+
+### USB ports
+
+- **Two Type-A host ports** (the 2020 manual said one): firmware updates,
+  the Wi-Fi dongle, USB thumb drives, and class-compliant USB-MIDI
+  controllers, which the Seven recognises automatically. 250 mA max.
+- **One Type-B port**: bidirectional class-compliant USB-MIDI to a
+  computer. No drivers needed on Windows, macOS or Linux. This is the port
+  this app uses.
+
+## 12. Preset export/import (Wi-Fi editor only)
 
 The instrument's own Wi-Fi editor at `192.168.1.1` exports a single preset
 to USB as `Seven_x-y.bin`, where x is bank and y is preset. Files may be
