@@ -1581,7 +1581,18 @@
        the picture lower — which is why pushing it down never freed the name's
        line (Daniel, 2026-08-13). The picture is emitted AFTER the heading
        instead: a float only affects what follows it. */
-    .engine-art { float: right; width: 128px; margin: 0 0 6px 14px; }
+    /* 20px off the right. Measured in the running app across all eight modeled
+       engines: the box is flush with the column's content edge (gap 0), and
+       five of the eight drawings paint right up to it — cp80, clavi, mks80,
+       vibes and grand all fill the box's WIDTH, so their ink ended exactly on
+       the boundary with only the 24px grid gutter between the instrument and
+       the effects column. The other three inset themselves by their own
+       proportions (tine 1.1px, reed 7.7px, dx7 10.2px — dx7 carries 8%
+       transparent padding of its own), which is why this is ONE margin on the
+       shared box and not a nudge per engine: the box is what sits too far
+       right, and the differences between drawings are the drawings' own
+       (Daniel, 2026-08-13). */
+    .engine-art { float: right; width: 128px; margin: 0 20px 6px 14px; }
     /* Under the wheel, appearing only when the middle is a candidate. */
     .car-select {
       /* Tucked against the foot of the instrument, not floating below the box:
