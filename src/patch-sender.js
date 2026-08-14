@@ -8,9 +8,17 @@
 // you hear takes a three-second hold on a panel preset button, done by a human
 // on the instrument. Every caller must say that plainly (CLAUDE.md).
 //
-// Order matters and is device-verified: the sound goes first, then the
-// parameters. A sound change leaves engine parameters untouched (verified
-// 2026-08-09), so sending it first and the values after cannot clobber them.
+// ORDER IS FREE, and this used to claim the opposite. A sound change leaves
+// every engine parameter untouched — read back on 2026-08-09, and shown from
+// the device side on 2026-08-14 (a value survived a Clavi round trip with no
+// writes between the two `0x46` frames; captures/editor-tap-set-sound-2026-08-14
+// and docs/protocol.md). Nothing is reset, so nothing can be clobbered in
+// either direction.
+//
+// The sound still goes first, because it is the one write that can be REFUSED:
+// resolveSoundId below rejects a sound this unit does not have, and failing
+// before 110 parameter writes is better than failing after them. That is a
+// reason of our own, not a rule the device imposes.
 
 const { EventEmitter } = require('node:events');
 

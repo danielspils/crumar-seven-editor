@@ -30,7 +30,14 @@
     const row = {
       t: new Date().toISOString(),
       port: this.name,
-      hex: Array.from(data).map((b) => b.toString(16).padStart(2, '0')).join(' '),
+      // Number(b) FIRST. The editor supplies some bytes as strings — a
+      // slider's .value — and String.prototype.toString ignores a radix, so
+      // `"85".toString(16)` returns "85" and the byte landed in the log as
+      // decimal text while everything around it was hex. The frame on the wire
+      // was always right; only the log was mixed-base. It cost a reading of
+      // the 2026-08-14 capture, where the ramp appeared to peak at 0x85 = 133,
+      // which cannot travel in SysEx at all.
+      hex: Array.from(data).map((b) => Number(b).toString(16).padStart(2, '0')).join(' '),
     };
     log.push(row);
     console.log('[seven-tap]', row.t, row.hex);
