@@ -193,8 +193,9 @@ class LibraryStore {
           // first version of touchedAt. Anything added here must be listed.
           ...(typeof s.touchedAt === 'string' ? { touchedAt: s.touchedAt } : {}),
           // The hand-placed position, once you have dragged one. Absent on
-          // every setlist means nobody has, and the list sorts by recency.
+          // every setlist means nobody has, and the list sorts by creation.
           ...(Number.isFinite(s.order) ? { order: s.order } : {}),
+          ...(typeof s.createdAt === 'string' ? { createdAt: s.createdAt } : {}),
           slots: Array.from({ length: 8 }, (_, i) => {
             const v = s.slots[i];
             if (v == null) return null;
@@ -221,12 +222,15 @@ class LibraryStore {
 
   // ---- setlist mutations — every one persists immediately ------------------
   //
-  // Every setlist carries `touchedAt`: when it was last made, edited, or
-  // opened. The list is ordered by it, so what you worked on last is at the
-  // top and a fresh backup run lands above everything — until you touch
-  // something else. Order stored in the FILE never changes: setlists are
-  // addressed by position everywhere, so sorting is a display concern and this
-  // is the field it sorts on.
+  // Every setlist carries `touchedAt` — when it was last made, edited or
+  // opened — and `createdAt`, when it was made. The list is ordered by
+  // CREATION, so a setlist stays where you expect it; ordering by last touch
+  // meant opening one moved it, which is the opposite of a stable list
+  // (Daniel, 2026-08-14). touchedAt is still written and is simply not what
+  // the display sorts on any more.
+  //
+  // Order stored in the FILE never changes either way: setlists are addressed
+  // by position everywhere, so sorting is a display concern.
   _touch(setlists, index) {
     if (setlists[index]) setlists[index].touchedAt = new Date().toISOString();
     return setlists;
@@ -241,10 +245,16 @@ class LibraryStore {
 
   createSetlist(name) {
     const setlists = this.readSetlists();
+    const now = new Date().toISOString();
     setlists.push({
       name: String(name).trim() || 'Untitled setlist',
       slots: Array(8).fill(null),
-      touchedAt: new Date().toISOString(),
+      // WHEN IT WAS MADE. The list is ordered by this — a fact that never
+      // changes — rather than by last touch, which moved a setlist every time
+      // it was opened (Daniel, 2026-08-14). touchedAt is still recorded; it is
+      // simply no longer what the order rests on.
+      createdAt: now,
+      touchedAt: now,
     });
     this.writeSetlists(setlists);
     return setlists.length - 1;

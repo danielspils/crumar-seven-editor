@@ -393,8 +393,16 @@
   // them in a heap, a backup record falls back to the date in its own name and
   // anything else to its position in the file — so an untouched library still
   // reads newest-run-first.
-  const touchKey = (s, i) => {
-    if (s.touchedAt) return `9:${s.touchedAt}`;
+  // WHEN IT WAS MADE, newest first — and nothing moves it afterwards. It used
+  // to sort by last touch, so opening a setlist promoted it to the top and the
+  // list rearranged itself under someone who had only gone to look at
+  // something (Daniel, 2026-08-14). A hand-placed order still wins over this.
+  //
+  // Setlists made before the app recorded createdAt fall back to their
+  // position in the file, which IS creation order — createSetlist appends —
+  // and sort below anything that carries a real stamp.
+  const createdKey = (s, i) => {
+    if (s.createdAt) return `9:${s.createdAt}`;
     const m = BACKUP_NAME.exec(s.name);
     if (m) return `1:${m[2]}:${String(9 - Number(m[1])).padStart(2, '0')}`;
     return `0:${String(10000 + i).padStart(6, '0')}`;
@@ -506,7 +514,7 @@
     // delete, send, open) addresses setlists by their position in the FILE, so
     // this ordering is display only and never renumbers anything.
     const rows = data.setlists
-      .map((s, i) => ({ s, i, key: touchKey(s, i) }))
+      .map((s, i) => ({ s, i, key: createdKey(s, i) }))
       // A setlist is something YOU made. The dated records a backup writes are
       // backups, and they live under their own tab (Daniel, 2026-08-13).
       .filter(({ s }) => !BACKUP_NAME.test(s.name))
@@ -1495,6 +1503,20 @@
           state.tab = tab;
           state.setlistIndex = null;
           state.backupDate = null;
+        }
+        // AND a scope that can show it. Landing on the Patches tab is not
+        // enough now that the tab filters: saving a patch while the list was
+        // showing "From the Seven" revealed a row that scope cannot contain —
+        // the new patch is one you MADE — so the link appeared to do nothing
+        // (Daniel, 2026-08-14). Switch to where the patch lives rather than to
+        // "All", so the control still names a real category, and tell app.js
+        // so the persisted preference matches what is on screen.
+        const target = data.patches.find(
+          (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
+        );
+        if (target && state.tab === 'patches' && !inScope(target, state.patchScope)) {
+          state.patchScope = isFromSeven(target) ? 'seven' : 'mine';
+          if (on.scopeChanged) on.scopeChanged(state.patchScope);
         }
         state.revealFile = file;
         state.selected = `${file} ${patchIndex || 0}`;

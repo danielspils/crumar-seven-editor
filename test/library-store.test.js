@@ -637,3 +637,22 @@ test('a backup run can still stamp a Bank 1 capture as verified', () => {
   store.touchVerified(file, 0, when);
   assert.strictEqual(store.readFile(file).library.patches[0].verified, when);
 });
+
+// The list is ordered by creation, so the stamp has to exist and has to
+// survive every later write (Daniel, 2026-08-14).
+test('a new setlist records when it was created, and keeps it', () => {
+  const { store } = freshStore();
+  store.createSetlist('Gig');
+  const i = listIndex(store, 'Gig');
+  const made = listNamed(store, 'Gig');
+  assert.ok(made.createdAt, 'createdAt is written');
+  assert.ok(made.touchedAt, 'touchedAt is still written too');
+
+  const created = made.createdAt;
+  store.touchSetlist(i);
+  store.renameSetlist(i, 'Gig night two');
+  assert.strictEqual(listNamed(store, 'Gig night two').createdAt, created,
+    'later writes do not move it');
+  assert.notStrictEqual(listNamed(store, 'Gig night two').touchedAt, created,
+    'while touchedAt does move');
+});

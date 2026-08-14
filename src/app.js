@@ -2050,14 +2050,14 @@
       // the top of the list. Deliberately not awaited and not re-rendered: the
       // reorder should be waiting for you when you come BACK to the list, not
       // happen under your eyes as you open it.
-      // The touch is written to disk AND read back. Without the refresh the
-      // stamp landed in the file while the list kept rendering from the copy
-      // it already had, so opening a setlist moved it to the top only after
-      // some unrelated act happened to re-read the library — which read as the
-      // recency order simply not working (Daniel, 2026-08-14).
-      async openSetlist(index) {
-        await window.sevenAPI.setlists.touch(index);
-        await refreshLibrary();
+      // Fire and forget again. The await-and-refresh existed so the recency
+      // order would visibly update on open; the list sorts by CREATION now, so
+      // opening one moves nothing and re-reading the whole library to show a
+      // change that cannot happen was work for its own sake
+      // (Daniel, 2026-08-14). The stamp is still written: it is a fact about
+      // the setlist, just not one the order rests on.
+      openSetlist(index) {
+        window.sevenAPI.setlists.touch(index);
       },
       async setlistMenu(index, name) {
         const action = await window.sevenAPI.setlists.contextMenu();
