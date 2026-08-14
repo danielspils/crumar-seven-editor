@@ -235,6 +235,71 @@ investigating the instrument for a bug that was in a stylesheet.
 **Consequence for the app:** these can be set like any other parameter, and are followed
 by polling because the device will not tell us when a hand moves one.
 
+### `0x46` again, pinned zero-based — second capture, 2026-08-14
+
+The frame was first captured 2026-08-09 (the section below). This is an independent
+second capture from the same page, and it settles what the first left inferred. Raw
+frames: `captures/editor-tap-set-sound-2026-08-14.json`, decoded in
+`captures/editor-tap-set-sound-2026-08-14-notes.md`.
+
+**Outbound only** — no listener was running, so the `0x45`/`0x47` replies and every
+`0x23` are absent from this capture. Claims below that need the device's answer say so.
+
+**Frame.** `F0 73 26 14 46 <sound-id> F7` — one payload byte, no checksum, and no
+terminator of its own beyond the SysEx `F7`.
+
+**The payload is the sound ID, zero-based, observed directly:** clicking *Clavi Piano*
+emitted `46 03`, clicking *Tine Piano* emitted `46 00`. That does not lean on the page's
+list order, on what was active before, or on the 9 Aug argument from `0x00` being binary
+rather than ASCII `'0'`. Two clicks, two named sounds, two ids.
+
+**The 24-sound sweep is complete: `46 00` through `46 17`, contiguous.** And the first
+sweep frame is `46 00` sent while Tine was *already* the active sound, six seconds after
+being selected — so **re-selecting the active sound still emits a frame**. The editor
+does not suppress a no-op change. (An earlier account of this session reported 23 frames
+with the first suppressed because the instrument powers on at 1-1 holding Tine; the log
+contradicts it — that was a missed click in the retelling. Recorded because the
+suppression story is plausible enough to be repeated.)
+
+**Engine parameters survive a sound change — now shown from the device side.** Metallic
+(`rho_met`, id 5) was dragged 0 → 85 → 0, the sound switched to Clavi and back, and the
+two `0x46` frames have **nothing between them** — no `0x20`, no traffic at all. The
+editor then re-read all 110 parameters and displayed Metallic as 0, so the value was held
+by the instrument rather than redrawn from the page's cache. The 9 Aug entry reached the
+same conclusion from a single `0x22` read-back; this rules out the editor having quietly
+repaired the value.
+
+Stronger still, and outside the log: Metallic was already 0 when the session began,
+carried across a full browser reload — the editor was destroyed and rebuilt and the value
+was still there.
+
+The picture both captures point at: the edit buffer holds all 110 parameters at once,
+each modeled sound has its own group within them, and `0x46` selects which group is
+audible rather than loading anything.
+
+**OPEN: what triggers the 110-parameter read sweep.** Two full `0x22` sweeps (ids `00`–
+`6d`) appear in this capture, 1.3 s and 5.3 s after a `0x46`. They also fall immediately
+after navigating to the EDIT PIANO page, and outbound frames cannot separate the two
+causes — page navigation leaves no trace on the wire. So "the editor re-reads after a
+sound change" is UNKNOWN, not established, and an earlier claim in the other direction
+("no `0x22` follows a `0x46`") is withdrawn. To settle it: change a sound without leaving
+the edit page, with `tools/listen.js` running.
+
+**Consequence for sending.** Send ordering does not matter, because nothing is reset.
+`src/patch-sender.js` sends the sound first and its header says "order matters and is
+device-verified"; the ordering is in fact free, and that instruction was a precaution
+against a reset that does not happen. Sending sound-first stays harmless — this is a
+comment that overclaims, not a behaviour to change.
+
+**Unchanged caution: the sound id is unit-specific.** Ids move with installed expansions,
+so a patch's sound NAME is resolved against the connected instrument's own sound table
+before sending and a stored id never goes on the wire — `resolveSoundId` in the sender.
+
+**Reading the raw file:** in `0x20` write frames the value token is DECIMAL while every
+other token is hex, because the tap's formatter calls `.toString(16)` on a value the page
+supplies as a string and `String.prototype.toString` ignores the radix. The frame on the
+wire is correct; only the log is mixed-base. Full explanation in the notes file.
+
 ### The sample player's eight parameters all accept writes — verified 2026-08-14
 
 `pno_rom` (IDs 60-67: `rom_p00`-`rom_p05`, `rom_p08`, `rom_p09`) is the engine every
