@@ -213,6 +213,49 @@ ids, plus the table fingerprint and read time that backups reference.
 Daniel's own 32 presets are backed up and the seeded demo patches were
 trashed — the library is real data only.
 
+## How to check your work
+
+Two suites and a way to drive the real app. **Use them before reporting
+anything as working** — most of the mistakes this project has produced were
+confident reasoning about code that a ten-second measurement would have
+contradicted.
+
+```
+npm test          # unit suites (node:test)
+npm run test:ui   # scenarios in test/ui/scenarios/, driving a real window
+npm start         # the app; keep an instance running while working
+```
+
+**`SEVEN_UI_TEST=<file.js> npm start` runs a script inside the running
+renderer and prints what it found.** This is the important one. It is how a
+layout question gets an answer instead of an opinion:
+
+```js
+// /tmp/probe.js — then: SEVEN_UI_TEST=/tmp/probe.js npm start
+(async () => {
+  if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
+  await ui.openLibrary();
+  const bar = document.querySelector('.params .param .param-bar');
+  ui.note('bar left ' + Math.round(bar.getBoundingClientRect().left));
+})()
+```
+
+`ui` gives you `$`, `$$`, `sleep`, `note`, `check`, `waitFor`, `waitEl`,
+`click`, `openLibrary`, `selectBankPreset`, `requireDevice` (see
+`test/ui/harness.js`). The window is real, so `getBoundingClientRect`,
+`getComputedStyle`, `getAnimations` and friends all work.
+
+Some habits that this project earned the hard way:
+
+- **Measure, don't eyeball.** "It lines up" is worth nothing; "626 = 626" is
+  evidence. Alignment, animation timing, and anything about a scroll or a
+  fade all have numbers you can read.
+- **Reproduce before fixing.** A fix for a bug you never observed usually
+  fixes something that was not broken, and hides the one that was.
+- **A failing check is not automatically the code's fault.** A bad regex or a
+  wrong test fixture has faked both a pass and a failure here.
+- **Say what you verified.** Distinguish "measured", "tested", and "believe".
+
 ## Next
 
 Two of the four goals are live (Backup, Visibility). The remaining arc is
@@ -257,6 +300,27 @@ already verified, so this is app work, not reverse-engineering:
 5. **A/B compare and undo** — edit-buffer snapshots; the two things the
    manufacturer's editor lacks. Undo exists for library acts; the edit-buffer
    half is what's left.
+
+### Smaller things still open
+
+Kept here because they otherwise live only in a chat that ends.
+
+- **Connect → open to the active patch.** Connecting leaves you on whatever
+  was last selected rather than what the Seven is actually playing. A first
+  attempt was reverted (2026-08-13) because it recalled without ending the
+  live session first, which discarded edits silently. Any second attempt has
+  to end the session before it moves the instrument.
+- **~5px jump at the start of the tray swap.** `#split-divider` flips
+  `display` and sits outside `#bank-region`, so it steps rather than sliding
+  with everything else. Folding it into the region would fix it, at the cost
+  of putting a drag handle inside the thing it resizes.
+- **Do the sample player's parameters do anything?** Whether "Piano Harp",
+  "Rel. Smp. Level" and "Ped. Smp. Level" bite on a given sample set is
+  unknown, and the v1.22 manual does not cover it (Rule 1). A sweep of each
+  of the eight `pno_rom` parameters to its extremes, reading back the `0x23`
+  echo, would at least separate "the write is refused" from "it takes and
+  you cannot hear it" — which is a real answer either way, and the only kind
+  this project accepts.
 
 ### There are no modes (settled 2026-08-12)
 
