@@ -36,7 +36,56 @@ that Crumar's documentation is not internally consistent.
 
 ---
 
-## 1. Sound engines
+## 1. Where the manual disagrees with this instrument
+
+The most useful page in this file, and the reason the rest of it is
+subordinate to the schema. Everything below was found by comparing Crumar's
+documents against `schema/seven-1.37.json`, which is the device's own
+self-description. Each row cites the key or index it rests on.
+
+### The manual claims things the device disproves
+
+| The manual says | The device says | Evidence |
+|---|---|---|
+| The sample player has **ten** parameters, including LFO Rate and LFO Depth | **Eight.** Those two do not exist on FW 1.37 | `rom_p06`/`rom_p07` absent from the ID space; the eight present are IDs 60–65, 66–67 |
+| Acoustic Grand has a **Fundamental Level** | No parameter carries that label, in any group | nearest by position is `acp_rnlv`, which reads "Release Level" |
+| FX1/FX2 share DEPTH and **RATE** | The control is **Speed** | `fx1_sp` (ID 77), `fx2_sp` (ID 81) |
+| **Eight** globals, Tuning among them | **Nine** in the `glb` array, and Tuning is not one of them | `globals.keys.glb`, nine slots, addressing verified 1:1 |
+
+The Speed/Rate difference is naming only; the other three change what the app
+can rely on being there.
+
+### The device has parameters the manual omits
+
+| Parameter | Key | ID | Note |
+|---|---|---|---|
+| Duplex Scale | `acp_dpxl` | 55 | Acoustic Grand |
+| Phaser Mix | `pha_mx` | 85 | FX2 phaser |
+| EQ Bass / EQ Mid / EQ Treble | `amp_bs` / `amp_md` / `amp_tr` | 92 / 93 / 94 | The amp simulator's individual bands. The manual implies only "a passive three-way EQ" per model, without saying they are addressable |
+
+### The globals gap
+
+Two of the nine are absent from the manual's list entirely:
+
+| glb | Setting |
+|---|---|
+| 4 | Midi Soft-Thru |
+| 7 | Velocity Curve |
+
+Both were pinned by name on 2026-08-12, one field at a time, while a passive
+watcher sampled the `glb` array.
+
+### Tuning: readable, with no known write path
+
+The manual lists Tuning (A=430–450 Hz, reboot required) as a global. The device
+reports it as **`tun`** — a sibling of `glb` and `wfp` in the `0x33` reply — not
+as a `glb` index. So it can be read, and `0x30` cannot write it, because `0x30`
+takes a `glb` index and `tun` has none. Whether another opcode sets it is
+untested. See §7.
+
+---
+
+## 2. Sound engines
 
 Nine engines: eight real-time synthesis models plus one sample player.
 
@@ -66,7 +115,7 @@ and consider showing the active engine's range in the UI.
 
 ---
 
-## 2. Modeled sound parameters
+## 3. Modeled sound parameters
 
 Semantics only — names, ranges and IDs come from the schema.
 
@@ -168,7 +217,7 @@ engine panel must handle a range from 1 to ~20 rows.
 
 ---
 
-## 3. Sampled sounds (GSP-01)
+## 4. Sampled sounds (GSP-01)
 
 All sampled sounds share a single parameter group. The player accepts only
 Crumar/GSi sample sets — no user samples, no standard formats.
@@ -196,6 +245,14 @@ the device reports. Not conditional, not hidden for the loaded set: gone. This
 is a real difference between the manual and the instrument, not a difference
 between sample sets.
 
+### An open lead: the doubled `B0 01`
+
+Every recall burst in the 2026-08-09 captures closes with a doubled `B0 01` —
+CC 1, the mod wheel — which nothing in the protocol explains. The manual says
+some sample sets support the mod wheel, via the LFO pair that does not exist on
+this firmware. Whether the two facts are related is untested, and this is the
+only lead there is. Recorded so the next person does not start from nothing.
+
 ### Why parameters appear dead
 
 The group must cover every sample set the engine can load, so an
@@ -220,7 +277,7 @@ fact once in help text instead.
 
 ---
 
-## 4. Effects
+## 5. Effects
 
 Signal chain elements, each independently switchable.
 
@@ -258,7 +315,7 @@ including low-pass filter, oscillator detuning and chorus.
 
 ---
 
-## 5. Expression pedal
+## 6. Expression pedal
 
 Assignable to: master volume, FX1 depth, FX2 depth, FX1+2 depth, FX1 speed,
 FX2 speed, FX1+2 speed, amp drive (only when the amp simulator is on), pad
@@ -275,7 +332,7 @@ its assigned function.
 
 ---
 
-## 6. Globals
+## 7. Globals
 
 Editor home page. These are instrument-wide, not per-preset.
 
@@ -310,6 +367,22 @@ That means it can be READ but there is no known way to WRITE it: `0x30` takes a
 is panel-and-reboot only, is untested. The app shows it as a read-only value
 for exactly this reason.
 
+### What our captures corroborate
+
+- **Send PC off explains a silent recall.** The 2026-08-09 captures show no
+  Program Change on a panel recall. The manual's description of this global —
+  emit PC whenever a preset is recalled — fits exactly, with the global off on
+  this unit. Later confirmed by turning it on: `glb` 3, after which panel
+  recalls carry `Cn <slot>`, the slot identity the `0x45` broadcast lacks.
+- **This unit behaves as "From Presets".** A recall loaded the stored volume of
+  116 rather than leaving the knob's position alone (`docs/protocol.md`, open
+  item 7). A unit set to Global would answer a backup differently on `veq_vol`,
+  so a backup is only comparable across units when this setting matches.
+- **Channel OFF would break the app entirely.** It disables send AND receive
+  except local-off sending, so a unit set that way would ignore the
+  PC-driven recalls the backup runner depends on. Untested here — no capture
+  exists of a unit in that state.
+
 ### Memory Protect is a transfer blocker
 
 With Memory Protect on, the three-second hold will not store. Nothing in
@@ -331,7 +404,7 @@ message, renderer state, crash report, or disk.
 
 ---
 
-## 7. Fixed MIDI CC map
+## 8. Fixed MIDI CC map
 
 These 22 are hard-assigned and cannot be remapped. All other parameters
 are unassigned by default and freely assignable via the editor's MIDI
@@ -355,12 +428,17 @@ These are the 22 values carried in the unsolicited `0x45` recall
 broadcast. The correspondence is exact and worth preserving as a
 cross-check.
 
+**Three independent sources agree on this list:** the device's own `flag` field
+per parameter, the FW 1.22 manual, and the FW 1.2 manual's §10.4 table — and
+the 2026-08-09 captures show exactly these 22 CCs in the recall burst. Where
+the manual and the device disagree elsewhere, they do not disagree here.
+
 Note CC 11 (expression) is transmitted by the pedal but is not in this
 table.
 
 ---
 
-## 8. Factory presets
+## 9. Factory presets
 
 **Bank 1 is hardware write-protected.** Its red LED distinguishes it from
 the three user banks (yellow LEDs). Each Bank 1 preset uses one of the
@@ -405,6 +483,11 @@ given instrument their contents are unknown until read.
 | 4-7 | FM Organ | DX | Mono tremolo, chorus, EQ, reverb |
 | 4-8 | Sampled Piano | GSi Grand D | Reverb |
 
+**Corroborated by capture:** Bank 1 is the eight modeled engines in sound-ID
+order. The controlled capture of 2026-08-09 walked presets 1–4 and read sounds
+0–3, in step. So a Bank 1 capture on any unit is genuine factory data, which is
+what makes `schema/factory-defaults-1.37.json` evidence rather than a guess.
+
 **App consequence:** 1-1 carries no effects at all while the other seven
 Bank 1 presets do. A patch generated by seeding from Bank 1 will therefore
 arrive with an FX chain for every model except Tine. That is correct
@@ -412,7 +495,7 @@ behaviour, not a defect.
 
 ---
 
-## 9. Panel behaviour
+## 10. Panel behaviour
 
 ### Preset recall and store
 
@@ -468,9 +551,18 @@ effect's oscillator.
   3 seconds; pressing again within that window advances the selection.
   Works whether or not the FX section is on.
 
+### Service shortcuts and curios
+
+- **Music demo** — hold CLAVI TABS and push VOLUME (manual p.44).
+- **Dark mode** — hold FX2 SELECT (Crumar KB article 54).
+- **Recovery mode** exists for failed boots (KB article 40).
+- KB article 25 discusses "strange behaviours" on Bank 1 Preset 8, the modeled
+  grand — unfetched, recorded as a pointer only. Note that Crumar separately
+  flags that engine as experimental (§3).
+
 ---
 
-## 10. Sample expansions
+## 11. Sample expansions
 
 Ten published expansions, shared between the Seven and the Seventeen.
 Installed via the editor's Wavetable Expansions section from a USB drive;
@@ -503,14 +595,31 @@ ready-made Visibility feature.
 
 ---
 
-## 11. Editor access
+## 12. Editor access
 
 Two editors, documented as such from the Jul 2021 manual onward. The Sep
 2020 edition described only the Wi-Fi one.
 
 **USB editor** — `https://www.gsidsp.com/Seven`, over the Type-B USB MIDI
 port. Crumar specifies Chrome and warns other browsers may not work
-(WebMIDI). No export function at all.
+(WebMIDI + SysEx). No export function at all — confirmed on the page itself,
+2026-08-09. This is the editor whose traffic our captures tap, so its
+behaviour is the closest published thing to a reference implementation for
+what this app does.
+
+**Wi-Fi editor home page** also carries the instrument-local operations the
+USB editor has no route to: global options, preset export/import, wavetable
+expansion install and uninstall, the Wi-Fi password, and links for firmware
+update and factory restore.
+
+### Scope: this app is USB-only
+
+Everything this app does goes over the Type-B port as class-compliant USB-MIDI
+SysEx. The Wi-Fi editor, its dongle, and the preset export/import it owns are
+documented here for completeness and are **out of scope** — the app neither
+speaks HTTP to the instrument nor reads the `.bin` files that editor writes.
+They matter to this project only as context for what an owner can and cannot
+do without it.
 
 **Wi-Fi editor** — `http://192.168.1.1`, served by the instrument. Owns
 preset export/import.
@@ -537,12 +646,17 @@ serial. Range is roughly 5–10 m. One connection at a time.
   controllers, which the Seven recognises automatically. 250 mA max.
 - **One Type-B port**: bidirectional class-compliant USB-MIDI to a
   computer. No drivers needed on Windows, macOS or Linux. This is the port
-  this app uses.
+  this app uses. It is silkscreened **USB MIDI IN-OUT** and is a Type-B
+  socket — the tall squarish "printer" connector — so a modern Mac needs a
+  C-to-B cable and an older one A-to-B. Corroborated by the owner against the
+  instrument itself; physical, so the staleness caveat that applies to
+  parameters does not bite here.
 
-## 12. Preset export/import (Wi-Fi editor only)
+## 13. Preset export/import (Wi-Fi editor only)
 
-The instrument's own Wi-Fi editor at `192.168.1.1` exports a single preset
-to USB as `Seven_x-y.bin`, where x is bank and y is preset. Files may be
+The instrument's own Wi-Fi editor at `192.168.1.1` exports a single preset as
+`Seven_x-y.bin`, where x is bank and y is preset, onto a **FAT32 thumb drive in
+the instrument's System USB port** — not to the browser doing the asking. Files may be
 renamed but must keep the `.bin` extension.
 
 Import activates the preset immediately in the edit buffer but **does not

@@ -101,7 +101,7 @@ mask it.
 ## Layout
 
 ```
-docs/        manual-notes.md (stale v1.22 manual), protocol.md (v1.37 spec)
+docs/        DEVICE.md (manufacturer docs, not evidence), protocol.md (v1.37 spec)
 captures/    raw MIDI logs (ground truth, committed) — pc-recall/pc-receive sessions
 schema/      seven-<firmware>.json — version-gated parameter maps
 tools/       capture-hook.js, probe.js, listen.js (passive wfp-redacting recorder)

@@ -6,8 +6,8 @@ pick up without re-deriving anything.
 Companion docs in the repo: docs/PROJECT-SCOPE.md (why and what),
 docs/protocol.md (SysEx spec), schema/seven-1.37.json (parameter schema),
 docs/DESIGN.md (UI conventions), docs/FORMAT.md (patch file format),
-CLAUDE.md (working rules for Claude Code), docs/manual-notes.md (stale FW 1.22
-manual notes).
+CLAUDE.md (working rules for Claude Code), docs/DEVICE.md (the manufacturer's
+account of the instrument — documentation, not evidence).
 
 ## 1. What this is
 
@@ -268,8 +268,7 @@ frame:
    sub-127-max params (protocol.md open items 7 and 8).
 2. ~~What does 0x72 ACTION expose?~~ **ANSWERED (9 Aug 2026), passively.**
    The EXPORT premise was wrong — export lives in the instrument-hosted Wi-Fi
-   editor over HTTP (manual §10.2; docs/manual-notes.md "TWO different
-   editors") — but 0x72 showed itself anyway: the USB editor's home page
+   editor over HTTP (manual §10.2; docs/DEVICE.md §12, "Editor access") — but 0x72 showed itself anyway: the USB editor's home page
    sends `72 0A 03` (storage query → "4.0GB") and `70 04 00` (string 4 →
    the firmware version string). Same session pinned **glb index 3 = Send
    PC** via the captured editor write, and verified that with Send PC ON,
