@@ -61,7 +61,12 @@
     soundList = [...src].sort((a, b) => (a.sampled === b.sampled ? 0 : a.sampled ? 1 : -1));
   };
   setSoundList(null);
-  const R = SevenRenderer.createRenderer(schema, SevenDefaults.defaultFor);
+  // Factory values per sound, from Bank 1 (schema/factory-defaults-1.37.json).
+  // Absent file -> nothing is marked as factory, rather than a guess.
+  const R = SevenRenderer.createRenderer(
+    schema,
+    SevenDefaults.createDefaults(window.sevenAPI.getFactoryDefaults())
+  );
 
   // Banks 1–4 mirror the INSTRUMENT, derived from the latest backup patch per
   // slot (origin bank/preset) — never demo data. The Seven can't be asked
@@ -1114,7 +1119,10 @@
           : {};
     const emptyMsg =
       lastTouched === 'device' && deviceSel
-        ? `No backup of Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1} yet — connect the Seven and click “Back up instrument”.`
+        // Two statements, not one long line: what is missing, then what to do
+        // about it (Daniel, 2026-08-13).
+        ? `No backup for Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1}\n\n` +
+          'Connect to a Crumar Seven and click the “Back up instrument” button.'
         : 'Select a patch';
     // While a patch is live, the panel shows the WORKING copy — the values the
     // instrument currently holds, including edits not yet saved to disk.
@@ -1373,6 +1381,12 @@
     const tab = e.target.closest('.bank-tab');
     if (!tab) return;
     // Navigation only — browsing banks never changes either selection.
+    //
+    // NOT YET: auto-selecting preset 1 here (Daniel wants that) fired a recall
+    // on every tab click and broke four UI scenarios, one of which showed a
+    // library patch's stored value changing underneath it. The recall races
+    // whatever session is open. It needs doing deliberately — end the live
+    // session first, then select — not by synthesising a click.
     bankIndex = Number(tab.dataset.bank);
     renderAll();
   });
@@ -1603,18 +1617,53 @@
           ...setlists.map((n) => `the ${n} setlist`),
           ...[...backups].sort().reverse().map((d) => `the ${fmt(d)} backup`),
         ];
-        const list = parts.length > 1
-          ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-          : parts[0];
-        const used = parts.length
-          ? `“${entry.name}” is used in ${list}. ` +
-            (backups.size
-              // A backup is a record of a day. A hole in it cannot be filled
-              // by reassigning, only by another run — which records TODAY.
-              ? 'Those slots will show as missing, and the backup will no longer ' +
-                'be a complete record of that day.\n\n'
-              : 'Those slots will show as missing.\n\n')
-          : '';
+        const join = (a) => (a.length > 1
+          ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`
+          : a[0]);
+
+        // Which bank slots this file is currently DRAWN in. Read straight off
+        // the rendered banks rather than re-derived from origin: only the
+        // newest backup claiming a slot is on screen, so an older record for
+        // the same slot would name a row that is not showing this patch.
+        //
+        // This is the consequence the player actually sees — Daniel deleted a
+        // patch and found Bank 1 · 1 reading "Not backed up" (2026-08-13).
+        // Every claimed slot is named, however many there are: a count is
+        // shorter and tells you nothing about which row is about to change.
+        const slots = [];
+        banks.forEach((b, bi) => b.patches.forEach((q, p) => {
+          if (q && q.file === entry.file) slots.push(`Bank ${banks[bi].name} · ${p + 1}`);
+        }));
+
+        const where = [
+          parts.length ? `is used in ${join(parts)}` : '',
+          slots.length ? `shows in ${join(slots)}` : '',
+        ].filter(Boolean).join(' and ');
+
+        const after = [
+          setlists.length ? 'Those setlist slots will show as missing.' : '',
+          slots.length
+            ? (slots.length > 1
+              ? 'Those bank slots go back to reading “Not backed up”.'
+              : `${slots[0]} goes back to reading “Not backed up”.`)
+            : '',
+          // A backup is a record of a day. A hole in it cannot be filled by
+          // reassigning, only by another run — which records TODAY.
+          backups.size
+            ? (backups.size > 1
+              ? 'Those backups will no longer be complete records of their days.'
+              : 'The backup will no longer be a complete record of that day.')
+            : '',
+          // The bank region is a picture of the last backup, not the
+          // instrument — the Seven has no read-slot opcode. Without this line
+          // "removes it from the banks" reads as "deletes it off the piano",
+          // which is untrue and is the misreading that would stop someone
+          // deleting a file they meant to delete.
+          slots.length || backups.size
+            ? 'The preset on the Seven itself is unaffected.' : '',
+        ].filter(Boolean).join(' ');
+
+        const used = where ? `“${entry.name}” ${where}.\n\n${after}\n\n` : '';
         const ok = await SevenModal.confirm({
           title: `Delete “${entry.name}”?`,
           body: `${used}The file moves to the Trash.`,
@@ -2149,7 +2198,7 @@
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.hidden = false;
       foot.textContent =
-        'These are the Seven\u2019s own settings, read from the instrument. Connect it to see them.';
+        'Connect to a Seven via USB to access global settings.';
     };
     settingsBtn.addEventListener('click', () => setSettingsOpen(settingsPanel.hidden));
     document.addEventListener('click', (e) => {

@@ -73,7 +73,16 @@ class BackupRunner extends EventEmitter {
     this.running = true;
     this.cancelled = false;
     const startedAt = Date.now();
-    const dateStr = new Date().toISOString().slice(0, 10);
+    // The player's calendar day, NOT UTC. toISOString() rolls over at 00:00
+    // UTC, so west of Greenwich an evening backup was stamped TOMORROW — a
+    // run at 5pm Pacific on 13 Aug came out labelled 14 Aug (observed
+    // 2026-08-13). This date is not a timestamp: it names the setlist, names
+    // the file, and decides whether a re-run REPLACES today's records. It has
+    // to be the day the person doing the backup thinks it is. Instants
+    // elsewhere in this file keep their time and stay UTC, which is correct
+    // for an instant and unambiguous besides.
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const soundTable = this.midi.soundTable;
     const soundById = new Map(soundTable.sounds.map((s) => [s.id, s]));
 

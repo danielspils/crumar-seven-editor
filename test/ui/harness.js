@@ -88,6 +88,15 @@ window.ui = (() => {
     }
     await waitFor(() => !!document.querySelector('#library.lib-open'), { what: 'the library to open' });
     await sleep(250); // its body renders just after the class lands
+    // Land on PATCHES. The library opens on Backups now (2026-08-13), and
+    // every scenario here goes on to wait for patch rows — so they all timed
+    // out on a tab that has none. The app's default is deliberate; this is the
+    // harness catching up with it.
+    const tab = document.querySelector('.seg-btn[data-tab="patches"]');
+    if (tab && !tab.classList.contains('active')) {
+      tab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await sleep(250);
+    }
   }
 
   async function selectBankPreset(index) {

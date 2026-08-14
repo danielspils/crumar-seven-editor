@@ -6,8 +6,12 @@
   ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'the Setlists tab');
   await ui.waitFor(() => ui.$$('.lib-setlist-row').length > 0, { what: 'the setlist list' });
 
-  const send = await ui.waitEl('[data-setlist-send]', 'a Send to bank button');
-  ui.click(send, 'Send to bank…');
+  // Open the setlist first. Send lives in the setlist's own header now, not on
+  // the row — the list is for finding one, the detail view is where you
+  // arrange it and then put it on the instrument (2026-08-13).
+  ui.click(ui.$$('.lib-setlist-row')[0], 'the first setlist');
+  const send = await ui.waitEl('[data-setlist-send]', 'a Send to Seven button');
+  ui.click(send, 'Send to Seven →');
   const modal = await ui.waitEl('.seven-modal', 'the bank chooser');
   if (!ui.check(!!modal, 'the chooser opens')) return;
 
