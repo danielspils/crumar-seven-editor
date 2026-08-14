@@ -235,6 +235,47 @@ investigating the instrument for a bug that was in a stylesheet.
 **Consequence for the app:** these can be set like any other parameter, and are followed
 by polling because the device will not tell us when a hand moves one.
 
+### The sample player's eight parameters all accept writes — verified 2026-08-14
+
+`pno_rom` (IDs 60-67: `rom_p00`-`rom_p05`, `rom_p08`, `rom_p09`) is the engine every
+sampled sound uses. All eight are `flag=0, cc=-1`, so the device announces nothing for
+them and the app must poll — the same shape as the six Clavi tabs above, but NOT
+panel-owned.
+
+The question was whether the ones below Release do anything at all: a patch could see
+no change and it was unclear whether the write was being refused or simply not audible.
+
+**Method.** `Venice Grand D-274` loaded into the edit buffer with `0x46` and no
+parameters. Then, for each of the eight: read the held value, write 0, read back, write
+127, read back, restore. Every read is a `0x22`/`0x23` round trip, so the numbers below
+are the device's own answers, not the app's.
+
+```
+param     label              held   wrote 0  read   wrote 127  read   restored
+rom_p00   Level                64         0     0         127    127         64
+rom_p01   Attack               64         0     0         127    127         64
+rom_p02   Release              64         0     0         127    127         64
+rom_p03   Filter               64         0     0         127    127         64
+rom_p04   Velocity             64         0     0         127    127         64
+rom_p05   Piano Harp           64         0     0         127    127         64
+rom_p08   Rel. Smp. Level      64         0     0         127    127         64
+rom_p09   Ped. Smp. Level      64         0     0         127    127         64
+```
+
+**Every one took the value and echoed it exactly**, at both extremes, and read back the
+same afterwards. A control write on a modeled engine through the identical path
+(`rho_atk` 32 on Tine Piano, echoed 32) rules out a broken write path.
+
+So "no effect on the tone" is NOT the instrument refusing the write. What remains
+UNKNOWN is whether a given parameter is audible on a given sample set — a set with no
+release samples has nothing for `rom_p08` to scale. That is a listening question, and
+nothing here answers it; it must not be filled in from the v1.22 manual (Rule 1), which
+describes this engine as having ten parameters when the device has eight.
+
+One incidental observation, not yet explained: all eight read **64** immediately after
+the sound was loaded with `0x46` and no parameters. Whether 64 is what the sound
+player resets to, or what the buffer happened to hold, is untested.
+
 ### Set sound (`0x46`) → confirmation `0x45` + name reply `0x47` — verified
 
 **Audibly confirmed 2026-08-13.** Everything below was wire evidence — the `0x45`, the
