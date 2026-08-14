@@ -119,7 +119,24 @@
     // catch-all venice rule, which would otherwise take every Venice sound
     // including this one (Daniel, 2026-08-13).
     [/^venice grand$/i, 'veniceClosed'],
+    // The CB1898 is a Bechstein, and now says so. Like the plain "Venice
+    // Grand" above it, this has to precede the catch-all venice rule or the
+    // family claims it first. Matched on the model number with an optional
+    // space, so "CB 1898" finds it too (Daniel, 2026-08-13).
+    [/cb\s*1898/i, 'bechstein'],
     [/venice/i, 'venice'],
+    // The modeled Acoustic Piano is Crumar's own experimental red piano, and
+    // now has its picture. Anchored to the whole name so it takes THAT sound
+    // and nothing else — it is one instrument, not a family
+    // (Daniel, 2026-08-13).
+    [/^acoustic piano$/i, 'redPiano'],
+    // The GSi Grand D has its own picture too, anchored the same way.
+    [/^gsi grand d$/i, 'gsiGrand'],
+    // Ballad Piano is a Steinway B. With it drawn, every sound the schema
+    // knows now names its own instrument, and the generic black grand below
+    // is purely a fallback: it answers for a "…piano" this build has never
+    // seen — a sound from an expansion we have not met (Daniel, 2026-08-13).
+    [/^ballad piano$/i, 'steinwayB'],
     [/grand|piano/i, 'grand'],
   ];
 
@@ -149,6 +166,10 @@
     uprightFelt: 'upright_felt',
     grand70b: 'cp70',
     veniceClosed: 'venice_closed',
+    redPiano: 'red_piano',
+    gsiGrand: 'gsi_grand',
+    steinwayB: 'steinway_b',
+    bechstein: 'bechstein_piano',
   };
 
   let drawings = null; // { name: {kind, markup|src} }, loaded once via preload
