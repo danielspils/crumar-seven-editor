@@ -359,11 +359,21 @@
        on the instrument — see schema/key-ranges-1.37.json. */
     /* A parameter row in everything but kind: same grid, same label column, so
        it lines up with the controls above it instead of floating under them. */
-    /* Its own copy of the parameter grid. The row is a SIBLING of .params,
-       not a child, so it never inherited those columns and the keyboard sat
-       ~40px right of the bars (Daniel, 2026-08-13). Same 116px label column,
-       so it lines up with every slider above it. */
-    .engine-keyrange {
+    /* Its own copy of the parameter grid. The row is a SIBLING of .params, not
+       a child, so it never inherited those columns and the keyboard sat ~40px
+       right of the bars (Daniel, 2026-08-13). Same 116px label column, so the
+       keybed starts on the same edge as every BAR above it — the bars, not the
+       label words: the keyboard is the picture-equivalent of a control, so it
+       lines up with the controls. Both restricted sounds share this, which is
+       what keeps the two keybeds consistent with each other. */
+    /* `.param.engine-keyrange`, not `.engine-keyrange`: the row carries BOTH
+       classes, and `.param` (line ~1996) sets `grid-template-columns: subgrid`
+       later in this file — same specificity, so it won on source order. Subgrid
+       needs a parent grid to borrow tracks from and this row's parent is not
+       one, so the columns silently fell back to auto and the 116px label became
+       142px of content, pushing the keybed 26px right of the bars. Two classes
+       beat one; measured 626 = 626 afterwards. */
+    .param.engine-keyrange {
       display: grid; grid-template-columns: 116px 1fr minmax(40px, max-content);
       gap: 10px; align-items: center; margin-top: 10px;
     }
@@ -1473,7 +1483,12 @@
     #done-live-btn:hover { color: var(--text); background: var(--shade-hard); }
 
     #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
-    #detail .placeholder { color: var(--text-dim); padding: 40px; text-align: center; }
+    /* pre-line so the blank line in the message becomes a break — it is two
+       statements, what is missing and what to do, and it read as one run-on
+       sentence (Daniel, 2026-08-13). Already centred. */
+    #detail .placeholder {
+      color: var(--text-dim); padding: 40px; text-align: center; white-space: pre-line;
+    }
     /* minmax(0, 1fr): a plain 1fr never shrinks below its content's minimum,
        so a patch whose widest word was narrower got a narrower column — 287px
        against 294 (Daniel, 2026-08-13). Now both halves are exactly half,
@@ -2084,7 +2099,7 @@
       <button id="sounds-button" type="button" hidden>24 sounds</button>
       <button id="backup-button" type="button" hidden>Back up instrument</button>
       <button id="conn-button" type="button">Connect</button>
-      <button id="settings-button" type="button" title="The Seven’s own settings">Settings</button>
+      <button id="settings-button" type="button" title="Global settings on the Seven">Settings</button>
     </span>
     <!-- Expansion visibility: what THIS unit has installed, per the sound
          table read on connect. Sound ids are unit-specific; the fingerprint
@@ -2092,7 +2107,7 @@
     <!-- The instrument's own global options. Nine slots, three of them with a
          verified meaning; see seven-midi.js PINNED_GLOBALS. -->
     <div id="settings-panel" hidden>
-      <div class="settings-head">Instrument settings</div>
+      <div class="settings-head">Global settings</div>
       <div class="settings-rows"></div>
       <div class="settings-foot"></div>
     </div>
