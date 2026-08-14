@@ -155,9 +155,12 @@ Adds, beyond the Baby Grand set: hammer body (filters the hammer thump);
 direct sound (balance between string sound and cabinet sound — lower
 values give a nearer sound with slower amplitude loss); harp high-pass
 filter; release noise level (dampers muting strings on key release);
-fundamental level (first harmonic against the rest of the harmonic
-content); cabinet presence and cabinet timbre; lid position (low = closed,
-centre = half open, high = removed).
+cabinet presence and cabinet timbre; lid position (low = closed, centre =
+half open, high = removed).
+
+The manual also lists a **Fundamental Level** here. No parameter in
+`schema/seven-1.37.json` carries that label, in this group or any other.
+`acp_rnlv`, the nearest candidate by position, reads "Release Level".
 
 **App consequence:** this is the group that overflows a fixed-height
 panel. DX and MKS have one parameter each, Vibraphone two — so the sound
@@ -170,20 +173,28 @@ engine panel must handle a range from 1 to ~20 rows.
 All sampled sounds share a single parameter group. The player accepts only
 Crumar/GSi sample sets — no user samples, no standard formats.
 
-Ten parameters, **five of which are conditional**:
+**Eight parameters, three of which are conditional.** The manual describes ten
+with five conditional; two of those do not exist on this firmware — see below.
 
-| Parameter | Applies |
-|---|---|
-| Level | Always — volume of the sample set |
-| Attack | Always — relative to the set's built-in attack |
-| Release | Always — relative to the set's built-in release |
-| Filter | Always — low-pass response |
-| Velocity | Always — MIDI velocity response |
-| Piano Harp | **Only for piano samples** — resonance level; does nothing otherwise |
-| LFO Rate | **Only if the set supports the mod wheel** |
-| LFO Depth | **Only if the set supports the mod wheel** |
-| Rel. Smp. Level | **Only if the set has a release sample** |
-| Ped. Smp. Level | **Only if the set has a pedal noise sample** |
+| Parameter | Schema key | ID | Applies |
+|---|---|---|---|
+| Level | `rom_p00` | 60 | Always — volume of the sample set |
+| Attack | `rom_p01` | 61 | Always — relative to the set's built-in attack |
+| Release | `rom_p02` | 62 | Always — relative to the set's built-in release |
+| Filter | `rom_p03` | 63 | Always — low-pass response |
+| Velocity | `rom_p04` | 64 | Always — MIDI velocity response |
+| Piano Harp | `rom_p05` | 65 | **Only for piano samples** — resonance level; does nothing otherwise |
+| Rel. Smp. Level | `rom_p08` | 66 | **Only if the set has a release sample** |
+| Ped. Smp. Level | `rom_p09` | 67 | **Only if the set has a pedal noise sample** |
+
+### LFO Rate and LFO Depth do not exist in FW 1.37
+
+The manual lists them as the mod-wheel pair. They are **absent from the ID
+space entirely** — `rom_p06` and `rom_p07` are not in `schema/seven-1.37.json`,
+and the eight that are present run 60–65 and 66–67 with no gap in between that
+the device reports. Not conditional, not hidden for the loaded set: gone. This
+is a real difference between the manual and the instrument, not a difference
+between sample sets.
 
 ### Why parameters appear dead
 
@@ -198,9 +209,9 @@ Verified three ways: observed in this app; reproduced in Crumar's own
 editor at gsidsp.com/Seven (ruling out our send path); confirmed by the
 manual above.
 
-Note that four parameters here have "level" in the name and three of those
-are conditional. Reports that "the level control does nothing" are usually
-one of the three.
+Note that three parameters here have "Level" in the name — `rom_p00`,
+`rom_p08`, `rom_p09` — and two of those are conditional. Reports that "the
+level control does nothing" are usually one of the two.
 
 **App consequence:** do not hide, grey out, or flag parameters as inert.
 "Little effect" is not "no effect", the boundary is sample-specific, and
@@ -217,11 +228,17 @@ Signal chain elements, each independently switchable.
 frequency, plus a bypass that overrides equalisation entirely.
 
 **FX1** — one of: Mono Tremolo, Stereo Auto-Panner, LFO Wha-Wha, Pedal
-Wha-Wha. Shared DEPTH and RATE. Pedal Wha-Wha requires an expression pedal
+Wha-Wha. Shared DEPTH and SPEED. Pedal Wha-Wha requires an expression pedal
 and **overrides any other expression pedal assignment**.
 
+*Naming:* the manual calls this control RATE. The device calls it **Speed** —
+`fx1_sp` (ID 77) and `fx2_sp` (ID 81) both read "Speed" in
+`schema/seven-1.37.json`. This file uses the device's word from here on, so a
+reader holding the manual should read its RATE as Speed throughout.
+
 **FX2** — one of: Stereo Chorus, Stereo Phaser, Stereo Flanger, Delay.
-Shared DEPTH and RATE, except that RATE becomes TIME for Delay.
+Shared DEPTH and SPEED, except that SPEED acts as delay TIME for Delay
+(the device labels it `fx2_sp` "Speed" in every mode).
 - *Phaser* adds: stage count (2, 4, 6, 8), LFO offset, feedback.
 - *Delay* adds: max feedback and max level (DEPTH scales both together),
   and stereo spread, which separates left/right reflections up to a
@@ -243,8 +260,8 @@ including low-pass filter, oscillator detuning and chorus.
 
 ## 5. Expression pedal
 
-Assignable to: master volume, FX1 depth, FX2 depth, FX1+2 depth, FX1 rate,
-FX2 rate, FX1+2 rate, amp drive (only when the amp simulator is on), pad
+Assignable to: master volume, FX1 depth, FX2 depth, FX1+2 depth, FX1 speed,
+FX2 speed, FX1+2 speed, amp drive (only when the amp simulator is on), pad
 level, pad blend.
 
 Range min and max are settable; **if min exceeds max the action reverses**.
@@ -262,16 +279,36 @@ its assigned function.
 
 Editor home page. These are instrument-wide, not per-preset.
 
-| Setting | Values | Notes |
-|---|---|---|
-| Tuning | A=430–450 Hz | Default 440. **Requires reboot to take effect** |
-| Channel | 1–16 or OFF | OFF disables MIDI send/receive except in local-off |
-| Alt. Channel | 1–16 | Send only, local-off mode only |
-| Send CC | Yes / No | Emit CC when a control moves |
-| Send PC | Yes / No | Emit PC on preset recall. **Observed as glb index 3** |
-| Sustain Pol. | N.C. / N.O. | Also togglable by holding BANK 3 seconds |
-| Volume Type | From Presets / Global | Global makes the volume knob ignore preset values |
-| Memory Protect | Off / On | **On blocks preset overwriting entirely** |
+The device's own nine, in the order it reports them. The `glb` array in the
+`0x33` globals reply is what `0x30` addresses by index, and that addressing is
+verified 1:1 for all nine slots; the names were pinned on 2026-08-12 by moving
+one field at a time while a passive watcher sampled the array
+(`schema/seven-1.37.json`, `globals.keys.glb`).
+
+| glb | Setting | Values | Notes |
+|---|---|---|---|
+| 0 | Channel | 1–16 or OFF | OFF disables MIDI send/receive except in local-off |
+| 1 | Alt. Channel | 1–16 | Send only, local-off mode only |
+| 2 | Send CC | Yes / No | Emit CC when a control moves |
+| 3 | Send PC | Yes / No | Emit PC on preset recall |
+| 4 | Midi Soft-Thru | — | **Not in the manual.** Present on the device |
+| 5 | Sustain Pol. | N.C. / N.O. | Also togglable by holding BANK 3 seconds |
+| 6 | Volume Type | From Presets / Global | Global makes the volume knob ignore preset values |
+| 7 | Velocity Curve | — | **Not in the manual.** Present on the device |
+| 8 | Memory Protect | Off / On | **On blocks preset overwriting entirely** |
+
+### Tuning is not in the glb space — open question
+
+The manual lists Tuning (A=430–450 Hz, default 440, requiring a reboot) among
+the globals. The device does report it, but **not as a `glb` index**: the
+`0x33` reply carries three keys — `tun`, `glb` and `wfp` — and tuning is the
+separate `tun` field. All nine `glb` slots are accounted for above, so tuning
+is not one of them.
+
+That means it can be READ but there is no known way to WRITE it: `0x30` takes a
+`glb` index, and `tun` has none. Whether another opcode sets it, or whether it
+is panel-and-reboot only, is untested. The app shows it as a read-only value
+for exactly this reason.
 
 ### Memory Protect is a transfer blocker
 
@@ -281,6 +318,7 @@ guide the user through eight holds that all silently fail.
 
 **App requirement:** read Memory Protect during pre-flight and refuse to
 start a transfer while it is on, naming the setting and where to change it.
+It is readable now: `glb` index 8 in the `0x33` reply.
 
 ### Wi-Fi password
 
@@ -303,14 +341,14 @@ Controller Map page.
 |---|---|---|---|---|
 | 7 | Volume | | 25 | FX2 select |
 | 12 | EQ bass | | 26 | FX2 depth |
-| 13 | EQ treble | | 27 | FX2 rate |
+| 13 | EQ treble | | 27 | FX2 speed (`fx2_sp`) |
 | 14 | EQ middle | | 28 | Amp toggle |
 | 15 | EQ mid frequency | | 29 | Amp drive |
 | 16 | EQ bypass | | 30 | Reverb toggle |
 | 20 | FX1 toggle | | 31 | Pad toggle |
 | 21 | FX1 select | | 32 | Pad level |
 | 22 | FX1 depth | | 33 | Pad blend |
-| 23 | FX1 rate | | 91 | Reverb level |
+| 23 | FX1 speed (`fx1_sp`) | | 91 | Reverb level |
 | 24 | FX2 toggle | | 92 | Reverb decay |
 
 These are the 22 values carried in the unsolicited `0x45` recall
@@ -401,9 +439,9 @@ immediately on preset recall.
 | 2 | Reverb level | Reverb decay | Reverb on/off | Switch parameter |
 | 3 | EQ bass | EQ mid | EQ on/off | — |
 | 4 | EQ treble | EQ mid freq | EQ reset | Switch parameter |
-| 5 | FX1 depth | FX1 rate | FX1 on/off | Switch parameter |
+| 5 | FX1 depth | FX1 speed | FX1 on/off | Switch parameter |
 | 6 | Drive amount | — | Amp/drive on/off | — |
-| 7 | FX2 depth | FX2 rate | FX2 on/off | Switch parameter |
+| 7 | FX2 depth | FX2 speed | FX2 on/off | Switch parameter |
 | 8 | Pad level | Pad blend | Pad on/off | Switch parameter |
 
 The two manuals disagree on knobs 3 and 4: the Sep 2020 edition gives the
@@ -411,7 +449,7 @@ quick push to knob 3, the Jul 2021 edition to knob 4. The table above
 follows the newer manual. Untested on hardware — verify before relying on
 it for the panel SVG.
 
-When a knob displays FX rate, its blue light pulses in sync with the
+When a knob displays FX speed, its blue light pulses in sync with the
 effect's oscillator.
 
 ### Other panel states
