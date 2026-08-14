@@ -1971,7 +1971,14 @@
   // animation never writes a style of its own (fill defaults to none), so the
   // layout after it is whatever the CSS says, not whatever the animation left
   // behind.
-  const SWAP_MS = 260;
+  // 360ms, up from 260: at the shorter duration the handover still read as a
+  // jump rather than a movement (Daniel, 2026-08-13). One constant — nothing
+  // else needs to change to retune it.
+  const SWAP_MS = 360;
+  // The CLOSING tray leads; the opening one follows a beat later, so the eye
+  // sees space being given up and then taken, rather than two boxes moving as
+  // one block (Daniel, 2026-08-13).
+  const SWAP_STAGGER_MS = 70;
   function animateSwap(apply) {
     const trays = [document.getElementById('bank-tray'), libSection.querySelector('.fx-body')]
       .filter(Boolean);
@@ -1983,9 +1990,22 @@
     const to = trays.map((el) => el.getBoundingClientRect().height);
     trays.forEach((el, i) => {
       if (Math.abs(from[i] - to[i]) < 1) return;
+      const closing = to[i] < from[i];
       el.animate(
         [{ height: `${from[i]}px` }, { height: `${to[i]}px` }],
-        { duration: SWAP_MS, easing: 'cubic-bezier(.32,.72,0,1)' }
+        {
+          duration: SWAP_MS,
+          delay: closing ? 0 : SWAP_STAGGER_MS,
+          // Was cubic-bezier(.32,.72,0,1), which is 93% travelled by 90ms —
+          // nearly all the motion in the first quarter, so lengthening the
+          // duration only added a long slow tail nobody could see and it still
+          // read as a jump. This spends the time on the part of the move the
+          // eye is actually following.
+          easing: 'cubic-bezier(.4,0,.2,1)',
+          // Without this the delayed tray snaps to its FINAL height and sits
+          // there through the stagger, which is the jump we are removing.
+          fill: 'backwards',
+        }
       );
     });
   }
