@@ -359,7 +359,14 @@
        on the instrument — see schema/key-ranges-1.37.json. */
     /* A parameter row in everything but kind: same grid, same label column, so
        it lines up with the controls above it instead of floating under them. */
-    .engine-keyrange { align-items: center; }
+    /* Its own copy of the parameter grid. The row is a SIBLING of .params,
+       not a child, so it never inherited those columns and the keyboard sat
+       ~40px right of the bars (Daniel, 2026-08-13). Same 116px label column,
+       so it lines up with every slider above it. */
+    .engine-keyrange {
+      display: grid; grid-template-columns: 116px 1fr minmax(40px, max-content);
+      gap: 10px; align-items: center; margin-top: 10px;
+    }
     .keyrange-label { color: var(--text-muted); }
     .keyrange-keys { grid-column: 2; display: block; min-width: 0; }
     /* Sized by HEIGHT, letting the viewBox set the width — 61 keys at their

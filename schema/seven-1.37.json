@@ -29,7 +29,7 @@
     "note": "ID 110 is a sentinel and returns a malformed spec. Do not enumerate it."
   },
   "groups": {
-    "pno_rho": "Tine Electric Piano (Rhodes)",
+    "pno_rho": "Rhodes piano",
     "pno_wur": "Reed Electric Piano (Wurlitzer 200A)",
     "pno_egp": "Electric Baby Grand (Yamaha CP80)",
     "pno_zd6": "Clavi (Clavinet D6)",
