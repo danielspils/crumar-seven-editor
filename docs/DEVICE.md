@@ -55,6 +55,21 @@ self-description. Each row cites the key or index it rests on.
 The Speed/Rate difference is naming only; the other three change what the app
 can rely on being there.
 
+### Errors in Crumar's own documentation
+
+Different in kind from everything else on this page: not a device/manual
+mismatch but a plain mistake in the text, settled by facts outside the
+instrument. `schema/seven-1.37.json` has nothing to say about either column —
+it names sounds, not the machines they model.
+
+| The manual says | What is actually meant | Why |
+|---|---|---|
+| The MKS engine reproduces patch 7 "E.PIANO 1" of the Roland **MKS-20 / RD-2000** | The **RD-1000** and its rack sibling the **MKS-20** | The RD-2000 is a 2017 stage piano. The sound being described is an eighties one, made by Roland's SA synthesis, which is the RD-1000 and MKS-20 — the manual names the MKS-20 itself, parenthetically, alongside a machine from thirty years later |
+
+Corrected in §3 rather than reproduced there, since repeating a manufacturer's
+error inside a description of what the engine models would make this file wrong
+in the same way.
+
 ### The device has parameters the manual omits
 
 | Parameter | Key | ID | Note |
@@ -175,9 +190,13 @@ organ, a brass section, a bass and a marimba.
 
 ### MKS Digital E.P.
 
-Reproduces patch 7 "E.PIANO 1" of the Roland MKS-20 / RD-2000.
+Reproduces patch 7 "E.PIANO 1" of the Roland **RD-1000** and its rack sibling
+the **MKS-20** — the eighties SA-synthesis pair the engine is named after.
 **One parameter only**, overall decay time. The original's BBD stereo
 chorus is reproduced by turning FX2 on.
+
+The manual pairs the MKS-20 with the *RD-2000*, a 2017 stage piano that
+postdates this sound by three decades. Corrected here and listed in §1.
 
 ### Vibraphone
 
@@ -252,6 +271,42 @@ CC 1, the mod wheel — which nothing in the protocol explains. The manual says
 some sample sets support the mod wheel, via the LFO pair that does not exist on
 this firmware. Whether the two facts are related is untested, and this is the
 only lead there is. Recorded so the next person does not start from nothing.
+
+### What we heard — Venice Grand D-274, 2026-08-14
+
+The first observation of our own behind this section. Everything above it is
+Crumar's account; this is one sample set, listened to one parameter at a time.
+
+**Method.** The sound loaded bare into the edit buffer, all eight parameters set
+to **64** first so only one thing changed at a time, reverb off. Each parameter
+driven to 0 and to 127 through the app's own MIDI stack, every write confirmed
+by read-back, Daniel playing and reporting between changes. Nothing stored.
+
+| Parameter | Key | Heard |
+|---|---|---|
+| Level | `rom_p00` | **Works, but it is a trim, not a mute.** 0 is roughly 60% volume and still plainly a piano; 127 is full. This is why a patch reading "Level 0" still sounds |
+| Attack | `rom_p01` | **Works, strongly.** 0 speaks immediately, 127 is a very slow swell |
+| Release | `rom_p02` | **Works.** 0 cuts off abruptly, 127 rings on |
+| Filter | `rom_p03` | **No audible effect**, across two passes (0 → 127 → 0), including held chords in the upper register |
+| Velocity | `rom_p04` | **No audible difference** between 0 and 127, playing softest-to-hardest at both. Reported with less certainty than the Filter null |
+| Piano Harp | `rom_p05` | **Works, big difference.** Silent low chord held, staccato note struck above: the held strings ring far more at 127 |
+| Rel. Smp. Level | `rom_p08` | **No audible difference** on a clean 127 → 0 comparison, staccato notes without pedal. One pass |
+| Ped. Smp. Level | `rom_p09` | **Works** — 0 gives no pedal noise, 127 gives plenty. From Daniel's prior experience of this control, NOT from today's A/B, which stopped before this row |
+
+**Filter and Velocity are the surprise.** The manual lists both among the five
+that apply to every sample set; on this one neither did anything audible. That
+is a contradiction of the documentation, not of the device: the writes were
+accepted and echoed (see `docs/protocol.md`, the 2026-08-14 sweep), so the
+values arrive and something else decides they do nothing here.
+
+**Piano Harp behaves exactly as documented** — conditional on piano samples,
+and this is a piano sample.
+
+**Still open.** Only one sample set has been listened to. The contrast set
+(Combo Piano, where the piano-specific parameters should fall silent) was not
+reached, `rom_p08` deserves a second pass given how subtle it is, and nothing
+here says whether Filter and Velocity are inert on every set or only on this
+one. A null on one instrument is not a null on the engine.
 
 ### Why parameters appear dead
 

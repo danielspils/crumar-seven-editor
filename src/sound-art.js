@@ -157,7 +157,12 @@
     clavi: 'clavi',
     grandLegs: 'cp80',
     synth: 'dx7',
-    rack: 'mks80',
+    // The MKS Synth Piano models the RD-1000 / MKS-20, so it gets the RD-1000
+    // rather than the MKS-80 rack that the key name suggests — an MKS-80 is a
+    // Super Jupiter, an analog polysynth with no piano in it
+    // (Daniel, 2026-08-14). The `rack` key is kept: it is the artKey the
+    // matcher assigns for /\bmks\b/, and only this sound uses it.
+    rack: 'rd1000',
     vibes: 'vibes',
     combo: 'combo',
     grand: 'grand',
