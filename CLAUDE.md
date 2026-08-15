@@ -226,6 +226,20 @@ installed, since expansions change the SOUND table and sounds are already
 resolved against the connected unit's own list. It takes no globals argument
 at all, so Rule 6 cannot be violated by forgetting to mask something.
 
+**Sample expansions** (`data/expansions.json` + `src/expansions.js`): a
+read-only modal listing what EXISTS (Crumar's published catalogue — titles,
+dates, ZIP download sizes, labelled as such) against what is INSTALLED (the
+connected unit's sound table, which wins). Three groups on the device's id
+ranges: modeled 0–7, included samples 8–15, expansions 16+. Matching is by the
+names the DEVICE reports, not the download titles — the page says "Electric
+Grand 70BXL", the instrument says "Electric Grand 70B XL". Expansions nobody
+here owns carry `sounds: null` and read UNVERIFIED, never missing. Storage is
+one verbatim line, since ACTION `0x0A` returns a figure it does not label.
+Offline it opens with the catalogue and no installed/missing state at all.
+**Verified against the instrument 2026-08-15**: 8 modeled, 8 included, 7
+installed, 3 unverified, nothing unaccounted for, storage read as "4.0GB" over
+the wire.
+
 **Backup works end-to-end** (`src/backup-runner.js`): confirm-every-run
 dialog stating where the instrument is left; PC 0..31 each gated on the
 unsolicited `0x45` (1500ms timeout aborts the whole run — never skip a slot);
