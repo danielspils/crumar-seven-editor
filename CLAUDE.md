@@ -212,6 +212,20 @@ alters a stranger's instrument on an assumption we never checked
 (`src/param-compat.js`). Backup now takes its parameter count and key order
 from that table rather than a hardcoded 110.
 
+When the gate is closed, the banner offers **"Report this instrument"**
+(`src/instrument-report.js`): it saves the device's own description — the
+firmware string, the sound table, and the WHOLE `0x15` parameter line for
+every id (`id | group | key | label | cc | max | value | flag`) — reveals the
+file, and opens the app repo's issue page. Every field is kept because the
+point of the report is to be enough to write `schema/seven-<firmware>.json`
+for a firmware nobody here has, and group/cc/flag are half of a schema entry;
+`value` is the value at read time, never a factory default. **What the report
+diagnoses is stated inside it**: a FIRMWARE whose parameter set differs from
+this build's schema — not the instrument's OS, and not which expansions are
+installed, since expansions change the SOUND table and sounds are already
+resolved against the connected unit's own list. It takes no globals argument
+at all, so Rule 6 cannot be violated by forgetting to mask something.
+
 **Backup works end-to-end** (`src/backup-runner.js`): confirm-every-run
 dialog stating where the instrument is left; PC 0..31 each gated on the
 unsolicited `0x45` (1500ms timeout aborts the whole run — never skip a slot);

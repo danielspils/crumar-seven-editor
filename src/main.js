@@ -10,9 +10,11 @@ const path = require('path');
 const { LibraryStore } = require('./library-store');
 const { buildReport, reportFileName } = require('./instrument-report');
 
-// Where "Report this instrument" sends someone. Issues are enabled on the repo
-// (checked 2026-08-15).
-const ISSUE_URL = 'https://github.com/danielspils/this-seven-goes-to-eleven/issues/new';
+// Where "Report this instrument" sends someone. The APP's repo — Issues
+// enabled, checked 2026-08-15. It pointed at this-seven-goes-to-eleven, which
+// is the WEBSITE repo (homepage copy, screenshots, favicons); instrument
+// reports would have landed among favicon commits.
+const ISSUE_URL = 'https://github.com/danielspils/crumar-seven-editor/issues/new';
 
 // ---- Library IPC (the on-disk Library folder; see library-store.js) --------
 // Lazy so app.getPath is ready and a broken Library folder can't stop launch.

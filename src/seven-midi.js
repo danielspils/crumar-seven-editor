@@ -686,11 +686,15 @@ class SevenMidi extends EventEmitter {
         );
         const f = payloadText(msg).split('|');
         if (f.length < 8) return; // malformed: leave the gap for the retry pass
+        // THE WHOLE REPLY: id | group | key | label | cc | max | value | flag.
+        // Every field is kept, because a report built from this table is meant
+        // to be enough to write a schema for an unknown firmware, and group,
+        // cc and flag are half of what a schema entry is. `value` is the
+        // CURRENT value at read time, not a factory default — it is kept for
+        // completeness and labelled as what it is wherever it surfaces.
         specs[id] = {
           id, group: f[1], key: f[2], label: f[3],
-          cc: Number(f[4]), max: Number(f[5]), flag: Number(f[7]),
-          // f[6] is the value — CURRENT state, not a default. Deliberately not
-          // kept: this table is the map, not a reading of the edit buffer.
+          cc: Number(f[4]), max: Number(f[5]), value: Number(f[6]), flag: Number(f[7]),
         };
       } catch { /* dropped or timed out; the retry pass picks it up */ }
     };

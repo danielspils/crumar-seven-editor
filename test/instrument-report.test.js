@@ -18,8 +18,8 @@ const DEVICE = {
   count: 2,
   fingerprint: 'aaaa1111bbbb2222',
   params: [
-    { id: 0, key: 'pno_lvl', label: 'Level', max: 127, group: 'pno', cc: 7, flag: 0 },
-    { id: 1, key: 'pno_atk', label: 'Attack', max: 127, group: 'pno', cc: -1, flag: 1 },
+    { id: 0, key: 'pno_lvl', label: 'Level', max: 127, group: 'pno', cc: 7, value: 100, flag: 0 },
+    { id: 1, key: 'pno_atk', label: 'Attack', max: 127, group: 'pno', cc: -1, value: 64, flag: 1 },
   ],
 };
 const SOUNDS = {
@@ -47,13 +47,23 @@ test('carries the instrument’s own description', () => {
   assert.equal(r.firmware, 'CRUMAR Seven v.1.42 Build date: Mon Jan 5 09:00:00 2026');
   assert.equal(r.parameters.count, 2);
   assert.equal(r.parameters.fingerprint, 'aaaa1111bbbb2222');
+  // The WHOLE 0x15 reply, field for field — group, cc and flag are half of
+  // what a schema entry is, and `value` completes the line the device sent.
   assert.deepEqual(r.parameters.list[1],
-    { id: 1, key: 'pno_atk', label: 'Attack', max: 127, group: 'pno', cc: -1, flag: 1 });
+    { id: 1, group: 'pno', key: 'pno_atk', label: 'Attack', cc: -1, max: 127, value: 64, flag: 1 });
+  assert.deepEqual(Object.keys(r.parameters.list[0]),
+    ['id', 'group', 'key', 'label', 'cc', 'max', 'value', 'flag']);
   assert.equal(r.sounds.count, 2);
   assert.equal(r.sounds.list[1].name, 'Venice Grand D-274');
   assert.equal(r.app.version, '0.1.0');
   assert.equal(r.app.schema, 'seven-1.37.json');
   assert.equal(r.app.knownParameters, 3);
+});
+
+test('the file says what it diagnoses, so it cannot be read as a fault report', () => {
+  const r = build();
+  assert.match(r.diagnoses, /firmware whose parameter set differs from the schema/);
+  assert.match(r.diagnoses, /not installed expansions/i);
 });
 
 test('the parameter table is NOT redacted — a report with holes helps nobody', () => {

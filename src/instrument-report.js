@@ -33,6 +33,18 @@ function buildReport({ appVersion, schemaName, appParamCount, firmware, soundTab
     report: 'crumar-seven-instrument',
     reportVersion: 1,
     created,
+    // WHAT THIS DIAGNOSES, stated in the file so it cannot be mistaken for a
+    // general fault report: a FIRMWARE whose parameter set differs from the
+    // schema this build was written against. Not the instrument's OS, and not
+    // which expansions are installed — expansions change the SOUND table, and
+    // the app already resolves sounds against the connected unit's own table.
+    // The parameter table below is the evidence for exactly one question:
+    // what would a schema for this firmware have to say?
+    diagnoses:
+      'A firmware whose parameter set differs from the schema this build was '
+      + 'written against. Not the OS, and not installed expansions — those '
+      + 'change the sound table, which the app already reads from the '
+      + 'instrument.',
     app: { version: appVersion, schema: schemaName, knownParameters: appParamCount },
     // Verbatim, as the device gave it. Not parsed into a version number here:
     // the build date is half of what identifies a firmware.
@@ -45,11 +57,25 @@ function buildReport({ appVersion, schemaName, appParamCount, firmware, soundTab
     parameters: {
       count: paramTable ? paramTable.count : 0,
       fingerprint: (paramTable && paramTable.fingerprint) || null,
-      // id / key / label / max, as asked. `group`, `cc` and `flag` ride along
-      // because they cost nothing here and are the difference between reading
-      // a table and being able to build a schema from it.
+      // THE WHOLE 0x15 REPLY, field for field: id | group | key | label | cc |
+      // max | value | flag. Not a chosen subset — group, cc and flag are half
+      // of what a schema entry is, and without them a submitted report cannot
+      // produce a working schema file for that firmware, which is the only
+      // reason to collect one (Daniel, 2026-08-15).
+      //
+      // `value` is the parameter's value AT READ TIME — whatever the edit
+      // buffer happened to hold — not a factory default. The device has no
+      // factory-default field; see CLAUDE.md on where defaults actually come
+      // from. It is here for completeness and must not be read as a default.
       list: params.map((p) => ({
-        id: p.id, key: p.key, label: p.label, max: p.max, group: p.group, cc: p.cc, flag: p.flag,
+        id: p.id,
+        group: p.group,
+        key: p.key,
+        label: p.label,
+        cc: p.cc,
+        max: p.max,
+        value: p.value,
+        flag: p.flag,
       })),
     },
     // What the app thought was wrong. Recomputable from the lists above, but
