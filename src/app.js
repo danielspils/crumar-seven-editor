@@ -2432,6 +2432,7 @@
     // demand. Cleared on disconnect: it describes THIS instrument, and a
     // stale one would be a list of what some other Seven had.
     let soundTable = null;
+    let deviceStorage = null; // the device's own storage string, meaning unknown
 
     // Expansion visibility: the connected unit's own sound table. Ids are
     // unit-specific (they shift with installed expansions), which is exactly
@@ -2489,6 +2490,216 @@
       foot.textContent =
         `Read ${day}, ${time} · fingerprint ${table.fingerprint} · used to reconcile installed models/samples between different Sevens.`;
       return wrap;
+    };
+
+
+    // ---- Sample expansions -------------------------------------------------
+    // READ-ONLY, always. The app cannot install an expansion and must never
+    // imply it can: installing happens on the instrument's own Wi-Fi editor,
+    // which needs Crumar's Wi-Fi USB adapter. Someone without that dongle
+    // cannot install expansions at all, and should learn that here rather than
+    // after buying one.
+    const expansionCatalogue = window.sevenAPI.getExpansions();
+
+    const buildExpansionsBody = (table, storage) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'exp-modal';
+      const r = window.SevenExpansions.classify(expansionCatalogue || {}, table ? table.sounds : null);
+
+      // The device's own number, verbatim and unlabelled — because the device
+      // does not label it. Never a bar, never a used/free split, and never
+      // arithmetic against the catalogue's download sizes: those are ZIP sizes
+      // from a web page and this is a figure of unknown meaning
+      // (docs/protocol.md, ACTION 0x0A).
+      if (storage) {
+        const st = document.createElement('p');
+        st.className = 'exp-storage';
+        st.textContent =
+          `The instrument reports ${storage} of storage. It does not say whether that is total, used or free.`;
+        wrap.appendChild(st);
+      }
+
+      const group = (cls, title, sub, rows) => {
+        const div = document.createElement('div');
+        div.className = `exp-group ${cls}`;
+        const h = document.createElement('h4');
+        h.textContent = title;
+        const p = document.createElement('p');
+        p.className = 'exp-sub';
+        p.textContent = sub;
+        div.append(h, p);
+        for (const row of rows) div.appendChild(row);
+        return div;
+      };
+
+      const plainRow = (name, meta) => {
+        const row = document.createElement('div');
+        row.className = 'exp-row';
+        const n = document.createElement('span');
+        n.className = 'exp-name';
+        n.textContent = name;
+        row.appendChild(n);
+        if (meta) {
+          const m = document.createElement('span');
+          m.className = 'exp-meta';
+          m.textContent = meta;
+          row.appendChild(m);
+        }
+        return row;
+      };
+
+      const PILL = {
+        installed: ['Installed', 'is-installed'],
+        'not-installed': ['Not installed', 'is-missing'],
+        unverified: ['Unverified', 'is-unverified'],
+        partial: ['Partly installed', 'is-partial'],
+        unknown: ['', ''],
+      };
+
+      const expRow = (e) => {
+        const row = plainRow(
+          e.title,
+          `${window.SevenExpansions.releaseLabel(e.released)} · ${window.SevenExpansions.downloadSize(e.downloadMb)} download`
+        );
+        const [label, cls] = PILL[e.status] || PILL.unknown;
+        if (label) {
+          const pill = document.createElement('span');
+          pill.className = `exp-pill ${cls}`;
+          pill.textContent = label;
+          pill.title = e.status === 'unverified'
+            ? 'Nobody has told this app what sounds this expansion adds, so it cannot say whether you have it'
+            : e.status === 'partial'
+              ? 'Some of this download’s sounds are on the instrument and some are not'
+              : '';
+          row.appendChild(pill);
+        }
+        return row;
+      };
+
+      if (r.connected) {
+        wrap.appendChild(group(
+          'is-modeled', 'Modeled engines',
+          'Crumar’s physical models. Permanent — no samples, no storage, nothing to install or remove.',
+          r.modeled.map((s) => plainRow(s.name, `ID ${s.id}`))
+        ));
+        wrap.appendChild(group(
+          'is-sampled', 'Included samples',
+          'These ship with every Seven. Permanent.',
+          r.included.map((s) => plainRow(s.name, `ID ${s.id}`))
+        ));
+      }
+
+      const expansionRows = r.expansions.map(expRow);
+      // Sounds the instrument reports that no catalogue entry claims. Shown,
+      // never dropped: if the matching is wrong, a sound you own must appear
+      // as unaccounted for rather than be silently reported missing.
+      for (const s of r.unaccounted) {
+        const row = plainRow(s.name, `ID ${s.id}`);
+        const pill = document.createElement('span');
+        pill.className = 'exp-pill is-unverified';
+        pill.textContent = 'Installed, not in the catalogue';
+        row.appendChild(pill);
+        expansionRows.push(row);
+      }
+      wrap.appendChild(group(
+        'is-sampled', 'Expansions',
+        r.connected
+          ? 'Sample sets sold separately. These are the only rows with anything to do.'
+          : 'Sample sets sold separately.',
+        expansionRows
+      ));
+
+      if (!r.connected) {
+        const off = document.createElement('p');
+        off.className = 'exp-note';
+        off.textContent =
+          'Nothing is connected, so this is only the published list — the app cannot say ' +
+          'which of these your Seven has. Connect the instrument and it will read its own ' +
+          'sound table and mark them.';
+        wrap.appendChild(off);
+      }
+
+      const note = document.createElement('p');
+      note.className = 'exp-note';
+      note.textContent =
+        'Sizes are the ZIP download sizes published by Crumar, not measurements from ' +
+        'your instrument — the Seven does not report the size of an installed sample set.';
+      wrap.appendChild(note);
+
+      const foot = document.createElement('div');
+      foot.className = 'exp-foot';
+      const ftitle = document.createElement('strong');
+      ftitle.textContent = 'Installing an expansion';
+      const dongle = document.createElement('p');
+      dongle.className = 'exp-note';
+      dongle.textContent =
+        'This app cannot install expansions, and neither can any USB connection: ' +
+        'installing happens on the instrument’s own Wi-Fi editor, which needs Crumar’s ' +
+        'Wi-Fi USB adapter. Without that adapter you cannot install an expansion at all — ' +
+        'worth knowing before buying one.';
+      const steps = document.createElement('ol');
+      for (const step of [
+        'Download the expansion from crumar.it.',
+        'Copy it to a USB drive formatted FAT32.',
+        'Insert the drive into one of the instrument’s System USB ports.',
+        'Install it from the Wavetable Expansions page of the instrument’s own editor.',
+      ]) {
+        const li = document.createElement('li');
+        li.textContent = step;
+        steps.appendChild(li);
+      }
+      const link = document.createElement('p');
+      link.className = 'exp-note';
+      const a = document.createElement('a');
+      a.href = '#';
+      a.textContent = 'crumar.it — expansions and downloads';
+      a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        window.sevenAPI.openExternal('https://www.crumar.it/?a=support&b=36');
+      });
+      link.appendChild(a);
+      foot.append(ftitle, dongle, steps, link);
+      wrap.appendChild(foot);
+      return wrap;
+    };
+
+    // Sample expansions: what exists, and which of them this Seven has. Sits
+    // beside the sound list because it answers the next question that list
+    // provokes — "what about the ones I don't have?" — and it is offered with
+    // NOTHING CONNECTED as well, because the catalogue is worth reading before
+    // buying an expansion, and because that is when someone is deciding.
+    const expansionsRow = () => {
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'set-row set-link';
+      const name = document.createElement('span');
+      name.className = 'set-name';
+      name.textContent = 'Sample expansions';
+      const val = document.createElement('span');
+      val.className = 'set-value';
+      val.textContent = String(((expansionCatalogue || {}).expansions || []).length);
+      const chev = document.createElement('span');
+      chev.className = 'set-chev';
+      chev.textContent = '›';
+      link.append(name, val, chev);
+      link.addEventListener('click', () => {
+        setSettingsOpen(false);
+        openExpansionsModal();
+      });
+      return link;
+    };
+
+    const openExpansionsModal = async () => {
+      const m = window.SevenModal.open({
+        title: soundTable
+          ? `Sample expansions — ${soundTable.sounds.length} sounds on this instrument`
+          : 'Sample expansions',
+        confirmLabel: 'Close',
+        cancelLabel: 'Close',
+      });
+      m.body.appendChild(buildExpansionsBody(soundTable, deviceStorage));
+      await m.action();
+      m.close();
     };
 
     // Opened from the foot of Settings. A modal rather than another tray: the
@@ -2634,6 +2845,7 @@
         });
         rows.appendChild(link);
       }
+      rows.appendChild(expansionsRow());
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.textContent = '';
       foot.hidden = true;
@@ -2648,7 +2860,9 @@
       // These are the INSTRUMENT's settings, so there is nothing to show
       // without one — but the gear stays put and says so, rather than
       // disappearing and leaving you hunting for it.
-      settingsPanel.querySelector('.settings-rows').replaceChildren();
+      // The globals need an instrument; the expansion catalogue does not, and
+      // this is exactly when someone is thinking about buying one.
+      settingsPanel.querySelector('.settings-rows').replaceChildren(expansionsRow());
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.hidden = false;
       foot.textContent =
@@ -2685,6 +2899,7 @@
           soundTable = s.soundTable;
           setSoundList(s.soundTable);
         }
+        deviceStorage = s.storage || null;
       } else if (s.state === 'connecting') {
         connText.textContent = 'Connecting…';
       } else {
@@ -2727,6 +2942,7 @@
       if (s.state !== 'connected') {
         backupRunning = false;
         soundTable = null;
+        deviceStorage = null;
         setSettingsOpen(false);
       }
     };
@@ -2747,6 +2963,17 @@
         reportBtn.disabled = false;
         setTimeout(() => { reportBtn.textContent = was; }, 4000);
       }
+    });
+
+    // A patch that names a sound this instrument lacks is exactly when the
+    // expansion list is worth reading — so the warning is the way in. Delegated
+    // on the document: the badge is rendered as HTML by the renderer and by the
+    // library view, and re-rendered constantly.
+    document.addEventListener('click', (ev) => {
+      const hit = ev.target.closest('.badge-warn, .sound-tag.is-warn, .warn-banner');
+      if (!hit) return;
+      ev.preventDefault();
+      openExpansionsModal();
     });
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;

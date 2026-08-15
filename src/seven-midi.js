@@ -52,7 +52,16 @@ const OP = {
   GET_CURRENT_SOUND: 0x44, CURRENT_SOUND: 0x45,
   SOUND_NAME: 0x47,
   STRING: 0x70, STRING_REPLY: 0x71,
+  ACTION: 0x72, ACTION_REPLY: 0x73,
 };
+
+// The ONE action payload this app ever sends. 0x0A was observed in the wild —
+// the manufacturer's editor asks it on every page load — and re-sent and
+// confirmed by us on 2026-08-15 (captures/action-storage-2026-08-15*). Every
+// other code in the ACTION space stays observe-only, permanently: it carries
+// factory reset and firmware update, and probing a neighbour to learn what it
+// does is how you find out what the reset code is.
+const ACTION_STORAGE = [0x0a, 0x03];
 
 const GLB_SEND_PC = 3; // pinned by a captured editor write (30 03 01, ack 31 03)
 
@@ -181,6 +190,7 @@ class SevenMidi extends EventEmitter {
     this.globals = null; // last parsed (wfp already redacted)
     this.sendPcOriginal = null; // glb[3] as found at connect
     this.soundTable = null; // { sounds, fingerprint, readAt }
+    this.storage = null; // the device's storage string, verbatim ("4.0GB")
     this.paramTable = null; // { count, params, fingerprint, readAt } — the DEVICE's
     this.paramVerdict = null; // compareParamTables() result, or null when unchecked
     this.lastPanelProgram = null; // last Program Change RECEIVED (Send PC on)
@@ -199,6 +209,10 @@ class SevenMidi extends EventEmitter {
       tun: this.globals ? this.globals.tun : null,
       sendPc: this.globals ? this.globals.glb[GLB_SEND_PC] : null,
       soundTable: this.soundTable,
+      // Verbatim, and unlabelled on purpose: the device says "4.0GB" and does
+      // NOT say whether that is total, used or free (docs/protocol.md). Every
+      // surface that shows it must say so too.
+      storage: this.storage,
       // A SUMMARY of the parameter table, not the table: status is emitted on
       // every state change and 110 specs per event is waste. Callers that need
       // the specs themselves read this.paramTable in the main process.
@@ -354,6 +368,13 @@ class SevenMidi extends EventEmitter {
       this.sendPcOriginal = this.globals.glb[GLB_SEND_PC];
       this._phase('sounds');
       this.soundTable = await this.readSoundTable();
+      // One frame, and never fatal: a firmware that does not answer it costs
+      // us a string, not the connection.
+      try {
+        this.storage = await this.readStorage();
+      } catch {
+        this.storage = null;
+      }
       // The parameter table is read INSIDE connect, at the cost of ~1.5s, so
       // that by the time status() says connected the write gate is already
       // decided. Reading it in the background would leave a window where a
@@ -388,6 +409,7 @@ class SevenMidi extends EventEmitter {
     this.firmware = null;
     this.globals = null;
     this.soundTable = null;
+    this.storage = null;
     this.paramTable = null;
     this.paramVerdict = null;
     this.sendPcOriginal = null;
@@ -656,6 +678,16 @@ class SevenMidi extends EventEmitter {
       .digest('hex')
       .slice(0, 16);
     return { sounds, fingerprint, readAt: new Date().toISOString() };
+  }
+
+  // ACTION 0x0A. Returns the string exactly as the device gave it — no
+  // parsing, no unit conversion, no inference about what it measures.
+  async readStorage() {
+    const msg = await this._request(
+      OP.ACTION, ACTION_STORAGE, OP.ACTION_REPLY,
+      (m) => m[5] === 0x01 && m[6] === 0x0a // echoed action code
+    );
+    return Buffer.from(msg.slice(7, -1)).toString('latin1').trim() || null;
   }
 
   // --- The instrument's own parameter table ---------------------------------

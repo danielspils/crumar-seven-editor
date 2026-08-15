@@ -196,6 +196,7 @@ function registerMidiIpc() {
       firmware: midi.firmware,
       soundTable: midi.soundTable,
       paramTable: midi.paramTable,
+      storage: midi.storage,
       verdict: midi.paramVerdict,
       created,
     });
@@ -210,6 +211,15 @@ function registerMidiIpc() {
     shell.showItemInFolder(filePath);
     await shell.openExternal(ISSUE_URL);
     return { ok: true, path: filePath };
+  });
+  // External links, allowlisted. The renderer hands a URL, not a command, and
+  // only these two hosts are openable — a link is a way out of the app, and an
+  // app that opens any URL the page asks for is a link-following machine.
+  ipcMain.handle('shell:open', (_e, { url }) => {
+    const ok = /^https:\/\/(www\.)?(crumar\.it|github\.com)\//.test(String(url || ''));
+    if (!ok) return false;
+    shell.openExternal(String(url));
+    return true;
   });
   ipcMain.handle('midi:present', () => {
     try {

@@ -1,0 +1,70 @@
+{
+  "catalogue": "crumar-seven-expansions",
+  "catalogueVersion": 1,
+  "source": "https://www.crumar.it/?a=support&b=36",
+  "readOn": "2026-08-15",
+  "note": "Sizes are ZIP DOWNLOAD sizes as published by Crumar. They were NOT measured on an instrument, and installed size is not known to be the same. No opcode reports the size of an installed sample set.",
+  "soundNamesNote": "`sounds` holds the names the INSTRUMENT reports, which differ from the download titles on Crumar's page — the page says 'Electric Grand 70BXL', the device says 'Electric Grand 70B XL'. Names here were taken from Daniel's own unit's sound table (24 sounds, fingerprint 741ecb059575ba38, read 2026-08-15). `sounds: null` means nobody here owns that expansion and its sound names have never been seen; it is never guessed. A future instrument report can fill one in.",
+  "expansions": [
+    {
+      "title": "Venice Upright U1/Felt",
+      "released": "2024-04",
+      "downloadMb": 354.09,
+      "sounds": ["Venice Upright U1 Felt", "Venice Upright U1"]
+    },
+    {
+      "title": "Venice Grand D-274",
+      "released": "2021-11",
+      "downloadMb": 248.5,
+      "sounds": ["Venice Grand D-274"]
+    },
+    {
+      "title": "Venice Grand C5",
+      "released": "2022-03",
+      "downloadMb": 234.08,
+      "sounds": null
+    },
+    {
+      "title": "Electric Grand 70BXL",
+      "released": "2021-11",
+      "downloadMb": 220.52,
+      "sounds": ["Electric Grand 70B XL"]
+    },
+    {
+      "title": "Venice Grand",
+      "released": "2019-01",
+      "downloadMb": 207.26,
+      "sounds": ["Venice Grand"]
+    },
+    {
+      "title": "Venice Grand Open",
+      "released": "2019-09",
+      "downloadMb": 191.69,
+      "sounds": ["Venice Grand Open"]
+    },
+    {
+      "title": "Venice Grand CB1898",
+      "released": "2024-04",
+      "downloadMb": 187.8,
+      "sounds": ["Venice Grand CB1898"]
+    },
+    {
+      "title": "Venice Grand CFX",
+      "released": "2023-03",
+      "downloadMb": 184.97,
+      "sounds": null
+    },
+    {
+      "title": "Venice Grand Breeze",
+      "released": "2021-11",
+      "downloadMb": 135.29,
+      "sounds": ["Venice Grand Breeze"]
+    },
+    {
+      "title": "Venice Upright K8",
+      "released": "2022-09",
+      "downloadMb": 116.26,
+      "sounds": null
+    }
+  ]
+}

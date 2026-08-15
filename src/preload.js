@@ -23,6 +23,16 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   getFactoryDefaults: () => {
     try { return readJson('schema/factory-defaults-1.37.json'); } catch { return null; }
   },
+  // Crumar's published expansion list (data/expansions.json). DOCUMENTATION,
+  // not evidence: titles, dates and ZIP download sizes copied from their
+  // support page, none of it measured on an instrument. What is INSTALLED
+  // comes from the connected unit's sound table and nowhere else.
+  // Opens a link in the system browser. The main process allowlists the host;
+  // the renderer cannot open anything it likes.
+  openExternal: (url) => ipcRenderer.invoke('shell:open', { url }),
+  getExpansions: () => {
+    try { return readJson('data/expansions.json'); } catch { return null; }
+  },
   // The SVG's internal @font-face uses a path relative to assets/ so the file
   // renders standalone; inlined into the DOM it would resolve against src/ and
   // 404 (masking the app-supplied face). Strip it — getFontCss() provides the

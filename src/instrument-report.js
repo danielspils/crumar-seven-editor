@@ -30,7 +30,7 @@ const { reportSummary } = require('./param-compat');
 
 function buildReport({
   appVersion, schemaName, appParamCount, appFirmware,
-  firmware, soundTable, paramTable, verdict, created,
+  firmware, soundTable, paramTable, storage, verdict, created,
 }) {
   const sounds = (soundTable && soundTable.sounds) || [];
   const params = (paramTable && paramTable.params) || [];
@@ -54,6 +54,15 @@ function buildReport({
     // Verbatim, as the device gave it. Not parsed into a version number here:
     // the build date is half of what identifies a firmware.
     firmware: firmware || null,
+    // The device's storage string, verbatim, with its meaning left open —
+    // because the device leaves it open. One field, and a second owner's
+    // report could settle what the number measures: if it differs between two
+    // instruments with different expansions installed, it is used or free; if
+    // it does not, it is total (docs/protocol.md).
+    storage: {
+      reported: storage || null,
+      meaning: 'unknown — the device does not say whether this is total, used or free',
+    },
     sounds: {
       count: sounds.length,
       fingerprint: (soundTable && soundTable.fingerprint) || null,
