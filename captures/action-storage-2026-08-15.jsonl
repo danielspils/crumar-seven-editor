@@ -1,0 +1,2 @@
+{"t":"2026-08-15T15:02:00Z","dir":"host->device","hex":"f0 73 26 14 72 0a 03 f7","note":"ACTION 0x0A storage query, sent exactly as captured passively on 2026-08-09"}
+{"t":"2026-08-15T15:02:00Z","dir":"device->host","hex":"f0 73 26 14 73 01 0a 34 2e 30 47 42 f7","note":"reply: payload 01 0a + ASCII \"4.0GB\" — 13 bytes, nothing else"}

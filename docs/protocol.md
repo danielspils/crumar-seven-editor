@@ -436,11 +436,35 @@ its home page (captured outbound in the browser tap, replies in
 
 - **String index 4 = the firmware version/build string** (matches the home page's
   firmware display).
-- **Action `0x0A` = available-storage query** (the home page / expansion installer
-  shows storage; reply payload is `01 0A` + ASCII). So ACTION has at least one
-  harmless read use — but the space is documented to also carry factory reset and
-  firmware update, so the standing rule is unchanged: **we observe ACTION passively
-  and never send it.**
+- **Action `0x0A` = storage query** (the home page / expansion installer shows
+  storage; reply payload is `01 0A` + ASCII). So ACTION has at least one harmless
+  read use — but the space is documented to also carry factory reset and firmware
+  update, so the standing rule is unchanged apart from this one frame: **ACTION is
+  observe-only, except `0x0A`, which we may send.**
+
+**Sent actively for the first time on 2026-08-15** (`captures/action-storage-2026-08-15*`),
+with Daniel's go-ahead, and answered identically to the passive capture six days
+earlier:
+
+```
+→ f0 73 26 14 72 0a 03 f7
+← f0 73 26 14 73 01 0a 34 2e 30 47 42 f7        payload: 01 0a "4.0GB"
+```
+
+The whole reply is 13 bytes and carries **one ASCII value with no label**.
+
+> **UNKNOWN: whether 4.0GB is total, used or free.** The wire does not say, and
+> the arithmetic does not settle it — this unit holds seven expansion downloads
+> (≈1.51 GB of ZIPs) so the number cannot be *used* without assuming installed
+> size far exceeds download size, and cannot be *free* without total capacity
+> exceeding the 4 GB the instrument is described as having. TOTAL is the only
+> reading needing no extra assumption, which is an argument and not evidence.
+> Settling it needs a second instrument, or this one after an install or
+> removal: a number that moves is used or free, a number that does not is total.
+
+**Used and free are not separately obtainable**, and **no opcode reports a
+per-sound or per-expansion size** — the sound spec (`0x43`) is `id|sampled|name`
+and carries no size field.
 
 ### Globals (`0x33`)
 
