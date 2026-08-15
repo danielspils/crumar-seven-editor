@@ -26,6 +26,25 @@ function patchHash(soundName, paramsByKey, keyOrder) {
   return h.digest('hex');
 }
 
+// What to call a record about to be written. Exactly one library patch with
+// these contents lends its name; zero or several give the generated one.
+// Picking between two names a user chose would be a guess, and a wrong name on
+// a backup is worse than a dull one.
+//
+// I proposed excluding records that claim the SAME slot, on the grounds that a
+// slot's own history would otherwise always collide and the feature could
+// never fire. That was wrong, and a test caught it: naming only happens when a
+// record is CREATED, and a record is only created when the slot's contents
+// changed — at which point the slot's own older records cannot share the new
+// hash, because dedupe would have matched one of them and written nothing at
+// all. The collision I measured was in a static snapshot, not at the moment
+// this runs (2026-08-15).
+function inheritedName(byContent, hash) {
+  const matches = byContent.get(hash) || [];
+  if (matches.length !== 1) return null;
+  return { name: matches[0].name, file: matches[0].file };
+}
+
 class BackupRunner extends EventEmitter {
   constructor({ midi, store, schema }) {
     super();
@@ -103,13 +122,33 @@ class BackupRunner extends EventEmitter {
     const sendPcOn = this.midi.globals && this.midi.globals.glb[3] === 1;
     const priorProgram = this.midi.lastPanelProgram;
 
-    // Dedupe index from the existing library: hash -> {file, bank, preset}
-    // for every backup-origin patch already on disk.
+    // TWO indexes over the same library read, answering two different
+    // questions. Dedupe decides WHETHER to write a record; the name index
+    // decides what to CALL one that is being written. Keeping them apart is
+    // the point: their populations and their keys differ.
+    const listed = this.store.list().patches;
+
+    // Dedupe: hash + origin slot -> file, backup-origin patches only. A record
+    // says what ITS slot held, so the same contents in two slots are two
+    // records (Daniel, 2026-08-15).
     const existing = new Map();
-    for (const e of this.store.list().patches) {
+    for (const e of listed) {
       if (e.invalid || e.origin.kind !== 'backup') continue;
       const hash = patchHash(e.soundName, e.params, keyOrder);
       existing.set(`${hash}:${e.origin.bank}:${e.origin.preset}`, e.file);
+    }
+
+    // Names: hash -> every patch with those exact contents, of ANY kind — a
+    // name can be lent by a generated patch, an imported one, or a backup of
+    // another slot. The Seven stores no preset names, so a name cannot survive
+    // a round trip on the wire; this is the only way one can.
+    const byContent = new Map();
+    for (const e of listed) {
+      if (e.invalid || !e.params) continue;
+      if (Object.keys(e.params).length < keyOrder.length) continue; // partial file lends nothing
+      const hash = patchHash(e.soundName, e.params, keyOrder);
+      if (!byContent.has(hash)) byContent.set(hash, []);
+      byContent.get(hash).push(e);
     }
 
     const slotFiles = []; // file per completed slot, in slot order
@@ -166,8 +205,14 @@ class BackupRunner extends EventEmitter {
           unchanged++;
         } else {
           const captured = now;
+          // The name is BORROWED; the origin is not. `nameFrom` records which
+          // file lent it, so provenance still says where these values were
+          // captured — this slot, this run — while the label says what the
+          // player calls them.
+          const borrowed = inheritedName(byContent, hash);
           const file = this.store.saveBackupPatch({
-            name: `Bank ${bank} Preset ${preset} — ${soundName}`,
+            name: borrowed ? borrowed.name : `Bank ${bank} Preset ${preset} — ${soundName}`,
+            ...(borrowed ? { nameFrom: { file: borrowed.file, name: borrowed.name } } : {}),
             origin: {
               bank, preset,
               soundId,

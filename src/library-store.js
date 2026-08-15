@@ -508,6 +508,11 @@ class LibraryStore {
           patchIndex: i,
           patchCount,
           name: p.name || file,
+          // A borrowed name, and which file lent it. Surfaced so the UI can
+          // say the name is inherited rather than chosen — and so its
+          // disappearance after a panel edit is legible rather than a mystery
+          // (docs/FORMAT.md).
+          nameFrom: p.nameFrom || null,
           soundName,
           sampled: sound ? sound.sampled : true,
           missing: !sound,

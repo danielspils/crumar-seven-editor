@@ -54,6 +54,18 @@ their original order, `params` keys sorted lexicographically.
 - **`source.soundList` is the full enumerated list from the originating
   instrument.** It is what makes a missing-expansion warning possible. Always
   write it.
+- **`nameFrom` says the name was BORROWED, and from which file.** The Seven
+  stores no preset names, so a name cannot survive a round trip on the wire: a
+  transfer sends a sound and 110 values, and a backup afterwards would relabel
+  the slot from its bank, preset and sound. When a backup finds exactly one
+  library patch whose contents hash identically to what it just read — a patch
+  claiming that same slot never counts, since that is the slot's own history —
+  it takes that patch's name and records `{ "file": ..., "name": ... }` here.
+  Zero matches or several give the generated name; picking between two names a
+  user chose would be a guess. **The name is borrowed; `origin` is not** — it
+  still says where these values were captured. Edit a parameter on the panel
+  and the hash stops matching, so the next backup reverts to a generated name:
+  it isn't that patch any more.
 - **`patch.name` is a file-level label, NOT device truth.** The device is not
   known to store a preset name. Do not treat it as round-trippable to the
   instrument.

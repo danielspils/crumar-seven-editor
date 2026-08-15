@@ -106,6 +106,7 @@
         // inside the bank row that prefix is noise, so strip it — a
         // user-renamed patch shows its rename untouched.
         name: e.name.replace(new RegExp(`^Bank ${b + 1} Preset ${p + 1}\\s*—\\s*`), ''),
+        nameFrom: e.nameFrom || null,
         soundName: e.soundName,
         sampled: e.sampled,
         params: e.params,
@@ -2640,7 +2641,7 @@
       a.textContent = 'crumar.it';
       a.addEventListener('click', (ev) => {
         ev.preventDefault();
-        window.sevenAPI.openExternal('https://www.crumar.it/?a=showproduct&b=36');
+        window.sevenAPI.openExternal('https://www.crumar.it/?a=support&b=36');
       });
       how.append(a, document.createTextNode('.'));
       foot.appendChild(how);

@@ -638,6 +638,13 @@
             'allow writing to Bank 1.">Crumar preset</span>'
           : '') +
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
+        // An inherited name is not a name the instrument knows — the Seven
+        // stores none. It came from a library patch holding these exact
+        // values, and it will go back to a generated name the moment someone
+        // edits a parameter on the panel. Saying so is what keeps that legible.
+        (patch.nameFrom
+          ? `<span class="badge badge-borrowed" title="Name from “${esc(patch.nameFrom.name)}” — a library patch with these exact values. The Seven does not store names.">borrowed name</span>`
+          : '') +
         `</button>`
       );
     }

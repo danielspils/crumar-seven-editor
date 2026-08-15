@@ -170,3 +170,118 @@ test('refuses to run without a connection', async () => {
   midi.state = 'disconnected';
   await assert.rejects(new BackupRunner({ midi, store: freshStore(), schema }).run(), /not connected/);
 });
+
+// --- inherited names -------------------------------------------------------
+//
+// The Seven stores no preset names, so a name cannot survive a round trip on
+// the wire: a transfer sends a sound and 110 values, and the backup afterwards
+// would relabel the slot from bank, preset and sound. These tests pin the one
+// path by which a name CAN survive — and, just as important, the cases where
+// the app must decline to guess one.
+
+// Every slot the fake instrument reports reads back identically (value 64 on
+// every parameter), so a patch built the same way matches every slot's
+// contents. `name` and `origin` are what each test varies.
+const libraryPatch = (store, { name, bank, preset, value = 64 }) => store.saveBackupPatch({
+  name,
+  origin: { bank, preset, soundId: 0, soundTableFingerprint: 'ffff' },
+  sound: { name: schema.sounds[0].name, id: 0 },
+  // The fake instrument answers 64 for EVERY parameter, whatever its max, so a
+  // fixture that clamps to max would never hash the same as what the run reads
+  // back — and every one of these tests would pass for the wrong reason.
+  params: Object.fromEntries(schema.parameters.map((p) => [p.key, value])),
+  captured: '2026-08-01T00:00:00Z',
+  verified: '2026-08-01T00:00:00Z',
+});
+
+const readPatch = (store, file) =>
+  JSON.parse(fs.readFileSync(path.join(store.dir, file), 'utf8')).patches[0];
+
+const slotOneOf = (store) => {
+  const e = store.list().patches
+    .filter((p) => p.origin.kind === 'backup' && p.origin.bank === 1 && p.origin.preset === 1)
+    .sort((a, b) => String(b.origin.captured).localeCompare(String(a.origin.captured)))[0];
+  return readPatch(store, e.file);
+};
+
+test('exactly one library patch with these contents lends its name', async () => {
+  const store = freshStore();
+  // A patch captured from a DIFFERENT slot, holding what Bank 1 Preset 1 now
+  // holds — the shape a transfer leaves behind.
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1 });
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+
+  const written = slotOneOf(store);
+  assert.strictEqual(written.name, 'Kitchen Dishes Delay', 'the name is borrowed');
+  assert.ok(written.nameFrom, 'and the file says so');
+  assert.strictEqual(written.nameFrom.name, 'Kitchen Dishes Delay');
+  assert.match(written.nameFrom.file, /kitchen-dishes-delay/);
+  // The name is borrowed; the origin is NOT.
+  assert.strictEqual(written.origin.bank, 1);
+  assert.strictEqual(written.origin.preset, 1);
+});
+
+test('no match gives the generated name, and no nameFrom', async () => {
+  const store = freshStore();
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const written = slotOneOf(store);
+  assert.match(written.name, /^Bank 1 Preset 1 — /);
+  assert.strictEqual(written.nameFrom, undefined);
+});
+
+test('several matches decline — the app never picks between two names', async () => {
+  const store = freshStore();
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1 });
+  libraryPatch(store, { name: 'Something Else Entirely', bank: 4, preset: 2 });
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const written = slotOneOf(store);
+  assert.match(written.name, /^Bank 1 Preset 1 — /, 'ambiguity gives the dull name');
+  assert.strictEqual(written.nameFrom, undefined);
+});
+
+test('the slot’s own older record cannot compete, because it holds other values', async () => {
+  const store = freshStore();
+  // What a transfer leaves behind: the slot's previous record (different
+  // contents, since the slot changed) and the patch that was sent there.
+  libraryPatch(store, { name: 'Bank 1 Preset 1 — Tine Piano', bank: 1, preset: 1, value: 20 });
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1 });
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+
+  const written = slotOneOf(store);
+  assert.strictEqual(written.name, 'Kitchen Dishes Delay');
+  assert.ok(written.nameFrom);
+});
+
+test('a same-slot record holding the SAME values means nothing is written', async () => {
+  const store = freshStore();
+  // This is why no same-slot exclusion is needed: dedupe matches first and the
+  // run writes nothing, so there is no name to decide.
+  libraryPatch(store, { name: 'Bank 1 Preset 1 — Tine Piano', bank: 1, preset: 1 });
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1 });
+  const done = await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  assert.ok(done.unchanged >= 1, 'the slot deduped');
+  assert.strictEqual(slotOneOf(store).name, 'Bank 1 Preset 1 — Tine Piano');
+});
+
+test('a patch with different values lends nothing — it is not that patch any more', async () => {
+  const store = freshStore();
+  // One parameter edited on the panel is enough: the hash stops matching.
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1, value: 63 });
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const written = slotOneOf(store);
+  assert.match(written.name, /^Bank 1 Preset 1 — /);
+  assert.strictEqual(written.nameFrom, undefined);
+});
+
+test('an unchanged slot is not renamed — nothing is written at all', async () => {
+  const store = freshStore();
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const first = slotOneOf(store);
+  // Now offer a name. The second run finds every slot unchanged, so no record
+  // is created and no name is inherited: this decides what to CALL a record
+  // being written, never what to rename.
+  libraryPatch(store, { name: 'Kitchen Dishes Delay', bank: 4, preset: 1 });
+  const done = await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  assert.strictEqual(done.created, 0, 'nothing changed on the instrument');
+  assert.strictEqual(slotOneOf(store).name, first.name, 'the existing record keeps its name');
+});

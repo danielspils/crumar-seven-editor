@@ -167,3 +167,19 @@ test('“not installed” follows the connected instrument, not the schema', () 
   R.setKnownSounds(schema.sounds);
   assert.strictEqual(R.isMissing(known), false);
 });
+
+test('a borrowed name says so, and a chosen one does not', () => {
+  const R = loadRenderer();
+  const base = patchFor(schema.sounds[0]);
+  const plain = R.renderPatchRow({ ...base }, 0, -1, null, 2);
+  assert.ok(!/badge-borrowed/.test(plain), 'nothing to say about an ordinary name');
+
+  const borrowed = R.renderPatchRow(
+    { ...base, nameFrom: { file: 'kitchen-dishes-delay.sevenlib.json', name: 'Kitchen Dishes Delay' } },
+    0, -1, null, 2
+  );
+  assert.match(borrowed, /badge-borrowed/);
+  assert.match(borrowed, /borrowed name/);
+  assert.match(borrowed, /Kitchen Dishes Delay/, 'the tooltip names the lender');
+  assert.match(borrowed, /Seven does not store names/);
+});
