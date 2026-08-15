@@ -192,6 +192,7 @@ function registerMidiIpc() {
       appVersion: app.getVersion(),
       schemaName: 'seven-1.37.json',
       appParamCount: getSchema().parameters.length,
+      appFirmware: getSchema().firmware || null,
       firmware: midi.firmware,
       soundTable: midi.soundTable,
       paramTable: midi.paramTable,

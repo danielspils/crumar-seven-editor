@@ -196,6 +196,27 @@ const CONSEQUENCE =
 
 const ASK = 'A report gives me what I\'d need to add support for it.';
 
+// The line the REPORT carries. One factual sentence, naming the firmware —
+// that is the diagnostic, and the file's whole job is to be triaged from the
+// top. Deliberately not the banner's wording: the banner talks to someone
+// whose instrument just stopped accepting patches and has to say what still
+// works, while this talks to whoever opens the issue. Different audience,
+// different job, so the consequence paragraph stays out of it.
+//
+// Degrades a clause at a time rather than printing a hole: no readable device
+// firmware drops "on firmware X", no schema firmware drops "built against Y".
+function reportSummary(verdict, { deviceFirmware, appFirmware } = {}) {
+  if (!verdict || verdict.ok) return '';
+  const counts = verdict.deviceCount != null && verdict.appCount != null;
+  if (!counts) return verdict.summary; // an unreadable table has no numbers to state
+  const version = firmwareVersion(deviceFirmware);
+  const on = version ? ` on firmware ${version}` : '';
+  const against = appFirmware ? `, built against ${appFirmware}` : '';
+  return `This Seven reports ${verdict.deviceCount} parameter` +
+    `${verdict.deviceCount === 1 ? '' : 's'}${on}; the app knows ` +
+    `${verdict.appCount}${against}.`;
+}
+
 // One line, for a THROWN error or a toast — the places three paragraphs cannot
 // go. Same facts, no ask.
 function blockMessage(verdict, opts) {
@@ -206,5 +227,5 @@ function blockMessage(verdict, opts) {
 
 module.exports = {
   compareParamTables, unreadableVerdict, blockMessage, gateParagraphs,
-  firmwareVersion, CONSEQUENCE, ASK,
+  reportSummary, firmwareVersion, CONSEQUENCE, ASK,
 };

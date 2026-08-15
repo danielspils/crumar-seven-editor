@@ -34,6 +34,7 @@ const build = () => buildReport({
   appVersion: '0.1.0',
   schemaName: 'seven-1.37.json',
   appParamCount: APP.length,
+  appFirmware: '1.37',
   firmware: 'CRUMAR Seven v.1.42 Build date: Mon Jan 5 09:00:00 2026',
   soundTable: SOUNDS,
   paramTable: DEVICE,
@@ -102,7 +103,33 @@ test('the difference is stated up front, not left to be diffed out', () => {
   assert.equal(r.difference.appCount, 3);
   assert.equal(r.difference.deviceCount, 2);
   assert.deepEqual(r.difference.missing, [2]);
-  assert.match(r.difference.summary, /reports 2 parameters; the app knows 3/);
+  assert.equal(
+    r.difference.summary,
+    'This Seven reports 2 parameters on firmware 1.42; the app knows 3, built against 1.37.'
+  );
+  // The banner's consequence belongs to a different reader and stays out.
+  const json = JSON.stringify(r);
+  assert.ok(!json.includes('Backup and browsing still work'), 'no banner copy in the file');
+  assert.ok(!json.includes('A report gives me'), 'and no ask');
+});
+
+test('the report’s sentence degrades a clause at a time, never a hole', () => {
+  const base = {
+    appVersion: '0.1.0', schemaName: 's.json', appParamCount: 3,
+    soundTable: SOUNDS, paramTable: DEVICE, created: '2026-08-15T10:00:00.000Z',
+    verdict: compareParamTables(APP, DEVICE.params),
+  };
+  const noFw = buildReport({ ...base, firmware: '', appFirmware: '1.37' });
+  assert.equal(noFw.difference.summary,
+    'This Seven reports 2 parameters; the app knows 3, built against 1.37.');
+  const noSchemaFw = buildReport({
+    ...base, firmware: 'CRUMAR Seven v.1.42 Build date: x', appFirmware: null,
+  });
+  assert.equal(noSchemaFw.difference.summary,
+    'This Seven reports 2 parameters on firmware 1.42; the app knows 3.');
+  for (const r of [noFw, noSchemaFw]) {
+    assert.ok(!/undefined|null/.test(r.difference.summary), 'no hole');
+  }
 });
 
 test('a report is still buildable with no verdict (an unreadable table)', () => {

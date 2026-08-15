@@ -26,7 +26,12 @@
 
 // One flat list per table, in id order, so a diff between two reports reads
 // cleanly in a terminal.
-function buildReport({ appVersion, schemaName, appParamCount, firmware, soundTable, paramTable, verdict, created }) {
+const { reportSummary } = require('./param-compat');
+
+function buildReport({
+  appVersion, schemaName, appParamCount, appFirmware,
+  firmware, soundTable, paramTable, verdict, created,
+}) {
   const sounds = (soundTable && soundTable.sounds) || [];
   const params = (paramTable && paramTable.params) || [];
   return {
@@ -90,7 +95,10 @@ function buildReport({ appVersion, schemaName, appParamCount, firmware, soundTab
         renamed: verdict.renamed,
         labelDrift: verdict.labelDrift,
         maxDrift: verdict.maxDrift,
-        summary: verdict.summary,
+        // One factual sentence naming both firmwares and both counts — the
+        // diagnostic, readable off the top of the file. NOT the banner's
+        // wording; that one has a different reader and a different job.
+        summary: reportSummary(verdict, { deviceFirmware: firmware, appFirmware }),
       }
       : null,
   };
