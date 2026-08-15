@@ -648,6 +648,35 @@ sound list is what varies between instruments.
 installed". This table answers "what exists". The difference is a
 ready-made Visibility feature.
 
+### Known limitation: same name, different sample set — undetectable
+
+Two Sevens can report the **same sound name while holding different versions
+of that sample set**. The sound table (`0x42`) returns an id and a name; there
+is **no version field anywhere in the protocol** — not in the sound spec, not
+in the globals, not in the STRING space. Nothing distinguishes them.
+
+A transferred patch resolves by name, sends correctly, and may sound
+different. There is no error, because nothing is wrong: the name matched, the
+sound loaded, the parameters applied.
+
+**Scope, so this is not over-read:**
+
+- **Modeled sounds (IDs 0–7) are unaffected.** They are pure DSP with no
+  samples in them.
+- **Same-unit backup and restore is unaffected.** One instrument, one set of
+  sample sets; nothing crosses.
+- **Only sampled sounds, only on a transfer to a DIFFERENT instrument.**
+- **The parameters still apply.** Every sampled sound shares the `pno_rom`
+  group (§4), so the eight sample-player values transfer and mean the same
+  thing regardless of which version of the set is installed.
+
+**The app must not try to detect this, warn per-patch, or guess at versions.**
+There is no signal to work from, and a warning built on nothing teaches people
+to ignore warnings. What it does instead: one line in the transfer completion
+summary, and only where a sampled sound was actually sent — "Sampled sounds
+may differ slightly if this Seven has a different version of the sample set."
+Stated once, after the fact, as context rather than as an alarm.
+
 ---
 
 ## 12. Editor access

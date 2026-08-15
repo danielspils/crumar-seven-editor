@@ -524,3 +524,48 @@ test('a bare sound is allowed in Bank 1; a patch is not', () => {
   assert.strictEqual(patch.ok, false, 'sending a patch to Bank 1 is still refused');
   assert.match(patch.error, /factory presets/);
 });
+
+// Two Sevens can hold different VERSIONS of one sample set under the same
+// name, and no opcode reports a version (docs/DEVICE.md §11). The summary says
+// so once, where a sampled sound was actually sent — and nowhere else, because
+// there is nothing to detect.
+test('the report flags a sampled sound only when one was really sent', async () => {
+  const { store, midi, sender, entries } = setup();
+  // The instrument's own flag is what decides: Clavi Piano modeled, the Venice
+  // sampled, exactly as a real table reports them.
+  midi.soundTable = {
+    sounds: [
+      { id: 0, name: 'Tine Piano', sampled: false },
+      { id: 1, name: 'Clavi Piano', sampled: false },
+      { id: 2, name: 'Venice Grand D-274', sampled: true },
+    ],
+  };
+  const modeledOnly = setlistWith(store, [entries[0].file]);
+  const r1 = new TransferRunner({ midi, store, sender });
+  r1.start(modeledOnly, 2);
+  await r1.nextSlot();
+  const done1 = await r1.confirmSlot();
+  assert.strictEqual(done1.sampledSent, false, 'modeled engines carry no samples');
+
+  // Now a patch on the sampled sound.
+  const file = store.createPatchFromSound('Venice Grand D-274', { factoryDefaults: { sounds: {} } }).file;
+  const withSampled = setlistWith(store, [entries[0].file, file]);
+  const r2 = new TransferRunner({ midi, store, sender });
+  r2.start(withSampled, 3);
+  await r2.nextSlot();
+  await r2.confirmSlot();
+  const done2 = await r2.confirmSlot();
+  assert.strictEqual(done2.sampledSent, true);
+});
+
+test('a sampled sound loaded but never confirmed still counts — it reached the instrument', async () => {
+  const { store, midi, sender } = setup();
+  midi.soundTable = { sounds: [{ id: 0, name: 'Venice Grand D-274', sampled: true }] };
+  const file = store.createPatchFromSound('Venice Grand D-274', { factoryDefaults: { sounds: {} } }).file;
+  const list = setlistWith(store, [file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  const done = await runner.cancel();
+  assert.strictEqual(done.sampledSent, true, 'it is in the edit buffer, so the caveat applies');
+});

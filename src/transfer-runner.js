@@ -480,6 +480,21 @@ class TransferRunner extends EventEmitter {
       confirmed: st.confirmed.map((i) => i + 1),
       loadedNotConfirmed: st.sent.filter((i) => !st.confirmed.includes(i)).map((i) => i + 1),
       total: st.slots.filter((s) => s.action === 'send' || s.action === 'send-sound').length,
+      // Was a SAMPLED sound among the ones actually sent? Read off the
+      // instrument's own table, which is where the modeled/sampled flag comes
+      // from. It answers one question for the summary and nothing else: two
+      // Sevens can hold different VERSIONS of the same sample set under the
+      // same name, and no opcode reports a version, so the honest thing is one
+      // line of context after the fact — never a per-patch warning, which
+      // would be a guess (docs/DEVICE.md §11).
+      sampledSent: (() => {
+        const table = (this.midi && this.midi.soundTable && this.midi.soundTable.sounds) || [];
+        const sampled = new Set(table.filter((x) => x.sampled).map((x) => x.name));
+        return st.sent.some((i) => {
+          const slot = st.slots.find((x) => x.slot === i);
+          return !!(slot && sampled.has(slot.soundName));
+        });
+      })(),
       // Never claim more than we know. A confirmed slot is one the PLAYER said
       // they stored; the instrument does not report stores.
       note: 'Presets are listed as stored because you confirmed the hold — the Seven does not report stores.',
