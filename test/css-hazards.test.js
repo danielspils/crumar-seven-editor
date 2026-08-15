@@ -150,3 +150,20 @@ test('no data: URI hardcodes a colour outside the palettes', () => {
     .map((u) => u.slice(0, 80));
   assert.deepStrictEqual(offenders, []);
 });
+
+// [hidden] is a UA default of display:none, and ANY author display rule beats
+// it. The write-gate banner was given display:flex when its button went in,
+// which made it permanently visible — an empty strip under the connection row
+// for every user, on every instrument (2026-08-15). Any element the app hides
+// with the attribute needs its own [hidden] rule once it has a display mode.
+test('elements with a display rule also have a [hidden] rule', () => {
+  const css = html.slice(html.indexOf('<style>'), html.lastIndexOf('</style>'));
+  const displayed = new Set();
+  for (const m of css.matchAll(/#([\w-]+)\s*\{[^}]*\bdisplay:\s*(?!none)[a-z-]+/g)) displayed.add(m[1]);
+  const guarded = new Set();
+  for (const m of css.matchAll(/#([\w-]+)\[hidden\]\s*\{[^}]*display:\s*none/g)) guarded.add(m[1]);
+  const hiddenInMarkup = new Set();
+  for (const m of html.matchAll(/<div id="([\w-]+)"[^>]*\shidden/g)) hiddenInMarkup.add(m[1]);
+  const broken = [...hiddenInMarkup].filter((id) => displayed.has(id) && !guarded.has(id));
+  assert.deepStrictEqual(broken, [], `these are hidden in markup but have a display rule that overrides it: ${broken.join(', ')}`);
+});

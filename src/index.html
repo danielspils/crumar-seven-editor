@@ -200,6 +200,13 @@
     /* The write gate. Full width and under the felt, because it is about the
        instrument, and a sentence about the instrument must not be clipped into
        a tooltip the way the status line is. */
+    /* [hidden] is a UA default of display:none, and ANY display rule beats it.
+       Giving this flex made the banner permanently visible — an empty beige
+       strip with a Report button, under the connection row, for everyone
+       (shipped in a32fc5b, caught 2026-08-15 by a screenshot that showed a
+       band the code said was hidden). The attribute needs its own rule now
+       that the element has a layout mode. */
+    #write-gate[hidden] { display: none; }
     #write-gate {
       display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
       padding: 9px 16px;
