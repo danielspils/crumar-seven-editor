@@ -5,7 +5,7 @@
 // through preload.js (the swap seam). Protocol facts come from docs/protocol.md
 // (FW 1.37, live-verified); nothing here guesses a frame format.
 //
-// Three rules this module enforces in code, not convention:
+// Four rules this module enforces in code, not convention:
 //
 // 1. wfp (the instrument's plaintext Wi-Fi password, in the 0x33 globals
 //    reply) is redacted IN THE PARSE LAYER. A raw 0x33 frame is decoded and
@@ -18,6 +18,11 @@
 // 3. If the app changes the Send PC global (glb 3), a pending-restore marker
 //    is written to disk BEFORE the write, restored on disconnect, and restored
 //    on the next connect if a session died with the marker still present.
+// 4. Connect reads the instrument's OWN parameter table and compares it to the
+//    schema. On a mismatch, writes addressed by a schema parameter id (0x20)
+//    are refused here, at the seam, so no caller can route around the gate.
+//    Reads and device-addressed writes (0x46, Program Change) stay open — see
+//    src/param-compat.js for why the line is drawn there.
 //
 // One hard-won bus fact (2026-08-09): macOS delivers every device reply to
 // EVERY client with the port open — the manufacturer's web editor may be
@@ -29,10 +34,14 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { compareParamTables, unreadableVerdict, blockMessage } = require('./param-compat');
+
 const HEADER = [0xf0, 0x73, 0x26, 0x14];
 const SYSEX_END = 0xf7;
 
 const OP = {
+  GET_MAX_PARAM_ID: 0x10, MAX_PARAM_ID: 0x11,
+  GET_PARAM_SPEC: 0x14, PARAM_SPEC: 0x15,
   SET_PARAM: 0x20, SET_SOUND: 0x46,
   GET_PARAM: 0x22, PARAM_VALUE: 0x23,
   SET_GLOBAL: 0x30, ACK_GLOBAL: 0x31,
@@ -147,9 +156,16 @@ function parseGlobals(text) {
 class SevenMidi extends EventEmitter {
   // userDataDir: where the pending-restore marker lives (userData root).
   // midiBackend: injectable for tests; defaults to @julusian/midi.
-  constructor({ userDataDir, midiBackend = null, timeout = 600, emitNotes = false } = {}) {
+  // schemaParams: schema.parameters, for the connect-time comparison against
+  //   the instrument's own table. Omitted (tools, tests) means no comparison is
+  //   made and nothing is gated — the gate protects app users, and a tool that
+  //   talks to the device directly is already outside it.
+  constructor({
+    userDataDir, midiBackend = null, timeout = 600, emitNotes = false, schemaParams = null,
+  } = {}) {
     super();
     this.userDataDir = userDataDir;
+    this.schemaParams = schemaParams;
     this.emitNotes = emitNotes; // see _handleNonSysex — off unless a tool asks
     this.midi = midiBackend || require('@julusian/midi');
     this.timeout = timeout;
@@ -158,6 +174,8 @@ class SevenMidi extends EventEmitter {
     this.globals = null; // last parsed (wfp already redacted)
     this.sendPcOriginal = null; // glb[3] as found at connect
     this.soundTable = null; // { sounds, fingerprint, readAt }
+    this.paramTable = null; // { count, params, fingerprint, readAt } — the DEVICE's
+    this.paramVerdict = null; // compareParamTables() result, or null when unchecked
     this.lastPanelProgram = null; // last Program Change RECEIVED (Send PC on)
     this.input = null;
     this.output = null;
@@ -173,7 +191,41 @@ class SevenMidi extends EventEmitter {
       tun: this.globals ? this.globals.tun : null,
       sendPc: this.globals ? this.globals.glb[GLB_SEND_PC] : null,
       soundTable: this.soundTable,
+      // A SUMMARY of the parameter table, not the table: status is emitted on
+      // every state change and 110 specs per event is waste. Callers that need
+      // the specs themselves read this.paramTable in the main process.
+      params: this.paramTable
+        ? {
+          count: this.paramTable.count,
+          fingerprint: this.paramTable.fingerprint,
+          readAt: this.paramTable.readAt,
+        }
+        : null,
+      writes: this.writeGate(),
     };
+  }
+
+  // The 0x20 gate, in one place. `allowed` is true when no comparison was made
+  // at all (a tool constructing SevenMidi without schemaParams) — the gate
+  // reports what it checked, and claims nothing about what it didn't.
+  writeGate() {
+    if (!this.paramVerdict || this.paramVerdict.ok) return { allowed: true, message: '' };
+    return { allowed: false, message: blockMessage(this.paramVerdict) };
+  }
+
+  _requireParamWrites() {
+    const gate = this.writeGate();
+    if (gate.allowed) return;
+    const err = new Error(gate.message);
+    err.code = 'PARAM_TABLE_MISMATCH';
+    throw err;
+  }
+
+  // Highest id this instrument will answer for. The device's own count when we
+  // have read it; the schema's otherwise. Reads use it too — a foreign unit's
+  // parameters are still readable, and backup is the reason this matters.
+  _maxParamId() {
+    return this.paramTable ? this.paramTable.count - 1 : MAX_VALID_PARAM_ID;
   }
 
   _setState(state, extra = {}) {
@@ -266,6 +318,20 @@ class SevenMidi extends EventEmitter {
       this.globals = await this.readGlobals();
       this.sendPcOriginal = this.globals.glb[GLB_SEND_PC];
       this.soundTable = await this.readSoundTable();
+      // The parameter table is read INSIDE connect, at the cost of ~1.5s, so
+      // that by the time status() says connected the write gate is already
+      // decided. Reading it in the background would leave a window where a
+      // write is neither allowed nor blocked, which is the exact thing this is
+      // here to remove.
+      if (this.schemaParams) {
+        try {
+          this.paramTable = await this.readParamTable();
+          this.paramVerdict = compareParamTables(this.schemaParams, this.paramTable.params);
+        } catch (err) {
+          this.paramTable = null;
+          this.paramVerdict = unreadableVerdict(err.message);
+        }
+      }
       this._setState('connected');
       return this.status();
     } catch (err) {
@@ -285,6 +351,8 @@ class SevenMidi extends EventEmitter {
     this.firmware = null;
     this.globals = null;
     this.soundTable = null;
+    this.paramTable = null;
+    this.paramVerdict = null;
     this.sendPcOriginal = null;
     this.lastPanelProgram = null;
     this._setState('disconnected');
@@ -464,7 +532,10 @@ class SevenMidi extends EventEmitter {
   // max; meaning unpinned, so it isn't surfaced. Validates the echoed id so a
   // concurrent client's reads can't satisfy our request.
   async readParamValue(id) {
-    if (!Number.isInteger(id) || id < 0 || id > MAX_VALID_PARAM_ID) {
+    // Reads are NOT gated: a wrong id on a foreign unit reads a wrong number
+    // into a file we can re-read, and backup on an instrument we do not fully
+    // know is still worth having. The range follows the device's own count.
+    if (!Number.isInteger(id) || id < 0 || id > this._maxParamId()) {
       throw new Error(`param id out of range: ${id}`);
     }
     const msg = await this._request(
@@ -491,7 +562,11 @@ class SevenMidi extends EventEmitter {
   // corrupt the frame itself — range clamping against a parameter's real max
   // is the schema's job, upstream.
   async setParamValue(id, value) {
-    if (!Number.isInteger(id) || id < 0 || id > MAX_VALID_PARAM_ID) {
+    // The gate, at the seam. Every 0x20 in the app arrives here — patch sends,
+    // live edits, transfer — so a caller that forgets to check still cannot
+    // push our parameter ids at an instrument whose ids we have not verified.
+    this._requireParamWrites();
+    if (!Number.isInteger(id) || id < 0 || id > this._maxParamId()) {
       throw new Error(`param id out of range: ${id}`);
     }
     if (!Number.isInteger(value)) throw new Error(`param ${id}: value must be an integer`);
@@ -544,6 +619,84 @@ class SevenMidi extends EventEmitter {
       .digest('hex')
       .slice(0, 16);
     return { sounds, fingerprint, readAt: new Date().toISOString() };
+  }
+
+  // --- The instrument's own parameter table ---------------------------------
+
+  // How many parameters this unit has. Reply payload is [0x00, hi, lo], seven
+  // bits each. On FW 1.37 it answers 110 while the real ids are 0–109, so the
+  // number is a COUNT, not a max id (docs/protocol.md, verified capture).
+  async readParamCount() {
+    const msg = await this._request(OP.GET_MAX_PARAM_ID, [], OP.MAX_PARAM_ID);
+    const p = msg.slice(5, -1);
+    const count = ((p[1] || 0) << 7) | (p[2] || 0);
+    // A count outside this range is not a firmware we can reason about; it is
+    // a garbled frame or a different device answering. Refuse rather than
+    // enumerate for a minute and a half.
+    if (!Number.isInteger(count) || count < 1 || count > 512) {
+      throw new Error(`the instrument reported ${count} parameters, which cannot be right`);
+    }
+    return count;
+  }
+
+  // Enumerate every spec with 0x14 -> 0x15: "id|group|key|label|cc|max|value|flag".
+  //
+  // Bounded by the reported count and NEVER one past it. Enumerating until the
+  // device stops answering does not work here: id 110 on FW 1.37 is a sentinel
+  // that returns a malformed spec with a garbage key and nonsense numbers
+  // (docs/protocol.md), so "keep going until it looks wrong" would read that
+  // garbage as a parameter.
+  //
+  // Not the 0x12 bulk dump — it works once and is then ignored until some
+  // unknown condition resets it — and not 0x40, which triggers the entire
+  // self-description stream. Per-id is deterministic and idempotent, the same
+  // reason readSoundTable enumerates 0x42.
+  async readParamTable() {
+    const count = await this.readParamCount();
+    const specs = new Array(count).fill(null);
+
+    const fetchOne = async (id) => {
+      try {
+        const msg = await this._request(
+          OP.GET_PARAM_SPEC, [0x00, (id >> 7) & 0x7f, id & 0x7f], OP.PARAM_SPEC,
+          (m) => Number(payloadText(m).split('|')[0]) === id // echoed id: another
+          // client on the port may be requesting specs of its own (macOS
+          // delivers every reply to everyone).
+        );
+        const f = payloadText(msg).split('|');
+        if (f.length < 8) return; // malformed: leave the gap for the retry pass
+        specs[id] = {
+          id, group: f[1], key: f[2], label: f[3],
+          cc: Number(f[4]), max: Number(f[5]), flag: Number(f[7]),
+          // f[6] is the value — CURRENT state, not a default. Deliberately not
+          // kept: this table is the map, not a reading of the edit buffer.
+        };
+      } catch { /* dropped or timed out; the retry pass picks it up */ }
+    };
+
+    for (let id = 0; id < count; id++) await fetchOne(id);
+    // A fast burst drops the odd reply (protocol.md: one in 110, id 22). Two
+    // more passes over the gaps, then it is a failed read — which BLOCKS, in
+    // the same way a mismatch does. An unreadable table is an unverified one.
+    for (let pass = 0; pass < 2; pass++) {
+      const gaps = specs.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0);
+      if (!gaps.length) break;
+      for (const id of gaps) await fetchOne(id);
+    }
+    const stillMissing = specs.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0);
+    if (stillMissing.length) {
+      throw new Error(
+        `no answer for parameter${stillMissing.length === 1 ? '' : 's'} ` +
+        `${stillMissing.slice(0, 6).join(', ')}${stillMissing.length > 6 ? '…' : ''}`
+      );
+    }
+
+    const fingerprint = crypto
+      .createHash('sha256')
+      .update(specs.map((p) => `${p.id}|${p.key}|${p.max}`).join('\n'))
+      .digest('hex')
+      .slice(0, 16);
+    return { count, params: specs, fingerprint, readAt: new Date().toISOString() };
   }
 
   // --- Send PC (glb 3) with pending-restore marker --------------------------

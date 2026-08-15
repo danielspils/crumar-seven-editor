@@ -195,6 +195,23 @@ per-id `0x42` enumeration. Reply matchers validate echoed ids — macOS delivers
 device replies to every client on the port, so opcode-only matching can be
 satisfied by the manufacturer editor's traffic. Live-tested end-to-end
 (connect 380ms; Connect/Disconnect wired in the connection row).
+**The app asks the instrument whether it knows it** (2026-08-14). Connect reads
+the device's OWN parameter table — `0x10` for the count, then `0x14` per id —
+and compares count, ids and keys against `schema/seven-1.37.json`. It does not
+compare the firmware string: a version number is a proxy, and this instrument
+describes itself, which is how the schema was built in the first place. A match
+proceeds silently. A mismatch, or a table that could not be read completely,
+**blocks every write addressed by a schema parameter id** (`0x20`: audition,
+live edits, transfer, factory-defaults seeding) at the seam in
+`setParamValue`, and says exactly what differs — "this instrument reports 104
+parameters; the app knows 110". Reads stay fully open, and so do writes
+addressed by an identity the DEVICE gave us (`0x46` by resolved name, Program
+Change). The rule is whose ID space a write uses, not reads versus writes:
+reading a wrong id yields a wrong number in a file we can re-read; writing one
+alters a stranger's instrument on an assumption we never checked
+(`src/param-compat.js`). Backup now takes its parameter count and key order
+from that table rather than a hardcoded 110.
+
 **Backup works end-to-end** (`src/backup-runner.js`): confirm-every-run
 dialog stating where the instrument is left; PC 0..31 each gated on the
 unsolicited `0x45` (1500ms timeout aborts the whole run — never skip a slot);

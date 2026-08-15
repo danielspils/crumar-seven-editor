@@ -2404,6 +2404,7 @@
     const connText = document.getElementById('connection-text');
     const connBtn = document.getElementById('conn-button');
     const backupBtn = document.getElementById('backup-button');
+    const writeGate = document.getElementById('write-gate');
     let backupRunning = false;
     // The connected unit's sound table, held so Settings can open it on
     // demand. Cleared on disconnect: it describes THIS instrument, and a
@@ -2679,6 +2680,13 @@
       }
       connBtn.disabled = s.state === 'connecting';
       backupBtn.hidden = s.state !== 'connected';
+      // The write gate: shown whenever the instrument's parameter table did not
+      // match the one this build knows. Backup stays offered — reads are the
+      // half that is still safe, and on a unit like this it is the half that
+      // matters most.
+      const gate = s.writes || { allowed: true, message: '' };
+      writeGate.hidden = !!gate.allowed || s.state !== 'connected';
+      if (!writeGate.hidden) writeGate.textContent = gate.message;
       // Always offered: a settings gear that vanishes is a settings gear you
       // go looking for. It is the PANEL that reports there is no instrument.
       if (s.state !== 'connected') {

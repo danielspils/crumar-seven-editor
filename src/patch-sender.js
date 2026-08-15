@@ -62,6 +62,12 @@ class PatchSender extends EventEmitter {
     if (!this.midi || this.midi.state !== 'connected') {
       throw new Error('The Seven is not connected.');
     }
+    // BEFORE the sound change, not when the first 0x20 is refused. The gate
+    // would stop the parameters either way, but only this stops the patch from
+    // leaving the instrument on a new sound with the old settings under it.
+    if (this.midi.writeGate && !this.midi.writeGate().allowed) {
+      throw new Error(this.midi.writeGate().message);
+    }
     this.running = true;
     this.cancelled = false;
     const startedAt = Date.now();

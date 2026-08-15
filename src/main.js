@@ -90,8 +90,15 @@ function registerLibraryIpc() {
     catch (err) { return { ok: false, error: String(err.message || err) }; }
   });
   ipcMain.handle('library:generateFromSound', (_e, { name, donorFile }) => {
-    try { return { ok: true, ...getStore().createPatchFromSound(name, { donorFile }) }; }
-    catch (err) { return { ok: false, error: String(err.message || err) }; }
+    try {
+      // A connected instrument whose parameter table we could not verify makes
+      // factory-defaults-1.37.json inapplicable — it describes the app's map,
+      // not that unit's. Generation then needs a donor or it refuses.
+      const donorOnly = midiLayer
+        && midiLayer.state === 'connected'
+        && !midiLayer.writeGate().allowed;
+      return { ok: true, ...getStore().createPatchFromSound(name, { donorFile, donorOnly }) };
+    } catch (err) { return { ok: false, error: String(err.message || err) }; }
   });
   ipcMain.handle('library:patchOrder', (_e, { keys }) => getStore().writePatchOrder(keys));
   ipcMain.handle('library:clearPatchOrder', () => getStore().clearPatchOrder());
@@ -149,7 +156,12 @@ let midiLayer = null;
 function getMidi() {
   if (!midiLayer) {
     const { SevenMidi } = require('./seven-midi');
-    midiLayer = new SevenMidi({ userDataDir: app.getPath('userData') });
+    midiLayer = new SevenMidi({
+      userDataDir: app.getPath('userData'),
+      // What connect() compares the instrument's own parameter table against.
+      // Without it there is no comparison and nothing is gated.
+      schemaParams: getSchema().parameters,
+    });
   }
   return midiLayer;
 }

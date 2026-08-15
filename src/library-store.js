@@ -712,7 +712,13 @@ class LibraryStore {
   // picks: lowest bank, then preset, then filename. The file records the donor
   // the same way either way — a patch does not say whether it was chosen or
   // defaulted, because that is not a fact about the patch (Daniel, 2026-08-14).
-  createPatchFromSound(name, { factoryDefaults, donorFile } = {}) {
+  // donorOnly: refuse the factory-defaults and seed sources entirely. Set when
+  // the connected instrument's parameter table does not match the schema —
+  // factory-defaults-1.37.json describes OUR parameter map, and writing its
+  // numbers into a patch for an instrument with a different map would put
+  // wrong values on disk permanently. A donor is a capture from the instrument
+  // itself, so it stays legal (src/param-compat.js).
+  createPatchFromSound(name, { factoryDefaults, donorFile, donorOnly = false } = {}) {
     const sound = this.soundByName.get(name);
     if (!sound) throw new Error(`Unknown sound: ${name}`);
     const factory = (factoryDefaults || this._factoryDefaults()).sounds || {};
@@ -746,6 +752,13 @@ class LibraryStore {
       if (donor[p.key] !== undefined) { params[p.key] = donor[p.key]; sources.donor++; }
       else if (known[p.key] !== undefined) { params[p.key] = known[p.key]; sources.factory++; }
       else { params[p.key] = Math.min(64, p.max); sources.seeded++; }
+    }
+    if (donorOnly && (sources.factory || sources.seeded)) {
+      throw new Error(
+        `Only a capture from this instrument can fill in “${name}”, and ` +
+        `${sources.factory + sources.seeded} of its ${this.schema.parameters.length} ` +
+        'parameters have none. Back up the slot that uses this sound first.'
+      );
     }
     const patch = {
       name,

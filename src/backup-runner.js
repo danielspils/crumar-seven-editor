@@ -4,15 +4,16 @@
 // after each. The unsolicited 0x45 broadcast is the completion signal for a
 // recall — never a fixed delay — and a slot that doesn't answer within 1500ms
 // ABORTS the whole run: a silently missing slot is worse than a failed backup.
-// Patches are rebuilt from 110 individual 0x22 reads (what the manufacturer's
-// own editor does after a recall), never from the 22-CC broadcast.
+// Patches are rebuilt from one 0x22 read per parameter (what the manufacturer's
+// own editor does after a recall), never from the 22-CC broadcast. How many
+// parameters that is comes from the instrument's own table — 110 on FW 1.37,
+// but the number is read, not assumed.
 
 const { EventEmitter } = require('node:events');
 const crypto = require('node:crypto');
 
 const SLOT_COUNT = 32;
 const RECALL_TIMEOUT_MS = 1500;
-const PARAM_COUNT = 110;
 
 const bankOf = (slot) => Math.floor(slot / 8) + 1;
 const presetOf = (slot) => (slot % 8) + 1;
@@ -86,6 +87,17 @@ class BackupRunner extends EventEmitter {
     const soundTable = this.midi.soundTable;
     const soundById = new Map(soundTable.sounds.map((s) => [s.id, s]));
 
+    // WHICH parameters to read comes from the instrument's own table when
+    // connect managed to read one — count included, so a unit with a different
+    // number of parameters is backed up completely rather than to 110. The
+    // schema's list is the fallback for an unread table (and for the tests'
+    // fake instrument). Keys still come from each reply, as they always did.
+    const table = this.midi.paramTable;
+    const readIds = table
+      ? table.params.map((p) => p.id)
+      : [...this.paramsById.keys()].sort((a, b) => a - b);
+    const keyOrder = table ? table.params.map((p) => p.key) : this.keyOrder;
+
     // Prior slot, for the finish restore: only known when Send PC is on AND
     // the panel has recalled something since connect.
     const sendPcOn = this.midi.globals && this.midi.globals.glb[3] === 1;
@@ -96,7 +108,7 @@ class BackupRunner extends EventEmitter {
     const existing = new Map();
     for (const e of this.store.list().patches) {
       if (e.invalid || e.origin.kind !== 'backup') continue;
-      const hash = patchHash(e.soundName, e.params, this.keyOrder);
+      const hash = patchHash(e.soundName, e.params, keyOrder);
       existing.set(`${hash}:${e.origin.bank}:${e.origin.preset}`, e.file);
     }
 
@@ -127,8 +139,7 @@ class BackupRunner extends EventEmitter {
         // interrogation: one dropped reply in 110) — re-request up to twice
         // before declaring the run dead.
         const params = {};
-        for (let id = 0; id < PARAM_COUNT; id++) {
-          if (!this.paramsById.has(id)) continue;
+        for (const id of readIds) {
           let r = null;
           for (let attempt = 0; attempt < 3; attempt++) {
             try { r = await this.midi.readParamValue(id); break; }
@@ -137,7 +148,7 @@ class BackupRunner extends EventEmitter {
           params[r.key] = r.value;
         }
 
-        const hash = patchHash(soundName, params, this.keyOrder);
+        const hash = patchHash(soundName, params, keyOrder);
         const dupKey = `${hash}:${bank}:${preset}`;
         const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
         if (existing.has(dupKey)) {

@@ -197,6 +197,17 @@
       color: #26262a; font-size: 12px;
     }
     #connection-row #connection-text { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
+    /* The write gate. Full width and under the felt, because it is about the
+       instrument, and a sentence about the instrument must not be clipped into
+       a tooltip the way the status line is. */
+    #write-gate {
+      padding: 9px 16px;
+      background: #f6e6c8;
+      color: #4a3410;
+      border-bottom: 1px solid #d8c093;
+      font-size: 12px; line-height: 1.5;
+    }
+    #write-gate b { font-weight: 600; }
     #connection-row .conn-dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: #66666d;
@@ -2278,6 +2289,12 @@
       <div class="settings-foot"></div>
     </div>
   </div>
+  <!-- Shown only when the instrument's own parameter table disagrees with the
+       one this build knows. It states what differs and what it costs, and it
+       does not offer a way to dismiss it: the gate lasts as long as the
+       connection does, and a banner you can wave away is a banner that gets
+       waved away. -->
+  <div id="write-gate" hidden></div>
   <div id="main">
     <div id="library">
       <!-- Two labelled regions teach the core relationship: the four banks
