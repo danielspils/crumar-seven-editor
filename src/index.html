@@ -451,9 +451,19 @@
     /* This modal is a list of ten expansions with three data columns, not a
        question — 440px made every second title wrap. It gets its own width;
        nothing else changes. */
-    .seven-modal.is-expansions { width: min(620px, 94vw); }
+    .seven-modal.is-expansions { width: min(860px, 96vw); }
     .exp-modal { max-width: 100%; }
-    .exp-group { margin: 0 0 18px; }
+    /* Two columns: the permanent sixteen on the left, the ten expansions on
+       the right. Roughly balanced by row count, and both visible at once —
+       what you have and what you are missing is one question. */
+    .exp-cols { display: grid; grid-template-columns: 1fr 1.35fr; gap: 26px; align-items: start; }
+    .exp-cols.is-single { grid-template-columns: 1fr; }
+    @media (max-width: 720px) { .exp-cols { grid-template-columns: 1fr; gap: 0; } }
+    /* A permanent sound: name and the instrument's own id, nothing else. */
+    .exp-row.is-plain { grid-template-columns: minmax(0, 1fr) 2.5em; }
+    .exp-id { text-align: right; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .exp-stamp { margin: 5px 0 0; font-size: 11px; color: var(--text-dim); }
+    .exp-group { margin: 0 0 12px; }
     /* One green in this modal, and it is the Installed pill — the thing you
        scan for. The headings were competing with it (Daniel, 2026-08-15), so
        modeled/sampled is carried by a rule on the left edge instead: the same
@@ -465,7 +475,7 @@
     }
     .exp-group.is-modeled h4 { border-left-color: var(--modeled); }
     .exp-group.is-sampled h4 { border-left-color: var(--sampled); }
-    .exp-group .exp-sub { margin: 0 0 8px 11px; color: var(--text-dim); font-size: 12px; }
+    .exp-group .exp-sub { margin: 0 0 5px 11px; color: var(--text-dim); font-size: 12px; }
     /* Three columns, so they line up whatever the name's length: name (fills),
        size (right-aligned so the decimals stack), status (fixed). */
     .exp-row {
@@ -475,7 +485,7 @@
          two lines (measured 2026-08-15). */
       display: grid; grid-template-columns: minmax(0, 1fr) 4.6em 5.2em 7.4em;
       align-items: baseline; gap: 9px;
-      padding: 5px 0 5px 11px; border-top: 1px solid var(--line);
+      padding: 2px 0 2px 11px; border-top: 1px solid var(--line);
     }
     .exp-row:first-of-type { border-top: none; }
     .exp-name { min-width: 0; }
@@ -493,12 +503,12 @@
     .exp-pill.is-unverified { color: #8a6d1f; border-color: #b99a45; }
     .exp-pill.is-partial { color: #a8221c; border-color: #a8221c; }
     .exp-pill.is-wide { grid-column: 2 / span 3; }
-    .exp-note { margin: 10px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+    .exp-note { margin: 4px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
     .exp-note strong { color: var(--text); font-weight: 600; }
-    .exp-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .exp-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
     .exp-foot ol { margin: 6px 0 0; padding-left: 18px; }
     .exp-foot li { margin: 3px 0; }
-    .exp-storage { margin: 0 0 14px; color: var(--text-dim); font-size: 12px; }
+    .exp-storage { margin: 0 0 8px; color: var(--text-dim); font-size: 12px; }
 
     .sounds-table .sounds-cols { display: flex; gap: 18px; }
     /* Content-sized, not equal halves: 8 modeled names against 16 sampled ones

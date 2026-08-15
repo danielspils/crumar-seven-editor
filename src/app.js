@@ -2442,58 +2442,6 @@
     //
     // Built as NODES, never as an HTML string: every name here came off the
     // instrument, and textContent is what makes that safe to draw.
-    const buildSoundsTable = (table) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'sounds-table';
-      const cols = document.createElement('div');
-      cols.className = 'sounds-cols';
-      const foot = document.createElement('div');
-      foot.className = 'sounds-foot';
-      wrap.append(cols, foot);
-      const group = (title, sounds) => {
-        const div = document.createElement('div');
-        div.className = 'sounds-group';
-        const h = document.createElement('h4');
-        h.textContent = title;
-        div.appendChild(h);
-        for (const s of sounds) {
-          const row = document.createElement('div');
-          row.className = 'sound-row';
-          const id = document.createElement('span');
-          id.className = 'sound-id';
-          id.textContent = s.id;
-          const name = document.createElement('span');
-          name.textContent = s.name;
-          row.append(id, name);
-          div.appendChild(row);
-        }
-        return div;
-      };
-      cols.replaceChildren(
-        group('Modeled', table.sounds.filter((s) => !s.sampled)),
-        group('Sampled — GSP-01 expansions', table.sounds.filter((s) => s.sampled))
-      );
-      // Three facts, not a paragraph: when this list was read, which list it
-      // is, and what the list is for. The old sentence spent a line and a half
-      // explaining the mechanism ("backups reference this fingerprint so a
-      // patch can name a sound another Seven lacks") when what a reader needs
-      // is what it is USED for (Daniel, 2026-08-13). The date joins the time
-      // because a sound table outlives the session that read it.
-      //
-      // The closing clause describes THIS LIST, which is the thing that does
-      // the reconciling: a patch names its sound, and `isMissing` in
-      // renderer.js asks whether the connected unit's table holds that name.
-      // It is not a claim about the fingerprint — that is recorded into
-      // backups (backup-runner.js) as provenance and is never read back.
-      const when = new Date(table.readAt);
-      const day = when.toLocaleDateString([], { day: 'numeric', month: 'short' });
-      const time = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      foot.textContent =
-        `Read ${day}, ${time} · fingerprint ${table.fingerprint} · used to reconcile installed models/samples between different Sevens.`;
-      return wrap;
-    };
-
-
     // ---- Sample expansions -------------------------------------------------
     // READ-ONLY, always. The app cannot install an expansion and must never
     // imply it can: installing happens on the instrument's own Wi-Fi editor,
@@ -2502,7 +2450,7 @@
     // after buying one.
     const expansionCatalogue = window.sevenAPI.getExpansions();
 
-    const buildExpansionsBody = (table, storage) => {
+    const buildSoundsBody = (table, storage) => {
       const wrap = document.createElement('div');
       wrap.className = 'exp-modal';
       const r = window.SevenExpansions.classify(expansionCatalogue || {}, table ? table.sounds : null);
@@ -2512,13 +2460,14 @@
       // arithmetic against the catalogue's download sizes: those are ZIP sizes
       // from a web page and this is a figure of unknown meaning
       // (docs/protocol.md, ACTION 0x0A).
-      if (storage) {
+      const storageLine = () => {
+        if (!storage) return null;
         const st = document.createElement('p');
         st.className = 'exp-storage';
         st.textContent =
           `The instrument reports ${storage} of storage. It does not say whether that is total, used or free.`;
-        wrap.appendChild(st);
-      }
+        return st;
+      };
 
       const group = (cls, title, sub, rows) => {
         const div = document.createElement('div');
@@ -2536,6 +2485,22 @@
       // Four cells, always, so the columns line up down the list even when a
       // cell is empty: name, date, size, status. One line per expansion — the
       // date sits beside the size rather than under the name.
+      // The permanent sixteen: a name and the instrument's own id. No date, no
+      // size, no status — there is nothing to install or remove, and a status
+      // column here would be a column of blanks.
+      const idRow = (sound) => {
+        const row = document.createElement('div');
+        row.className = 'exp-row is-plain';
+        const n = document.createElement('span');
+        n.className = 'exp-name';
+        n.textContent = sound.name;
+        const id = document.createElement('span');
+        id.className = 'exp-id';
+        id.textContent = String(sound.id);
+        row.append(n, id);
+        return row;
+      };
+
       const gridRow = (name, { date = '', size = '' } = {}) => {
         const row = document.createElement('div');
         row.className = 'exp-row';
@@ -2580,16 +2545,28 @@
         return row;
       };
 
+      // TWO COLUMNS, not tabs. The whole question this modal answers is "what
+      // do I have and what am I missing" — tabs would hide half the answer
+      // behind a click (Daniel, 2026-08-15). Left is the permanent sixteen,
+      // short rows with their ids; right is the ten expansions, which are the
+      // only rows carrying a date, a size or a status.
+      const cols = document.createElement('div');
+      cols.className = r.connected ? 'exp-cols' : 'exp-cols is-single';
+      const left = document.createElement('div');
+      const right = document.createElement('div');
+      cols.append(left, right);
+      wrap.appendChild(cols);
+
       if (r.connected) {
-        wrap.appendChild(group(
-          'is-modeled', 'Modeled engines',
-          'Crumar’s physical models. Permanent — no samples, no storage, nothing to install or remove.',
-          r.modeled.map((s) => gridRow(s.name))
+        left.appendChild(group(
+          'is-modeled', `Modeled (${r.modeled.length})`,
+          'Physical models. Permanent.',
+          r.modeled.map((s) => idRow(s))
         ));
-        wrap.appendChild(group(
-          'is-sampled', 'Included samples',
-          'These ship with every Seven. Permanent.',
-          r.included.map((s) => gridRow(s.name))
+        left.appendChild(group(
+          'is-sampled', `Included samples (${r.included.length})`,
+          'Ship with every Seven. Permanent.',
+          r.included.map((s) => idRow(s))
         ));
       }
 
@@ -2607,8 +2584,8 @@
         row.appendChild(pill);
         expansionRows.push(row);
       }
-      wrap.appendChild(group(
-        'is-sampled', 'Expansions',
+      right.appendChild(group(
+        'is-sampled', `Expansions (${r.expansions.length})`,
         'Sold separately. Install through the instrument’s own editor. Sizes are ZIP download sizes, not installed sizes.',
         expansionRows
       ));
@@ -2652,7 +2629,27 @@
       adapter.textContent = 'Installing needs Crumar’s Wi-Fi USB adapter.';
       foot.appendChild(adapter);
 
-      wrap.appendChild(foot);
+      // Carried over from the old Installed-sounds modal: when this list was
+      // read off the instrument, and the fingerprint backups record so a patch
+      // can name a sound another Seven lacks. Quiet, because it is a fact you
+      // look up rather than read.
+      if (table) {
+        const when = new Date(table.readAt);
+        const stamp = document.createElement('p');
+        stamp.className = 'exp-stamp';
+        stamp.textContent =
+          `Read ${when.toLocaleDateString([], { day: 'numeric', month: 'short' })}, ` +
+          `${when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ` +
+          `fingerprint ${table.fingerprint}`;
+        foot.appendChild(stamp);
+      }
+
+      // Under the EXPANSIONS column, not under both. The copy is about
+      // expansions, and stacking it beneath the columns made the modal taller
+      // than the window it opens in (measured 764px in a 687px window).
+      const sl = storageLine();
+      if (sl) right.appendChild(sl);
+      right.appendChild(foot);
       return wrap;
     };
 
@@ -2661,55 +2658,50 @@
     // provokes — "what about the ones I don't have?" — and it is offered with
     // NOTHING CONNECTED as well, because the catalogue is worth reading before
     // buying an expansion, and because that is when someone is deciding.
-    const expansionsRow = () => {
+    const soundsRow = () => {
       const link = document.createElement('button');
       link.type = 'button';
       link.className = 'set-row set-link';
       const name = document.createElement('span');
       name.className = 'set-name';
-      name.textContent = 'Sample expansions';
+      name.textContent = 'Sounds';
       const val = document.createElement('span');
       val.className = 'set-value';
-      val.textContent = String(((expansionCatalogue || {}).expansions || []).length);
+      // The count that means something: what this instrument has. Offline
+      // there is no such number, and the modal's own header says why.
+      val.textContent = soundTable ? String(soundTable.sounds.length) : '';
       const chev = document.createElement('span');
       chev.className = 'set-chev';
       chev.textContent = '›';
       link.append(name, val, chev);
       link.addEventListener('click', () => {
         setSettingsOpen(false);
-        openExpansionsModal();
+        openSoundsModal();
       });
       return link;
     };
 
-    const openExpansionsModal = async () => {
+    const openSoundsModal = async () => {
+      // The header IS the answer at a glance: how many sounds this instrument
+      // has, and how many more exist to buy. Offline there is no first number,
+      // and the title says what the list is instead of implying it describes
+      // your Seven.
+      const cat = window.SevenExpansions.classify(expansionCatalogue || {},
+        soundTable ? soundTable.sounds : null);
+      const available = cat.expansions.filter((e) => e.status !== 'installed').length;
       const m = window.SevenModal.open({
         title: soundTable
-          ? `Sample expansions — ${soundTable.sounds.length} sounds on this instrument`
-          : 'Sample expansions',
+          ? `Sounds on this Seven — ${soundTable.sounds.length} installed · ${available} available`
+          : 'Sounds — the published list. Connect to see what’s installed.',
         confirmLabel: 'Close',
         cancelLabel: 'Close',
         tone: 'is-expansions',
       });
-      m.body.appendChild(buildExpansionsBody(soundTable, deviceStorage));
+      m.body.appendChild(buildSoundsBody(soundTable, deviceStorage));
       await m.action();
       m.close();
     };
 
-    // Opened from the foot of Settings. A modal rather than another tray: the
-    // list is the whole point of the moment, and there is nothing to do with
-    // it but read it and close it.
-    const openSoundsModal = async () => {
-      if (!soundTable) return;
-      const m = window.SevenModal.open({
-        title: `Installed sounds — ${soundTable.sounds.length} on this instrument`,
-        confirmLabel: 'Close',
-        cancelLabel: 'Close',
-      });
-      m.body.appendChild(buildSoundsTable(soundTable));
-      await m.action();
-      m.close();
-    };
     // ---- Instrument settings (the nine globals) ---------------------------
     // Every slot is shown, because a raw value is worth seeing even when we
     // cannot name it. As of 2026-08-12 every global's name AND every one of its
@@ -2814,32 +2806,7 @@
       tVal.textContent = `${g.tun} Hz`;
       tuning.append(tName, tVal);
       rows.appendChild(tuning);
-      // Expansion visibility, filed with the instrument's other facts. It was
-      // a chip of its own in the connection row; this is a row you pass on the
-      // way to somewhere else, which matches how often anyone wants it
-      // (Daniel, 2026-08-13). Only when there is a table to show — the count
-      // is the useful half, so it goes on the row.
-      if (soundTable) {
-        const link = document.createElement('button');
-        link.type = 'button';
-        link.className = 'set-row set-link';
-        const lName = document.createElement('span');
-        lName.className = 'set-name';
-        lName.textContent = 'Installed sounds';
-        const lVal = document.createElement('span');
-        lVal.className = 'set-value';
-        lVal.textContent = String(soundTable.sounds.length);
-        const chev = document.createElement('span');
-        chev.className = 'set-chev';
-        chev.textContent = '›';
-        link.append(lName, lVal, chev);
-        link.addEventListener('click', () => {
-          setSettingsOpen(false);
-          openSoundsModal();
-        });
-        rows.appendChild(link);
-      }
-      rows.appendChild(expansionsRow());
+      rows.appendChild(soundsRow());
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.textContent = '';
       foot.hidden = true;
@@ -2856,7 +2823,7 @@
       // disappearing and leaving you hunting for it.
       // The globals need an instrument; the expansion catalogue does not, and
       // this is exactly when someone is thinking about buying one.
-      settingsPanel.querySelector('.settings-rows').replaceChildren(expansionsRow());
+      settingsPanel.querySelector('.settings-rows').replaceChildren(soundsRow());
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.hidden = false;
       foot.textContent =
@@ -2967,7 +2934,7 @@
       const hit = ev.target.closest('.badge-warn, .sound-tag.is-warn, .warn-banner');
       if (!hit) return;
       ev.preventDefault();
-      openExpansionsModal();
+      openSoundsModal();
     });
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;
