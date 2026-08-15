@@ -121,12 +121,15 @@ function unreadableVerdict(reason) {
 // The consequence, in the user's terms. Kept beside the difference so the two
 // are always said together: what is wrong, then what it costs.
 //
-// COPY PENDING DANIEL'S APPROVAL (2026-08-14) — the first sentence is his
-// wording; this second one is a draft.
+// It does NOT say "until the app knows this instrument's parameters". That
+// implies the block lifts on its own — by waiting, or by reconnecting — and it
+// does not: lifting it takes a schema for that firmware, which only the author
+// can add. Telling someone to wait for something that will never happen is
+// worse than telling them nothing (Daniel, 2026-08-14). Approved wording.
 const CONSEQUENCE =
   'Backup and browsing still work, and you can still change sounds on the ' +
-  'instrument. Sending patches, live edits and transfer are switched off ' +
-  'until the app knows this instrument\'s parameters.';
+  'instrument. Sending patches, live edits and transfer are switched off, ' +
+  'because this app hasn\'t been verified against this instrument\'s firmware.';
 
 function blockMessage(verdict) {
   if (!verdict || verdict.ok) return '';
