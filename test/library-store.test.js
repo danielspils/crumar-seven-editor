@@ -690,3 +690,33 @@ test('a patch is missing when the INSTRUMENT lacks its sound, not when the schem
   const after = entries(store).find((p) => p.soundName === 'Tine Piano');
   assert.strictEqual(after.missing, false, 'the schema knows Tine Piano');
 });
+
+test('a new patch records the instrument it was made on, not the schema', () => {
+  const { store } = freshStore();
+
+  // Nothing attached: the schema's list is what the app knows.
+  const offline = JSON.parse(fs.readFileSync(path.join(
+    store.dir, store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file
+  ), 'utf8'));
+  assert.strictEqual(offline.source.soundList.length, schema.sounds.length);
+  assert.strictEqual(offline.source.firmware, schema.firmware || '1.37');
+
+  // A 16-sound unit on a firmware this build has never seen.
+  store.setDeviceSounds({
+    sounds: Array.from({ length: 16 }, (_, i) => ({ id: i, name: `Sound ${i}`, sampled: false })),
+  });
+  store.setDeviceFirmware('CRUMAR Seven v.1.42 Build date: Mon Jan 5 09:00:00 2026');
+  const made = store.createPatchFromSound('Sound 3', { factoryDefaults: { sounds: {} } });
+  const written = JSON.parse(fs.readFileSync(path.join(store.dir, made.file), 'utf8'));
+  assert.strictEqual(written.source.soundList.length, 16, 'the unit’s 16, not the schema’s 24');
+  assert.deepStrictEqual(written.source.soundList[3], { id: 3, name: 'Sound 3' });
+  assert.strictEqual(written.source.firmware, 'CRUMAR Seven v.1.42 Build date: Mon Jan 5 09:00:00 2026');
+
+  // Unplugged again: back to what the app knows, with nothing claiming a device.
+  store.setDeviceSounds(null);
+  store.setDeviceFirmware(null);
+  const after = JSON.parse(fs.readFileSync(path.join(
+    store.dir, store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file
+  ), 'utf8'));
+  assert.strictEqual(after.source.soundList.length, schema.sounds.length);
+});

@@ -524,7 +524,9 @@ function forwardMidiEvents() {
     // table would describe an instrument that is no longer attached.
     if (ev.type === 'status') {
       try {
-        getStore().setDeviceSounds(ev.state === 'connected' ? getMidi().soundTable : null);
+        const live = ev.state === 'connected';
+        getStore().setDeviceSounds(live ? getMidi().soundTable : null);
+        getStore().setDeviceFirmware(live ? getMidi().firmware : null);
       } catch { /* a broken Library folder must not break the connection */ }
     }
     for (const win of BrowserWindow.getAllWindows()) {

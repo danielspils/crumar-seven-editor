@@ -28,6 +28,8 @@ class LibraryStore {
     // is plugged in, and wrong the moment a Seven with different expansions is.
     this.schemaSoundByName = new Map(schema.sounds.map((s) => [s.name, s]));
     this.deviceSounds = null; // the CONNECTED unit's table, when there is one
+    this.deviceSoundList = null; // the same table as written provenance
+    this.deviceFirmware = null; // the CONNECTED unit's own firmware string
   }
 
   // The connected instrument's own sound table, pushed in on connect and
@@ -38,9 +40,16 @@ class LibraryStore {
   // unit that has it, and a schema sound showed as installed on a unit that
   // doesn't.
   setDeviceSounds(table) {
-    this.deviceSounds = (table && table.sounds && table.sounds.length)
-      ? new Map(table.sounds.map((s) => [s.name, s]))
-      : null;
+    const sounds = (table && table.sounds && table.sounds.length) ? table.sounds : null;
+    this.deviceSounds = sounds ? new Map(sounds.map((s) => [s.name, s])) : null;
+    // Kept in id order for provenance: what a new patch file records as the
+    // instrument it was made on.
+    this.deviceSoundList = sounds ? sounds.map(({ id, name }) => ({ id, name })) : null;
+  }
+
+  // The connected unit's firmware STRING, verbatim as the device gave it.
+  setDeviceFirmware(firmware) {
+    this.deviceFirmware = firmware || null;
   }
 
   // What to resolve names against right now: the instrument if one is here,
@@ -150,6 +159,21 @@ class LibraryStore {
     return file;
   }
 
+  // PROVENANCE. `source` says which instrument this patch came from, and
+  // FORMAT.md is explicit that soundList is "the full enumerated list from the
+  // originating instrument" — it is what makes a missing-expansion warning
+  // possible on some other Seven, years from now.
+  //
+  // It used to write the SCHEMA's 24 sounds and the schema's firmware, on every
+  // patch, whatever instrument was attached. On a unit with 16 sounds that is a
+  // permanent lie in a file: it claims the patch came from an instrument with
+  // eight sounds that unit has never had. Wrong data written once outlives
+  // every other kind of bug here, because nothing later can tell it from truth.
+  //
+  // So: the table actually read from the connected instrument, when there is
+  // one. With nothing attached the schema's list is what the app knows and
+  // stays the fallback — a patch made offline was not made on any instrument.
+  // Patches already saved on this unit are correct and are not migrated.
   singlePatchContainer(patch) {
     return {
       format: 'crumar-seven-library',
@@ -157,9 +181,9 @@ class LibraryStore {
       created: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       source: {
         app: APP_TAG,
-        firmware: this.schema.firmware || '1.37',
+        firmware: this.deviceFirmware || this.schema.firmware || '1.37',
         schema: 'seven-1.37.json',
-        soundList: this.schema.sounds.map(({ id, name }) => ({ id, name })),
+        soundList: this.deviceSoundList || this.schema.sounds.map(({ id, name }) => ({ id, name })),
       },
       patches: [patch],
     };
@@ -379,9 +403,18 @@ class LibraryStore {
     this.writeSetlists(setlists);
   }
 
-  // Globals snapshot, record-only (no restore path). wfp arrives already
-  // redacted from the parse layer; the serializer guard would refuse a real
-  // value anyway. Not a .sevenlib.json, so list() never shows it.
+  // Globals snapshot, record-only (no restore path). Not a .sevenlib.json, so
+  // list() never shows it.
+  //
+  // wfp arrives ALREADY REDACTED from the parse layer, and that is the only
+  // thing standing between this file and the instrument's Wi-Fi password.
+  // This comment used to add "the serializer guard would refuse a real value
+  // anyway", which is false and was worth catching (Daniel's audit,
+  // 2026-08-14): the guard lives in serializeLibrary, and this writes with
+  // plain JSON.stringify. Nothing here would refuse a wfp. Rule 6 is enforced
+  // upstream in seven-midi's parseGlobals — a raw 0x33 frame is decoded and
+  // discarded inside _onMessage and the password never leaves it — so if that
+  // ever changes, this file is where it would surface.
   writeGlobalsSnapshot(dateStr, globals) {
     this.ensureSeeded();
     const file = `globals-${dateStr}.json`;
