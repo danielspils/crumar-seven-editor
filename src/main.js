@@ -168,6 +168,7 @@ function getMidi() {
       // What connect() compares the instrument's own parameter table against.
       // Without it there is no comparison and nothing is gated.
       schemaParams: getSchema().parameters,
+      schemaFirmware: getSchema().firmware || null,
     });
   }
   return midiLayer;

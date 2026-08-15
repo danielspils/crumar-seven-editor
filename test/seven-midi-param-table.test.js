@@ -137,7 +137,9 @@ test('a smaller table blocks 0x20 writes and says both counts', async () => {
     () => midi.setParamValue(0, 64),
     (err) => {
       assert.equal(err.code, 'PARAM_TABLE_MISMATCH');
-      assert.match(err.message, /This instrument reports 9 parameters; the app knows 12\./);
+      // No schemaFirmware in this fake, so the firmware sentence is dropped
+      // and the counts carry the message — the documented fallback.
+      assert.match(err.message, /This instrument reports 9 parameters where the app knows 12\./);
       return true;
     }
   );

@@ -118,22 +118,93 @@ function unreadableVerdict(reason) {
   };
 }
 
-// The consequence, in the user's terms. Kept beside the difference so the two
-// are always said together: what is wrong, then what it costs.
+// ---------------------------------------------------------------------------
+// The banner
+// ---------------------------------------------------------------------------
 //
-// It does NOT say "until the app knows this instrument's parameters". That
-// implies the block lifts on its own — by waiting, or by reconnecting — and it
-// does not: lifting it takes a schema for that firmware, which only the author
-// can add. Telling someone to wait for something that will never happen is
-// worse than telling them nothing (Daniel, 2026-08-14). Approved wording.
+// Three paragraphs, in Daniel's words (approved 2026-08-15):
+//
+//   1. Which firmware this is, which one the app was built against, and the
+//      two parameter counts. Both numbers are READ LIVE — the device's from
+//      its own firmware string, the app's from the schema — because a
+//      hardcoded number in a message about a mismatch is how a message about a
+//      mismatch goes stale.
+//   2. What still works and what does not, and WHY. It says the app hasn't
+//      been verified against this firmware; it does NOT say "until", because
+//      the block does not lift by itself — lifting it takes a schema only the
+//      author can add.
+//   3. The ask. "me", not "we": it is a one-person project, and the honesty
+//      suits asking a stranger for a favour. Deliberately no promise of a fix
+//      — someone waiting for one that never ships is worse off than someone
+//      who knows where they stand.
+
+// "CRUMAR Seven v.1.37 Build date: …" -> "1.37". Null when there is nothing to
+// read: the firmware line is then dropped entirely rather than printed with a
+// hole in it.
+function firmwareVersion(firmware) {
+  const m = /v\.?\s*([\d.]+)/i.exec(String(firmware || ''));
+  return m ? m[1] : null;
+}
+
+// The counts sentence, which is the one thing that is always sayable — the
+// device answered with a table, or the read failed and there is no count.
+function countsClause(verdict) {
+  if (!verdict || verdict.deviceCount == null || verdict.appCount == null) return '';
+  return `this instrument reports ${verdict.deviceCount} parameter` +
+    `${verdict.deviceCount === 1 ? '' : 's'} where the app knows ${verdict.appCount}`;
+}
+
+// [lead, consequence, ask] — the banner's paragraphs. The caller supplies what
+// only it knows: the device's firmware string and the schema's firmware.
+function gateParagraphs(verdict, { deviceFirmware, appFirmware } = {}) {
+  if (!verdict || verdict.ok) return [];
+  const version = firmwareVersion(deviceFirmware);
+  const counts = countsClause(verdict);
+
+  let lead;
+  if (version && appFirmware) {
+    // Both numbers live. The counts clause joins the same sentence.
+    lead = `This Seven is running firmware ${version}. This app was built against ` +
+      `${appFirmware}${counts ? `, and ${counts}` : ''}.`;
+  } else if (counts) {
+    // FALLBACK: no readable firmware string. Drop the first sentence entirely
+    // and keep the counts — never print "firmware undefined".
+    lead = `${counts.charAt(0).toUpperCase()}${counts.slice(1)}.`;
+  } else {
+    // No counts either: the table could not be read at all.
+    lead = verdict.summary;
+  }
+
+  const detail = verdict.renamed && verdict.renamed.length ? ` ${namesClause(verdict)}` : '';
+  return [`${lead}${detail}`, CONSEQUENCE, ASK];
+}
+
+// A count can match while the names do not, and then the counts clause says
+// nothing useful on its own.
+function namesClause(verdict) {
+  const r = verdict.renamed[0];
+  return `It calls parameter ${r.id} “${r.device}” where the app expects “${r.app}”` +
+    (verdict.renamed.length > 1
+      ? `, and ${verdict.renamed.length - 1} more name${verdict.renamed.length === 2 ? '' : 's'} differ.`
+      : '.');
+}
+
 const CONSEQUENCE =
   'Backup and browsing still work, and you can still change sounds on the ' +
   'instrument. Sending patches, live edits and transfer are switched off, ' +
-  'because this app hasn\'t been verified against this instrument\'s firmware.';
+  'because the app hasn\'t been verified against this firmware.';
 
-function blockMessage(verdict) {
+const ASK = 'A report gives me what I\'d need to add support for it.';
+
+// One line, for a THROWN error or a toast — the places three paragraphs cannot
+// go. Same facts, no ask.
+function blockMessage(verdict, opts) {
   if (!verdict || verdict.ok) return '';
-  return `${verdict.summary} ${CONSEQUENCE}`;
+  const [lead, consequence] = gateParagraphs(verdict, opts);
+  return `${lead} ${consequence}`;
 }
 
-module.exports = { compareParamTables, unreadableVerdict, blockMessage, CONSEQUENCE };
+module.exports = {
+  compareParamTables, unreadableVerdict, blockMessage, gateParagraphs,
+  firmwareVersion, CONSEQUENCE, ASK,
+};

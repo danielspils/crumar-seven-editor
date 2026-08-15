@@ -2708,7 +2708,20 @@
       // matters most.
       const gate = s.writes || { allowed: true, message: '' };
       writeGate.hidden = !!gate.allowed || s.state !== 'connected';
-      if (!writeGate.hidden) writeGateText.textContent = gate.message;
+      if (!writeGate.hidden) {
+        // Paragraphs, not one block: the banner says what this instrument is,
+        // then what that costs, then what would help. Falls back to the
+        // one-line message if a build ever hands us no paragraphs.
+        const paras = (gate.paragraphs && gate.paragraphs.length)
+          ? gate.paragraphs
+          : [gate.message];
+        writeGateText.textContent = '';
+        for (const text of paras) {
+          const p = document.createElement('p');
+          p.textContent = text;
+          writeGateText.appendChild(p);
+        }
+      }
       // Always offered: a settings gear that vanishes is a settings gear you
       // go looking for. It is the PANEL that reports there is no instrument.
       if (s.state !== 'connected') {

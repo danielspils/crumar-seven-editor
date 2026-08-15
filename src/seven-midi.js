@@ -34,7 +34,9 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { compareParamTables, unreadableVerdict, blockMessage } = require('./param-compat');
+const {
+  compareParamTables, unreadableVerdict, blockMessage, gateParagraphs,
+} = require('./param-compat');
 
 const HEADER = [0xf0, 0x73, 0x26, 0x14];
 const SYSEX_END = 0xf7;
@@ -162,10 +164,15 @@ class SevenMidi extends EventEmitter {
   //   talks to the device directly is already outside it.
   constructor({
     userDataDir, midiBackend = null, timeout = 600, emitNotes = false, schemaParams = null,
+    schemaFirmware = null,
   } = {}) {
     super();
     this.userDataDir = userDataDir;
     this.schemaParams = schemaParams;
+    // Which firmware the schema describes. Named in the banner beside the
+    // instrument's own, so both numbers in "built against 1.37 / running 1.22"
+    // are read rather than written down.
+    this.schemaFirmware = schemaFirmware;
     this.emitNotes = emitNotes; // see _handleNonSysex — off unless a tool asks
     this.midi = midiBackend || require('@julusian/midi');
     this.timeout = timeout;
@@ -210,8 +217,16 @@ class SevenMidi extends EventEmitter {
   // at all (a tool constructing SevenMidi without schemaParams) — the gate
   // reports what it checked, and claims nothing about what it didn't.
   writeGate() {
-    if (!this.paramVerdict || this.paramVerdict.ok) return { allowed: true, message: '' };
-    return { allowed: false, message: blockMessage(this.paramVerdict) };
+    if (!this.paramVerdict || this.paramVerdict.ok) {
+      return { allowed: true, message: '', paragraphs: [] };
+    }
+    const opts = { deviceFirmware: this.firmware, appFirmware: this.schemaFirmware };
+    return {
+      allowed: false,
+      // One line for a thrown error; three paragraphs for the banner.
+      message: blockMessage(this.paramVerdict, opts),
+      paragraphs: gateParagraphs(this.paramVerdict, opts),
+    };
   }
 
   _requireParamWrites() {
