@@ -2532,19 +2532,25 @@
         return div;
       };
 
-      const plainRow = (name, meta) => {
+      // Three cells, always, so the columns line up down the list even when a
+      // cell is empty. `date` rides under the name as a quieter line — it is
+      // the least useful thing on the row and was competing with the size.
+      const gridRow = (name, { date = '', size = '' } = {}) => {
         const row = document.createElement('div');
         row.className = 'exp-row';
         const n = document.createElement('span');
         n.className = 'exp-name';
         n.textContent = name;
-        row.appendChild(n);
-        if (meta) {
-          const m = document.createElement('span');
-          m.className = 'exp-meta';
-          m.textContent = meta;
-          row.appendChild(m);
+        if (date) {
+          const d = document.createElement('span');
+          d.className = 'exp-date';
+          d.textContent = date;
+          n.appendChild(d);
         }
+        const sz = document.createElement('span');
+        sz.className = 'exp-size';
+        sz.textContent = size;
+        row.append(n, sz);
         return row;
       };
 
@@ -2557,10 +2563,10 @@
       };
 
       const expRow = (e) => {
-        const row = plainRow(
-          e.title,
-          `${window.SevenExpansions.releaseLabel(e.released)} · ${window.SevenExpansions.downloadSize(e.downloadMb)} download`
-        );
+        const row = gridRow(e.title, {
+          date: window.SevenExpansions.releaseLabel(e.released),
+          size: window.SevenExpansions.downloadSize(e.downloadMb),
+        });
         const [label, cls] = PILL[e.status] || PILL.unknown;
         if (label) {
           const pill = document.createElement('span');
@@ -2580,32 +2586,32 @@
         wrap.appendChild(group(
           'is-modeled', 'Modeled engines',
           'Crumar’s physical models. Permanent — no samples, no storage, nothing to install or remove.',
-          r.modeled.map((s) => plainRow(s.name, `ID ${s.id}`))
+          r.modeled.map((s) => gridRow(s.name))
         ));
         wrap.appendChild(group(
           'is-sampled', 'Included samples',
           'These ship with every Seven. Permanent.',
-          r.included.map((s) => plainRow(s.name, `ID ${s.id}`))
+          r.included.map((s) => gridRow(s.name))
         ));
       }
 
-      const expansionRows = r.expansions.map(expRow);
+      const expansionRows = [...r.expansions]
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map(expRow);
       // Sounds the instrument reports that no catalogue entry claims. Shown,
       // never dropped: if the matching is wrong, a sound you own must appear
       // as unaccounted for rather than be silently reported missing.
       for (const s of r.unaccounted) {
-        const row = plainRow(s.name, `ID ${s.id}`);
+        const row = gridRow(s.name);
         const pill = document.createElement('span');
-        pill.className = 'exp-pill is-unverified';
+        pill.className = 'exp-pill is-unverified is-wide';
         pill.textContent = 'Installed, not in the catalogue';
         row.appendChild(pill);
         expansionRows.push(row);
       }
       wrap.appendChild(group(
         'is-sampled', 'Expansions',
-        r.connected
-          ? 'Sample sets sold separately. These are the only rows with anything to do.'
-          : 'Sample sets sold separately.',
+        'Sold separately. Install through the instrument’s own editor. Sizes are ZIP download sizes, not installed sizes.',
         expansionRows
       ));
 
@@ -2622,8 +2628,8 @@
       const note = document.createElement('p');
       note.className = 'exp-note';
       note.textContent =
-        'Sizes are the ZIP download sizes published by Crumar, not measurements from ' +
-        'your instrument — the Seven does not report the size of an installed sample set.';
+        'Sizes come from Crumar’s download page — the Seven does not report the size of ' +
+        'an installed sample set.';
       wrap.appendChild(note);
 
       const foot = document.createElement('div');

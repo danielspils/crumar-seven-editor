@@ -450,28 +450,41 @@
     .badge-warn, .sound-tag.is-warn, .warn-banner { cursor: pointer; }
     .exp-modal { max-width: 100%; }
     .exp-group { margin: 0 0 18px; }
+    /* One green in this modal, and it is the Installed pill — the thing you
+       scan for. The headings were competing with it (Daniel, 2026-08-15), so
+       modeled/sampled is carried by a rule on the left edge instead: the same
+       two colours the app uses everywhere, without shouting. */
     .exp-group h4 {
       margin: 0 0 2px; font-size: 12px; text-transform: uppercase;
       letter-spacing: .07em; color: var(--text);
+      border-left: 3px solid transparent; padding-left: 8px;
     }
-    .exp-group .exp-sub { margin: 0 0 8px; color: var(--text-dim); font-size: 12px; }
-    .exp-group.is-modeled h4 { color: var(--modeled); }
-    .exp-group.is-sampled h4 { color: var(--sampled); }
+    .exp-group.is-modeled h4 { border-left-color: var(--modeled); }
+    .exp-group.is-sampled h4 { border-left-color: var(--sampled); }
+    .exp-group .exp-sub { margin: 0 0 8px 11px; color: var(--text-dim); font-size: 12px; }
+    /* Three columns, so they line up whatever the name's length: name (fills),
+       size (right-aligned so the decimals stack), status (fixed). */
     .exp-row {
-      display: flex; align-items: baseline; gap: 10px;
-      padding: 5px 0; border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: minmax(0, 1fr) 5.5em 8.5em;
+      align-items: baseline; gap: 12px;
+      padding: 5px 0 5px 11px; border-top: 1px solid var(--line);
     }
     .exp-row:first-of-type { border-top: none; }
-    .exp-name { flex: 1 1 auto; min-width: 0; }
-    .exp-meta { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+    .exp-name { min-width: 0; }
+    .exp-date { display: block; font-size: 11px; color: var(--text-dim); }
+    .exp-size {
+      text-align: right; font-variant-numeric: tabular-nums;
+      color: var(--text-dim); font-size: 12px; white-space: nowrap;
+    }
     .exp-pill {
-      flex: 0 0 auto; font-size: 11px; padding: 1px 7px; border-radius: 9px;
+      justify-self: end; font-size: 11px; padding: 1px 7px; border-radius: 9px;
       border: 1px solid var(--line); color: var(--text-dim); white-space: nowrap;
     }
     .exp-pill.is-installed { color: var(--sampled); border-color: var(--sampled); }
     .exp-pill.is-missing { color: var(--text-dim); }
     .exp-pill.is-unverified { color: #8a6d1f; border-color: #b99a45; }
     .exp-pill.is-partial { color: #a8221c; border-color: #a8221c; }
+    .exp-pill.is-wide { grid-column: 2 / span 2; }
     .exp-note { margin: 10px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
     .exp-note strong { color: var(--text); font-weight: 600; }
     .exp-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
