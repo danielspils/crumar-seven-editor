@@ -87,9 +87,11 @@ function fakeSeven({ params, count = null, drop = new Map() }) {
 const table = (n, keyFor = (i) => `p${i}`) =>
   Array.from({ length: n }, (_, i) => ({ id: i, key: keyFor(i), label: `L${i}`, max: 127 }));
 
-const connect = async (backend, schemaParams) => {
+const connect = async (backend, schemaParams, schemaFirmware = null) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seven-gate-'));
-  const midi = new SevenMidi({ userDataDir: dir, midiBackend: backend, schemaParams, timeout: 150 });
+  const midi = new SevenMidi({
+    userDataDir: dir, midiBackend: backend, schemaParams, schemaFirmware, timeout: 150,
+  });
   await midi.connect();
   return midi;
 };
@@ -176,4 +178,47 @@ test('disconnect forgets the table and the verdict', async () => {
   await midi.disconnect();
   assert.equal(midi.paramTable, null);
   assert.equal(midi.paramVerdict, null);
+});
+
+// SEVEN_FORCE_MISMATCH exists because the closed-gate path cannot be reached
+// on the author's own instrument. These check the flag itself: that it closes
+// the gate, that it leaves the real table alone, and — the one that matters —
+// that it does nothing at all when unset.
+test('the force flag closes the gate without touching what was read', async () => {
+  process.env.SEVEN_FORCE_MISMATCH = '1.22';
+  try {
+    // With a schema firmware, so the banner's full first sentence is exercised.
+    const midi = await connect(fakeSeven({ params: table(12) }), table(12), '1.37');
+    const st = midi.status();
+    assert.equal(st.writes.allowed, false, 'gate forced closed on a matching unit');
+    assert.match(st.writes.paragraphs[0], /built against 1\.37/);
+    assert.equal(midi.paramTable.count, 12, 'the real table is still the real table');
+    assert.equal(midi.paramTable.params.length, 12, 'all 12 specs kept for the report');
+    assert.match(st.writes.paragraphs[0], /running firmware 1\.22/);
+    assert.match(st.writes.paragraphs[0], /reports 6 parameters where the app knows 12/);
+    await midi.disconnect();
+  } finally {
+    delete process.env.SEVEN_FORCE_MISMATCH;
+  }
+});
+
+test('the force flag can fake an unreadable firmware string', async () => {
+  process.env.SEVEN_FORCE_MISMATCH = 'nofw';
+  try {
+    const midi = await connect(fakeSeven({ params: table(12) }), table(12));
+    const paras = midi.status().writes.paragraphs;
+    assert.ok(!/firmware \d/.test(paras[0]), 'the firmware sentence is dropped');
+    assert.match(paras[0], /^This instrument reports 6 parameters where the app knows 12\./);
+    await midi.disconnect();
+  } finally {
+    delete process.env.SEVEN_FORCE_MISMATCH;
+  }
+});
+
+test('unset, the flag changes nothing — a matching unit still passes', async () => {
+  delete process.env.SEVEN_FORCE_MISMATCH;
+  const midi = await connect(fakeSeven({ params: table(12) }), table(12));
+  assert.equal(midi.status().writes.allowed, true);
+  assert.deepEqual(midi.status().writes.paragraphs, []);
+  await midi.disconnect();
 });

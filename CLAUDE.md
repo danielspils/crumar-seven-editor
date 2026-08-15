@@ -276,6 +276,25 @@ layout question gets an answer instead of an opinion:
 `test/ui/harness.js`). The window is real, so `getBoundingClientRect`,
 `getComputedStyle`, `getAnimations` and friends all work.
 
+**`SEVEN_FORCE_MISMATCH` forces the write gate CLOSED**, which is the only way
+to see the mismatch banner and the "Report this instrument" path on an
+instrument the app recognises. That path exists solely for someone whose Seven
+this project has never met, so it cannot otherwise be reached on this hardware
+at all — and it needs re-checking after any change to the banner, the report
+builder, or the report IPC.
+
+```
+SEVEN_FORCE_MISMATCH=1 npm start        # gate closed; real firmware named
+SEVEN_FORCE_MISMATCH=1.22 npm start     # …and the banner says 1.22
+SEVEN_FORCE_MISMATCH=nofw npm start     # …with an unreadable firmware string
+```
+
+It synthesises **only the verdict** — six fewer parameters than the instrument
+really reported. What was read from the device is left untouched, so a report
+saved under the flag still carries this unit's genuine table, and everything
+downstream of the verdict is the real code path. Unset, it does nothing;
+`npm test` asserts that.
+
 Some habits that this project earned the hard way:
 
 - **Measure, don't eyeball.** "It lines up" is worth nothing; "626 = 626" is

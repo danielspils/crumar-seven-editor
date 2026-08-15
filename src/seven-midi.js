@@ -367,6 +367,7 @@ class SevenMidi extends EventEmitter {
           this.paramTable = null;
           this.paramVerdict = unreadableVerdict(err.message);
         }
+        this._applyForcedMismatch();
       }
       this._setState('connected');
       return this.status();
@@ -743,6 +744,38 @@ class SevenMidi extends EventEmitter {
       .digest('hex')
       .slice(0, 16);
     return { count, params: specs, fingerprint, readAt: new Date().toISOString() };
+  }
+
+  // SEVEN_FORCE_MISMATCH — development only, and PERMANENT rather than a
+  // throwaway. The closed-gate path only ever runs for someone whose
+  // instrument this project has never met, so on the author's hardware it
+  // cannot be reached at all; and it has to be re-checked after any change to
+  // the banner, the report builder or the IPC. A test you can only run by
+  // owning different hardware is a test nobody runs.
+  //
+  //   SEVEN_FORCE_MISMATCH=1        pretend this unit reports six fewer
+  //                                 parameters than it really does
+  //   SEVEN_FORCE_MISMATCH=1.22     the same, and present the firmware as 1.22
+  //                                 so the banner's copy can be read
+  //   SEVEN_FORCE_MISMATCH=nofw     the same, with an unreadable firmware
+  //                                 string — the fallback wording
+  //
+  // It changes NOTHING about what was read from the instrument: the real table
+  // is left in place, so a report saved under the flag carries this unit's
+  // genuine parameters. Only the verdict is synthesised, which is the whole
+  // point — everything downstream of the verdict is then the real code path.
+  _applyForcedMismatch() {
+    const flag = process.env.SEVEN_FORCE_MISMATCH;
+    if (!flag) return;
+    const real = this.paramTable ? this.paramTable.params : [];
+    const fewer = real.slice(0, Math.max(0, real.length - 6));
+    this.paramVerdict = compareParamTables(this.schemaParams, fewer);
+    if (flag === 'nofw') this.firmware = '';
+    else if (/^\d+\.\d+$/.test(flag)) this.firmware = `CRUMAR Seven v.${flag} (SEVEN_FORCE_MISMATCH)`;
+    console.warn(
+      `[seven] SEVEN_FORCE_MISMATCH=${flag}: write gate forced CLOSED. ` +
+      'The parameter table read from the instrument is untouched.'
+    );
   }
 
   // --- Send PC (glb 3) with pending-restore marker --------------------------
