@@ -661,3 +661,32 @@ test('a new setlist records when it was created, and keeps it', async () => {
   assert.notStrictEqual(listNamed(store, 'Gig night two').touchedAt, created,
     'while touchedAt does move');
 });
+
+// --- whose sound list decides "missing" ------------------------------------
+
+test('a patch is missing when the INSTRUMENT lacks its sound, not when the schema does', () => {
+  const { store } = freshStore();
+  const file = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file;
+  // A sound this build has never heard of — an expansion the schema predates.
+  store.savePatchSound(file, 0, 'Nord Lead Expansion', true);
+
+  // Offline: the schema is all there is, and it does not know that sound.
+  const offline = entries(store).find((p) => p.file === file);
+  assert.strictEqual(offline.missing, true, 'unknown to this build while nothing is attached');
+
+  // An instrument that HAS it: not missing any more.
+  store.setDeviceSounds({ sounds: [{ id: 0, name: 'Nord Lead Expansion', sampled: true }] });
+  const attached = entries(store).find((p) => p.file === file);
+  assert.strictEqual(attached.missing, false, 'the instrument has it, so it is not missing');
+  assert.strictEqual(attached.sampled, true, 'and the instrument says it is sampled');
+
+  // An instrument that LACKS a sound the schema knows: missing, though the
+  // schema alone would have said otherwise.
+  const tine = entries(store).find((p) => p.soundName === 'Tine Piano');
+  assert.strictEqual(tine.missing, true, 'this unit does not have Tine Piano');
+
+  // Unplugged: back to the schema.
+  store.setDeviceSounds(null);
+  const after = entries(store).find((p) => p.soundName === 'Tine Piano');
+  assert.strictEqual(after.missing, false, 'the schema knows Tine Piano');
+});

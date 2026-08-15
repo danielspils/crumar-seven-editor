@@ -24,7 +24,31 @@ class LibraryStore {
     this.dir = dir;
     this.schema = schema;
     this.fixtureLibrary = fixtureLibrary;
-    this.soundByName = new Map(schema.sounds.map((s) => [s.name, s]));
+    // The SCHEMA's sounds — what this build knows about. Correct when nothing
+    // is plugged in, and wrong the moment a Seven with different expansions is.
+    this.schemaSoundByName = new Map(schema.sounds.map((s) => [s.name, s]));
+    this.deviceSounds = null; // the CONNECTED unit's table, when there is one
+  }
+
+  // The connected instrument's own sound table, pushed in on connect and
+  // cleared on disconnect (src/main.js). A patch is "missing" when the
+  // INSTRUMENT lacks its sound — not when this build has never heard of it.
+  // Those are different questions, and the second one was answering the first:
+  // an expansion sound the schema doesn't list showed as not-installed on a
+  // unit that has it, and a schema sound showed as installed on a unit that
+  // doesn't.
+  setDeviceSounds(table) {
+    this.deviceSounds = (table && table.sounds && table.sounds.length)
+      ? new Map(table.sounds.map((s) => [s.name, s]))
+      : null;
+  }
+
+  // What to resolve names against right now: the instrument if one is here,
+  // the schema otherwise. Offline, the schema is the best answer available and
+  // the honest one — it is what the app knows, and nothing is claiming to have
+  // asked an instrument.
+  get soundByName() {
+    return this.deviceSounds || this.schemaSoundByName;
   }
 
   setlistsFile() { return path.join(this.dir, 'setlists.json'); }
@@ -369,9 +393,11 @@ class LibraryStore {
   }
 
   // Display-ready entries: one per PATCH (a container may hold several).
-  // `sampled`/`missing` derive from the schema sound list; a sound the schema
-  // doesn't know is by definition not one of the built-in modeled engines, so
-  // it displays with the Sampled badge alongside the not-installed warning.
+  // `sampled`/`missing` come from the CONNECTED unit's table when there is one,
+  // and from the schema when there isn't (see soundByName). A sound the table
+  // doesn't hold is displayed with the Sampled badge alongside the
+  // not-installed warning: it is not one of the built-in modeled engines, so
+  // if it exists at all it is on an expansion this unit lacks.
   // `skipMigration` exists for one caller: generating a patch reads the library
   // to find a device-backed donor, and the migration generates patches. Without
   // it the two call each other.

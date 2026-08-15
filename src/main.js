@@ -518,6 +518,15 @@ function registerNotesIpc() {
 // to every open window. No frame bytes cross this boundary.
 function forwardMidiEvents() {
   getMidi().on('event', (ev) => {
+    // The store answers "does this instrument have that sound?" for every row
+    // in the library, and it has no MIDI handle of its own — so the table is
+    // pushed in here, and cleared the moment the instrument goes away. A stale
+    // table would describe an instrument that is no longer attached.
+    if (ev.type === 'status') {
+      try {
+        getStore().setDeviceSounds(ev.state === 'connected' ? getMidi().soundTable : null);
+      } catch { /* a broken Library folder must not break the connection */ }
+    }
     for (const win of BrowserWindow.getAllWindows()) {
       // A window can be torn down between the device sending and us
       // forwarding — the instrument keeps talking while the app closes. The

@@ -126,10 +126,20 @@
   function createRenderer(schema, defaultFor) {
     const byGroup = (g) => schema.parameters.filter((p) => p.group === g);
     const byKey = new Map(schema.parameters.map((p) => [p.key, p]));
-    const soundNames = new Set(schema.sounds.map((s) => s.name));
+    // Which sounds EXIST. Starts as the schema's list — right when nothing is
+    // plugged in — and is replaced by the connected unit's own table the moment
+    // there is one (setKnownSounds, called from app.js's setSoundList).
+    let soundNames = new Set(schema.sounds.map((s) => s.name));
     const groupLabels = schema.groups || {};
 
+    // "Missing" means THIS INSTRUMENT does not have the sound — the warning is
+    // about a patch that cannot be loaded here. Asking the schema instead
+    // answered a different question: it flagged an expansion sound on a unit
+    // that has it, and cleared a schema sound on a unit that lacks it.
     const isMissing = (patch) => !soundNames.has(patch.soundName);
+    const setKnownSounds = (list) => {
+      soundNames = new Set((list || []).map((s) => s.name));
+    };
 
     const enumLabel = (key, value) => {
       const p = byKey.get(key);
@@ -635,6 +645,7 @@
     return {
       engineGroupFor,
       isMissing,
+      setKnownSounds,
       paramRow,
       renderEngine,
       renderSection,

@@ -146,3 +146,24 @@ test('a parameter the patch does carry still renders its number', () => {
   );
   assert.match(html, /<span class="param-value">32<\/span>/);
 });
+
+test('“not installed” follows the connected instrument, not the schema', () => {
+  // Its own renderer: setKnownSounds is global to an instance, and the shared
+  // R above is used by every other test in this file.
+  const R = loadRenderer();
+  const expansion = { name: 'X', soundName: 'Nord Lead Expansion', params: {} };
+  const known = { name: 'Y', soundName: schema.sounds[0].name, params: {} };
+
+  // Nothing attached: the schema decides, and it has never seen the expansion.
+  assert.strictEqual(R.isMissing(expansion), true);
+  assert.strictEqual(R.isMissing(known), false);
+
+  // A unit that has the expansion and lacks the schema's first sound.
+  R.setKnownSounds([{ id: 0, name: 'Nord Lead Expansion', sampled: true }]);
+  assert.strictEqual(R.isMissing(expansion), false, 'this instrument has it');
+  assert.strictEqual(R.isMissing(known), true, 'and does not have the other');
+
+  // Unplugged: back to the schema's list.
+  R.setKnownSounds(schema.sounds);
+  assert.strictEqual(R.isMissing(known), false);
+});

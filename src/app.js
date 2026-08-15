@@ -59,14 +59,22 @@
   const setSoundList = (table) => {
     const src = (table && table.sounds && table.sounds.length) ? table.sounds : (schema.sounds || []);
     soundList = [...src].sort((a, b) => (a.sampled === b.sampled ? 0 : a.sampled ? 1 : -1));
+    // One list, three consumers. The renderer's not-installed warning and the
+    // picker's Instruments tab used to read schema.sounds directly, which is
+    // this build's list rather than this instrument's — so a Seven with
+    // different expansions was described by the wrong table in two places
+    // while the carousel had it right (Daniel, 2026-08-14).
+    R.setKnownSounds(soundList);
   };
-  setSoundList(null);
   // Factory values per sound, from Bank 1 (schema/factory-defaults-1.37.json).
   // Absent file -> nothing is marked as factory, rather than a guess.
   const R = SevenRenderer.createRenderer(
     schema,
     SevenDefaults.createDefaults(window.sevenAPI.getFactoryDefaults())
   );
+  // AFTER R exists: the seed call feeds it too, and `const R` is in its
+  // temporal dead zone until here — even `typeof R` throws there.
+  setSoundList(null);
 
   // Banks 1–4 mirror the INSTRUMENT, derived from the latest backup patch per
   // slot (origin bank/preset) — never demo data. The Seven can't be asked
@@ -1729,10 +1737,12 @@
         libCount.textContent = `— ${shown}`;
         if (libFiles) libFiles.textContent = `${total} file${total === 1 ? '' : 's'}`;
       },
-      // Every sound the schema knows (read off the instrument, FW 1.37) —
-      // the picker's Instruments tab. Sound-only slots reference these by NAME,
-      // never by id: ids are not portable across units (schema soundsNote).
-      sounds: schema.sounds,
+      // The picker's Instruments tab. A GETTER, read at each render, so it
+      // follows the connected unit's table the moment one is read and falls
+      // back to the schema when nothing is plugged in (setSoundList). Slots
+      // reference these by NAME, never by id: ids are not portable across
+      // units (schema soundsNote).
+      get sounds() { return soundList; },
       select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
