@@ -119,6 +119,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     disconnect: () => ipcRenderer.invoke('midi:disconnect'),
     status: () => ipcRenderer.invoke('midi:status'),
     present: () => ipcRenderer.invoke('midi:present'),
+    // Save the instrument's own description to a file the owner can attach to
+    // an issue. Offered only when the write gate is closed — see param-compat.
+    reportInstrument: () => ipcRenderer.invoke('midi:reportInstrument'),
     onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
     // Two steps: the wording (which needs main-process knowledge of what the
     // panel has told us) and the run. The dialog itself is the app's own.

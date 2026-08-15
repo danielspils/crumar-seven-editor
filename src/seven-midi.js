@@ -180,6 +180,7 @@ class SevenMidi extends EventEmitter {
     this.input = null;
     this.output = null;
     this._pending = [];
+    this._connecting = null; // in-flight connect(), shared by concurrent callers
   }
 
   // --- status ---------------------------------------------------------------
@@ -226,6 +227,12 @@ class SevenMidi extends EventEmitter {
   // parameters are still readable, and backup is the reason this matters.
   _maxParamId() {
     return this.paramTable ? this.paramTable.count - 1 : MAX_VALID_PARAM_ID;
+  }
+
+  // What connect is doing right now. Four seconds of an unchanging "Connecting…"
+  // reads as a hung app; a counter that moves reads as work (Daniel, 2026-08-14).
+  _phase(phase, done = 0, total = 0) {
+    this.emit('event', { type: 'connect-progress', phase, done, total });
   }
 
   _setState(state, extra = {}) {
@@ -293,7 +300,20 @@ class SevenMidi extends EventEmitter {
 
   async connect() {
     if (this.state === 'connected') return this.status();
+    // A second caller while the first is still working gets the SAME connect,
+    // not another one. The renderer's auto-connect tick and a hand click can
+    // arrive together — and two sequences on the wire at once means ~250
+    // interleaved requests, each client seeing the other's replies. Measured
+    // 2026-08-14: it stretched a 2.6s connect to 4.5s and made the parameter
+    // table look 1.7s slower than it is.
+    if (this._connecting) return this._connecting;
+    this._connecting = this._connect().finally(() => { this._connecting = null; });
+    return this._connecting;
+  }
+
+  async _connect() {
     this._setState('connecting');
+    this._phase('checking');
     try {
       this._openPorts();
       // Liveness probe, mandatory: STRING 4 within 500ms, one full
@@ -317,6 +337,7 @@ class SevenMidi extends EventEmitter {
       await this._restorePendingMarker();
       this.globals = await this.readGlobals();
       this.sendPcOriginal = this.globals.glb[GLB_SEND_PC];
+      this._phase('sounds');
       this.soundTable = await this.readSoundTable();
       // The parameter table is read INSIDE connect, at the cost of ~1.5s, so
       // that by the time status() says connected the write gate is already
@@ -674,7 +695,13 @@ class SevenMidi extends EventEmitter {
       } catch { /* dropped or timed out; the retry pass picks it up */ }
     };
 
-    for (let id = 0; id < count; id++) await fetchOne(id);
+    for (let id = 0; id < count; id++) {
+      await fetchOne(id);
+      // Every fifth, plus the last: often enough that the number is visibly
+      // moving, rare enough that the IPC channel isn't carrying 110 messages
+      // to say the same thing.
+      if (id % 5 === 4 || id === count - 1) this._phase('params', id + 1, count);
+    }
     // A fast burst drops the odd reply (protocol.md: one in 110, id 22). Two
     // more passes over the gaps, then it is a failed read — which BLOCKS, in
     // the same way a mismatch does. An unreadable table is an unverified one.

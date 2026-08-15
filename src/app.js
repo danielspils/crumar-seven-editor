@@ -2405,6 +2405,8 @@
     const connBtn = document.getElementById('conn-button');
     const backupBtn = document.getElementById('backup-button');
     const writeGate = document.getElementById('write-gate');
+    const writeGateText = document.getElementById('write-gate-text');
+    const reportBtn = document.getElementById('report-instrument');
     let backupRunning = false;
     // The connected unit's sound table, held so Settings can open it on
     // demand. Cleared on disconnect: it describes THIS instrument, and a
@@ -2686,7 +2688,7 @@
       // matters most.
       const gate = s.writes || { allowed: true, message: '' };
       writeGate.hidden = !!gate.allowed || s.state !== 'connected';
-      if (!writeGate.hidden) writeGate.textContent = gate.message;
+      if (!writeGate.hidden) writeGateText.textContent = gate.message;
       // Always offered: a settings gear that vanishes is a settings gear you
       // go looking for. It is the PANEL that reports there is no instrument.
       if (s.state !== 'connected') {
@@ -2695,6 +2697,24 @@
         setSettingsOpen(false);
       }
     };
+
+    // Saves the instrument's own description, reveals the file, and opens the
+    // issue page. The button says what happened rather than resetting silently,
+    // because the file lands wherever the save dialog was pointed.
+    reportBtn.addEventListener('click', async () => {
+      reportBtn.disabled = true;
+      const was = reportBtn.textContent;
+      try {
+        const r = await window.sevenAPI.midi.reportInstrument();
+        reportBtn.textContent = r.ok ? 'Report saved' : was;
+        if (!r.ok && r.error) toast(r.error);
+      } catch (err) {
+        toast(String(err.message || err));
+      } finally {
+        reportBtn.disabled = false;
+        setTimeout(() => { reportBtn.textContent = was; }, 4000);
+      }
+    });
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;
 
@@ -2834,6 +2854,16 @@
 
     window.sevenAPI.midi.onEvent((ev) => {
       if (ev.type === 'status') showStatus(ev, ev.error);
+      else if (ev.type === 'connect-progress') {
+        // Only while connecting — a stale progress line must never sit on top
+        // of a finished connection.
+        if (connRow.classList.contains('connecting')) {
+          connText.textContent =
+            ev.phase === 'sounds' ? 'Reading sounds…'
+              : ev.phase === 'params' ? `Reading parameters… ${ev.done} of ${ev.total}`
+                : 'Checking the connection…';
+        }
+      }
       else if (ev.type === 'backup-progress') {
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;

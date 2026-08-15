@@ -47,7 +47,12 @@ window.ui = (() => {
   async function waitFor(predicate, { timeout = 15000, step = 150, what = 'condition' } = {}) {
     const started = Date.now();
     while (Date.now() - started < timeout) {
-      if (predicate()) return true;
+      // AWAITED. An async predicate returns a Promise, and a Promise is always
+      // truthy — so `waitFor(async () => x === y)` returned true on its first
+      // tick and every measurement built on it was a lie. It cost three misread
+      // connect runs before the pattern showed itself (2026-08-14). Awaiting a
+      // non-promise is free, so this costs nothing for the sync case.
+      if (await predicate()) return true;
       await sleep(step);
     }
     check(false, `timed out after ${timeout}ms waiting for ${what}`);

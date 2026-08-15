@@ -201,6 +201,7 @@
        instrument, and a sentence about the instrument must not be clipped into
        a tooltip the way the status line is. */
     #write-gate {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
       padding: 9px 16px;
       background: #f6e6c8;
       color: #4a3410;
@@ -208,6 +209,20 @@
       font-size: 12px; line-height: 1.5;
     }
     #write-gate b { font-weight: 600; }
+    /* The action, right-aligned: for someone whose instrument this app cannot
+       verify, sending the table is the only useful next move — so it sits at
+       the end of the sentence that told them, not in a settings tray they
+       would have to go looking for. */
+    #write-gate-text { flex: 1 1 320px; min-width: 0; }
+    #report-instrument {
+      flex: 0 0 auto;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid rgba(74, 52, 16, 0.55); border-radius: 4px;
+      color: #4a3410; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    #report-instrument:hover { background: rgba(74, 52, 16, 0.09); }
+    #report-instrument:disabled { opacity: .5; cursor: default; }
     #connection-row .conn-dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: #66666d;
@@ -2294,7 +2309,10 @@
        does not offer a way to dismiss it: the gate lasts as long as the
        connection does, and a banner you can wave away is a banner that gets
        waved away. -->
-  <div id="write-gate" hidden></div>
+  <div id="write-gate" hidden>
+    <span id="write-gate-text"></span>
+    <button id="report-instrument" type="button">Report this instrument</button>
+  </div>
   <div id="main">
     <div id="library">
       <!-- Two labelled regions teach the core relationship: the four banks

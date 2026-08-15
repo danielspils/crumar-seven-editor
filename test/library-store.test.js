@@ -640,7 +640,7 @@ test('a backup run can still stamp a Bank 1 capture as verified', () => {
 
 // The list is ordered by creation, so the stamp has to exist and has to
 // survive every later write (Daniel, 2026-08-14).
-test('a new setlist records when it was created, and keeps it', () => {
+test('a new setlist records when it was created, and keeps it', async () => {
   const { store } = freshStore();
   store.createSetlist('Gig');
   const i = listIndex(store, 'Gig');
@@ -649,6 +649,11 @@ test('a new setlist records when it was created, and keeps it', () => {
   assert.ok(made.touchedAt, 'touchedAt is still written too');
 
   const created = made.createdAt;
+  // A real pause. Both stamps come from new Date() inside the store, and when
+  // the create and the touch land in the SAME millisecond the two strings are
+  // equal and this test fails for a reason that has nothing to do with the
+  // behaviour it checks. Seen once on 2026-08-14.
+  await new Promise((r) => setTimeout(r, 5));
   store.touchSetlist(i);
   store.renameSetlist(i, 'Gig night two');
   assert.strictEqual(listNamed(store, 'Gig night two').createdAt, created,

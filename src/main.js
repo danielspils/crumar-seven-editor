@@ -8,6 +8,11 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('el
 const fs = require('fs');
 const path = require('path');
 const { LibraryStore } = require('./library-store');
+const { buildReport, reportFileName } = require('./instrument-report');
+
+// Where "Report this instrument" sends someone. Issues are enabled on the repo
+// (checked 2026-08-15).
+const ISSUE_URL = 'https://github.com/danielspils/this-seven-goes-to-eleven/issues/new';
 
 // ---- Library IPC (the on-disk Library folder; see library-store.js) --------
 // Lazy so app.getPath is ready and a broken Library folder can't stop launch.
@@ -172,6 +177,36 @@ function registerMidiIpc() {
   ipcMain.handle('midi:status', () => getMidi().status());
   // "Is one plugged in?" — port names only, nothing opened or sent, so the
   // renderer can ask on a timer while disconnected.
+  // The report a stranger's Seven sends home. Builds the file, saves where the
+  // owner chooses, reveals it, then opens the issue page — deliberately NOT
+  // prefilled: a 110-parameter table does not fit in a URL, and a truncated
+  // table is worse than an attached one.
+  ipcMain.handle('midi:reportInstrument', async (e) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    const created = new Date().toISOString();
+    const report = buildReport({
+      appVersion: app.getVersion(),
+      schemaName: 'seven-1.37.json',
+      appParamCount: getSchema().parameters.length,
+      firmware: midi.firmware,
+      soundTable: midi.soundTable,
+      paramTable: midi.paramTable,
+      verdict: midi.paramVerdict,
+      created,
+    });
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Save instrument report',
+      defaultPath: path.join(app.getPath('desktop'), reportFileName(midi.firmware, created)),
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    });
+    if (canceled || !filePath) return { ok: false, cancelled: true };
+    fs.writeFileSync(filePath, `${JSON.stringify(report, null, 2)}\n`);
+    shell.showItemInFolder(filePath);
+    await shell.openExternal(ISSUE_URL);
+    return { ok: true, path: filePath };
+  });
   ipcMain.handle('midi:present', () => {
     try {
       return getMidi().portPresent();
