@@ -221,6 +221,16 @@ function registerMidiIpc() {
     shell.openExternal(String(url));
     return true;
   });
+  // SEVEN_UI_SIGNAL — development only. A UI test drives the app, but some of
+  // this app's tests need a HUMAN in the loop: a three-second hold on the
+  // panel, a listening judgement, a preset that only a person can press. The
+  // script polls this file and the operator writes it when the human step is
+  // done. Nothing reads it unless the env var is set.
+  ipcMain.handle('dev:signal', () => {
+    const p = process.env.SEVEN_UI_SIGNAL;
+    if (!p) return null;
+    try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
+  });
   ipcMain.handle('midi:present', () => {
     try {
       return getMidi().portPresent();

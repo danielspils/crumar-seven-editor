@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Opens a link in the system browser. The main process allowlists the host;
   // the renderer cannot open anything it likes.
   openExternal: (url) => ipcRenderer.invoke('shell:open', { url }),
+  // Development only (SEVEN_UI_SIGNAL): lets a UI test wait for a human step —
+  // a panel hold, a listening judgement — instead of guessing at a delay.
+  devSignal: () => ipcRenderer.invoke('dev:signal'),
   getExpansions: () => {
     try { return readJson('data/expansions.json'); } catch { return null; }
   },

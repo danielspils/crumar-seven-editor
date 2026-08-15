@@ -303,7 +303,13 @@ SEVEN_FORCE_MISMATCH=1.22 npm start     # …and the banner says 1.22
 SEVEN_FORCE_MISMATCH=nofw npm start     # …with an unreadable firmware string
 ```
 
-It synthesises **only the verdict** — six fewer parameters than the instrument
+**`SEVEN_UI_SIGNAL=<file>`** lets a UI test wait for a HUMAN step. Several of
+this project's tests need one — a three-second panel hold, a listening
+judgement — and a fixed sleep is not a test. The script polls
+`window.sevenAPI.devSignal()`; whoever is driving writes the file when the
+person has done their part. Unset, the call returns null and nothing polls.
+
+`SEVEN_FORCE_MISMATCH` synthesises **only the verdict** — six fewer parameters than the instrument
 really reported. What was read from the device is left untouched, so a report
 saved under the flag still carries this unit's genuine table, and everything
 downstream of the verdict is the real code path. Unset, it does nothing;
