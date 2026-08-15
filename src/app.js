@@ -2532,25 +2532,22 @@
         return div;
       };
 
-      // Three cells, always, so the columns line up down the list even when a
-      // cell is empty. `date` rides under the name as a quieter line — it is
-      // the least useful thing on the row and was competing with the size.
+      // Four cells, always, so the columns line up down the list even when a
+      // cell is empty: name, date, size, status. One line per expansion — the
+      // date sits beside the size rather than under the name.
       const gridRow = (name, { date = '', size = '' } = {}) => {
         const row = document.createElement('div');
         row.className = 'exp-row';
         const n = document.createElement('span');
         n.className = 'exp-name';
         n.textContent = name;
-        if (date) {
-          const d = document.createElement('span');
-          d.className = 'exp-date';
-          d.textContent = date;
-          n.appendChild(d);
-        }
+        const d = document.createElement('span');
+        d.className = 'exp-date';
+        d.textContent = date;
         const sz = document.createElement('span');
         sz.className = 'exp-size';
         sz.textContent = size;
-        row.append(n, sz);
+        row.append(n, d, sz);
         return row;
       };
 
@@ -2615,56 +2612,45 @@
         expansionRows
       ));
 
+      const foot = document.createElement('div');
+      foot.className = 'exp-foot';
+
+      // Offline, the one thing worth saying is how to make the list mean
+      // something. Said only when it applies.
       if (!r.connected) {
         const off = document.createElement('p');
         off.className = 'exp-note';
-        off.textContent =
-          'Nothing is connected, so this is only the published list — the app cannot say ' +
-          'which of these your Seven has. Connect the instrument and it will read its own ' +
-          'sound table and mark them.';
-        wrap.appendChild(off);
+        off.textContent = 'Connect your Seven to see which sounds are installed.';
+        foot.appendChild(off);
       }
 
-      const note = document.createElement('p');
-      note.className = 'exp-note';
-      note.textContent =
-        'Sizes come from Crumar’s download page — the Seven does not report the size of ' +
-        'an installed sample set.';
-      wrap.appendChild(note);
+      const what = document.createElement('p');
+      what.className = 'exp-note';
+      what.textContent = 'This is a list of available sounds from Crumar’s download page.';
+      foot.appendChild(what);
 
-      const foot = document.createElement('div');
-      foot.className = 'exp-foot';
-      const ftitle = document.createElement('strong');
-      ftitle.textContent = 'Installing an expansion';
-      const dongle = document.createElement('p');
-      dongle.className = 'exp-note';
-      dongle.textContent =
-        'This app cannot install expansions, and neither can any USB connection: ' +
-        'installing happens on the instrument’s own Wi-Fi editor, which needs Crumar’s ' +
-        'Wi-Fi USB adapter. Without that adapter you cannot install an expansion at all — ' +
-        'worth knowing before buying one.';
-      const steps = document.createElement('ol');
-      for (const step of [
-        'Download the expansion from crumar.it.',
-        'Copy it to a USB drive formatted FAT32.',
-        'Insert the drive into one of the instrument’s System USB ports.',
-        'Install it from the Wavetable Expansions page of the instrument’s own editor.',
-      ]) {
-        const li = document.createElement('li');
-        li.textContent = step;
-        steps.appendChild(li);
-      }
-      const link = document.createElement('p');
-      link.className = 'exp-note';
+      // No steps of our own. Crumar's page is the authority on how to install,
+      // and a copy of it here would go stale without anyone noticing
+      // (Daniel, 2026-08-15).
+      const how = document.createElement('p');
+      how.className = 'exp-note';
+      how.append(document.createTextNode('To install an expansion, follow Crumar’s installation guide at '));
       const a = document.createElement('a');
       a.href = '#';
-      a.textContent = 'crumar.it — expansions and downloads';
+      a.textContent = 'crumar.it';
       a.addEventListener('click', (ev) => {
         ev.preventDefault();
-        window.sevenAPI.openExternal('https://www.crumar.it/?a=support&b=36');
+        window.sevenAPI.openExternal('https://www.crumar.it/?a=showproduct&b=36');
       });
-      link.appendChild(a);
-      foot.append(ftitle, dongle, steps, link);
+      how.append(a, document.createTextNode('.'));
+      foot.appendChild(how);
+
+      // The one fact worth knowing BEFORE spending money on samples.
+      const adapter = document.createElement('p');
+      adapter.className = 'exp-note';
+      adapter.textContent = 'Installing needs Crumar’s Wi-Fi USB adapter.';
+      foot.appendChild(adapter);
+
       wrap.appendChild(foot);
       return wrap;
     };
@@ -2702,6 +2688,7 @@
           : 'Sample expansions',
         confirmLabel: 'Close',
         cancelLabel: 'Close',
+        tone: 'is-expansions',
       });
       m.body.appendChild(buildExpansionsBody(soundTable, deviceStorage));
       await m.action();

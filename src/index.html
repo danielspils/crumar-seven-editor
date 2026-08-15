@@ -448,6 +448,10 @@
        text, installable rows have a status pill. */
     /* The warning is a way in to the expansion list, so it says so. */
     .badge-warn, .sound-tag.is-warn, .warn-banner { cursor: pointer; }
+    /* This modal is a list of ten expansions with three data columns, not a
+       question — 440px made every second title wrap. It gets its own width;
+       nothing else changes. */
+    .seven-modal.is-expansions { width: min(620px, 94vw); }
     .exp-modal { max-width: 100%; }
     .exp-group { margin: 0 0 18px; }
     /* One green in this modal, and it is the Installed pill — the thing you
@@ -465,26 +469,30 @@
     /* Three columns, so they line up whatever the name's length: name (fills),
        size (right-aligned so the decimals stack), status (fixed). */
     .exp-row {
-      display: grid; grid-template-columns: minmax(0, 1fr) 5.5em 8.5em;
-      align-items: baseline; gap: 12px;
+      /* The name gets what is left, and the other three are sized to their
+         content: a date, a size, a pill. Too generous here and every title
+         wraps — "Venice Grand CB1898" is not a long name and should not need
+         two lines (measured 2026-08-15). */
+      display: grid; grid-template-columns: minmax(0, 1fr) 4.6em 5.2em 7.4em;
+      align-items: baseline; gap: 9px;
       padding: 5px 0 5px 11px; border-top: 1px solid var(--line);
     }
     .exp-row:first-of-type { border-top: none; }
     .exp-name { min-width: 0; }
-    .exp-date { display: block; font-size: 11px; color: var(--text-dim); }
+    .exp-date { text-align: right; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
     .exp-size {
       text-align: right; font-variant-numeric: tabular-nums;
       color: var(--text-dim); font-size: 12px; white-space: nowrap;
     }
     .exp-pill {
-      justify-self: end; font-size: 11px; padding: 1px 7px; border-radius: 9px;
+      justify-self: end; font-size: 11px; padding: 1px 6px; border-radius: 9px;
       border: 1px solid var(--line); color: var(--text-dim); white-space: nowrap;
     }
     .exp-pill.is-installed { color: var(--sampled); border-color: var(--sampled); }
     .exp-pill.is-missing { color: var(--text-dim); }
     .exp-pill.is-unverified { color: #8a6d1f; border-color: #b99a45; }
     .exp-pill.is-partial { color: #a8221c; border-color: #a8221c; }
-    .exp-pill.is-wide { grid-column: 2 / span 2; }
+    .exp-pill.is-wide { grid-column: 2 / span 3; }
     .exp-note { margin: 10px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
     .exp-note strong { color: var(--text); font-weight: 600; }
     .exp-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
