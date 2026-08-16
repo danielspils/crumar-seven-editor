@@ -224,6 +224,7 @@ class TransferRunner extends EventEmitter {
       index: -1,
       sent: [],      // slots loaded into the buffer
       confirmed: [], // slots the player said they stored
+      skipped: [],   // slots that already held the patch, read back in full
     };
     return { ...plan, started: true };
   }
@@ -292,7 +293,10 @@ class TransferRunner extends EventEmitter {
     this.running = true;
     this.cancelled = false;
     this.priorProgram = null;
-    this.state = { bank, setlistIndex: null, slots: plan.slots, index: -1, sent: [], confirmed: [] };
+    this.state = {
+      bank, setlistIndex: null, slots: plan.slots, index: -1,
+      sent: [], confirmed: [], skipped: [],
+    };
     return { ...plan, started: true };
   }
 
@@ -320,6 +324,43 @@ class TransferRunner extends EventEmitter {
         return this.finish(`The Seven did not answer the recall for preset ${i + 1}, so nothing ` +
           'was loaded for it. Check the cable and try again.');
       }
+      // IS THE WRITE NEEDED AT ALL? Read the whole slot back — every parameter,
+      // one 0x22 each, the same sweep a backup does — and compare it with the
+      // patch about to be sent. This is ~2.2s per slot and it buys two things:
+      //
+      //  1. A slot that already holds this patch needs no hold at all. The
+      //     player is told and the walk moves on.
+      //  2. It closes a hole the recall fingerprint cannot see. That
+      //     fingerprint is the sound id plus the 22 panel CCs, so a patch
+      //     differing ONLY in parameters with no CC — most of the modelled
+      //     engine controls — was written, held, and then reported as
+      //     "unchanged" by the same fingerprint logic: a successful store the
+      //     runner could not see (Daniel, 2026-08-15).
+      //
+      // THE COMPARISON IS THE FULL PARAMETER SET OR IT DOES NOT HAPPEN. If the
+      // read is short, or the patch carries fewer keys than the instrument has
+      // parameters, this falls through to a normal hold — never to a
+      // fingerprint comparison, which is the thing being fixed.
+      const already = await this._slotAlreadyHolds(patch, slot.soundName);
+      if (already) {
+        st.index = i;
+        st.skipped.push(i);
+        const step = {
+          slot: i,
+          preset: i + 1,
+          bank: st.bank,
+          name: slot.name,
+          soundName: slot.soundName,
+          alreadyThere: true,
+          // Said plainly, and never advanced silently: the player asked for
+          // eight presets and is entitled to know why one took no hold.
+          instruction: `Preset ${i + 1} already holds this patch.`,
+          done: true,
+        };
+        this.emit('event', { type: 'transfer-step', ...step });
+        return step;
+      }
+
       await this.sender.send(patch);
       st.sent.push(i);
       // Armed only after the patch is in the buffer: a burst before that could
@@ -442,6 +483,7 @@ class TransferRunner extends EventEmitter {
           resolve(ev.fingerprint);
           return;
         }
+        if (ev.type === 'current-sound') this._currentSoundId = ev.soundId;
         if (ev.type !== 'current-sound') return;
         // The 0x45 alone is the completion signal the backup run uses, and it
         // is enough to know the recall landed. Give the CC burst a moment to
@@ -478,6 +520,10 @@ class TransferRunner extends EventEmitter {
       error: error || null,
       cancelled: this.cancelled,
       confirmed: st.confirmed.map((i) => i + 1),
+      // Slots that already held the patch: nothing was sent, nothing was held,
+      // and the instrument is correct. Reported separately from stored, which
+      // is a thing the player did.
+      alreadyThere: (st.skipped || []).map((i) => i + 1),
       loadedNotConfirmed: st.sent.filter((i) => !st.confirmed.includes(i)).map((i) => i + 1),
       total: st.slots.filter((s) => s.action === 'send' || s.action === 'send-sound').length,
       // Was a SAMPLED sound among the ones actually sent? Read off the
@@ -557,6 +603,36 @@ class TransferRunner extends EventEmitter {
       const parsed = this.store.readFile(hit.file);
       return (parsed.library.patches[hit.patchIndex || 0]) || null;
     } catch { return null; }
+  }
+
+  // Every parameter the instrument has, read back from the slot the runner
+  // just recalled, compared with the patch about to be sent. True only when
+  // the sound matches AND every parameter matches AND the patch covers them
+  // all. Anything less returns false and the walk proceeds normally: a slot
+  // wrongly skipped is a preset the player believes was transferred and was
+  // not, which is worse than an unnecessary three-second hold.
+  async _slotAlreadyHolds(patch, soundName) {
+    const table = this.midi.paramTable;
+    const ids = table ? table.params.map((p) => p.id) : null;
+    if (!ids || !ids.length) return false; // no table read: no full comparison
+    const wanted = (patch && patch.params) || {};
+    if (Object.keys(wanted).length < ids.length) return false; // partial patch
+
+    // The sound first: it is one read and it rules out most slots.
+    const current = this.midi.soundTable
+      && this.midi.soundTable.sounds.find((x) => x.id === this._currentSoundId);
+    if (current && soundName && current.name !== soundName) return false;
+
+    for (const id of ids) {
+      let r = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try { r = await this.midi.readParamValue(id); break; } catch { /* retry */ }
+      }
+      if (!r) return false; // an unreadable slot is not a slot we can skip
+      if (wanted[r.key] === undefined) return false; // not covered: no claim
+      if (Number(wanted[r.key]) !== Number(r.value)) return false;
+    }
+    return true;
   }
 
   _patchFor(file) {

@@ -882,6 +882,24 @@
     });
     const nameEl = modal.body.querySelector('.tx-step-name');
     const whereEl = modal.body.querySelector('.tx-step-where');
+    const hearEl = modal.body.querySelector('.tx-step-hear');
+    const noteEls = [...modal.body.querySelectorAll('.tx-note')];
+
+    // A slot the instrument already holds needs no hold — the runner read all
+    // 110 parameters back and they match. Say so plainly and move on by
+    // itself: the alternative is a dialog asking for a three-second hold that
+    // would change nothing, which is what stalled Daniel twice on preset 6.
+    const showAlreadyThere = (step) => {
+      nameEl.textContent = step.name || '';
+      whereEl.textContent = `Bank ${step.bank} · Preset ${step.preset}`;
+      SevenPanelMini.setPreset(modal.body, step.preset);
+      hearEl.textContent = step.instruction; // "Preset 6 already holds this patch."
+      for (const el of noteEls) el.hidden = true;
+    };
+    const showHoldAgain = () => {
+      hearEl.textContent = '(you can hear it now)';
+      for (const el of noteEls) el.hidden = false;
+    };
     // textContent, not markup: patch names come off disk and the device.
     const showStep = (bank, preset, name) => {
       nameEl.textContent = name || '';
@@ -902,6 +920,20 @@
     // would close the dialog out from under the report being written into it.
     try {
       for (;;) {
+        // Nothing to hold: shown for long enough to read, then the walk moves
+        // on without asking. next(), never confirm() — the player stored
+        // nothing here and the report must not say they did.
+        if (step && step.alreadyThere) {
+          showAlreadyThere(step);
+          await new Promise((r) => setTimeout(r, 1400));
+          showHoldAgain();
+          modal.busy(true);
+          step = await window.sevenAPI.transfer.next();
+          modal.busy(false);
+          if (!step || step.type === 'transfer-done') return await transferDone(step, modal);
+          showStep(step.bank, step.preset, step.name);
+          continue;
+        }
         // Two ways forward, and the instrument usually wins: the button, or the
         // Seven telling us the preset changed under the player's hand. Neither
         // is a timer. modal.action() is idempotent, so losing this race and
@@ -949,6 +981,12 @@
       `<p class="tx-step-name">${stored} of ${report.total} ` +
       `preset${report.total === 1 ? '' : 's'} stored</p>` +
       `<p class="tx-step-where">Bank ${report.bank}</p>` +
+      // Slots that needed nothing are reported separately from slots the
+      // player stored. Both are "done"; only one was work.
+      ((report.alreadyThere || []).length
+        ? `<p class="tx-note">Preset ${report.alreadyThere.join(', ')} already held ` +
+          `${report.alreadyThere.length === 1 ? 'its patch' : 'their patches'}, so nothing was sent.</p>`
+        : '') +
       (loose.length
         ? `<p class="tx-note">Preset ${loose.join(', ')} was loaded but you did not confirm the ` +
           'hold, so it is still in the edit buffer rather than saved on the instrument.</p>'

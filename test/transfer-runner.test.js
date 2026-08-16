@@ -69,9 +69,15 @@ function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf 
   const entries = store.list().patches;
   const midi = fakeMidi({ sounds, connected, deaf, sendPc });
   const sent = [];
-  const sender = { send: async (patch) => { sent.push(patch); return { sent: 1 }; } };
+  const sender = {
+    sentCount: 0,
+    send: async (patch) => { sent.push(patch); sender.sentCount++; return { sent: 1 }; },
+  };
   return { store, midi, sender, sent, entries, dir };
 }
+
+const readPatchFile = (store, file) =>
+  JSON.parse(fs.readFileSync(path.join(store.dir, file), 'utf8')).patches[0];
 
 function setlistWith(store, refs) {
   store.createSetlist('Gig');
@@ -568,4 +574,80 @@ test('a sampled sound loaded but never confirmed still counts — it reached the
   await runner.nextSlot();
   const done = await runner.cancel();
   assert.strictEqual(done.sampledSent, true, 'it is in the edit buffer, so the caveat applies');
+});
+
+// --- a slot that already holds the patch ------------------------------------
+//
+// Auto-advance watches for a CHANGE: the Seven never announces a store, so the
+// runner compares the recall burst before the write with the one after it. A
+// store that changes nothing is therefore invisible — and Daniel hit exactly
+// that twice on Bank 3 Preset 6, whose patch came from that slot in the first
+// place. The fix is to stop asking for a hold that has nothing to do.
+
+// A fake whose parameters read back as a given patch, and which reports a
+// parameter table the way a connected instrument does.
+function fakeWithSlot({ sounds, params, soundId = 0 }) {
+  const midi = fakeMidi({ sounds, connected: true });
+  midi.paramTable = {
+    count: schema.parameters.length,
+    params: schema.parameters.map((p) => ({ id: p.id, key: p.key })),
+  };
+  midi.readParamValue = async (id) => {
+    const key = schema.parameters.find((p) => p.id === id).key;
+    return { id, key, value: params[key] };
+  };
+  midi.soundTable = { sounds: sounds.map((name, id) => ({ id, name })) };
+  midi.burstSoundId = soundId;
+  return midi;
+}
+
+const fullParams = (v) => Object.fromEntries(schema.parameters.map((p) => [p.key, v]));
+
+test('a slot already holding the patch takes no hold, and says so', async () => {
+  const { store, midi: _m, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+
+  const step = await runner.nextSlot();
+  assert.strictEqual(step.alreadyThere, true, 'the slot already holds it');
+  assert.strictEqual(step.instruction, 'Preset 1 already holds this patch.');
+  assert.strictEqual(sender.sentCount, 0, 'nothing was sent to the instrument');
+
+  const done = await runner.nextSlot();
+  assert.strictEqual(done.type, 'transfer-done');
+  assert.deepStrictEqual(done.alreadyThere, [1], 'the report says which slots were already right');
+  assert.deepStrictEqual(done.confirmed, [], 'and does not claim the player stored anything');
+});
+
+test('a slot differing in ONE parameter with no CC is still sent — the hole the fingerprint could not see', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  // rho_hrd has cc -1: invisible to the recall burst, and the whole reason the
+  // comparison reads every parameter rather than trusting the fingerprint.
+  const drifted = { ...patch.params, rho_hrd: (patch.params.rho_hrd + 1) % 128 };
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: drifted });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+
+  const step = await runner.nextSlot();
+  assert.ok(!step.alreadyThere, 'not skipped');
+  assert.match(step.instruction, /Hold preset 1/);
+  assert.strictEqual(sender.sentCount, 1, 'the patch was sent');
+});
+
+test('a short read or a partial patch never skips', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  midi.paramTable = null; // no table: no full comparison is possible
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  const step = await runner.nextSlot();
+  assert.ok(!step.alreadyThere, 'without a parameter table it asks for the hold');
+  assert.match(step.instruction, /Hold preset 1/);
 });
