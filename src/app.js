@@ -2612,7 +2612,7 @@
       // (Daniel, 2026-08-15).
       const how = document.createElement('p');
       how.className = 'exp-note';
-      how.append(document.createTextNode('To install an expansion, follow Crumar’s installation guide at '));
+      how.append(document.createTextNode('To install an expansion, visit '));
       const a = document.createElement('a');
       a.href = '#';
       a.textContent = 'crumar.it';
@@ -2620,7 +2620,7 @@
         ev.preventDefault();
         window.sevenAPI.openExternal('https://www.crumar.it/?a=support&b=36');
       });
-      how.append(a, document.createTextNode('.'));
+      how.appendChild(a);
       foot.appendChild(how);
 
       // Carried over from the old Installed-sounds modal: when this list was
