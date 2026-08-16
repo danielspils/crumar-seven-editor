@@ -388,7 +388,12 @@ class LibraryStore {
 
   // Backup setlists are date-named; a same-day re-run replaces the previous
   // run's setlist of the same name instead of stacking duplicates.
-  createOrReplaceSetlist(name, slots) {
+  // `runId` identifies the backup run that wrote this setlist, so the Backups
+  // tab can group by run rather than by date. Setlists written before this
+  // existed carry none and fall back to date grouping — nothing is backfilled,
+  // because inferring old run boundaries from timestamps would write guesses
+  // into history nobody can check afterwards (Daniel, 2026-08-16).
+  createOrReplaceSetlist(name, slots, runId = null) {
     const setlists = this.readSetlists(); // returns the validated ARRAY
     const padded = [...slots.slice(0, 8)];
     while (padded.length < 8) padded.push(null);
@@ -397,8 +402,9 @@ class LibraryStore {
     if (existing >= 0) {
       setlists[existing].slots = padded;
       setlists[existing].touchedAt = now;
+      if (runId) setlists[existing].runId = runId;
     } else {
-      setlists.push({ name, slots: padded, touchedAt: now });
+      setlists.push({ name, slots: padded, touchedAt: now, ...(runId ? { runId } : {}) });
     }
     this.writeSetlists(setlists);
   }

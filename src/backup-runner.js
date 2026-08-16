@@ -102,6 +102,12 @@ class BackupRunner extends EventEmitter {
     // elsewhere in this file keep their time and stay UTC, which is correct
     // for an instant and unambiguous besides.
     const now = new Date();
+    // WHICH RUN wrote a setlist. Grouping the Backups tab by DATE merged an
+    // aborted run with the retry that followed it — 5 slots plus 32 shown as
+    // one "37 presets · partial" row, on an instrument with 32 slots
+    // (Daniel, 2026-08-16). A run needs an identity of its own, and the
+    // instant it started is one nothing else can collide with.
+    const runId = now.toISOString();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const soundTable = this.midi.soundTable;
     const soundById = new Map(soundTable.sounds.map((s) => [s.id, s]));
@@ -242,7 +248,7 @@ class BackupRunner extends EventEmitter {
       // "Bank 1 setlist (2026-08-09)" — what it is first, when second. The
       // date stays ISO so a year of these sorts correctly by name.
       const suffix = partial ? ', partial' : '';
-      this.store.createOrReplaceSetlist(`Bank ${b + 1} setlist (${dateStr}${suffix})`, slots);
+      this.store.createOrReplaceSetlist(`Bank ${b + 1} setlist (${dateStr}${suffix})`, slots, runId);
     }
 
     // Globals snapshot alongside the setlists — record only, no restore path.

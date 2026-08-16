@@ -784,9 +784,12 @@
       (e) => e.file === next.dataset.file && (e.patchIndex || 0) === (Number(next.dataset.pi) || 0)
     );
     if (!entry) return;
-    libView.select(entry);       // the highlight, now, with no round trip
+    // The SLOT, when the row is one: two slots can hold the same file, and
+    // without this the highlight lands on every slot that shares it.
+    const slot = next.dataset.slot != null ? Number(next.dataset.slot) : null;
+    libView.select(entry, { slot });  // the highlight, now, with no round trip
     next.scrollIntoView({ block: 'nearest' });
-    selectLibraryEntry(entry, { inSetlist: !!next.closest('.lib-slot') });
+    selectLibraryEntry(entry, { inSetlist: !!next.closest('.lib-slot'), slot });
   }
 
   document.addEventListener('keydown', (e) => {

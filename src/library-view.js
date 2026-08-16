@@ -25,6 +25,9 @@
 
   const rowKey = (e) => `${e.file} ${e.patchIndex}`;
 
+  // Four banks of eight. A backup run cannot capture more than this many.
+  const SLOT_COUNT = 32;
+
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fmtDate = (iso) => {
     // "2026-08-13" parses as UTC midnight, which is 13 Aug only east of
@@ -448,15 +451,28 @@
   // A backup RUN is one dated thing containing four banks — the runner writes
   // it as four per-bank setlists, which is a storage detail rather than what a
   // player has (Daniel, 2026-08-13). Group them back into runs by date.
+  // ONE ROW PER RUN, and a run is identified by the RUN — not by the day it
+  // happened on. Grouping by date merged an aborted run with the retry that
+  // followed it: 5 slots plus 32, shown as "37 presets · partial" for an
+  // instrument with 32 slots (Daniel, 2026-08-16).
+  //
+  // Two keys, in order of what the data can support. A setlist written from
+  // 2026-08-16 carries a `runId` — the instant its run began — and that is
+  // exact. Older setlists have none, so they fall back to the date PLUS the
+  // partial flag, which separates the only case that actually occurs: an
+  // aborted run and a clean one on the same day never merge, because a partial
+  // run writes a differently-named setlist. Nothing is backfilled.
   function backupRuns(data) {
-    const runs = new Map(); // date -> { date, partial, banks: [{bank, index, name}] }
+    const runs = new Map(); // key -> { date, partial, banks: [{bank, index, name}] }
     data.setlists.forEach((s, i) => {
       const m = BACKUP_NAME.exec(s.name);
       if (!m) return;
       const date = m[2];
-      if (!runs.has(date)) runs.set(date, { date, partial: false, banks: [] });
-      const run = runs.get(date);
-      if (m[3]) run.partial = true;
+      const partial = !!m[3];
+      const key = s.runId || `${date}${partial ? '|partial' : ''}`;
+      if (!runs.has(key)) runs.set(key, { key, date, partial: false, banks: [] });
+      const run = runs.get(key);
+      if (partial) run.partial = true;
       run.banks.push({ bank: Number(m[1]), index: i, name: s.name });
     });
     for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
@@ -525,13 +541,27 @@
     return runs.map((r, i) => {
       const slots = r.banks.reduce((n, b) => n +
         ((data.setlists[b.index] || {}).slots || []).filter(Boolean).length, 0);
+      // The Seven has 32 slots. A run cannot have captured more, so a bigger
+      // number is not a number to render — it means the grouping has merged
+      // two runs, which is exactly the bug that produced "37 presets" from an
+      // aborted run plus its retry (Daniel, 2026-08-16). Say so instead of
+      // printing an impossibility, and leave a trace in the log.
+      const impossible = slots > SLOT_COUNT;
+      if (impossible) {
+        console.warn(
+          `[seven] backup run ${r.key || r.date} counted ${slots} presets — more than the ` +
+          `${SLOT_COUNT} the instrument has, so two runs have been grouped as one`
+        );
+      }
+      const count = impossible
+        ? 'more presets than the Seven has — two runs grouped as one'
+        : `${slots} preset${slots === 1 ? '' : 's'}${r.partial ? ' · partial' : ''}`;
       return (
         '<div class="lib-row lib-setlist-row">' +
         `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
         `<span class="patch-num">${i + 1}</span>` +
         `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
-        `<span class="lib-setlist-count">${slots} preset${slots === 1 ? '' : 's'}` +
-        `${r.partial ? ' · partial' : ''}</span></button>` +
+        `<span class="lib-setlist-count${impossible ? ' is-wrong' : ''}">${esc(count)}</span></button>` +
         `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
         `title="Delete the ${esc(fmtDate(r.date))} backup ` +
         `(the patches stay in the library)">` +
@@ -880,8 +910,12 @@
             `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
-        const selected = state.selected === rowKey(entry);
-        if (state.renaming === rowKey(entry)) {
+        // KEYED ON THE SLOT, not on the patch. A setlist may legitimately hold
+        // the same file in several slots — Commander Piano in 5 and 7 — and
+        // keying on identity highlighted both and loaded the first
+        // (Daniel, 2026-08-16). Position is what a slot IS.
+        const selected = state.selectedSlot === i;
+        if (state.renaming === rowKey(entry) && state.renamingSlot === i) {
           return (
             `<div class="lib-slot lib-slot-patch selected" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
             `${num}<input class="lib-rename-input" type="text" value="${esc(displayName(entry))}" spellcheck="false">` +
@@ -1080,7 +1114,11 @@
           if (setlistRow) state.renamingSetlist = Number(setlistRow.dataset.setlist);
           else {
             const entry = entryAt(patchRow);
-            if (entry) state.renaming = rowKey(entry);
+            if (entry) {
+              state.renaming = rowKey(entry);
+              state.renamingSlot = patchRow && patchRow.dataset.slot != null
+                ? Number(patchRow.dataset.slot) : null;
+            }
           }
           render();
           return;
@@ -1246,6 +1284,9 @@
         const entry = entryAt(row);
         if (entry) {
           state.selected = rowKey(entry);
+          // Inside a setlist the slot is the selection; outside one there is no
+          // slot and the patch is.
+          state.selectedSlot = row.dataset.slot != null ? Number(row.dataset.slot) : null;
           render();
           // Tell app.js whether this click was inside a setlist, which is
           // what decides between "select" and "select and play".
@@ -1523,8 +1564,10 @@
         }
         render();
       },
-      beginRename(entry) {
+      beginRename(entry, opts = {}) {
         state.renaming = rowKey(entry);
+        state.renamingSlot = Number.isInteger(opts.slot) ? opts.slot
+          : (Number.isInteger(state.selectedSlot) ? state.selectedSlot : null);
         render();
       },
       beginSetlistRename(index) {
@@ -1565,8 +1608,11 @@
         state.selected = `${file} ${patchIndex || 0}`;
         render();
       },
-      select(entry) {
+      // `slot` is the setlist position when the selection is a slot. Passing
+      // it is what keeps two slots holding one file from both lighting up.
+      select(entry, opts = {}) {
         state.selected = entry ? rowKey(entry) : null;
+        state.selectedSlot = Number.isInteger(opts.slot) ? opts.slot : null;
         render();
       },
       patchCount: () => data.patches.filter((e) => !e.invalid).length,

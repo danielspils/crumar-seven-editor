@@ -132,3 +132,97 @@ test('patch rows carry no date — this list is current state', () => {
   assert.ok(!/backed up/.test(html), 'no "backed up …" on a row');
   assert.ok(!/created \d|created (a|an|one) /i.test(html), 'and no "created …" either');
 });
+
+// --- a slot is a position, not a patch --------------------------------------
+//
+// A setlist may hold the same file in several slots. Keying selection on the
+// patch highlighted every slot that shared it and loaded the first: arrow-down
+// from slot 6 lit 5 AND 7 and opened 5 (Daniel, 2026-08-16).
+
+const twiceSetlist = {
+  patches: [
+    { file: 'commander.sevenlib.json', patchIndex: 0, name: 'Commander Piano w/ pad',
+      soundName: 'Tine Piano', params: {}, origin: { kind: 'created', date: '2026-08-01T00:00:00Z' } },
+    { file: 'felt.sevenlib.json', patchIndex: 0, name: 'Felt Piano',
+      soundName: 'Tine Piano', params: {}, origin: { kind: 'created', date: '2026-08-01T00:00:00Z' } },
+  ],
+  setlists: [{
+    name: 'Gig',
+    slots: [null, null, null, null, 'commander.sevenlib.json', 'felt.sevenlib.json',
+      'commander.sevenlib.json', null],
+  }],
+  files: 2,
+};
+
+const litSlots = (html) =>
+  [...html.matchAll(/class="lib-slot lib-slot-patch selected[^"]*"[^>]*data-slot="(\d+)"/g)]
+    .map((m) => Number(m[1]));
+
+test('only the selected SLOT highlights, even when another holds the same file', () => {
+  for (const slot of [4, 6]) {
+    const html = SevenLibraryView.renderBody(twiceSetlist, {
+      tab: 'setlists', setlistIndex: 0, selectedSlot: slot,
+      selected: 'commander.sevenlib.json 0', search: '',
+    });
+    assert.deepStrictEqual(litSlots(html), [slot], `slot ${slot} alone`);
+  }
+});
+
+test('with no slot selected, no slot is lit — identity alone never selects one', () => {
+  const html = SevenLibraryView.renderBody(twiceSetlist, {
+    tab: 'setlists', setlistIndex: 0, selected: 'commander.sevenlib.json 0',
+    selectedSlot: null, search: '',
+  });
+  assert.deepStrictEqual(litSlots(html), []);
+});
+
+// --- one row per RUN, not per day -------------------------------------------
+
+const bankSetlist = (bank, date, filled, { partial = false, runId = null } = {}) => ({
+  name: `Bank ${bank} setlist (${date}${partial ? ', partial' : ''})`,
+  slots: Array.from({ length: 8 }, (_, i) => (i < filled ? `b${bank}s${i}.json` : null)),
+  ...(runId ? { runId } : {}),
+});
+
+const runCounts = (html) =>
+  [...html.matchAll(/class="lib-setlist-count[^"]*">([^<]+)</g)].map((m) => m[1]);
+
+test('an aborted run and its retry are two rows, not one 37-preset row', () => {
+  const setlists = [
+    bankSetlist(1, '2026-08-16', 8), bankSetlist(2, '2026-08-16', 8),
+    bankSetlist(3, '2026-08-16', 8), bankSetlist(4, '2026-08-16', 8),
+    bankSetlist(1, '2026-08-16', 5, { partial: true }),
+  ];
+  const html = SevenLibraryView.renderBody({ patches: [], setlists, files: 0 },
+    { tab: 'backups', search: '' });
+  assert.deepStrictEqual(runCounts(html), ['5 presets · partial', '32 presets']);
+});
+
+test('a runId groups exactly, even for two runs of the same shape on one day', () => {
+  const setlists = [
+    bankSetlist(1, '2026-08-17', 8, { runId: '2026-08-17T09:00:00Z' }),
+    bankSetlist(1, '2026-08-17', 8, { runId: '2026-08-17T21:00:00Z' }),
+  ];
+  // Same name, so only a runId can tell them apart.
+  setlists[1].name = 'Bank 2 setlist (2026-08-17)';
+  const html = SevenLibraryView.renderBody({ patches: [], setlists, files: 0 },
+    { tab: 'backups', search: '' });
+  assert.deepStrictEqual(runCounts(html), ['8 presets', '8 presets'], 'two runs, two rows');
+});
+
+test('a count above 32 is never rendered — it means two runs were merged', () => {
+  // Forced: two runs sharing a runId, which cannot happen but must not print
+  // an impossible number if it ever does.
+  const id = '2026-08-18T10:00:00Z';
+  const setlists = [
+    bankSetlist(1, '2026-08-18', 8, { runId: id }), bankSetlist(2, '2026-08-18', 8, { runId: id }),
+    bankSetlist(3, '2026-08-18', 8, { runId: id }), bankSetlist(4, '2026-08-18', 8, { runId: id }),
+    { ...bankSetlist(1, '2026-08-18', 5, { runId: id }), name: 'Bank 1 setlist (2026-08-18)' },
+  ];
+  const html = SevenLibraryView.renderBody({ patches: [], setlists, files: 0 },
+    { tab: 'backups', search: '' });
+  const counts = runCounts(html);
+  assert.strictEqual(counts.length, 1);
+  assert.match(counts[0], /more presets than the Seven has/);
+  assert.ok(!/\d+ presets/.test(counts[0]), 'no impossible number on screen');
+});
