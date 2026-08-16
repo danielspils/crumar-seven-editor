@@ -2,7 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { backupRuns } = require('../src/library-view.js');
+const SevenLibraryView = require('../src/library-view.js');
+const { backupRuns } = SevenLibraryView;
 
 // A backup run is stored as four per-bank setlists sharing a date. These build
 // that shape so the tests read as what the library actually holds.
@@ -69,4 +70,65 @@ test('a run remembers which setlist each bank is', () => {
   assert.deepEqual(newest.banks.map((b) => b.index), [4, 5, 6, 7],
     'the second run occupies the second four setlists');
   assert.deepEqual(runs[1].banks.map((b) => b.index), [0, 1, 2, 3]);
+});
+
+// --- the Patches tab shows current state ------------------------------------
+//
+// A slot backed up five times leaves five records on disk, all generated from
+// the same slot and sound, told apart only by a date. "From the Seven" answers
+// "what is on my instrument", so it carries the newest record per slot — at
+// most 32 rows — and the older ones stay on disk, reachable through Backups.
+
+const capture = (bank, preset, date, name) => ({
+  file: `b${bank}p${preset}-${date}.sevenlib.json`,
+  patchIndex: 0,
+  name,
+  soundName: 'Tine Piano',
+  params: {},
+  origin: { kind: 'backup', bank, preset, date },
+});
+
+test('“From the Seven” lists the newest record per slot, not every capture', () => {
+  const patches = [
+    capture(3, 1, '2026-08-09T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
+    capture(3, 1, '2026-08-12T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
+    capture(3, 1, '2026-08-16T10:00:00Z', 'Kitchen Dishes Delay'),
+    capture(3, 2, '2026-08-16T10:00:00Z', 'Bank 3 Preset 2 — Tine Piano'),
+    { file: 'mine.sevenlib.json', patchIndex: 0, name: 'My Patch', soundName: 'Tine Piano',
+      params: {}, origin: { kind: 'created', date: '2026-08-15T10:00:00Z' } },
+  ];
+  const html = SevenLibraryView.renderBody(
+    { patches, setlists: [], files: patches.length },
+    { tab: 'patches', patchScope: 'seven', search: '' }
+  );
+  const rows = (html.match(/class="lib-row lib-patch/g) || []).length;
+  assert.strictEqual(rows, 2, 'two slots, two rows — not four captures');
+  assert.ok(html.includes('Kitchen Dishes Delay'), 'the newest record for the slot');
+  assert.ok(!html.includes('>Bank 3 Preset 1 — Tine Piano<'), 'and not the superseded ones');
+});
+
+test('a superseded capture is not counted in any scope', () => {
+  const patches = [
+    capture(3, 1, '2026-08-09T10:00:00Z', 'old'),
+    capture(3, 1, '2026-08-16T10:00:00Z', 'new'),
+  ];
+  for (const scope of ['seven', 'all']) {
+    const html = SevenLibraryView.renderBody(
+      { patches, setlists: [], files: 2 }, { tab: 'patches', patchScope: scope, search: '' }
+    );
+    assert.strictEqual((html.match(/class="lib-row lib-patch/g) || []).length, 1, scope);
+  }
+});
+
+test('patch rows carry no date — this list is current state', () => {
+  const patches = [
+    capture(3, 1, '2026-08-16T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
+    { file: 'mine.sevenlib.json', patchIndex: 0, name: 'My Patch', soundName: 'Tine Piano',
+      params: {}, origin: { kind: 'created', date: '2026-08-15T10:00:00Z' } },
+  ];
+  const html = SevenLibraryView.renderBody(
+    { patches, setlists: [], files: 2 }, { tab: 'patches', patchScope: 'all', search: '' }
+  );
+  assert.ok(!/backed up/.test(html), 'no "backed up …" on a row');
+  assert.ok(!/created \d|created (a|an|one) /i.test(html), 'and no "created …" either');
 });

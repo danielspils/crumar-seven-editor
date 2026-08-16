@@ -178,8 +178,12 @@
     // words the app already uses elsewhere. "Captured" was the file format's
     // internal term leaking into the window; the button says "Back up
     // instrument", so the row says "backed up" (Daniel, 2026-08-13).
-    const context = !o.date ? ''
-      : `${o.kind === 'backup' ? 'backed up' : 'created'} ${ago(o.date)}`;
+    // NO DATE. This list is current state now — the newest record per slot —
+    // so "backed up today" on every row is a column of the same word, and for
+    // a patch you made the date was already the least useful thing on the line.
+    // Dates live in Backups, where they distinguish one run from another
+    // (Daniel, 2026-08-16).
+    const context = '';
     // The sound cell is NEWS, not a column that must be filled: it appears
     // only when the instrument differs from what the patch is called. Most
     // rows are quiet, because a backup patch is auto-named after its own
@@ -273,7 +277,7 @@
     // browse every Rhodes you have ever had in one place; a captured one is
     // reached through its backup.
     const list = data.patches.filter(
-      (e) => inScope(e, state.patchScope) && matches(e, state.search)
+      (e) => inScope(e, state.patchScope, newestPerSlot(data.patches)) && matches(e, state.search)
     );
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
@@ -312,17 +316,50 @@
 
   // Which patches a scope admits. `mine` is what the tab always showed.
   const isFromSeven = (e) => (e.origin || {}).kind === 'backup';
-  const inScope = (e, scope) => (
-    scope === 'all' ? !e.invalid
-      : scope === 'seven' ? (!e.invalid && isFromSeven(e))
-        : (!e.invalid && !isFromSeven(e))
-  );
 
-  const scopeCounts = (patches) => ({
-    mine: patches.filter((e) => inScope(e, 'mine')).length,
-    seven: patches.filter((e) => inScope(e, 'seven')).length,
-    all: patches.filter((e) => inScope(e, 'all')).length,
-  });
+  // CURRENT STATE, not history. A slot backed up five times has five records
+  // on disk, all called "Bank 3 Preset 1 — Tine Piano", told apart only by a
+  // date — a wall of near-duplicates where the answer to "what is on my Seven"
+  // should be at most 32 rows. So this list carries the NEWEST record per slot
+  // and the older ones stay exactly where they are: on disk, and reachable
+  // through Backups, which is where dates belong (Daniel, 2026-08-16).
+  //
+  // Nothing is deleted and nothing is hidden from the tab that is about
+  // history. The accepted consequence is that a superseded version cannot be
+  // sent straight from Patches: restoring one goes through Backups, which
+  // should be a deliberate act.
+  const slotKey = (e) => `${e.origin.bank}:${e.origin.preset}`;
+  const capturedAt = (e) => String((e.origin || {}).date || (e.origin || {}).captured || '');
+
+  function newestPerSlot(patches) {
+    const best = new Map();
+    for (const e of patches) {
+      if (e.invalid || !isFromSeven(e)) continue;
+      const k = slotKey(e);
+      const prev = best.get(k);
+      // Ties go to the one listed later: same date, and the list is already in
+      // a stable order, so this picks one rather than flickering between them.
+      if (!prev || capturedAt(e) >= capturedAt(prev)) best.set(k, e);
+    }
+    return new Set([...best.values()]);
+  }
+
+  // The scope filter needs the whole list to know which record is newest, so
+  // it is computed once per render and handed in.
+  const inScope = (e, scope, current) => {
+    if (e.invalid) return false;
+    if (!isFromSeven(e)) return scope !== 'seven';
+    return scope !== 'mine' && (!current || current.has(e));
+  };
+
+  const scopeCounts = (patches) => {
+    const current = newestPerSlot(patches);
+    return {
+      mine: patches.filter((e) => inScope(e, 'mine', current)).length,
+      seven: patches.filter((e) => inScope(e, 'seven', current)).length,
+      all: patches.filter((e) => inScope(e, 'all', current)).length,
+    };
+  };
 
   // A capture is filed by WHERE IT CAME FROM, not by its name. Five Tine
   // Pianos and four DX captures sorted alphabetically are a wall of
@@ -988,7 +1025,9 @@
     // Patches, runs on Backups, setlists on Setlists.
     function visibleCount() {
       if (state.tab === 'patches') {
-        return data.patches.filter((e) => inScope(e, state.patchScope) && matches(e, state.search)).length;
+        return data.patches.filter(
+          (e) => inScope(e, state.patchScope, newestPerSlot(data.patches)) && matches(e, state.search)
+        ).length;
       }
       if (state.tab === 'backups') return backupRuns(data).length;
       return data.setlists.filter((s2) => !BACKUP_NAME.test(s2.name)).length;
@@ -1514,7 +1553,11 @@
         const target = data.patches.find(
           (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
         );
-        if (target && state.tab === 'patches' && !inScope(target, state.patchScope)) {
+        // A superseded capture is no longer in ANY patches scope — it lives in
+        // Backups now. Switching scope cannot reveal it, and this says so
+        // rather than moving the list and leaving the row unfound.
+        const current = newestPerSlot(data.patches);
+        if (target && state.tab === 'patches' && !inScope(target, state.patchScope, current)) {
           state.patchScope = isFromSeven(target) ? 'seven' : 'mine';
           if (on.scopeChanged) on.scopeChanged(state.patchScope);
         }
