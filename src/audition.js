@@ -85,18 +85,18 @@
       `<span class="save-actions">` +
       `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
       'Save to Computer</button>' +
-      (isDonorFile
-        ? `<span class="save-sep" aria-hidden="true">·</span>` +
-          `<button type="button" class="save-seven-link" data-duplicate-edit>Duplicate and edit</button>`
-        : '') +
-      // LAST of the three, and the only one that touches the instrument: down
-      // to disk, sideways to a copy, then out to the Seven. Absent on Bank 1,
-      // where a store is refused by the hardware — a control that explains why
-      // it cannot work should not be a control.
+      // The two destinations first, together: the computer, then the
+      // instrument. Absent on Bank 1, where the hardware refuses a store — a
+      // control that explains why it cannot work should not be a control.
       (onFactoryBank
         ? ''
         : `<span class="save-sep" aria-hidden="true">·</span>` +
           `<button type="button" class="save-seven-link" data-save-to-seven>Send to Seven</button>`) +
+      // Then the one that goes nowhere: a copy, on this computer, to edit.
+      (isDonorFile
+        ? `<span class="save-sep" aria-hidden="true">·</span>` +
+          `<button type="button" class="save-seven-link" data-duplicate-edit>Duplicate and edit</button>`
+        : '') +
       `</span>` +
       (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
       `</div>`;
