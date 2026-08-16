@@ -2689,6 +2689,21 @@
     };
 
     const openSoundsModal = async () => {
+      // STRUCTURAL GUARD, not a fix for a bug anyone reproduced. A measurement
+      // on 2026-08-15 once reported this modal's contents twice, which would
+      // mean two stacked modals; a clean re-run showed one, and the cause was
+      // never found. Rather than chase an intermittent by clicking, this makes
+      // it impossible: if a Sounds modal is already open, the second call
+      // focuses it instead of building another, and says so loudly enough to
+      // find in a log. The likeliest cause would be a listener bound twice, and
+      // a guard here covers that wherever it might happen.
+      const existing = document.querySelector('.seven-modal.is-expansions');
+      if (existing) {
+        console.warn('[seven] Sounds modal asked to open while already open — focusing the existing one');
+        const focusable = existing.querySelector('.seven-modal-ok, .seven-modal-cancel, button');
+        if (focusable) focusable.focus();
+        return;
+      }
       // The header IS the answer at a glance: how many sounds this instrument
       // has, and how many more exist to buy. Offline there is no first number,
       // and the title says what the list is instead of implying it describes
