@@ -2483,38 +2483,42 @@
       // Four cells, always, so the columns line up down the list even when a
       // cell is empty: name, date, size, status. One line per expansion — the
       // date sits beside the size rather than under the name.
-      // The permanent sixteen: a name and the instrument's own id. No date, no
-      // size, no status — there is nothing to install or remove, and a status
-      // column here would be a column of blanks.
+      // POSITION, not the wire id. The instrument numbers its sounds from 0,
+      // and every capture, instrument report and protocol note uses that — but
+      // a list ending at 23 reads as 23 sounds, so the list counts from 1
+      // (Daniel, 2026-08-15). The offset lives here and nowhere else: nothing
+      // addressed to the device ever goes through it.
+      const position = (id) => String(id + 1);
+
+      // The permanent sixteen: a number and a name. No size, no status — there
+      // is nothing to install or remove, and a status column here would be a
+      // column of blanks.
       const idRow = (sound) => {
         const row = document.createElement('div');
         row.className = 'exp-row is-plain';
+        const id = document.createElement('span');
+        id.className = 'exp-id';
+        id.textContent = position(sound.id);
         const n = document.createElement('span');
         n.className = 'exp-name';
         n.textContent = sound.name;
-        const id = document.createElement('span');
-        id.className = 'exp-id';
-        id.textContent = String(sound.id);
-        row.append(n, id);
+        row.append(id, n);
         return row;
       };
 
-      const gridRow = (name, { ids = '', date = '', size = '' } = {}) => {
+      const gridRow = (name, { ids = '', size = '' } = {}) => {
         const row = document.createElement('div');
         row.className = 'exp-row';
-        const n = document.createElement('span');
-        n.className = 'exp-name';
-        n.textContent = name;
         const idc = document.createElement('span');
         idc.className = 'exp-id';
         idc.textContent = ids;
-        const d = document.createElement('span');
-        d.className = 'exp-date';
-        d.textContent = date;
+        const n = document.createElement('span');
+        n.className = 'exp-name';
+        n.textContent = name;
         const sz = document.createElement('span');
         sz.className = 'exp-size';
         sz.textContent = size;
-        row.append(n, idc, d, sz);
+        row.append(idc, n, sz);
         return row;
       };
 
@@ -2528,11 +2532,10 @@
 
       const expRow = (e) => {
         const row = gridRow(e.title, {
-          // The instrument's own ids for the sounds this download supplies —
-          // several where it supplies several, and NOTHING where the unit does
-          // not have it. An id that isn't on the instrument doesn't exist.
-          ids: (e.ids || []).join(', '),
-          date: window.SevenExpansions.releaseLabel(e.released),
+          // Where this download's sounds sit in the list — several where it
+          // supplies several, and NOTHING where the unit does not have it. A
+          // sound that isn't on the instrument has no position.
+          ids: (e.ids || []).map(position).join(', '),
           size: window.SevenExpansions.downloadSize(e.downloadMb),
         });
         const [label, cls] = PILL[e.status] || PILL.unknown;
@@ -2582,7 +2585,7 @@
       // never dropped: if the matching is wrong, a sound you own must appear
       // as unaccounted for rather than be silently reported missing.
       for (const s of r.unaccounted) {
-        const row = gridRow(s.name, { ids: String(s.id) });
+        const row = gridRow(s.name, { ids: position(s.id) });
         const pill = document.createElement('span');
         pill.className = 'exp-pill is-unverified is-wide';
         pill.textContent = 'Installed, not in the catalogue';

@@ -5,8 +5,10 @@
 // Two sources, and they are not equal:
 //
 //   THE CATALOGUE (data/expansions.json) is Crumar's published list — titles,
-//   dates and ZIP DOWNLOAD sizes copied from their support page. It says what
-//   EXISTS. It is documentation, not evidence: no size here was measured on an
+//   release dates and ZIP DOWNLOAD sizes copied from their support page. It
+//   says what EXISTS. The release dates are kept as data but are no longer
+//   shown: beside a device-sourced number they read as install dates, and the
+//   Seven reports nothing of the kind (Daniel, 2026-08-15). It is documentation, not evidence: no size here was measured on an
 //   instrument, and installed size is not known to equal download size.
 //
 //   THE SOUND TABLE, read from the connected unit at connect, says what is
@@ -103,13 +105,5 @@
   // that is a number of unknown meaning (docs/protocol.md).
   const downloadSize = (mb) => (typeof mb === 'number' ? `${mb.toFixed(2)} Mb` : '—');
 
-  // "2024-04" -> "Apr 2024". Month precision is all Crumar publishes.
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function releaseLabel(released) {
-    const m = /^(\d{4})-(\d{2})$/.exec(String(released || ''));
-    if (!m) return '';
-    return `${MONTHS[Number(m[2]) - 1] || ''} ${m[1]}`.trim();
-  }
-
-  return { classify, kindOf, downloadSize, releaseLabel, MODELED_MAX, INCLUDED_MAX };
+  return { classify, kindOf, downloadSize, MODELED_MAX, INCLUDED_MAX };
 });

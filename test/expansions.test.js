@@ -9,7 +9,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { classify, kindOf, downloadSize, releaseLabel } = require('../src/expansions');
+const { classify, kindOf, downloadSize } = require('../src/expansions');
 
 const catalogue = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'data', 'expansions.json'), 'utf8')
@@ -121,9 +121,6 @@ test('sizes are printed as the download sizes they are, never converted or summe
   assert.equal(downloadSize(354.09), '354.09 Mb');
   assert.equal(downloadSize(248.5), '248.50 Mb');
   assert.equal(downloadSize(null), '—');
-  assert.equal(releaseLabel('2024-04'), 'Apr 2024');
-  assert.equal(releaseLabel('2019-01'), 'Jan 2019');
-  assert.equal(releaseLabel(''), '');
 });
 
 test('the catalogue file itself is complete and honest', () => {
