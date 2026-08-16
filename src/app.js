@@ -975,14 +975,24 @@
     if (!report) return;
     const stored = report.confirmed.length;
     const loose = report.loadedNotConfirmed;
+    const already = (report.alreadyThere || []).length;
+    // Every slot the run meant to write already held its patch: nothing was
+    // sent, nothing was held, and the instrument is correct.
+    const nothingNeeded = !report.error && !report.cancelled
+      && stored === 0 && already > 0 && already === report.total;
     const bodyHtml =
       (report.error ? `<p class="tx-note tx-alarm">${esc(report.error)}</p>` : '') +
-      `<p class="tx-step-name">${stored} of ${report.total} ` +
-      `preset${report.total === 1 ? '' : 's'} stored</p>` +
-      `<p class="tx-step-where">Bank ${report.bank}</p>` +
+      // A run where every slot already held its patch stored nothing, and
+      // "0 of 8 presets stored" reads as failure when the truth is that the
+      // bank was already right (Daniel, 2026-08-16).
+      (nothingNeeded
+        ? `<p class="tx-step-name">Bank ${report.bank} already matched — nothing needed storing</p>`
+        : `<p class="tx-step-name">${stored} of ${report.total} ` +
+          `preset${report.total === 1 ? '' : 's'} stored</p>` +
+          `<p class="tx-step-where">Bank ${report.bank}</p>`) +
       // Slots that needed nothing are reported separately from slots the
       // player stored. Both are "done"; only one was work.
-      ((report.alreadyThere || []).length
+      (already && !nothingNeeded
         ? `<p class="tx-note">Preset ${report.alreadyThere.join(', ')} already held ` +
           `${report.alreadyThere.length === 1 ? 'its patch' : 'their patches'}, so nothing was sent.</p>`
         : '') +
@@ -1961,13 +1971,13 @@
       // identical runs collapsed into a span and the trash icon had to remove
       // every night the row stood for; each backup has its own row again
       // (Daniel, 2026-08-14).
-      async deleteBackup(date) {
-        const day = String(date || '');
-        if (!day) return;
-        const re = new RegExp(`^Bank [1-4] setlist \\(${day}(, partial)?\\)$`);
-        const hits = libData.setlists
-          .map((s2, i) => ({ s2, i }))
-          .filter(({ s2 }) => re.test(s2.name));
+      // Takes the RUN — its exact setlist indexes — rather than a date. A date
+      // pattern matched every setlist of that day, so deleting one of two runs
+      // took the other with it (Daniel, 2026-08-16).
+      async deleteBackup(run) {
+        const hits = ((run && run.indexes) || [])
+          .filter((i) => libData.setlists[i])
+          .map((i) => ({ i }));
         if (!hits.length) return;
         const ok = await SevenModal.confirm({
           title: 'Delete this backup?',

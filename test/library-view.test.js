@@ -197,7 +197,8 @@ test('an aborted run and its retry are two rows, not one 37-preset row', () => {
   ];
   const html = SevenLibraryView.renderBody({ patches: [], setlists, files: 0 },
     { tab: 'backups', search: '' });
-  assert.deepStrictEqual(runCounts(html), ['5 presets · partial', '32 presets']);
+  // Newest first: the retry ran after the run that stopped.
+  assert.deepStrictEqual(runCounts(html), ['32 presets', '5 presets · failed']);
 });
 
 test('a runId groups exactly, even for two runs of the same shape on one day', () => {
@@ -231,4 +232,57 @@ test('a count above 32 is never rendered — it means two runs were merged', () 
   // never a constant, so the modal can say "37" without anyone typing 37.
   assert.match(html, /data-over-count="37"/);
   assert.match(html, /role="button"/, 'and it asks to be clicked');
+});
+
+test('each run row opens ITS run, not the first one sharing its date', () => {
+  const setlists = [
+    bankSetlist(1, '2026-08-16', 8), bankSetlist(2, '2026-08-16', 8),
+    bankSetlist(3, '2026-08-16', 8), bankSetlist(4, '2026-08-16', 8),
+    bankSetlist(1, '2026-08-16', 5, { partial: true }),
+  ];
+  const data = { patches: [], setlists, files: 0 };
+  const keys = [...SevenLibraryView.renderBody(data, { tab: 'backups', search: '' })
+    .matchAll(/data-backup="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepStrictEqual(keys, ['2026-08-16', '2026-08-16|partial'],
+    'two rows, two keys — a date alone could not tell them apart');
+
+  const header = (key) => {
+    const html = SevenLibraryView.renderBody(data, { tab: 'backups', backupRun: key, search: '' });
+    return /lib-setlist-name">([^<]*)</.exec(html)[1];
+  };
+  assert.strictEqual(header('2026-08-16|partial'), '16 Aug · failed');
+  assert.strictEqual(header('2026-08-16'), '16 Aug', 'the clean run opens as itself');
+});
+
+test('runs sort newest first, and a later run of the same day leads', () => {
+  // Stamped: the retry started an hour after the aborted run, so it leads.
+  const stamped = [
+    bankSetlist(1, '2026-08-16', 5, { partial: true, runId: '2026-08-16T09:00:00Z' }),
+    bankSetlist(1, '2026-08-16', 8, { runId: '2026-08-16T10:00:00Z' }),
+    bankSetlist(2, '2026-08-16', 8, { runId: '2026-08-16T10:00:00Z' }),
+  ];
+  assert.deepStrictEqual(
+    runCounts(SevenLibraryView.renderBody({ patches: [], setlists: stamped, files: 0 },
+      { tab: 'backups', search: '' })),
+    ['16 presets', '5 presets · failed']
+  );
+
+  // Unstamped, written before runIds existed: a partial run sorts last of the
+  // two, which is the only case that can share a date.
+  const legacy = [
+    bankSetlist(1, '2026-08-16', 5, { partial: true }),
+    bankSetlist(1, '2026-08-16', 8), bankSetlist(2, '2026-08-16', 8),
+  ];
+  assert.deepStrictEqual(
+    runCounts(SevenLibraryView.renderBody({ patches: [], setlists: legacy, files: 0 },
+      { tab: 'backups', search: '' })),
+    ['16 presets', '5 presets · failed']
+  );
+
+  // And days still sort newest first.
+  const days = [bankSetlist(1, '2026-08-12', 8), bankSetlist(1, '2026-08-16', 8)];
+  const html = SevenLibraryView.renderBody({ patches: [], setlists: days, files: 0 },
+    { tab: 'backups', search: '' });
+  const names = [...html.matchAll(/lib-setlist-name">([^<]+)</g)].map((m) => m[1]);
+  assert.deepStrictEqual(names, ['16 Aug Backup', '12 Aug Backup']);
 });

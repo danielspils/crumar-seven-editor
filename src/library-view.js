@@ -422,7 +422,9 @@
 
   // "Bank 2 setlist (2026-08-12)" — a dated RECORD written by a backup run, as
   // opposed to a setlist someone built for a gig.
-  const BACKUP_NAME = /^Bank ([1-4]) setlist \((\d{4}-\d{2}-\d{2})(, partial)?\)$/;
+  // "failed" is what a stopped run is called now; ", partial" is what runs
+  // before 2026-08-16 wrote, and those setlists are still on disk.
+  const BACKUP_NAME = /^Bank ([1-4]) setlist \((\d{4}-\d{2}-\d{2})(, (?:partial|failed))?\)$/;
 
   // Most recently touched first — made, edited, or opened. A backup run stamps
   // the four setlists it writes, so the last run sits at the top until you go
@@ -470,13 +472,28 @@
       const date = m[2];
       const partial = !!m[3];
       const key = s.runId || `${date}${partial ? '|partial' : ''}`;
-      if (!runs.has(key)) runs.set(key, { key, date, partial: false, banks: [] });
+      if (!runs.has(key)) runs.set(key, { key, date, partial: false, startedAt: null, banks: [] });
       const run = runs.get(key);
       if (partial) run.partial = true;
+      // The run's own instant, when it has one. It is what orders two runs of
+      // the same day; without it there is nothing finer than the date.
+      if (s.runId && (!run.startedAt || s.runId < run.startedAt)) run.startedAt = s.runId;
       run.banks.push({ bank: Number(m[1]), index: i, name: s.name });
     });
     for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
-    const sorted = [...runs.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    // NEWEST FIRST, and within a day the run that started later comes first.
+    // The aborted run this morning sorted above the retry that followed it,
+    // because a date cannot tell two runs of one day apart (Daniel,
+    // 2026-08-16). runId is that instant; setlists written before it have
+    // none, so they keep their existing order — a partial run, which is the
+    // only kind that can share a date with another, sorts last of the two.
+    const sorted = [...runs.values()].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      if (a.startedAt && b.startedAt) return a.startedAt < b.startedAt ? 1 : -1;
+      if (a.startedAt || b.startedAt) return a.startedAt ? -1 : 1; // stamped runs are newer
+      if (a.partial !== b.partial) return a.partial ? 1 : -1;
+      return 0;
+    });
 
     // ONE ROW PER RUN. Identical consecutive runs used to collapse into a
     // dated span ("13-14 Aug · unchanged") so two quiet evenings did not read
@@ -491,7 +508,10 @@
   // Everything a run captured, in bank order — the same shape the patches list
   // used to show for the whole library, which is where it belonged all along.
   function renderBackupRun(data, state) {
-    const run = backupRuns(data).find((r) => r.date === state.backupDate);
+    // BY RUN KEY. Two runs can share a date — an aborted one and its retry —
+    // and finding by date opened whichever came first, so the 32-preset row
+    // showed the 5-preset run (Daniel, 2026-08-16).
+    const run = backupRuns(data).find((r) => r.key === state.backupRun);
     if (!run) return renderBackupList(data, state);
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
@@ -526,7 +546,7 @@
       '<div class="lib-setlist-head">' +
       '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
       `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
-      `${run.partial ? ' · partial' : ''}</span>` +
+      `${run.partial ? ' · failed' : ''}</span>` +
       '</div>' + banks
     );
   }
@@ -558,10 +578,10 @@
       // deserves to know their patches are fine.
       const count = impossible
         ? '32+'
-        : `${slots} preset${slots === 1 ? '' : 's'}${r.partial ? ' · partial' : ''}`;
+        : `${slots} preset${slots === 1 ? '' : 's'}${r.partial ? ' · failed' : ''}`;
       return (
         '<div class="lib-row lib-setlist-row">' +
-        `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
+        `<button type="button" class="lib-setlist" data-backup="${esc(r.key)}">` +
         `<span class="patch-num">${i + 1}</span>` +
         `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
         (impossible
@@ -569,7 +589,7 @@
             `data-over-count="${slots}" title="More patches than the Seven has">${esc(count)}</span>`
           : `<span class="lib-setlist-count">${esc(count)}</span>`) +
         '</button>' +
-        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
+        `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.key)}" ` +
         `title="Delete the ${esc(fmtDate(r.date))} backup ` +
         `(the patches stay in the library)">` +
         '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -966,7 +986,7 @@
       `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}"><span class="seg-label">${label}</span></button>`;
     const listHtml =
       state.tab === 'backups'
-        ? (state.backupDate == null
+        ? (state.backupRun == null
           ? renderBackupList(data, state)
           : renderBackupRun(data, state))
         : state.tab === 'setlists'
@@ -1028,7 +1048,7 @@
       tab: 'backups',
       search: '',
       setlistIndex: null,
-      backupDate: null,   // which dated run is open, if any
+      backupRun: null,    // which RUN is open, by its key — not its date
       searchOpen: false,  // the magnifier has been clicked
       selected: null,
       renaming: null,
@@ -1075,7 +1095,7 @@
     }
 
     function render() {
-      const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupDate}`;
+      const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupRun}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
       el.innerHTML = renderBody(data, state, on.sounds);
@@ -1155,14 +1175,14 @@
       if (seg) {
         state.tab = seg.dataset.tab;
         state.setlistIndex = null;
-        state.backupDate = null;
+        state.backupRun = null;
         if (state.tab === 'backups') { state.search = ''; state.searchOpen = false; }
         render();
         return;
       }
       if (e.target.closest('.lib-back') && !e.target.closest('.pick-cancel')) {
         state.setlistIndex = null;
-        state.backupDate = null;
+        state.backupRun = null;
         state.lastCleared = null;
         state.picking = null;
         render();
@@ -1256,7 +1276,17 @@
       }
       const backupDel = e.target.closest('[data-backup-delete]');
       if (backupDel) {
-        if (on.deleteBackup) on.deleteBackup(backupDel.dataset.backupDelete);
+        // The exact setlists this run wrote, by index — never a date pattern,
+        // which would take the other run of the same day with it.
+        const run = backupRuns(data).find((r) => r.key === backupDel.dataset.backupDelete);
+        if (run && on.deleteBackup) {
+          on.deleteBackup({
+            key: run.key,
+            date: run.date,
+            partial: run.partial,
+            indexes: run.banks.map((b) => b.index),
+          });
+        }
         return;
       }
       const patchDel = e.target.closest('[data-patch-delete]');
@@ -1272,7 +1302,7 @@
         // setlist index. This handler ran first and set setlistIndex to NaN,
         // so clicking a backup did nothing at all (Daniel, 2026-08-13).
         if (setlistRow.dataset.backup) {
-          state.backupDate = setlistRow.dataset.backup;
+          state.backupRun = setlistRow.dataset.backup;
           render();
           return;
         }
@@ -1598,7 +1628,7 @@
         if (tab) {
           state.tab = tab;
           state.setlistIndex = null;
-          state.backupDate = null;
+          state.backupRun = null;
         }
         // AND a scope that can show it. Landing on the Patches tab is not
         // enough now that the tab filters: saving a patch while the list was

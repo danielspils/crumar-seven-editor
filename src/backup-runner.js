@@ -247,7 +247,11 @@ class BackupRunner extends EventEmitter {
       if (!slots.length) continue;
       // "Bank 1 setlist (2026-08-09)" — what it is first, when second. The
       // date stays ISO so a year of these sorts correctly by name.
-      const suffix = partial ? ', partial' : '';
+      // "failed", not "partial": a run that stopped partway did not half-work,
+      // it failed, and the count beside it says how far it got
+      // (Daniel, 2026-08-16). Setlists written before this say ", partial" and
+      // are still read — see BACKUP_NAME in library-view.js.
+      const suffix = partial ? ', failed' : '';
       this.store.createOrReplaceSetlist(`Bank ${b + 1} setlist (${dateStr}${suffix})`, slots, runId);
     }
 

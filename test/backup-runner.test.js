@@ -4,7 +4,7 @@
 // whether a patch is safe on disk, so the rules worth pinning are the strict
 // ones: a slot that does not answer aborts the whole run rather than being
 // skipped, a dropped reply is retried, unchanged slots are not duplicated but
-// ARE re-stamped, and a partial run says so in the setlist name.
+// ARE re-stamped, and a run that stopped says "failed" in the setlist name.
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -91,8 +91,8 @@ test('a slot that never answers ABORTS the run — it is never skipped', async (
   assert.match(done.error, /no recall broadcast/);
   assert.strictEqual(done.slots, 5, 'it stops at the silent slot rather than continuing past it');
   const written = setlistNames(store).filter((n) => n.startsWith('Bank '));
-  assert.ok(written.length > 0 && written.every((n) => n.includes('partial')),
-    `a partial run labels every setlist it wrote: ${written}`);
+  assert.ok(written.length > 0 && written.every((n) => n.includes('failed')),
+    `a run that stopped labels every setlist it wrote: ${written}`);
 });
 
 test('a dropped parameter reply is retried, not fatal', async () => {
@@ -120,7 +120,7 @@ test('a second run of unchanged slots creates nothing and re-stamps everything',
   assert.ok(stamped, 'every slot reports a date after a re-run');
 });
 
-test('cancelling stops early and the setlists say partial', async () => {
+test('cancelling stops early and the setlists say failed', async () => {
   const midi = new FakeSeven();
   const store = freshStore();
   const runner = new BackupRunner({ midi, store, schema });
@@ -132,7 +132,7 @@ test('cancelling stops early and the setlists say partial', async () => {
   assert.strictEqual(done.cancelled, true);
   assert.ok(done.slots >= 3 && done.slots < 32, `stopped early, got ${done.slots} slots`);
   const written = setlistNames(store).filter((n) => n.startsWith('Bank '));
-  assert.ok(written.length > 0 && written.every((n) => n.includes('partial')),
+  assert.ok(written.length > 0 && written.every((n) => n.includes('failed')),
     `a cancelled run labels every setlist it wrote: ${written}`);
 });
 
