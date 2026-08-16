@@ -90,7 +90,7 @@ chips, the Settings toggles. One radius each, so the two never blur.
 
 **Not every action needs a button, though.** Saving sits in a column of 12px
 labels, and a filled button there was the loudest thing on the panel for
-something you do occasionally — so "Save to Computer · Save to Seven" are text,
+something you do occasionally — so "Save to Computer · Send to Seven" are text,
 carrying the action green and a heavier weight instead of a fill. A control
 earns chrome by how often it is reached for, not by how important it sounds.
 

@@ -259,7 +259,7 @@
     // hid Bank 1, the other greyed it — and hiding it left the reader to work
     // out whether it existed (Daniel, 2026-08-14).
     const bank = await SevenModal.choose({
-      title: 'Select Bank',
+      title: 'Send to Seven',
       bodyHtml:
         '<p>Select which bank to send</p>' +
         `<p><em>${esc(entry.name)}</em></p>`,
@@ -585,7 +585,7 @@
     }, TURN_MS);
   }
 
-  // "Save to Seven?" — the panel hold, explained the way the transfer explains
+  // "Send to Seven" — the panel hold, explained the way the transfer explains
   // it: the same picture of the panel with the bank LED and the button lit
   // where they will light, and the same short lines under it. The player is
   // looking at the instrument, so "hold THAT one" is a location rather than a
@@ -600,32 +600,28 @@
     if (entry) await duplicateForEditing(entry, 'Make your changes');
   });
 
-  document.addEventListener('click', (e) => {
+  // "Send to Seven" now SENDS, and is named for what it does. It used to be
+  // called "Save to Seven" and open a dialog that drew the panel
+  // and said "hold a preset for 3 seconds" — instructions, not an action: it
+  // moved nothing, sent nothing, and never learned whether the hold landed.
+  // Worse, it drew the button from whatever the app had selected while the
+  // instrument sat wherever it sat, so the picture could point at one preset
+  // and the hold land on another.
+  //
+  // It runs the guided walk instead: bank chooser with Bank 1 unpickable, the
+  // instrument moved to the bank so a hold cannot go astray, the slot recalled
+  // and read back in full — skipping the hold entirely when it already holds
+  // this patch — then the send, and the store watched for. The same walk a
+  // setlist transfer uses, for one preset (Daniel, 2026-08-16).
+  document.addEventListener('click', async (e) => {
     if (!e.target.closest('[data-save-to-seven]')) return;
-    const bank = deviceSel ? deviceSel.bank + 1 : null;
-    const preset = deviceSel ? deviceSel.preset + 1 : null;
-    const modal = SevenModal.open({
-      title: 'Save a Sound to the Seven',
-      bodyHtml:
-        // The same instructions on every bank that can be written to. Bank 1
-        // no longer reaches here at all: the control is absent on the factory
-        // bank rather than present with a parenthetical saying it will not
-        // work (Daniel, 2026-08-14).
-        //
-        // Only draw the panel when we know which button to light. A picture
-        // with nothing lit would be decoration, and this one is instructions.
-        (bank ? SevenPanelMini.render(bank, preset) : '') +
-        '<p class="tx-note">Hold a preset button for 3 seconds.</p>' +
-        '<p class="tx-note">The lights will run to confirm the save.</p>',
-      confirmLabel: 'Got it!',
-      cancelLabel: 'Close',
-      tone: 'is-transfer',
-    });
-    // The picture performs the instruction on a loop: the button lights, the
-    // hold elapses, the lights run. Stopped when the modal goes, or the timers
-    // keep firing at nodes that are no longer on the page.
-    const stop = bank ? SevenPanelMini.playSave(modal.body, preset) : null;
-    modal.action().then(() => { if (stop) stop(); modal.close(); });
+    const target = currentTarget();
+    if (!target) return;
+    const entry = (libEntries || []).find(
+      (x) => x.file === target.file && (x.patchIndex || 0) === (target.patchIndex || 0)
+    );
+    if (!entry) return toast('That patch is not in the library any more');
+    await sendPatchToSlot(entry);
   });
 
   document.addEventListener('click', (e) => {
@@ -863,7 +859,7 @@
     // looking at the instrument, and "hold THAT one" is a location, not a
     // fact. The bank LED and the button both light where they will light.
     const modal = SevenModal.open({
-      title: 'Transfer',
+      title: 'Send to Seven',
       bodyHtml:
         '<p class="tx-step-name"></p>' +
         '<p class="tx-step-hear">(you can hear it now)</p>' +
@@ -1008,7 +1004,8 @@
     // caveat still holds for a slot advanced by the button, but the distinction
     // costs more to explain than it is worth on screen. It stays on the report
     // object for anything that wants the fine print.
-    const title = report.error || report.cancelled ? 'Transfer stopped' : 'Transfer complete';
+    // One name for the action, so its ending carries the same word.
+    const title = report.error || report.cancelled ? 'Send stopped' : 'Sent to Seven';
     const tone = report.error ? 'is-warning is-transfer' : 'is-transfer';
 
     if (modal) {
@@ -2008,7 +2005,7 @@
           return;
         }
         const bank = await SevenModal.choose({
-          title: 'Select Bank',
+          title: 'Send to Seven',
           // The setlist being sent, named under the question rather than
           // inside it: the heading asks one short thing and the line below
           // says what it is about (Daniel, 2026-08-14).
@@ -2065,7 +2062,7 @@
         // on it: losing presets you never captured is the one mistake here
         // that cannot be undone.
         const go = await SevenModal.confirm({
-          title: 'Transfer',
+          title: 'Send to Seven',
           bodyHtml:
             `<p class="tx-from">${esc(plan.setlist)}</p>` +
             `<p class="tx-count">${plan.willWrite} preset${plan.willWrite === 1 ? '' : 's'}</p>` +

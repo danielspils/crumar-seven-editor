@@ -85,14 +85,18 @@
       `<span class="save-actions">` +
       `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
       'Save to Computer</button>' +
-      (onFactoryBank
-        ? ''
-        : `<span class="save-sep" aria-hidden="true">·</span>` +
-          `<button type="button" class="save-seven-link" data-save-to-seven>Save to Seven</button>`) +
       (isDonorFile
         ? `<span class="save-sep" aria-hidden="true">·</span>` +
           `<button type="button" class="save-seven-link" data-duplicate-edit>Duplicate and edit</button>`
         : '') +
+      // LAST of the three, and the only one that touches the instrument: down
+      // to disk, sideways to a copy, then out to the Seven. Absent on Bank 1,
+      // where a store is refused by the hardware — a control that explains why
+      // it cannot work should not be a control.
+      (onFactoryBank
+        ? ''
+        : `<span class="save-sep" aria-hidden="true">·</span>` +
+          `<button type="button" class="save-seven-link" data-save-to-seven>Send to Seven</button>`) +
       `</span>` +
       (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
       `</div>`;
