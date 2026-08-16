@@ -2530,27 +2530,39 @@
         unknown: ['', ''],
       };
 
-      const expRow = (e) => {
-        const row = gridRow(e.title, {
-          // Where this download's sounds sit in the list — several where it
-          // supplies several, and NOTHING where the unit does not have it. A
-          // sound that isn't on the instrument has no position.
-          ids: (e.ids || []).map(position).join(', '),
-          size: window.SevenExpansions.downloadSize(e.downloadMb),
-        });
-        const [label, cls] = PILL[e.status] || PILL.unknown;
-        if (label) {
+      // ONE ROW PER SOUND, not per download. Venice Upright U1/Felt is a
+      // single purchase supplying two sounds, and listing it as one row meant
+      // a row numbered "23, 24" — so it lists as the two sounds it installs,
+      // which is also what the left column lists (Daniel, 2026-08-15).
+      //
+      // The SIZE stays on the first row of each download: it is one file, and
+      // repeating it would read as two purchases. Where the sound names have
+      // never been seen there is nothing to expand, so that download keeps its
+      // catalogue title on a single row.
+      const expRows = (e) => {
+        const size = window.SevenExpansions.downloadSize(e.downloadMb);
+        const withPill = (row, status) => {
+          const [label, cls] = PILL[status] || PILL.unknown;
+          if (!label) return row;
           const pill = document.createElement('span');
           pill.className = `exp-pill ${cls}`;
           pill.textContent = label;
-          pill.title = e.status === 'unverified'
+          pill.title = status === 'unverified'
             ? 'Nobody has told this app what sounds this expansion adds, so it cannot say whether you have it'
-            : e.status === 'partial'
-              ? 'Some of this download’s sounds are on the instrument and some are not'
-              : '';
+            : '';
           row.appendChild(pill);
+          return row;
+        };
+        if (!e.soundRows) {
+          return [withPill(gridRow(e.title, { size }), e.status)];
         }
-        return row;
+        return e.soundRows.map((s, i) => withPill(
+          gridRow(s.name, {
+            ids: s.id === null ? '' : position(s.id),
+            size: i === 0 ? size : '',
+          }),
+          r.connected ? (s.installed ? 'installed' : 'not-installed') : 'unknown'
+        ));
       };
 
       // TWO COLUMNS, not tabs. The whole question this modal answers is "what
@@ -2580,7 +2592,7 @@
 
       const expansionRows = [...r.expansions]
         .sort((a, b) => a.title.localeCompare(b.title))
-        .map(expRow);
+        .flatMap(expRows);
       // Sounds the instrument reports that no catalogue entry claims. Shown,
       // never dropped: if the matching is wrong, a sound you own must appear
       // as unaccounted for rather than be silently reported missing.

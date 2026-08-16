@@ -77,7 +77,16 @@
         .map((n) => idByName.get(fold(n)))
         .filter((id) => id !== undefined)
         .sort((a, b) => a - b);
-      return { ...e, sounds: names, status, ids };
+      // One entry per SOUND the download supplies, in the order the catalogue
+      // lists them, each with the instrument's id when this unit has it. Null
+      // where the sound names have never been seen — there is nothing to list.
+      const soundRows = names
+        ? names.map((n) => {
+          const id = idByName.get(fold(n));
+          return { name: n, id: id === undefined ? null : id, installed: id !== undefined };
+        })
+        : null;
+      return { ...e, sounds: names, status, ids, soundRows };
     });
 
     // Sounds the instrument has that no catalogue entry claims. These get their
