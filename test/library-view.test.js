@@ -88,7 +88,7 @@ const capture = (bank, preset, date, name) => ({
   origin: { kind: 'backup', bank, preset, date },
 });
 
-test('“From the Seven” lists the newest record per slot, not every capture', () => {
+test('the list carries the newest record per slot, not every capture', () => {
   const patches = [
     capture(3, 1, '2026-08-09T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
     capture(3, 1, '2026-08-12T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
@@ -99,25 +99,45 @@ test('“From the Seven” lists the newest record per slot, not every capture',
   ];
   const html = SevenLibraryView.renderBody(
     { patches, setlists: [], files: patches.length },
-    { tab: 'patches', patchScope: 'seven', search: '' }
+    { tab: 'patches', search: '' }
   );
   const rows = (html.match(/class="lib-row lib-patch/g) || []).length;
-  assert.strictEqual(rows, 2, 'two slots, two rows — not four captures');
+  // Two slots and one patch of your own: three rows, not five files.
+  assert.strictEqual(rows, 3, 'two slots plus your own patch');
   assert.ok(html.includes('Kitchen Dishes Delay'), 'the newest record for the slot');
   assert.ok(!html.includes('>Bank 3 Preset 1 — Tine Piano<'), 'and not the superseded ones');
 });
 
-test('a superseded capture is not counted in any scope', () => {
+test('a superseded capture is not in the list at all', () => {
   const patches = [
     capture(3, 1, '2026-08-09T10:00:00Z', 'old'),
     capture(3, 1, '2026-08-16T10:00:00Z', 'new'),
   ];
-  for (const scope of ['seven', 'all']) {
-    const html = SevenLibraryView.renderBody(
-      { patches, setlists: [], files: 2 }, { tab: 'patches', patchScope: scope, search: '' }
-    );
-    assert.strictEqual((html.match(/class="lib-row lib-patch/g) || []).length, 1, scope);
-  }
+  const html = SevenLibraryView.renderBody(
+    { patches, setlists: [], files: 2 }, { tab: 'patches', search: '' }
+  );
+  assert.strictEqual((html.match(/class="lib-row lib-patch/g) || []).length, 1);
+});
+
+test('one list, no sub-tabs, sorted by what changed most recently', () => {
+  const patches = [
+    { file: 'old-capture.sevenlib.json', patchIndex: 0, name: 'Bank 2 Preset 1 — Tine Piano',
+      soundName: 'Tine Piano', params: {},
+      origin: { kind: 'backup', bank: 2, preset: 1, date: '2026-08-09T10:00:00Z',
+        captured: '2026-08-09T10:00:00Z', verified: '2026-08-16T10:00:00Z' } },
+    { file: 'worked-on.sevenlib.json', patchIndex: 0, name: 'Shapes Clav',
+      soundName: 'Clavi Piano', params: {},
+      origin: { kind: 'created', date: '2026-08-15T18:00:00Z', captured: '2026-08-15T18:00:00Z' } },
+  ];
+  const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 2 },
+    { tab: 'patches', search: '' });
+  assert.ok(!/lib-scope|scope-btn/.test(html), 'the sub-tabs are gone');
+  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
+  // The capture was VERIFIED more recently — a backup agreeing it is
+  // unchanged — but it has not changed since 9 Aug, so the patch worked on
+  // last night leads.
+  // displayName strips the "Bank 2 Preset 1 — " prefix from a capture's row.
+  assert.deepStrictEqual(names, ['Shapes Clav', 'Tine Piano']);
 });
 
 test('patch rows carry no date — this list is current state', () => {

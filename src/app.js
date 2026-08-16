@@ -1770,7 +1770,6 @@
   // Which patches the Patches tab lists. A PREFERENCE, so it survives a
   // launch — the tab you were on and the text in the search box are things
   // you did, and they do not (Daniel, 2026-08-14).
-  const LIB_SCOPE_KEY = 'seven.patchScope';
 
   // Library selection: when set, the detail view renders this entry instead of
   // the bank patch. Bank/preset clicks clear it.
@@ -1787,9 +1786,7 @@
 
   const libView = SevenLibraryView.createLibraryView({
     el: document.getElementById('library-body'),
-    scope: localStorage.getItem(LIB_SCOPE_KEY),
     on: {
-      scopeChanged: (scope) => localStorage.setItem(LIB_SCOPE_KEY, scope),
       // The header counts what is on screen; the FOLDER total moved next to
       // the button that opens the folder, where it belongs.
       // A backup row whose count exceeds the instrument's 32 slots. The row

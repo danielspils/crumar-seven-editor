@@ -280,7 +280,7 @@
     // browse every Rhodes you have ever had in one place; a captured one is
     // reached through its backup.
     const list = data.patches.filter(
-      (e) => inScope(e, state.patchScope, newestPerSlot(data.patches)) && matches(e, state.search)
+      (e) => inList(e, newestPerSlot(data.patches)) && matches(e, state.search)
     );
     if (!list.length) {
       return `<div class="lib-empty">${data.patches.length
@@ -315,7 +315,16 @@
   // first. New things arrive where you are looking rather than at the bottom
   // of a list you have arranged.
   const patchKey = (e) => `${e.file}#${e.patchIndex || 0}`;
-  const patchWhen = (e) => String((e.origin || {}).date || '');
+  // WHEN IT LAST CHANGED — not when it was last confirmed. A backup run that
+  // finds a slot unchanged re-stamps `verified`, which is the instrument
+  // agreeing rather than anything happening to the patch; sorting on that put
+  // 32 untouched captures above the patch you edited an hour ago. `captured`
+  // moves when values are read or when live edits are saved back, and
+  // `date` is when a patch you made was made (Daniel, 2026-08-16).
+  const patchWhen = (e) => {
+    const o = e.origin || {};
+    return String(o.captured || o.date || '');
+  };
 
   // Which patches a scope admits. `mine` is what the tab always showed.
   const isFromSeven = (e) => (e.origin || {}).kind === 'backup';
@@ -347,21 +356,14 @@
     return new Set([...best.values()]);
   }
 
-  // The scope filter needs the whole list to know which record is newest, so
-  // it is computed once per render and handed in.
-  const inScope = (e, scope, current) => {
+  // ONE LIST. There were three sub-tabs — My patches, From the Seven, All —
+  // and the distinction was not real: apart from Bank 1's eight factory
+  // presets, everything here is yours or yours to change, and those eight
+  // already wear a badge (Daniel, 2026-08-16). What is left is a membership
+  // test: every patch, minus superseded captures of a slot.
+  const inList = (e, current) => {
     if (e.invalid) return false;
-    if (!isFromSeven(e)) return scope !== 'seven';
-    return scope !== 'mine' && (!current || current.has(e));
-  };
-
-  const scopeCounts = (patches) => {
-    const current = newestPerSlot(patches);
-    return {
-      mine: patches.filter((e) => inScope(e, 'mine', current)).length,
-      seven: patches.filter((e) => inScope(e, 'seven', current)).length,
-      all: patches.filter((e) => inScope(e, 'all', current)).length,
-    };
+    return !isFromSeven(e) || !current || current.has(e);
   };
 
   // A capture is filed by WHERE IT CAME FROM, not by its name. Five Tine
@@ -388,17 +390,11 @@
     const byRecency = (a, b) => (patchWhen(a) === patchWhen(b)
       ? displayName(a).localeCompare(displayName(b), undefined, { numeric: true })
       : (patchWhen(a) < patchWhen(b) ? 1 : -1));
-    // Two kinds of row, two ways of finding one. Yours are found by what you
-    // last touched; the instrument's are found by where they sit on it. When
-    // both are listed, yours lead — they are the shorter half and the one you
-    // named yourself.
-    const byDefault = (a, b) => {
-      const as = isFromSeven(a);
-      const bs = isFromSeven(b);
-      if (as !== bs) return as ? 1 : -1;
-      return as ? bySlot(a, b) : byRecency(a, b);
-    };
-    if (!order.length) return [...list].sort(byDefault);
+    // ONE RULE: most recently changed first. Whatever you have been working on
+    // is at the top and the untouched captures fall below it, which is the only
+    // difference between these patches that means anything (Daniel,
+    // 2026-08-16). No kinds, no grouping, no categories.
+    if (!order.length) return [...list].sort(byRecency);
     const at = new Map(order.map((k, i) => [k, i]));
     // The hand-placed order applies WITHIN each kind, not across them. A drag
     // made while the tab showed only your own patches named seven files; seen
@@ -414,10 +410,7 @@
       fresh.sort(cmp);
       return [...fresh, ...placed];
     };
-    return [
-      ...rank(list.filter((e) => !isFromSeven(e)), byRecency),
-      ...rank(list.filter(isFromSeven), bySlot),
-    ];
+    return rank(list, byRecency);
   }
 
   // "Bank 2 setlist (2026-08-12)" — a dated RECORD written by a backup run, as
@@ -740,18 +733,6 @@
 
   // Segments, not a dropdown: three options whose counts are the point, and a
   // dropdown would hide two thirds of the answer behind a click.
-  function scopePicker(data, state) {
-    const n = scopeCounts(data.patches);
-    const seg = (id, label) =>
-      `<button type="button" class="scope-btn${state.patchScope === id ? ' active' : ''}" ` +
-      `data-scope="${id}">${label}<span class="scope-n">${n[id]}</span></button>`;
-    return (
-      `<div class="lib-scope" role="group" aria-label="Which patches">` +
-      seg('mine', 'My patches') + seg('seven', 'From the Seven') + seg('all', 'All') +
-      `</div>`
-    );
-  }
-
   function renderPicker(data, state, sounds, allSounds) {
     const slot = state.picking;
     const q = state.pickSearch || '';
@@ -1026,7 +1007,7 @@
       // Emitted AFTER the search on purpose: it wraps to its own line, and
       // anything after it wraps too — with the scope first, the magnifier was
       // pushed onto a third row of its own (measured).
-      (state.tab === 'patches' ? scopePicker(data, state) : '') +
+
       `</div>` +
       `<div class="lib-list">${listHtml}</div>`
     );
@@ -1042,7 +1023,6 @@
       //
       // Persisted by app.js, unlike the tab and the search box: those are
       // things you DO, and this is how you want your library to look.
-      patchScope: scope === 'seven' || scope === 'all' ? scope : 'mine',
       // Backups opens first: it is the reason the app exists, and the newest
       // run is the thing most likely to be wanted (Daniel, 2026-08-13).
       tab: 'backups',
@@ -1087,7 +1067,7 @@
     function visibleCount() {
       if (state.tab === 'patches') {
         return data.patches.filter(
-          (e) => inScope(e, state.patchScope, newestPerSlot(data.patches)) && matches(e, state.search)
+          (e) => inList(e, newestPerSlot(data.patches)) && matches(e, state.search)
         ).length;
       }
       if (state.tab === 'backups') return backupRuns(data).length;
@@ -1164,14 +1144,6 @@
       }
 
       const seg = e.target.closest('.seg-btn');
-      const scope = e.target.closest('[data-scope]');
-      if (scope) {
-        state.patchScope = scope.dataset.scope;
-        // app.js owns storage; the view only says what changed.
-        if (on.scopeChanged) on.scopeChanged(state.patchScope);
-        render();
-        return;
-      }
       if (seg) {
         state.tab = seg.dataset.tab;
         state.setlistIndex = null;
@@ -1644,10 +1616,8 @@
         // Backups now. Switching scope cannot reveal it, and this says so
         // rather than moving the list and leaving the row unfound.
         const current = newestPerSlot(data.patches);
-        if (target && state.tab === 'patches' && !inScope(target, state.patchScope, current)) {
-          state.patchScope = isFromSeven(target) ? 'seven' : 'mine';
-          if (on.scopeChanged) on.scopeChanged(state.patchScope);
-        }
+        // Nothing to switch to any more: one list, and a superseded capture
+        // is in none of it — it lives in Backups.
         state.revealFile = file;
         state.selected = `${file} ${patchIndex || 0}`;
         render();
