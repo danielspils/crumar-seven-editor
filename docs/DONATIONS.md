@@ -96,28 +96,30 @@ who changes their mind can find it. It never counts as a showing.
 
 ---
 
-## Copy
+## Copy — settled
 
-Name the real costs. "Support development" is abstract and reads as
-boilerplate; a checkable number does not.
+**This Seven Goes to Eleven**, verbatim. Daniel's words, 2026-08-16. Not to be
+edited, tightened or "improved" without him:
 
-The actual annual costs, shared across both apps:
+> This Seven Goes to Eleven is free.
+>
+> Code signing and hosting run about $220 a year. If 7/11 is useful to you,
+> $10 helps cover the cost.
+>
+> Thanks from Seattle! — Daniel
+
+Why it reads the way it does, so a later edit does not undo the reasoning:
+the cost is a checkable number rather than "support development"; $220 is the
+combined annual figure for both apps (Apple $99, Azure ~$120) stated **once**,
+not per app; and the ask names an amount without preselecting or requiring it.
+
+JP Patches needs its own version of these three lines — the first sentence
+names the app, and the same total must not be claimed twice.
 
 | Item | Cost |
 |---|---|
 | Apple Developer Program | $99/year |
 | Azure Artifact Signing | ~$120/year |
-
-**One certificate and one Apple membership cover both apps**, so don't state
-the full figure as though each app carried it separately. Either give the
-combined total once and say it covers both, or give a per-app share. Not
-both, and never the same total twice.
-
-Also say: the app is free and open source and will stay that way.
-
-Draft the wording and get it approved before shipping — this is the only
-place in either app where we ask the user for something, and it is the one
-screen where tone matters more than function.
 
 ---
 
@@ -131,6 +133,34 @@ Persist alongside the other app settings in `userData`:
 
 **Must survive app updates.** A user who declined twice and then gets asked
 again after an update has been told their answer didn't matter.
+
+### Existing users start from zero
+
+The state file starts **empty**, and nothing that happened before the feature
+existed counts. Daniel has run dozens of backups; none of them are showings.
+The next completed backup, transfer or Sample Library open after the feature
+ships is **showing 1**, for him and for every user who already has the app
+(Daniel, 2026-08-16).
+
+This falls out of an empty state file rather than needing a rule — but it has
+to be deliberate, because the alternative (counting history) would silently
+skip straight to showing 2, or past it.
+
+### `SEVEN_RESET_DONATIONS` — development only, permanent
+
+Clears the donation state: shown count, last shown date, never-ask flag. It
+exists for the same reason `SEVEN_FORCE_MISMATCH` does — the state is
+one-directional and slow, so without a reset the second showing is seven days
+away and the never-ask flag is a dead end. Every change to this copy or to the
+trigger logic needs it.
+
+```
+SEVEN_RESET_DONATIONS=1 npm start
+```
+
+Documented in CLAUDE.md beside the other development flags. Not temporary, and
+not something to remove once the feature "works" — it is how anyone verifies
+the second showing at all.
 
 Note for JP Patches: the Mac build auto-updates and the PC build does not.
 The state must be robust to both paths.

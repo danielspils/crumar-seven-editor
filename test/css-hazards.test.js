@@ -167,3 +167,31 @@ test('elements with a display rule also have a [hidden] rule', () => {
   const broken = [...hiddenInMarkup].filter((id) => displayed.has(id) && !guarded.has(id));
   assert.deepStrictEqual(broken, [], `these are hidden in markup but have a display rule that overrides it: ${broken.join(', ')}`);
 });
+
+// EVERY source file must PARSE. The unit suite exercises the modules it can
+// require, but src/main.js needs Electron and is never loaded here — so a
+// syntax error in it passed every test and only showed up as a crash dialog on
+// launch ("Identifier 'backupRunner' has already been declared", 2026-08-16,
+// from a bad edit). Parsing is not behaviour, but it is the failure that costs
+// the most to find.
+test('every source file parses', () => {
+  const vm = require('node:vm');
+  const dir = path.join(__dirname, '..', 'src');
+  const files = [];
+  const walk = (d) => {
+    for (const name of fs.readdirSync(d)) {
+      const full = path.join(d, name);
+      if (fs.statSync(full).isDirectory()) walk(full);
+      else if (name.endsWith('.js')) files.push(full);
+    }
+  };
+  walk(dir);
+  assert.ok(files.length > 8, `found ${files.length} source files`);
+  for (const file of files) {
+    const src = fs.readFileSync(file, 'utf8');
+    assert.doesNotThrow(
+      () => new vm.Script(src, { filename: file }),
+      `${path.relative(dir, file)} does not parse`
+    );
+  }
+});

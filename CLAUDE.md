@@ -309,6 +309,13 @@ judgement — and a fixed sleep is not a test. The script polls
 `window.sevenAPI.devSignal()`; whoever is driving writes the file when the
 person has done their part. Unset, the call returns null and nothing polls.
 
+**`SEVEN_RESET_DONATIONS=1`** clears the donation prompt's state — shown
+count, last shown date, never-ask flag — so the next qualifying trigger is
+showing 1 again. Permanent, for the same reason as the flag below: that state
+is one-directional and slow, so without a reset the second showing is seven
+days away and "I already donated" is a dead end. Every change to the copy or
+the trigger logic needs it (docs/DONATIONS.md).
+
 `SEVEN_FORCE_MISMATCH` synthesises **only the verdict** — six fewer parameters than the instrument
 really reported. What was read from the device is left untouched, so a report
 saved under the flag still carries this unit's genuine table, and everything

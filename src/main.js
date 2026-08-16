@@ -8,7 +8,6 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('el
 const fs = require('fs');
 const path = require('path');
 const { LibraryStore } = require('./library-store');
-const { PendingTransfer } = require('./transfer-pending');
 const { buildReport, reportFileName } = require('./instrument-report');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
@@ -401,12 +400,6 @@ function registerEditIpc() {
 }
 
 let transferRunner = null;
-let pendingTransfer = null;
-function getPending() {
-  if (!pendingTransfer) pendingTransfer = new PendingTransfer(app.getPath('userData'));
-  return pendingTransfer;
-}
-
 function getTransferRunner() {
   if (!transferRunner) {
     const { TransferRunner } = require('./transfer-runner');
@@ -445,29 +438,8 @@ function registerTransferIpc() {
     const plan = runner.preflight(setlistIndex, bank);
     if (!plan.ok) return plan;
     if (confirmed !== true) return { ok: false, cancelled: true };
-    const started = runner.start(setlistIndex, bank);
-    // Remember only which setlist and which bank. The walk itself works out
-    // what is still outstanding by reading the instrument (transfer-pending.js).
-    if (started && started.started) {
-      const setlist = getStore().readSetlists()[setlistIndex];
-      getPending().start({
-        setlistIndex,
-        setlistName: setlist ? setlist.name : null,
-        bank,
-      });
-    }
-    return started;
+    return runner.start(setlistIndex, bank);
   });
-
-  // What to offer on launch, if anything. Reading prunes: stale, malformed, or
-  // pointing at a setlist that is gone all clear the marker.
-  ipcMain.handle('transfer:pending', () => {
-    try { return getPending().read(getStore().readSetlists()); }
-    catch { return null; }
-  });
-  // OFFERED ONCE. Whether the answer is yes or no, the marker goes — being
-  // asked twice about the same abandoned walk is worse than not being asked.
-  ipcMain.handle('transfer:clearPending', () => { getPending().clear(); return true; });
 
   // One preset, from the bank region. No confirm dialog here: the user picked
   // a sound for a specific slot they were already looking at, and the walk
@@ -565,11 +537,6 @@ function registerNotesIpc() {
 // to every open window. No frame bytes cross this boundary.
 function forwardMidiEvents() {
   getMidi().on('event', (ev) => {
-    // A walk that reached its end — finished, stopped or failed — has nothing
-    // left to resume.
-    if (ev.type === 'transfer-done') {
-      try { getPending().clear(); } catch { /* nothing to clear */ }
-    }
     // The store answers "does this instrument have that sound?" for every row
     // in the library, and it has no MIDI handle of its own — so the table is
     // pushed in here, and cleared the moment the instrument goes away. A stale
