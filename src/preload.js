@@ -166,6 +166,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     next: () => ipcRenderer.invoke('transfer:next'),
     confirm: () => ipcRenderer.invoke('transfer:confirm'),
     cancel: () => ipcRenderer.invoke('transfer:cancel'),
+    // An unfinished walk from a previous session: which setlist, which bank.
+    pending: () => ipcRenderer.invoke('transfer:pending'),
+    clearPending: () => ipcRenderer.invoke('transfer:clearPending'),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes

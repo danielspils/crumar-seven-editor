@@ -1784,9 +1784,9 @@
     params: entry.params,
   });
 
-  const libView = SevenLibraryView.createLibraryView({
-    el: document.getElementById('library-body'),
-    on: {
+  // Named, so the launch-time resume offer can reach sendSetlist — the same
+  // path the library's own button takes, rather than a second one.
+  const libHandlers = {
       // The header counts what is on screen; the FOLDER total moved next to
       // the button that opens the folder, where it belongs.
       // A backup row whose count exceeds the instrument's 32 slots. The row
@@ -2259,7 +2259,11 @@
           await refreshLibrary();
         });
       },
-    },
+  };
+
+  const libView = SevenLibraryView.createLibraryView({
+    el: document.getElementById('library-body'),
+    on: libHandlers,
   });
 
   async function refreshLibrary() {
@@ -2460,6 +2464,37 @@
   // Default: banks expanded, Library collapsed; persisted view state wins.
   setLibraryOpen(localStorage.getItem(LIB_OPEN_KEY) === '1', { scroll: false });
   refreshLibrary();
+
+  // ---- A walk you did not finish -------------------------------------------
+  //
+  // Offered ONCE, on launch, and only for a week. Saying yes starts the same
+  // walk from the top: the runner reads every slot back and skips the ones
+  // already stored, so it asks you to hold only what is outstanding — about
+  // twelve seconds of reading instead of eight holds. Saying no clears the
+  // marker; being asked twice about an abandoned walk is worse than not being
+  // asked (Daniel, 2026-08-16).
+  (async () => {
+    if (!window.sevenAPI.transfer || !window.sevenAPI.transfer.pending) return;
+    let pending = null;
+    try { pending = await window.sevenAPI.transfer.pending(); } catch { return; }
+    if (!pending) return;
+    // Whatever happens next, this walk is not offered again.
+    await window.sevenAPI.transfer.clearPending();
+    const go = await SevenModal.confirm({
+      title: 'Pick up where you left off?',
+      bodyHtml:
+        `<p class="tx-from">${esc(pending.setlistName)}</p>` +
+        '<p class="tx-arrow" aria-hidden="true">↓</p>' +
+        `<p class="tx-to">Crumar Seven’s Bank ${pending.bank}</p>` +
+        '<p class="tx-note">This send was interrupted. It checks each preset and ' +
+        'asks you to hold only the ones still to do.</p>',
+      confirmLabel: `Pick up Bank ${pending.bank}`,
+      cancelLabel: 'Not now',
+      tone: 'is-transfer',
+    });
+    if (!go) return;
+    await libHandlers.sendSetlist(pending.setlistIndex, pending.setlistName);
+  })();
 
   // ---- View menu commands (main process → here) -----------------------------
   if (window.sevenAPI.onViewCommand) {
