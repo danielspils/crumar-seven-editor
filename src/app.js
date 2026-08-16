@@ -2656,7 +2656,7 @@
       link.className = 'set-row set-link';
       const name = document.createElement('span');
       name.className = 'set-name';
-      name.textContent = 'Sounds';
+      name.textContent = 'Sounds on this Seven';
       const val = document.createElement('span');
       val.className = 'set-value';
       // The count that means something: what this instrument has. Offline
