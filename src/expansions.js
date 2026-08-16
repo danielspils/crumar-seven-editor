@@ -49,6 +49,12 @@
     const connected = Array.isArray(deviceSounds);
     const have = new Set((deviceSounds || []).map((s) => fold(s.name)));
 
+    // The instrument's own id for every sound it holds — the only place ids
+    // come from. They are NOT positions in the catalogue: an id is what THIS
+    // unit calls that sound, and a different Seven with different expansions
+    // numbers them differently (schema soundsNote).
+    const idByName = new Map((deviceSounds || []).map((s) => [fold(s.name), s.id]));
+
     const expansions = entries.map((e) => {
       const names = Array.isArray(e.sounds) ? e.sounds : null;
       let status = 'unknown'; // offline: no claim either way
@@ -62,7 +68,14 @@
               : 'partial';
         }
       }
-      return { ...e, sounds: names, status };
+      // Only ids the instrument actually reported. An expansion that is not
+      // installed HAS no id here, and none is invented — one download can
+      // supply several sounds, so this is a list (U1/Felt gives two).
+      const ids = (names || [])
+        .map((n) => idByName.get(fold(n)))
+        .filter((id) => id !== undefined)
+        .sort((a, b) => a - b);
+      return { ...e, sounds: names, status, ids };
     });
 
     // Sounds the instrument has that no catalogue entry claims. These get their

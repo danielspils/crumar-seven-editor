@@ -138,3 +138,20 @@ test('the catalogue file itself is complete and honest', () => {
   const unknown = catalogue.expansions.filter((e) => e.sounds === null).map((e) => e.title);
   assert.deepEqual(unknown.sort(), ['Venice Grand C5', 'Venice Grand CFX', 'Venice Upright K8']);
 });
+
+test('ids come from the instrument, and only for what it actually has', () => {
+  const r = classify(catalogue, HIS_UNIT);
+  // One download, two sounds, two ids — the instrument's own numbering.
+  assert.deepEqual(byTitle(r, 'Venice Upright U1/Felt').ids, [22, 23]);
+  assert.deepEqual(byTitle(r, 'Venice Grand D-274').ids, [19]);
+  assert.deepEqual(byTitle(r, 'Electric Grand 70BXL').ids, [16]);
+  // Not installed and unverified expansions have NO id, not a made-up one.
+  assert.deepEqual(byTitle(r, 'Venice Grand CFX').ids, []);
+  const without = HIS_UNIT.filter((s) => s.name !== 'Venice Grand D-274');
+  assert.deepEqual(byTitle(classify(catalogue, without), 'Venice Grand D-274').ids, []);
+  // Half a download installed: only the id that exists.
+  const half = HIS_UNIT.filter((s) => s.name !== 'Venice Upright U1');
+  assert.deepEqual(byTitle(classify(catalogue, half), 'Venice Upright U1/Felt').ids, [22]);
+  // Offline there are no ids at all.
+  for (const e of classify(catalogue, null).expansions) assert.deepEqual(e.ids, []);
+});

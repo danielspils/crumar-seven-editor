@@ -2450,7 +2450,7 @@
     // after buying one.
     const expansionCatalogue = window.sevenAPI.getExpansions();
 
-    const buildSoundsBody = (table, storage) => {
+    const buildSoundsBody = (table) => {
       const wrap = document.createElement('div');
       wrap.className = 'exp-modal';
       const r = window.SevenExpansions.classify(expansionCatalogue || {}, table ? table.sounds : null);
@@ -2460,14 +2460,12 @@
       // arithmetic against the catalogue's download sizes: those are ZIP sizes
       // from a web page and this is a figure of unknown meaning
       // (docs/protocol.md, ACTION 0x0A).
-      const storageLine = () => {
-        if (!storage) return null;
-        const st = document.createElement('p');
-        st.className = 'exp-storage';
-        st.textContent =
-          `The instrument reports ${storage} of storage. It does not say whether that is total, used or free.`;
-        return st;
-      };
+      // NO STORAGE LINE. ACTION 0x0A returns one unlabelled figure — "4.0GB",
+      // with nothing saying whether that is total, used or free — so there is
+      // nothing honest to show (Daniel, 2026-08-15). The string is still read
+      // and still travels in an instrument report, where a second owner's file
+      // could settle what it measures. Do not reinstate this without that
+      // evidence.
 
       const group = (cls, title, sub, rows) => {
         const div = document.createElement('div');
@@ -2501,19 +2499,22 @@
         return row;
       };
 
-      const gridRow = (name, { date = '', size = '' } = {}) => {
+      const gridRow = (name, { ids = '', date = '', size = '' } = {}) => {
         const row = document.createElement('div');
         row.className = 'exp-row';
         const n = document.createElement('span');
         n.className = 'exp-name';
         n.textContent = name;
+        const idc = document.createElement('span');
+        idc.className = 'exp-id';
+        idc.textContent = ids;
         const d = document.createElement('span');
         d.className = 'exp-date';
         d.textContent = date;
         const sz = document.createElement('span');
         sz.className = 'exp-size';
         sz.textContent = size;
-        row.append(n, d, sz);
+        row.append(n, idc, d, sz);
         return row;
       };
 
@@ -2527,6 +2528,10 @@
 
       const expRow = (e) => {
         const row = gridRow(e.title, {
+          // The instrument's own ids for the sounds this download supplies —
+          // several where it supplies several, and NOTHING where the unit does
+          // not have it. An id that isn't on the instrument doesn't exist.
+          ids: (e.ids || []).join(', '),
           date: window.SevenExpansions.releaseLabel(e.released),
           size: window.SevenExpansions.downloadSize(e.downloadMb),
         });
@@ -2577,7 +2582,7 @@
       // never dropped: if the matching is wrong, a sound you own must appear
       // as unaccounted for rather than be silently reported missing.
       for (const s of r.unaccounted) {
-        const row = gridRow(s.name);
+        const row = gridRow(s.name, { ids: String(s.id) });
         const pill = document.createElement('span');
         pill.className = 'exp-pill is-unverified is-wide';
         pill.textContent = 'Installed, not in the catalogue';
@@ -2602,11 +2607,6 @@
         foot.appendChild(off);
       }
 
-      const what = document.createElement('p');
-      what.className = 'exp-note';
-      what.textContent = 'This is a list of available sounds from Crumar’s download page.';
-      foot.appendChild(what);
-
       // No steps of our own. Crumar's page is the authority on how to install,
       // and a copy of it here would go stale without anyone noticing
       // (Daniel, 2026-08-15).
@@ -2622,12 +2622,6 @@
       });
       how.append(a, document.createTextNode('.'));
       foot.appendChild(how);
-
-      // The one fact worth knowing BEFORE spending money on samples.
-      const adapter = document.createElement('p');
-      adapter.className = 'exp-note';
-      adapter.textContent = 'Installing needs Crumar’s Wi-Fi USB adapter.';
-      foot.appendChild(adapter);
 
       // Carried over from the old Installed-sounds modal: when this list was
       // read off the instrument, and the fingerprint backups record so a patch
@@ -2647,8 +2641,6 @@
       // Under the EXPANSIONS column, not under both. The copy is about
       // expansions, and stacking it beneath the columns made the modal taller
       // than the window it opens in (measured 764px in a 687px window).
-      const sl = storageLine();
-      if (sl) right.appendChild(sl);
       right.appendChild(foot);
       return wrap;
     };
@@ -2697,7 +2689,7 @@
         cancelLabel: 'Close',
         tone: 'is-expansions',
       });
-      m.body.appendChild(buildSoundsBody(soundTable, deviceStorage));
+      m.body.appendChild(buildSoundsBody(soundTable));
       await m.action();
       m.close();
     };
