@@ -461,8 +461,10 @@
     @media (max-width: 720px) { .exp-cols { grid-template-columns: 1fr; gap: 0; } }
     /* A permanent sound: name and the instrument's own id, nothing else. */
     .exp-row.is-plain { grid-template-columns: 2.4em minmax(0, 1fr); }
-    .exp-id { text-align: right; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-    .exp-row.is-plain .exp-id { padding-right: 2px; }
+    .exp-id {
+      text-align: left; font-size: 12px; color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
     .exp-stamp { margin: 5px 0 0; font-size: 11px; color: var(--text-dim); }
     .exp-group { margin: 0 0 12px; }
     /* One green in this modal, and it is the Installed pill — the thing you
