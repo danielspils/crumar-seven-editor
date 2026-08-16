@@ -2580,12 +2580,12 @@
       if (r.connected) {
         left.appendChild(group(
           'is-modeled', `Modeled (${r.modeled.length})`,
-          'Physical models. Permanent.',
+          'Permanent Crumar models — can’t be deleted.',
           r.modeled.map((s) => idRow(s))
         ));
         left.appendChild(group(
           'is-sampled', `Included samples (${r.included.length})`,
-          'Ship with every Seven. Permanent.',
+          'Permanent Crumar samples — can’t be deleted.',
           r.included.map((s) => idRow(s))
         ));
       }
@@ -2606,7 +2606,7 @@
       }
       right.appendChild(group(
         'is-sampled', `Expansions (${r.expansions.length})`,
-        'Sold separately. Install through the instrument’s own editor. Sizes are ZIP download sizes, not installed sizes.',
+        'Available from Crumar — can be added and removed.',
         expansionRows
       ));
 
