@@ -553,15 +553,22 @@
           `${SLOT_COUNT} the instrument has, so two runs have been grouped as one`
         );
       }
+      // "32+" rather than a number that cannot be true, and it asks to be
+      // clicked: the row has no room to explain itself, and someone seeing it
+      // deserves to know their patches are fine.
       const count = impossible
-        ? 'more presets than the Seven has — two runs grouped as one'
+        ? '32+'
         : `${slots} preset${slots === 1 ? '' : 's'}${r.partial ? ' · partial' : ''}`;
       return (
         '<div class="lib-row lib-setlist-row">' +
         `<button type="button" class="lib-setlist" data-backup="${esc(r.date)}">` +
         `<span class="patch-num">${i + 1}</span>` +
         `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
-        `<span class="lib-setlist-count${impossible ? ' is-wrong' : ''}">${esc(count)}</span></button>` +
+        (impossible
+          ? `<span class="lib-setlist-count is-wrong" role="button" tabindex="0" ` +
+            `data-over-count="${slots}" title="More patches than the Seven has">${esc(count)}</span>`
+          : `<span class="lib-setlist-count">${esc(count)}</span>`) +
+        '</button>' +
         `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.date)}" ` +
         `title="Delete the ${esc(fmtDate(r.date))} backup ` +
         `(the patches stay in the library)">` +
@@ -1279,6 +1286,13 @@
       }
       // An instrument slot. It holds a sound rather than a patch, so there is
       // no entry to select — clicking it plays that instrument.
+      // The impossible-count badge explains itself rather than opening the run.
+      const over = e.target.closest('[data-over-count]');
+      if (over) {
+        e.stopPropagation();
+        if (on.countWarning) on.countWarning(Number(over.dataset.overCount));
+        return;
+      }
       const row = e.target.closest('[data-file]');
       if (row && !e.target.closest('.lib-rename-input')) {
         const entry = entryAt(row);

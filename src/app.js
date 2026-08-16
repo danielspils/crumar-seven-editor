@@ -1782,6 +1782,23 @@
       scopeChanged: (scope) => localStorage.setItem(LIB_SCOPE_KEY, scope),
       // The header counts what is on screen; the FOLDER total moved next to
       // the button that opens the folder, where it belongs.
+      // A backup row whose count exceeds the instrument's 32 slots. The row
+      // says "32+"; this says why, and that nothing is lost. The number is the
+      // one actually computed, never a constant.
+      async countWarning(count) {
+        const m = SevenModal.open({
+          title: 'More patches than the Seven has',
+          bodyHtml:
+            `<p>This backup shows ${esc(String(count))} patches, but the Seven only has 32 slots.</p>` +
+            '<p>Two backups ran the same day and one stopped partway, so the app grouped ' +
+            'them as one. Nothing is lost — your patches are fine.</p>' +
+            '<p>Run another backup and you’ll get a clean 32.</p>',
+          confirmLabel: 'OK',
+          cancelLabel: 'Close',
+        });
+        await m.action();
+        m.close();
+      },
       counts: (shown, total) => {
         libCount.textContent = `— ${shown}`;
         if (libFiles) libFiles.textContent = `${total} file${total === 1 ? '' : 's'}`;

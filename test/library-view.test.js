@@ -184,8 +184,10 @@ const bankSetlist = (bank, date, filled, { partial = false, runId = null } = {})
   ...(runId ? { runId } : {}),
 });
 
+// The badge carries attributes when it is the impossible-count one, so the
+// match has to allow them.
 const runCounts = (html) =>
-  [...html.matchAll(/class="lib-setlist-count[^"]*">([^<]+)</g)].map((m) => m[1]);
+  [...html.matchAll(/class="lib-setlist-count[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
 
 test('an aborted run and its retry are two rows, not one 37-preset row', () => {
   const setlists = [
@@ -223,6 +225,10 @@ test('a count above 32 is never rendered — it means two runs were merged', () 
     { tab: 'backups', search: '' });
   const counts = runCounts(html);
   assert.strictEqual(counts.length, 1);
-  assert.match(counts[0], /more presets than the Seven has/);
+  assert.strictEqual(counts[0], '32+', 'the row says what it can say');
   assert.ok(!/\d+ presets/.test(counts[0]), 'no impossible number on screen');
+  // The real computed count rides on the badge, for the explanation to use —
+  // never a constant, so the modal can say "37" without anyone typing 37.
+  assert.match(html, /data-over-count="37"/);
+  assert.match(html, /role="button"/, 'and it asks to be clicked');
 });
