@@ -101,6 +101,7 @@
     return String(entry.name || '').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
   }
 
+
   // The pill holds BOTH words and shows one at a time: "Model" at rest, the
   // instrument's name while the pointer is on it. The sound had a column of
   // its own, which on most rows repeated the patch's name and on the rest
@@ -203,8 +204,8 @@
     // name back at you on every row (Daniel, 2026-08-13).
     const tip = echoes ? '' : entry.soundName;
     return (
-      `<span class="lib-row-wrap">` +
-      `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true"${tip ? ` title="${esc(tip)}"` : ''}>` +
+      `<span class="lib-row-wrap"${opts.readOnly ? ' data-in-run' : ''}>` +
+      `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}"${opts.readOnly ? '' : ' draggable="true"'}${tip ? ` title="${esc(tip)}"` : ''}>` +
       `<span class="patch-num">${lead}</span>` +
       `<span class="patch-name">${esc(name)}</span>` +
       `<span class="lib-origin">${esc(context)}</span>` +
@@ -214,17 +215,34 @@
       // words, with the instrument drawn beside it — so in a list of forty
       // rows it was forty repetitions of something you learn on click
       // (Daniel, 2026-08-13). Rows inside a backup keep theirs.
-      `<span class="lib-badges">${opts.flat ? factoryBadge(entry) : badge(entry)}</span>` +
+      // No factory badge in the Patches list: under this structure captured
+      // records are not in that tab at all, and every row there is yours. The
+      // detail column keeps the indication, which is where you would try to
+      // edit one (Daniel, 2026-08-16).
+      `<span class="lib-badges">${opts.flat && !opts.readOnly ? '' : badge(entry)}</span>` +
       `</button>` +
-      // A button cannot contain a button, so the delete is a SIBLING and the
-      // wrapper positions it over the row's right edge.
+      // A button cannot contain a button, so the trailing control is a SIBLING
+      // and the wrapper positions it over the row's right edge.
+      //
+      // Inside a backup the control is DUPLICATE, not delete: the run is
+      // read-only, and making a record yours is a copy that lands in Patches
+      // with a name of your choosing. The record stays as it was.
+      (opts.readOnly
+        ? `<button type="button" class="patch-duplicate" data-duplicate-to-patches="${esc(entry.file)}" ` +
+          `data-pi="${entry.patchIndex}" title="Duplicate “${esc(name)}” to Patches">` +
+          '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
+          'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/>' +
+          '<path d="M10.5 2.5h-8v8"/></svg></button>'
+        : '') +
+      (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
       `data-pi="${entry.patchIndex}" title="Delete “${esc(name)}”">` +
       '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
         'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M2.8 4.3h10.4"/><path d="M6.4 4.3V3.1h3.2v1.2"/>' +
         '<path d="M4.2 4.3l.7 8.2a.9.9 0 0 0 .9.8h4.4a.9.9 0 0 0 .9-.8l.7-8.2"/>' +
-        '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg>' + '</button>' +
+        '<path d="M6.8 6.6v4.4M9.2 6.6v4.4"/></svg>' + '</button>') +
       `</span>`
     );
   }
@@ -280,12 +298,12 @@
     // browse every Rhodes you have ever had in one place; a captured one is
     // reached through its backup.
     const list = data.patches.filter(
-      (e) => inList(e, newestPerSlot(data.patches)) && matches(e, state.search)
+      (e) => inList(e) && matches(e, state.search)
     );
     if (!list.length) {
-      return `<div class="lib-empty">${data.patches.length
+      return `<div class="lib-empty">${state.search
         ? 'No patches match the search.'
-        : 'Patches you save or import live here. Ones read off the Seven live under Backups.'}</div>`;
+        : 'Patches you make live here — start one from Instruments, or duplicate a record from a backup.'}</div>`;
     }
     // FLAT, newest first. It used to group by bank with dated headings — which
     // is exactly what a backup is, so the two tabs showed the same list twice
@@ -340,31 +358,15 @@
   // history. The accepted consequence is that a superseded version cannot be
   // sent straight from Patches: restoring one goes through Backups, which
   // should be a deliberate act.
-  const slotKey = (e) => `${e.origin.bank}:${e.origin.preset}`;
-  const capturedAt = (e) => String((e.origin || {}).date || (e.origin || {}).captured || '');
 
-  function newestPerSlot(patches) {
-    const best = new Map();
-    for (const e of patches) {
-      if (e.invalid || !isFromSeven(e)) continue;
-      const k = slotKey(e);
-      const prev = best.get(k);
-      // Ties go to the one listed later: same date, and the list is already in
-      // a stable order, so this picks one rather than flickering between them.
-      if (!prev || capturedAt(e) >= capturedAt(prev)) best.set(k, e);
-    }
-    return new Set([...best.values()]);
-  }
-
-  // ONE LIST. There were three sub-tabs — My patches, From the Seven, All —
-  // and the distinction was not real: apart from Bank 1's eight factory
-  // presets, everything here is yours or yours to change, and those eight
-  // already wear a badge (Daniel, 2026-08-16). What is left is a membership
-  // test: every patch, minus superseded captures of a slot.
-  const inList = (e, current) => {
-    if (e.invalid) return false;
-    return !isFromSeven(e) || !current || current.has(e);
-  };
+  // PATCHES ARE YOURS. Only what you made in the app — created, edited,
+  // duplicated or renamed. Records captured from the instrument are the
+  // instrument's history and live in Backups, where the slot comes from
+  // position and nothing needs it in a name (Daniel, 2026-08-16).
+  //
+  // This is why no row here carries a slot, a date or a factory badge: every
+  // row is yours and named by you.
+  const inList = (e) => !e.invalid && !isFromSeven(e);
 
   // A capture is filed by WHERE IT CAME FROM, not by its name. Five Tine
   // Pianos and four DX captures sorted alphabetically are a wall of
@@ -512,12 +514,16 @@
       const slots = (data.setlists[b.index] || {}).slots || [];
       const rows = slots
         .map((f) => (f ? byFile.get(f) : null))
+        // Searching inside a run filters its records; a slot whose record does
+        // not match reads as empty, because the run's shape is eight positions
+        // and hiding rows would renumber them.
+        .map((e) => (e && matches(e, state.search) ? e : null))
         .map((e, i) => (e
           // No pill here either: a backup is a list of forty rows the same
           // way, and selecting one answers the question in the centre column
           // (Daniel, 2026-08-13). The preset NUMBER still leads the row —
           // that is what a backup is a record of.
-          ? renderPatchRow(e, state, { inRun: true, flat: true })
+          ? renderPatchRow(e, state, { inRun: true, flat: true, readOnly: true })
           : `<div class="lib-row lib-slot-empty"><span class="patch-num">${i + 1}</span>` +
             '<span class="lib-empty-slot">empty</span></div>'))
         .join('');
@@ -733,6 +739,47 @@
 
   // Segments, not a dropdown: three options whose counts are the point, and a
   // dropdown would hide two thirds of the answer behind a click.
+  // BACKUPS in the picker: pick a run, then a bank, then a preset. Assigning
+  // from here is a REFERENCE — the slot points at the record that already
+  // exists. No copy, no name prompt, no eight new files for eight slots
+  // (Daniel, 2026-08-16).
+  function renderPickBackups(data, state) {
+    const runs = backupRuns(data);
+    if (!runs.length) return '<div class="lib-empty">No backups yet.</div>';
+    if (state.pickRun == null) {
+      return `<div class="pick-list">${runs.map((r) => {
+        const slots = r.banks.reduce((n, b) => n +
+          ((data.setlists[b.index] || {}).slots || []).filter(Boolean).length, 0);
+        return `<button type="button" class="pick-row" data-pick-run="${esc(r.key)}">` +
+          `<span class="patch-name">${esc(fmtDate(r.date))} Backup</span>` +
+          `<span class="lib-origin">${slots > SLOT_COUNT ? '32+' : `${slots} presets`}` +
+          `${r.partial ? ' · failed' : ''}</span></button>`;
+      }).join('')}</div>`;
+    }
+    const run = runs.find((r) => r.key === state.pickRun);
+    if (!run) return '<div class="lib-empty">That backup is gone.</div>';
+    const byFile = new Map();
+    for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
+    const q = state.pickSearch || '';
+    const banks = run.banks.map((b) => {
+      const slots = (data.setlists[b.index] || {}).slots || [];
+      const rows = slots.map((file, i) => {
+        const entry = file ? byFile.get(file) : null;
+        if (!entry || !matches(entry, q)) {
+          return `<div class="pick-row is-empty"><span class="patch-num">${i + 1}</span>` +
+            '<span class="lib-empty-slot">empty</span></div>';
+        }
+        return `<button type="button" class="pick-row" data-pick-file="${esc(entry.file)}" ` +
+          `data-pi="${entry.patchIndex}">` +
+          `<span class="patch-num">${i + 1}</span>` +
+          `<span class="patch-name">${esc(displayName(entry))}</span>` +
+          `<span class="patch-sound">${esc(entry.soundName)}</span></button>`;
+      }).join('');
+      return `<div class="lib-group"><div class="lib-group-title">Bank ${b.bank}</div>${rows}</div>`;
+    }).join('');
+    return `<button type="button" class="lib-back" data-pick-run-back>‹ Backups</button>${banks}`;
+  }
+
   function renderPicker(data, state, sounds, allSounds) {
     const slot = state.picking;
     const q = state.pickSearch || '';
@@ -741,8 +788,10 @@
     // offers those same eight sounds directly. Listing them here as patches
     // was the same eight things twice (Daniel, 2026-08-13). A patch you MADE
     // from one of them is your own and stays.
-    const list = data.patches.filter((e) => !e.invalid && matches(e, q)
-      && !((e.origin || {}).kind === 'backup' && e.origin.bank === 1));
+    // The picker's Patches tab lists what the Patches TAB lists: your own
+    // work. Records live behind the Backups tab beside it, where they are
+    // picked by run, bank and preset (Daniel, 2026-08-16).
+    const list = data.patches.filter((e) => inList(e) && matches(e, q));
     // FLAT, by name — the same inventory the Patches tab shows. It grouped by
     // "13 August · Bank 2 / Created here / Imported", which is the structure
     // the Backups tab now owns, so choosing a patch met the same shape a third
@@ -813,20 +862,23 @@
           }).join('') +
           `</div>`)
       : `<div class="lib-empty">No patches match “${esc(q)}”.</div>`;
-    const shown = sounds
-      ? renderSoundTiles(state, allSounds || [])
-      : body;
+    const mode = state.pickMode === 'sounds' ? 'sounds'
+      : state.pickMode === 'backups' ? 'backups' : 'patches';
+    const shown = mode === 'sounds' ? renderSoundTiles(state, allSounds || [])
+      : mode === 'backups' ? renderPickBackups(data, state)
+        : body;
     return (
       `<div class="pick-overlay">` +
       `<div class="pick-modal" role="dialog" aria-label="Choose a patch">` +
       `<div class="pick-modal-head">` +
       `<span class="pick-title">Assigning Slot ${slot + 1}</span>` +
       `<div class="pick-modes">` +
-      `<button type="button" class="pick-mode${sounds ? '' : ' on'}" data-pick-mode="patches">Patches</button>` +
-      `<button type="button" class="pick-mode${sounds ? ' on' : ''}" data-pick-mode="sounds">Instruments</button>` +
+      `<button type="button" class="pick-mode${mode === 'patches' ? ' on' : ''}" data-pick-mode="patches">Patches</button>` +
+      `<button type="button" class="pick-mode${mode === 'sounds' ? ' on' : ''}" data-pick-mode="sounds">Instruments</button>` +
+      `<button type="button" class="pick-mode${mode === 'backups' ? ' on' : ''}" data-pick-mode="backups">Backups</button>` +
       `</div>` +
       `<input class="lib-search lib-autofocus" data-pick-search type="search" ` +
-      `placeholder="${sounds ? 'Search instruments…' : 'Search name or sound…'}" value="${esc(q)}">` +
+      `placeholder="${mode === 'sounds' ? 'Search instruments…' : 'Search name or sound…'}" value="${esc(q)}">` +
       `<button type="button" class="pick-cancel">Cancel</button>` +
       `</div>` +
       `<div class="pick-body">${shown}</div>` +
@@ -989,7 +1041,10 @@
       // one by looking (Daniel, 2026-08-13). It is a magnifier elsewhere until
       // it is wanted — the field sat open in the bar all day for something
       // reached for occasionally.
-      (state.tab === 'backups'
+      // At the RUN LIST there is nothing to search — a handful of dated runs,
+      // picked by looking. Inside a run there are thirty-two records and the
+      // box earns its place (Daniel, 2026-08-16).
+      (state.tab === 'backups' && state.backupRun == null
         ? ''
         : (state.searchOpen || state.search
         ? `<input class="lib-search lib-autofocus" type="search" ` +
@@ -1066,9 +1121,7 @@
     // Patches, runs on Backups, setlists on Setlists.
     function visibleCount() {
       if (state.tab === 'patches') {
-        return data.patches.filter(
-          (e) => inList(e, newestPerSlot(data.patches)) && matches(e, state.search)
-        ).length;
+        return data.patches.filter((e) => inList(e) && matches(e, state.search)).length;
       }
       if (state.tab === 'backups') return backupRuns(data).length;
       return data.setlists.filter((s2) => !BACKUP_NAME.test(s2.name)).length;
@@ -1119,7 +1172,11 @@
           clearTimeout(openTimer);
           lastNameClick = { key: null, t: 0 };
           if (setlistRow) state.renamingSetlist = Number(setlistRow.dataset.setlist);
-          else {
+          else if (patchRow && patchRow.closest('[data-in-run]')) {
+            // READ-ONLY. A backup is what the instrument held that day; renaming
+            // a record would edit history. Making it yours is a copy, and the
+            // row offers exactly that (Daniel, 2026-08-16).
+          } else {
             const entry = entryAt(patchRow);
             if (entry) {
               state.renaming = rowKey(entry);
@@ -1192,9 +1249,13 @@
         return;
       }
 
+      const pickRun = e.target.closest('[data-pick-run]');
+      if (pickRun) { state.pickRun = pickRun.dataset.pickRun; render(); return; }
+      if (e.target.closest('[data-pick-run-back]')) { state.pickRun = null; render(); return; }
       const mode = e.target.closest('[data-pick-mode]');
       if (mode) {
         state.pickMode = mode.dataset.pickMode;
+        state.pickRun = null;
         state.pickSearch = '';
         render();
         return;
@@ -1213,8 +1274,12 @@
 
       const pick = e.target.closest('[data-pick-file]');
       if (pick) {
+        // A backup record assigns BY REFERENCE — the slot points at the file
+        // that already exists. No copy, no prompt, and filling eight slots
+        // from a run makes no new files at all (Daniel, 2026-08-16).
         const slot = state.picking;
         state.picking = null;
+        state.pickRun = null;
         state.pickSearch = '';
         if (on.assignSlot) on.assignSlot(state.setlistIndex, slot, pick.dataset.pickFile);
         return;
@@ -1259,6 +1324,13 @@
             indexes: run.banks.map((b) => b.index),
           });
         }
+        return;
+      }
+      const dup = e.target.closest('[data-duplicate-to-patches]');
+      if (dup) {
+        const entry = data.patches.find((x) => x.file === dup.dataset.duplicateToPatches
+          && String(x.patchIndex) === dup.dataset.pi);
+        if (entry && on.duplicateToPatches) on.duplicateToPatches(entry);
         return;
       }
       const patchDel = e.target.closest('[data-patch-delete]');
@@ -1608,16 +1680,9 @@
         // the new patch is one you MADE — so the link appeared to do nothing
         // (Daniel, 2026-08-14). Switch to where the patch lives rather than to
         // "All", so the control still names a real category, and tell app.js
-        // so the persisted preference matches what is on screen.
-        const target = data.patches.find(
-          (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
-        );
-        // A superseded capture is no longer in ANY patches scope — it lives in
-        // Backups now. Switching scope cannot reveal it, and this says so
-        // rather than moving the list and leaving the row unfound.
-        const current = newestPerSlot(data.patches);
-        // Nothing to switch to any more: one list, and a superseded capture
-        // is in none of it — it lives in Backups.
+        // Revealing is for a patch you just made or saved, which is always in
+        // Patches. A captured record is not in this tab at all — it lives in
+        // Backups — and there is no scope left to switch to.
         state.revealFile = file;
         state.selected = `${file} ${patchIndex || 0}`;
         render();

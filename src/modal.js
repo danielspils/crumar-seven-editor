@@ -273,6 +273,10 @@
       // advances one the player never answered. A click while nothing is
       // pending does nothing, which is the point.
       clearPending() { pending = null; pendingPromise = null; },
+      // Answer the dialog from inside its own body — a text field where Enter
+      // should mean the confirm button, without the caller reaching for the
+      // button element itself.
+      confirm() { settle(true); },
       close() {
         document.removeEventListener('keydown', onKey, true);
         settle(false);

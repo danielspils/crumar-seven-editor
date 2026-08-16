@@ -1376,66 +1376,47 @@
   // The starting point is never guessed at from filename shape or rename
   // status — those are proxies for something the user knows directly, so the
   // question is asked instead (Daniel, 2026-08-14).
+  // Naming a new patch. No donor question any more: a MODEL starts from
+  // Crumar's Bank 1 preset for that engine, a SAMPLE from a clean slate, and
+  // both are the same every time (library-store.js). What is left to ask is
+  // what to call it (Daniel, 2026-08-16).
+  //
+  // The field is pre-filled with the sound's name, numbered if that is taken,
+  // and its text is selected: Enter accepts, typing replaces. Emptying it
+  // falls back to that default rather than creating an unnamed patch.
+  // One field, pre-filled and selected: Enter accepts, typing replaces, and an
+  // empty field falls back to the suggestion rather than making something
+  // unnamed. Shared by "new patch from a sound" and "duplicate out of a
+  // backup", because they ask the same question.
+  async function askForName({ title, suggested, confirmLabel }) {
+    const m = SevenModal.open({
+      title,
+      bodyHtml: `<input class="name-input" type="text" spellcheck="false" value="${esc(suggested)}">`,
+      confirmLabel,
+      cancelLabel: 'Cancel',
+    });
+    const field = m.body.querySelector('.name-input');
+    if (field) {
+      field.focus();
+      field.select();
+      field.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); m.confirm(); }
+      });
+    }
+    const ok = await m.action();
+    const typed = field ? field.value.trim() : '';
+    m.close();
+    return ok ? (typed || suggested) : null;
+  }
+
   async function generateFromInstrument(name) {
-    const info = await window.sevenAPI.library.donorsFor(name);
-    if (!info || !info.ok) {
-      toast((info && info.error) || `Could not read the library for ${name}`);
-      return null;
-    }
-    const label = (d) => `Bank ${d.bank} Preset ${d.preset} — ${d.file.replace(/\.sevenlib\.json$/, '')}`;
-    let donor = info.donors[0] || null;
+    const suggested = await window.sevenAPI.library.nextPatchName(name);
+    const chosen = await askForName({
+      title: 'Name this patch', suggested, confirmLabel: 'Create patch',
+    });
+    if (!chosen) return null;
 
-    if (donor) {
-      const answer = await SevenModal.confirm({
-        title: `New patch from ${name}`,
-        bodyHtml:
-          `<p class="bk-sum">Starting from: ${esc(label(donor))}</p>` +
-          `<p class="bk-time">${info.donors.length === 1
-            ? 'The only reading of this sound in your library.'
-            : `${info.donors.length} readings of this sound are in your library.`}</p>`,
-        confirmLabel: 'Create patch',
-        secondaryLabel: 'Change',
-        cancelLabel: 'Cancel',
-        tone: 'is-announce',
-      });
-      if (!answer) return null;
-      if (answer === 'secondary') {
-        const picked = await SevenModal.choose({
-          title: 'Start from which capture?',
-          bodyHtml: `<p>Every reading of ${esc(name)} in your library.</p>`,
-          choices: info.donors.map((d) => ({
-            value: d.file,
-            label: `Bank ${d.bank} Preset ${d.preset} · ${d.file.replace(/\.sevenlib\.json$/, '')}` +
-              (d.date ? ` · ${new Date(d.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : ''),
-          })),
-          cancelLabel: 'Cancel',
-          tone: 'is-choice',
-        });
-        if (!picked) return null;
-        donor = info.donors.find((d) => d.file === picked) || donor;
-      }
-    } else {
-      // No reading of this sound anywhere. Say exactly what the values will be
-      // instead, and how many are seeds — a patch built from seeds is never
-      // written silently.
-      const { factory, seeded } = info.withoutDonor;
-      const ok = await SevenModal.confirm({
-        title: `New patch from ${name}`,
-        bodyHtml:
-          '<p class="bk-sum">No capture of this sound in your library</p>' +
-          `<p class="bk-time">${factory
-            ? `${factory} values come from Bank 1, the factory bank. `
-            : ''}${seeded} of ${factory + seeded} would be seeded — placeholder numbers, ` +
-          'not values read from your instrument.</p>' +
-          '<p class="bk-time">Backing up a preset that uses this sound would give it real values.</p>',
-        confirmLabel: 'Create anyway',
-        cancelLabel: 'Cancel',
-        tone: 'is-warning',
-      });
-      if (!ok) return null;
-    }
-
-    const made = await window.sevenAPI.library.generateFromSound(name, donor ? donor.file : null);
+    const made = await window.sevenAPI.library.generateFromSound(name, chosen);
     if (!made || !made.ok) {
       toast((made && made.error) || `Could not create a patch from ${name}`);
       return null;
@@ -1760,7 +1741,6 @@
   const libSection = document.getElementById('library-section');
   const libHead = document.getElementById('library-head');
   const libCount = document.getElementById('library-count');
-  const libFiles = document.getElementById('library-files');
   const libReveal = document.getElementById('library-reveal');
   const bankStrip = document.getElementById('bank-strip');
   const bankStripLabel = document.getElementById('bank-strip-label');
@@ -1808,7 +1788,6 @@
       },
       counts: (shown, total) => {
         libCount.textContent = `— ${shown}`;
-        if (libFiles) libFiles.textContent = `${total} file${total === 1 ? '' : 's'}`;
       },
       // The picker's Instruments tab. A GETTER, read at each render, so it
       // follows the connected unit's table the moment one is read and falls
@@ -1817,6 +1796,24 @@
       // units (schema soundsNote).
       get sounds() { return soundList; },
       select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
+      // Making a record yours: a copy in Patches, named by you. The record is
+      // untouched, and nothing that pointed at it is re-pointed — a setlist
+      // slot still holds the record, and you would assign the copy yourself if
+      // you wanted it there (Daniel, 2026-08-16).
+      async duplicateToPatches(entry) {
+        const base = String(entry.name || 'Patch').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
+        const suggested = await window.sevenAPI.library.nextPatchName(base);
+        const chosen = await askForName({
+          title: 'Duplicate to Patches', suggested, confirmLabel: 'Duplicate',
+        });
+        if (!chosen) return;
+        const copy = await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex || 0, chosen);
+        await refreshLibrary();
+        if (copy && copy.file) {
+          libView.reveal(copy.file, copy.patchIndex || 0, { tab: 'patches' });
+          toast(`Duplicated to Patches: ${chosen}`);
+        }
+      },
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
         if (!action) return;

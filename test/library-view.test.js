@@ -88,58 +88,6 @@ const capture = (bank, preset, date, name) => ({
   origin: { kind: 'backup', bank, preset, date },
 });
 
-test('the list carries the newest record per slot, not every capture', () => {
-  const patches = [
-    capture(3, 1, '2026-08-09T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
-    capture(3, 1, '2026-08-12T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
-    capture(3, 1, '2026-08-16T10:00:00Z', 'Kitchen Dishes Delay'),
-    capture(3, 2, '2026-08-16T10:00:00Z', 'Bank 3 Preset 2 — Tine Piano'),
-    { file: 'mine.sevenlib.json', patchIndex: 0, name: 'My Patch', soundName: 'Tine Piano',
-      params: {}, origin: { kind: 'created', date: '2026-08-15T10:00:00Z' } },
-  ];
-  const html = SevenLibraryView.renderBody(
-    { patches, setlists: [], files: patches.length },
-    { tab: 'patches', search: '' }
-  );
-  const rows = (html.match(/class="lib-row lib-patch/g) || []).length;
-  // Two slots and one patch of your own: three rows, not five files.
-  assert.strictEqual(rows, 3, 'two slots plus your own patch');
-  assert.ok(html.includes('Kitchen Dishes Delay'), 'the newest record for the slot');
-  assert.ok(!html.includes('>Bank 3 Preset 1 — Tine Piano<'), 'and not the superseded ones');
-});
-
-test('a superseded capture is not in the list at all', () => {
-  const patches = [
-    capture(3, 1, '2026-08-09T10:00:00Z', 'old'),
-    capture(3, 1, '2026-08-16T10:00:00Z', 'new'),
-  ];
-  const html = SevenLibraryView.renderBody(
-    { patches, setlists: [], files: 2 }, { tab: 'patches', search: '' }
-  );
-  assert.strictEqual((html.match(/class="lib-row lib-patch/g) || []).length, 1);
-});
-
-test('one list, no sub-tabs, sorted by what changed most recently', () => {
-  const patches = [
-    { file: 'old-capture.sevenlib.json', patchIndex: 0, name: 'Bank 2 Preset 1 — Tine Piano',
-      soundName: 'Tine Piano', params: {},
-      origin: { kind: 'backup', bank: 2, preset: 1, date: '2026-08-09T10:00:00Z',
-        captured: '2026-08-09T10:00:00Z', verified: '2026-08-16T10:00:00Z' } },
-    { file: 'worked-on.sevenlib.json', patchIndex: 0, name: 'Shapes Clav',
-      soundName: 'Clavi Piano', params: {},
-      origin: { kind: 'created', date: '2026-08-15T18:00:00Z', captured: '2026-08-15T18:00:00Z' } },
-  ];
-  const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 2 },
-    { tab: 'patches', search: '' });
-  assert.ok(!/lib-scope|scope-btn/.test(html), 'the sub-tabs are gone');
-  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
-  // The capture was VERIFIED more recently — a backup agreeing it is
-  // unchanged — but it has not changed since 9 Aug, so the patch worked on
-  // last night leads.
-  // displayName strips the "Bank 2 Preset 1 — " prefix from a capture's row.
-  assert.deepStrictEqual(names, ['Shapes Clav', 'Tine Piano']);
-});
-
 test('patch rows carry no date — this list is current state', () => {
   const patches = [
     capture(3, 1, '2026-08-16T10:00:00Z', 'Bank 3 Preset 1 — Tine Piano'),
@@ -305,4 +253,115 @@ test('runs sort newest first, and a later run of the same day leads', () => {
     { tab: 'backups', search: '' });
   const names = [...html.matchAll(/lib-setlist-name">([^<]+)</g)].map((m) => m[1]);
   assert.deepStrictEqual(names, ['16 Aug Backup', '12 Aug Backup']);
+});
+
+// --- Patches is yours ------------------------------------------------------
+//
+// Only what you made in the app. Records captured from the instrument are its
+// history and live in Backups, where position gives the slot (Daniel,
+// 2026-08-16).
+
+const captured = (name, bank, preset) => ({
+  file: `${name.replace(/\W+/g, '-')}.sevenlib.json`,
+  patchIndex: 0, name, soundName: 'Tine Piano', params: {},
+  origin: { kind: 'backup', bank, preset, date: '2026-08-16T10:00:00Z', captured: '2026-08-16T10:00:00Z' },
+});
+const mine = (name, at) => ({
+  file: `${name.replace(/\W+/g, '-')}.sevenlib.json`,
+  patchIndex: 0, name, soundName: 'Clavi Piano', params: {},
+  origin: { kind: 'created', date: at, captured: at },
+});
+
+test('captured records are not in Patches at all', () => {
+  const patches = [
+    captured('Bank 3 Preset 1 — Tine Piano', 3, 1),
+    captured('Bank 1 Preset 4 — Clavi Piano', 1, 4),
+    mine('Kitchen Dishes Delay', '2026-08-16T11:00:00Z'),
+  ];
+  const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 3 },
+    { tab: 'patches', search: '' });
+  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
+  assert.deepStrictEqual(names, ['Kitchen Dishes Delay']);
+  assert.ok(!/badge-factory/.test(html), 'and no factory badge — those records are elsewhere');
+});
+
+test('with no patches of your own, the empty state says where they come from', () => {
+  const html = SevenLibraryView.renderBody(
+    { patches: [captured('Bank 3 Preset 1 — Tine Piano', 3, 1)], setlists: [], files: 1 },
+    { tab: 'patches', search: '' }
+  );
+  assert.match(html, /Patches you make live here — start one from Instruments, or duplicate a record from a backup\./);
+});
+
+test('your patches sort by what changed most recently', () => {
+  const patches = [
+    mine('Older', '2026-08-10T09:00:00Z'),
+    mine('Newer', '2026-08-16T09:00:00Z'),
+  ];
+  const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 2 },
+    { tab: 'patches', search: '' });
+  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
+  assert.deepStrictEqual(names, ['Newer', 'Older']);
+});
+
+// --- Backups is read-only, and the picker can reach it ----------------------
+
+const runData = () => {
+  const patches = [];
+  for (let b = 1; b <= 2; b++) {
+    for (let i = 0; i < 8; i++) {
+      patches.push({
+        file: `p${b}${i}.sevenlib.json`, patchIndex: 0,
+        name: `Bank ${b} Preset ${i + 1} — Tine Piano`, soundName: 'Tine Piano', params: {},
+        origin: { kind: 'backup', bank: b, preset: i + 1, date: '2026-08-16T10:00:00Z' },
+      });
+    }
+  }
+  patches.push({
+    file: 'mine.sevenlib.json', patchIndex: 0, name: 'Kitchen Dishes Delay',
+    soundName: 'Clavi Piano', params: {},
+    origin: { kind: 'created', date: '2026-08-16T11:00:00Z' },
+  });
+  const setlist = (b) => ({
+    name: `Bank ${b} setlist (2026-08-16)`,
+    slots: Array.from({ length: 8 }, (_, i) => `p${b}${i}.sevenlib.json`),
+  });
+  return { patches, setlists: [setlist(1), setlist(2), { name: 'Gig', slots: Array(8).fill(null) }], files: 17 };
+};
+
+test('a record inside a backup offers Duplicate, never Delete', () => {
+  const html = SevenLibraryView.renderBody(runData(),
+    { tab: 'backups', backupRun: '2026-08-16', search: '' });
+  assert.match(html, /data-duplicate-to-patches=/, 'duplicate is offered');
+  assert.ok(!/data-patch-delete=/.test(html), 'and nothing there can be deleted');
+  assert.ok(!/draggable="true"/.test(html), 'nor dragged into a new order');
+});
+
+test('search is hidden at the run list and present inside a run', () => {
+  const data = runData();
+  const list = SevenLibraryView.renderBody(data, { tab: 'backups', search: '' });
+  assert.ok(!/lib-search/.test(list), 'nothing to search in a handful of runs');
+  const run = SevenLibraryView.renderBody(data, { tab: 'backups', backupRun: '2026-08-16', search: '' });
+  assert.match(run, /lib-search/, 'thirty-two records earn the box');
+});
+
+test('the picker has three tabs and reaches a backup by run, bank and preset', () => {
+  const data = runData();
+  const state = { tab: 'setlists', setlistIndex: 2, picking: 0, search: '' };
+  const patchesTab = SevenLibraryView.renderBody(data, { ...state, pickMode: 'patches' }, []);
+  assert.deepStrictEqual(
+    [...patchesTab.matchAll(/data-pick-mode="(\w+)"/g)].map((m) => m[1]),
+    ['patches', 'sounds', 'backups']
+  );
+  assert.strictEqual((patchesTab.match(/data-pick-file=/g) || []).length, 1,
+    'the Patches tab offers only your own');
+
+  const runs = SevenLibraryView.renderBody(data, { ...state, pickMode: 'backups' }, []);
+  assert.strictEqual((runs.match(/data-pick-run=/g) || []).length, 1, 'one run to choose');
+
+  const inside = SevenLibraryView.renderBody(data,
+    { ...state, pickMode: 'backups', pickRun: '2026-08-16' }, []);
+  assert.strictEqual((inside.match(/lib-group-title/g) || []).length, 2, 'two banks');
+  assert.strictEqual((inside.match(/data-pick-file=/g) || []).length, 16, 'sixteen presets');
+  assert.match(inside, /data-pick-run-back/, 'and a way back to the run list');
 });

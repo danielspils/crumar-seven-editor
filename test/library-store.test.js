@@ -119,64 +119,78 @@ test('a generated patch carries all 110 parameters', () => {
   assert.deepEqual(Object.keys(made.params).sort(), allKeys(), 'the key set is the schema\'s');
 });
 
-test('factory values are used where Bank 1 has them', () => {
+// A MODEL comes from Crumar's Bank 1 preset for that engine — always the same,
+// whatever else is in the library (Daniel, 2026-08-16).
+test('a modeled sound is built from Bank 1, whole', () => {
   const { store } = freshStore();
+  const bank1 = Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(9, p.max)]));
+  bank1.rev_sw = 1; bank1.rev_lv = 44;
   const made = store.createPatchFromSound('Tine Piano', {
-    factoryDefaults: { sounds: { 'Tine Piano': { rev_sw: 1, rev_lv: 44, fx1_sw: 0 } } },
+    factoryDefaults: { sounds: { 'Tine Piano': bank1 } },
   });
+  assert.strictEqual(made.source, 'factory');
   assert.strictEqual(made.params.rev_sw, 1);
   assert.strictEqual(made.params.rev_lv, 44);
-  assert.strictEqual(made.sources.factory, 3, 'three keys came from Bank 1');
-  assert.strictEqual(made.sources.seeded, schema.parameters.length - 3, 'the rest were seeded');
-  assert.deepEqual(Object.keys(made.params).sort(), allKeys(), 'and every key is still present');
+  assert.deepEqual(Object.keys(made.params).sort(), allKeys());
+  const written = JSON.parse(fs.readFileSync(path.join(store.dir, made.file), 'utf8')).patches[0];
+  assert.strictEqual(written.origin.source, 'factory', 'the file says where the values came from');
 });
 
-// Several backups commonly share a sound. The choice must not depend on when a
-// backup happened to run: lowest bank, then lowest preset, so Bank 1 wins
-// wherever it has coverage (Daniel, 2026-08-14).
-test('the lowest bank and preset is the donor, and the patch records which', () => {
+// A SAMPLE has no Bank 1 reference — Bank 1 holds no sampled sound — so it is
+// a clean slate rather than a guess.
+test('a sampled sound is a clean slate with the effects off', () => {
   const { store } = freshStore();
-  const at = (bank, preset, v) => store.saveBackupPatch({
-    name: `Bank ${bank} Preset ${preset} — Tine Piano`,
-    sound: { name: 'Tine Piano', sampled: false },
-    params: Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(v, p.max)])),
-    origin: { bank, preset, soundId: 0 },
-    captured: new Date().toISOString(),
-  });
-  // Written newest-last and out of order, so date order and bank order disagree.
-  at(3, 2, 9);
-  const wanted = at(1, 4, 3);
-  at(2, 1, 7);
-
-  const made = store.createPatchFromSound('Tine Piano');
-  const written = store.readFile(made.file).library.patches[0];
-  assert.strictEqual(written.params.rho_atk, 3, 'the values came from Bank 1');
-  assert.deepEqual(written.origin.donor, { bank: 1, preset: 4, file: wanted },
-    'and the patch says which capture it copied');
+  const made = store.createPatchFromSound('Venice Grand D-274', { factoryDefaults: { sounds: {} } });
+  assert.strictEqual(made.source, 'clean');
+  for (const sw of ['fx1_sw', 'fx2_sw', 'amp_sw', 'rev_sw', 'pad_sw']) {
+    assert.strictEqual(made.params[sw], 0, `${sw} is off`);
+  }
+  const seeded = schema.parameters.find((p) => p.key === 'rho_atk');
+  assert.strictEqual(made.params.rho_atk, Math.min(64, seeded.max), 'the rest take the seed');
+  assert.deepEqual(Object.keys(made.params).sort(), allKeys());
 });
 
-// The user's choice is recorded exactly as the automatic rule records it: a
-// file does not say whether its donor was chosen or defaulted, because that is
-// not a fact about the patch (Daniel, 2026-08-14).
-test('an explicitly chosen donor is used, and recorded like any other', () => {
+test('a library capture never changes what a new patch is built from', () => {
   const { store } = freshStore();
-  const at = (bank, preset, v) => store.saveBackupPatch({
-    name: `Bank ${bank} Preset ${preset} — Tine Piano`,
+  const params = Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(7, p.max)]));
+  store.saveBackupPatch({
+    name: 'Bank 3 Preset 8 — Tine Piano',
     sound: { name: 'Tine Piano', sampled: false },
-    params: Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(v, p.max)])),
-    origin: { bank, preset, soundId: 0 },
+    params,
+    origin: { bank: 3, preset: 8, soundId: 0 },
     captured: new Date().toISOString(),
   });
-  at(1, 1, 3);
-  const chosen = at(4, 1, 9); // NOT what the rule would pick
+  const bank1 = Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(9, p.max)]));
+  const made = store.createPatchFromSound('Tine Piano', {
+    factoryDefaults: { sounds: { 'Tine Piano': bank1 } },
+  });
+  assert.strictEqual(made.params.rho_atk, bank1.rho_atk, 'Bank 1, not the capture');
+  assert.notStrictEqual(made.params.rho_atk, params.rho_atk);
+});
 
-  const made = store.createPatchFromSound('Tine Piano', { donorFile: chosen });
-  const written = store.readFile(made.file).library.patches[0];
-  assert.strictEqual(written.params.rho_atk, 9, 'the chosen capture supplied the values');
-  assert.deepEqual(written.origin.donor, { bank: 4, preset: 1, file: chosen });
-  assert.deepEqual(Object.keys(written.origin).sort(),
-    ['created', 'donor', 'generatedFrom', 'kind'],
-    'the same origin shape the rule produces — nothing marks it as chosen');
+test('the offered name is the sound, then numbered', () => {
+  const { store } = freshStore();
+  assert.strictEqual(store.nextPatchName('Clavi Piano'), 'Clavi Piano');
+  store.createPatchFromSound('Clavi Piano', {
+    factoryDefaults: { sounds: {} }, patchName: 'Clavi Piano',
+  });
+  assert.strictEqual(store.nextPatchName('Clavi Piano'), 'Clavi Piano 2');
+  store.createPatchFromSound('Clavi Piano', {
+    factoryDefaults: { sounds: {} }, patchName: 'Clavi Piano 2',
+  });
+  assert.strictEqual(store.nextPatchName('Clavi Piano'), 'Clavi Piano 3');
+});
+
+test('a typed name is used, and an empty one falls back to the sound', () => {
+  const { store } = freshStore();
+  const named = store.createPatchFromSound('Clavi Piano', {
+    factoryDefaults: { sounds: {} }, patchName: 'Kitchen Dishes Delay',
+  });
+  assert.strictEqual(named.name, 'Kitchen Dishes Delay');
+  const blank = store.createPatchFromSound('Clavi Piano', {
+    factoryDefaults: { sounds: {} }, patchName: '   ',
+  });
+  assert.strictEqual(blank.name, 'Clavi Piano', 'never an unnamed patch');
 });
 
 // A stale choice from a dialog left open must not seed a patch from a capture
@@ -214,26 +228,6 @@ test('regenerating the same sound twice produces identical params', () => {
   assert.notStrictEqual(a.file, b.file, 'two files, so this is not comparing one patch to itself');
   assert.deepEqual(b.params, a.params, 'identical values');
   assert.deepEqual(b.sources, a.sources, 'and from the same places');
-});
-
-// A device-backed patch on the same sound is the best source there is: real
-// values off the instrument, with a chain that works. It beats Bank 1.
-test('a device-backed patch on the same sound is preferred', () => {
-  const { store } = freshStore();
-  const params = Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(7, p.max)]));
-  store.saveBackupPatch({
-    name: 'Bank 3 Preset 8 — Tine Piano',
-    sound: { name: 'Tine Piano', sampled: false },
-    params,
-    origin: { bank: 3, preset: 8, soundId: 0 },
-    captured: new Date().toISOString(),
-  });
-  const made = store.createPatchFromSound('Tine Piano', {
-    factoryDefaults: { sounds: { 'Tine Piano': { rev_sw: 1 } } },
-  });
-  assert.strictEqual(made.sources.donor, schema.parameters.length, 'every key came from the backup');
-  assert.strictEqual(made.sources.seeded, 0, 'nothing was seeded');
-  assert.strictEqual(made.params.rev_sw, params.rev_sw, 'the backup wins over Bank 1');
 });
 
 // The regression the report asked for, kept as a test: a generated patch and a

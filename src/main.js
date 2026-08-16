@@ -38,8 +38,8 @@ function registerLibraryIpc() {
   ipcMain.handle('library:list', () => getStore().list());
   ipcMain.handle('library:rename', (_e, { file, patchIndex, newName }) =>
     getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled'));
-  ipcMain.handle('library:duplicate', (_e, { file, patchIndex }) =>
-    getStore().duplicate(file, patchIndex));
+  ipcMain.handle('library:duplicate', (_e, { file, patchIndex, name }) =>
+    getStore().duplicate(file, patchIndex, name));
   ipcMain.handle('library:saveSound', (_e, { file, patchIndex, soundName, sampled }) =>
     getStore().savePatchSound(file, patchIndex || 0, soundName, sampled));
   ipcMain.handle('library:saveParams', (_e, { file, patchIndex, params }) =>
@@ -93,20 +93,15 @@ function registerLibraryIpc() {
   // sequence; `clearOrder` puts the list back to sorting itself.
   // Generating a patch from an instrument, in two steps so the UI can show
   // what it is about to copy from: what the donors are, then the write.
-  ipcMain.handle('library:donorsFor', (_e, { name }) => {
-    try { return { ok: true, ...getStore().donorsFor(name) }; }
+  ipcMain.handle('library:generateFromSound', (_e, { name, patchName }) => {
+    try { return { ok: true, ...getStore().createPatchFromSound(name, { patchName }) }; }
     catch (err) { return { ok: false, error: String(err.message || err) }; }
   });
-  ipcMain.handle('library:generateFromSound', (_e, { name, donorFile }) => {
-    try {
-      // A connected instrument whose parameter table we could not verify makes
-      // factory-defaults-1.37.json inapplicable — it describes the app's map,
-      // not that unit's. Generation then needs a donor or it refuses.
-      const donorOnly = midiLayer
-        && midiLayer.state === 'connected'
-        && !midiLayer.writeGate().allowed;
-      return { ok: true, ...getStore().createPatchFromSound(name, { donorFile, donorOnly }) };
-    } catch (err) { return { ok: false, error: String(err.message || err) }; }
+  // The name a new patch is offered before it is made: the sound's own,
+  // numbered if that is taken.
+  ipcMain.handle('library:nextPatchName', (_e, { name }) => {
+    try { return getStore().nextPatchName(name); }
+    catch { return name; }
   });
   ipcMain.handle('library:patchOrder', (_e, { keys }) => getStore().writePatchOrder(keys));
   ipcMain.handle('library:clearPatchOrder', () => getStore().clearPatchOrder());

@@ -34,13 +34,16 @@
   const name = tiles[0].dataset.pickSound;
   ui.click(tiles[0], `the ${name} tile`);
 
-  // Choosing an instrument now says what the new patch will be COPIED FROM
-  // before it writes anything, and that has to be answered (Daniel,
-  // 2026-08-14). Accepting the default is what a person does most of the time.
-  const start = await ui.waitEl('.seven-modal', 'the starting-point dialog');
-  ui.note(`starting point: ${start?.textContent.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
-  ui.check(/Starting from:|No capture of this sound/.test(start?.textContent || ''),
-    'it says where the values will come from');
+  // Choosing an instrument asks ONE thing: what to call it. Where the values
+  // come from is no longer a question — a model starts from Crumar's Bank 1
+  // preset, a sample from a clean slate (Daniel, 2026-08-16). The field is
+  // pre-filled with the sound's name, numbered if that is taken.
+  const start = await ui.waitEl('.seven-modal', 'the name prompt');
+  const field = start.querySelector('.name-input');
+  ui.check(!!field, 'it asks for a name');
+  ui.note(`offered name: ${field ? field.value : '(none)'}`);
+  ui.check(!!field && new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( \\d+)?$`).test(field.value),
+    'pre-filled with the sound, numbered if taken');
   ui.click(start.querySelector('.seven-modal-ok'), 'Create patch');
   await ui.waitFor(() => !ui.$('.seven-modal'), { what: 'the dialog to close' });
   await ui.sleep(1000);

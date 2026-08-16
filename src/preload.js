@@ -106,7 +106,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   library: {
     list: () => ipcRenderer.invoke('library:list'),
     rename: (file, patchIndex, newName) => ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
-    duplicate: (file, patchIndex) => ipcRenderer.invoke('library:duplicate', { file, patchIndex }),
+    duplicate: (file, patchIndex, name) =>
+      ipcRenderer.invoke('library:duplicate', { file, patchIndex, name }),
     trash: (file) => ipcRenderer.invoke('library:trash', { file }),
     saveSound: (file, patchIndex, soundName, sampled) =>
       ipcRenderer.invoke('library:saveSound', { file, patchIndex, soundName, sampled }),
@@ -118,9 +119,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // The Patches list's hand-placed order: the whole visible sequence as
     // `file#patchIndex` keys, or cleared to go back to sorting by recency.
     // What a generated patch would copy its values from, and the write itself.
-    donorsFor: (name) => ipcRenderer.invoke('library:donorsFor', { name }),
-    generateFromSound: (name, donorFile) =>
-      ipcRenderer.invoke('library:generateFromSound', { name, donorFile }),
+    nextPatchName: (name) => ipcRenderer.invoke('library:nextPatchName', { name }),
+    generateFromSound: (name, patchName) =>
+      ipcRenderer.invoke('library:generateFromSound', { name, patchName }),
     setPatchOrder: (keys) => ipcRenderer.invoke('library:patchOrder', { keys }),
     clearPatchOrder: () => ipcRenderer.invoke('library:clearPatchOrder'),
   },

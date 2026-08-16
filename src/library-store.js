@@ -644,13 +644,19 @@ class LibraryStore {
     fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
   }
 
-  duplicate(file, patchIndex) {
+  // `newName` is what the copy should be called — the name prompt supplies it
+  // when a record is duplicated out of a backup. Without one it falls back to
+  // "… copy", which is what the context menu's Duplicate has always done.
+  duplicate(file, patchIndex, newName) {
     const parsed = this.readFile(file);
     if (!parsed.library) throw new Error('File is not readable');
     const patch = parsed.library.patches[patchIndex];
     if (!patch) throw new Error('No such patch in file');
     const copy = JSON.parse(JSON.stringify(patch));
-    copy.name = `${copy.name || 'Patch'} copy`;
+    copy.name = String(newName || '').trim() || `${copy.name || 'Patch'} copy`;
+    // A copy is yours, so it does not carry a borrowed name's provenance: the
+    // name is now one you chose.
+    delete copy.nameFrom;
     // A copy is NOT a backup record. It kept origin.kind='backup' from the
     // patch it was cloned from, so it filed itself under the bank heading of
     // the capture it came from and could not be found among your own patches
@@ -712,56 +718,12 @@ class LibraryStore {
   // the factory bank cannot be stored to, so those eight are the instrument as
   // it shipped (Daniel, 2026-08-14). Filename breaks a remaining tie, so the
   // order is total.
-  _donorCandidates(soundName) {
-    let listing;
-    try { listing = this.list({ skipMigration: true }); } catch { return []; }
-    return listing.patches
-      .filter((e) => !e.invalid && e.soundName === soundName &&
-        e.origin && typeof e.origin.bank === 'number' && e.params)
-      .sort((a, b) => (
-        a.origin.bank - b.origin.bank ||
-        (a.origin.preset || 0) - (b.origin.preset || 0) ||
-        String(a.file).localeCompare(String(b.file))
-      ));
-  }
 
-  _donorFor(soundName, donorFile) {
-    const all = this._donorCandidates(soundName);
-    if (donorFile) {
-      // An explicit choice still has to be a capture OF THIS SOUND: a stale
-      // filename from a dialog left open must not seed a patch from something
-      // else entirely.
-      return all.find((e) => e.file === donorFile) || null;
-    }
-    return all[0] || null;
-  }
 
   // What generating this sound would start from, for the UI to show BEFORE it
   // writes anything. Every device-backed capture of the sound, in the order the
   // rule prefers them, plus what would happen if none is used — because a patch
   // built from seeds must never be generated silently (Daniel, 2026-08-14).
-  donorsFor(soundName) {
-    const sound = this.soundByName.get(soundName);
-    if (!sound) throw new Error(`Unknown sound: ${soundName}`);
-    const donors = this._donorCandidates(soundName).map((e) => ({
-      file: e.file,
-      name: e.name,
-      bank: e.origin.bank,
-      preset: e.origin.preset,
-      date: e.origin.date || null,
-    }));
-    // The no-donor path, counted without writing: how many of the 110 keys
-    // Bank 1 covers, and how many would fall through to a seed.
-    const factory = this._factoryDefaults().sounds || {};
-    const known = factory[soundName] || {};
-    let fromFactory = 0;
-    let seeded = 0;
-    for (const p of this.schema.parameters) {
-      if (known[p.key] !== undefined) fromFactory++;
-      else seeded++;
-    }
-    return { sound: soundName, donors, withoutDonor: { factory: fromFactory, seeded } };
-  }
 
   _factoryDefaults() {
     if (!this.factoryDefaults) {
@@ -778,94 +740,73 @@ class LibraryStore {
     return this.factoryDefaults;
   }
 
-  // `donorFile` is the user's choice from the creation dialog. Absent, the rule
-  // picks: lowest bank, then preset, then filename. The file records the donor
-  // the same way either way — a patch does not say whether it was chosen or
-  // defaulted, because that is not a fact about the patch (Daniel, 2026-08-14).
-  // donorOnly: refuse the factory-defaults and seed sources entirely. Set when
-  // the connected instrument's parameter table does not match the schema —
-  // factory-defaults-1.37.json describes OUR parameter map, and writing its
-  // numbers into a patch for an instrument with a different map would put
-  // wrong values on disk permanently. A donor is a capture from the instrument
-  // itself, so it stays legal (src/param-compat.js).
-  createPatchFromSound(name, { factoryDefaults, donorFile, donorOnly = false } = {}) {
+  // PREDICTABLE, and one rule per kind (Daniel, 2026-08-16):
+  //
+  //   MODEL  -> Crumar's Bank 1 preset for that engine. It always exists, it
+  //             is always the same, and it does not depend on what else is in
+  //             the library. schema/factory-defaults-1.37.json holds exactly
+  //             those eight, 110 parameters each.
+  //   SAMPLE -> a clean slate. Bank 1 holds no sampled sound, so there is no
+  //             factory reference to give and inventing one would be a guess:
+  //             the sound is selected, every parameter takes the seed, and the
+  //             effects are off.
+  //
+  // The donor machinery is gone. It asked which capture to start from, which
+  // made the same choice produce different patches depending on what had been
+  // backed up — and a patch made from an earlier one of your own is what the
+  // Patches list is for.
+  createPatchFromSound(name, { factoryDefaults, patchName } = {}) {
     const sound = this.soundByName.get(name);
     if (!sound) throw new Error(`Unknown sound: ${name}`);
-    const factory = (factoryDefaults || this._factoryDefaults()).sounds || {};
+    const factory = ((factoryDefaults || this._factoryDefaults()).sounds || {})[name] || null;
 
-    // EVERY parameter, always. This wrote five keys — the effects-block
-    // switches, all 0 — and nothing else, which switched amp/fx1/fx2/pad/reverb
-    // OFF and left the other 105 absent from the file entirely. The blocks were
-    // bypassed, so everything inside them was inert, which is what Daniel heard
-    // (2026-08-14). A missing key is now impossible rather than something the
-    // read path forgives.
-    //
-    // Sources, in order of preference, per key:
-    //   1. A device-backed patch in the library on the same sound — the lowest
-    //      bank/preset of them, so the choice is deterministic and Bank 1 wins
-    //      where it has coverage. Which one it was is written into origin.
-    //   2. schema/factory-defaults-1.37.json — Bank 1, the factory bank that
-    //      cannot be stored to. Covers the eight modeled sounds.
-    //   3. A seed. NOTE: seven-1.37.json carries no default for any of its 110
-    //      parameters — 0x15's `value` was the CURRENT value at query time, not
-    //      a factory one — so there is no "schema default" to read. This last
-    //      resort is the min(64, max) heuristic that src/defaults.js documents
-    //      as NOT evidence. It only runs for a sound with no backup and no
-    //      Bank 1 coverage, and `origin.seeded` records how many keys took it
-    //      so the file says what it is.
-    const donorEntry = this._donorFor(name, donorFile);
-    const donor = (donorEntry && donorEntry.params) || {};
-    const known = factory[name] || {};
+    // EVERY parameter, always. A patch that omits keys switches blocks off by
+    // absence and leaves the rest inert (Daniel, 2026-08-14).
     const params = {};
-    const sources = { donor: 0, factory: 0, seeded: 0 };
-    for (const p of this.schema.parameters) {
-      if (donor[p.key] !== undefined) { params[p.key] = donor[p.key]; sources.donor++; }
-      else if (known[p.key] !== undefined) { params[p.key] = known[p.key]; sources.factory++; }
-      else { params[p.key] = Math.min(64, p.max); sources.seeded++; }
+    let source;
+    if (factory) {
+      for (const p of this.schema.parameters) params[p.key] = factory[p.key];
+      source = 'factory';
+    } else {
+      // The seed is min(64, max) — src/defaults.js documents it as NOT
+      // evidence — and the effects blocks start off, which is what "no FX"
+      // means on this instrument: each block has a switch, and off is 0.
+      const OFF = new Set(['fx1_sw', 'fx2_sw', 'amp_sw', 'rev_sw', 'pad_sw']);
+      for (const p of this.schema.parameters) {
+        params[p.key] = OFF.has(p.key) ? 0 : Math.min(64, p.max);
+      }
+      source = 'clean';
     }
-    if (donorOnly && (sources.factory || sources.seeded)) {
-      throw new Error(
-        `Only a capture from this instrument can fill in “${name}”, and ` +
-        `${sources.factory + sources.seeded} of its ${this.schema.parameters.length} ` +
-        'parameters have none. Back up the slot that uses this sound first.'
-      );
-    }
+
     const patch = {
-      name,
-      // ONE source of truth for the sound. The top-level `soundName`/`sampled`
-      // duplicated what `sound` already holds, and no device-backed patch has
-      // them (Daniel, 2026-08-14).
+      name: String(patchName || name).trim() || name,
       sound: { name, sampled: !!sound.sampled },
       params,
-      // Nothing here came from the instrument, so it does not claim to:
-      // `fromInstrument` was false on its face. `created` stays because the
-      // row's date is read from it.
       origin: {
         kind: 'generated',
         generatedFrom: name,
         created: new Date().toISOString(),
-        // Which reading these values came from, so the patch can say where it
-        // got them: the bank and preset on the instrument, and the file in the
-        // library that holds that capture.
-        ...(donorEntry
-          ? {
-            donor: {
-              bank: donorEntry.origin.bank,
-              preset: donorEntry.origin.preset,
-              file: donorEntry.file,
-            },
-          }
-          : {}),
-        ...(sources.seeded ? { seeded: sources.seeded } : {}),
+        // WHERE THE VALUES CAME FROM, in the file: the factory bank, or a
+        // clean slate. Nothing here was read from the player's instrument.
+        source,
       },
     };
-    // The folder may not exist yet — nothing guarantees a list() came first,
-    // and a write into a missing directory throws ENOENT. Same guard
-    // writeSetlists carries, for the same reason.
     this.ensureSeeded();
-    const target = this.uniqueFile(name);
+    const target = this.uniqueFile(patch.name);
     fs.writeFileSync(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(patch)));
-    return { file: target, patchIndex: 0, name, params, sources };
+    return { file: target, patchIndex: 0, name: patch.name, params, source };
+  }
+
+  // The name a new patch is offered: the sound's own, numbered if that is
+  // taken. "Clavi Piano", then "Clavi Piano 2".
+  nextPatchName(soundName) {
+    const taken = new Set(this.list({ skipMigration: true }).patches.map((e) => e.name));
+    if (!taken.has(soundName)) return soundName;
+    for (let n = 2; n < 500; n++) {
+      const candidate = `${soundName} ${n}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return soundName;
   }
 
   // Setlists written before instruments became patches still hold
