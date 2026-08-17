@@ -392,6 +392,29 @@ Kept here because they otherwise live only in a chat that ends.
   `display` and sits outside `#bank-region`, so it steps rather than sliding
   with everything else. Folding it into the region would fix it, at the cost
   of putting a drag handle inside the thing it resizes.
+- **`src/main.js` has no tests, and now holds things worth testing.** It is
+  the largest file here and carries the auto-updater wiring, the library
+  migration, the donation IPC and the menu. Two pieces are worth extracting
+  the way `src/donations.js` was — pure logic, injected paths, no Electron —
+  so they can be pinned down:
+  - **`migrateLegacyLibrary()`** copies a user's whole library across the
+    folder rename 1.0.0 made necessary. Verified once by hand (62 files
+    across, original untouched) and guarded by nothing since. A later edit
+    could turn the copy into a move, or let it overwrite a destination that
+    already has files. Highest-consequence untested function in the repo: the
+    failure mode is somebody's patches. Worth asserting: an existing
+    destination is never touched, a missing source is a no-op, the source
+    survives, and a failure cannot stop the app opening.
+  - **The updater's silence rules.** Background failures must stay silent and
+    only Help ▸ Check for Updates may speak. Today that is four
+    `if (!manualUpdateCheck) return` lines nobody checks, and the way it
+    breaks is a dialog appearing on a festival stage with no wifi.
+- **Nothing asserts WHERE the donation ask fires from.** `test/ui/scenarios/
+  donation-ask.js` covers the modal's shape and `test/donations.test.js`
+  covers the rules, but neither proves `maybeAsk()` runs after a summary is
+  dismissed rather than over it, or that a cancelled run never reaches it.
+  Those are three call sites in `src/app.js` and the rule they encode is the
+  one most easily lost in a refactor (docs/DONATIONS.md).
 - **Do the sample player's parameters do anything?** Whether "Piano Harp",
   "Rel. Smp. Level" and "Ped. Smp. Level" bite on a given sample set is
   unknown, and the v1.22 manual does not cover it (Rule 1). A sweep of each
