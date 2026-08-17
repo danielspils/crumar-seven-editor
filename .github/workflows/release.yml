@@ -152,13 +152,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      # NOT "assets": that is a real directory in this repo (fonts, instrument
+      # art, the panel SVG). Downloading into it merged the two, and the upload
+      # step then shipped all of it — v1.0.0 went public carrying 24 stray
+      # files that had to be deleted by hand.
       - uses: actions/download-artifact@v4
         with:
-          path: assets
+          path: release-assets
       - name: Everything an updater needs, before anything is public
         run: |
-          find assets -type f | sort
-          have() { find assets -type f -name "$1" | grep -q . || { echo "missing: $1"; exit 1; }; }
+          find release-assets -type f | sort
+          have() { find release-assets -type f -name "$1" | grep -q . || { echo "missing: $1"; exit 1; }; }
           # Both metadata files: without one, that platform's installed copies
           # would never see this version.
           have 'latest.yml'
@@ -173,4 +177,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
-            $(find assets -type f | sort)
+            $(find release-assets -type f | sort)
