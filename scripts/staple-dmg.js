@@ -19,7 +19,7 @@
 // (an unsigned local `dist:mac:unsigned`) it says so and does nothing, which
 // keeps local builds fast and honest about what they are.
 
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 exports.default = async function stapleDmg(context) {
   const dmgs = context.artifactPaths.filter((p) => p.endsWith('.dmg'));
@@ -48,11 +48,16 @@ exports.default = async function stapleDmg(context) {
     // a downloaded image, and a build that fails it must not reach a release:
     // a red X here costs minutes, a bad DMG costs every first impression.
     console.log(`  • staple-dmg: asking Gatekeeper about ${dmg}`);
-    const verdict = execFileSync('spctl', [
+    // spawnSync, and BOTH streams: spctl writes its verdict to stderr, and it
+    // exits non-zero on a rejection. Reading stdout alone got an empty string
+    // and failed a build whose DMG was perfectly signed, notarized and
+    // stapled — the check was the only broken part of it.
+    const check = spawnSync('spctl', [
       '-a', '-t', 'open', '--context', 'context:primary-signature', '-vv', dmg,
-    ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-    console.log(verdict.trim());
-    if (!/accepted/.test(verdict)) {
+    ], { encoding: 'utf8' });
+    const verdict = `${check.stdout || ''}${check.stderr || ''}`.trim();
+    console.log(verdict);
+    if (check.status !== 0 || !/: accepted/.test(verdict)) {
       throw new Error(`Gatekeeper rejected ${dmg}:\n${verdict}`);
     }
   }
