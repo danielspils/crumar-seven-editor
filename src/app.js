@@ -1204,8 +1204,8 @@
   // the bank, worn by the presets. It belongs on the tab, once
   // (Daniel, 2026-08-16). The lock is decoration for the label beside it, so
   // it is hidden from the accessibility tree and the tab keeps its own name.
-  // PROPOSED WORDING, pending Daniel's word on it (2026-08-16).
-  const BANK1_LOCK_TIP = 'Crumar’s factory bank — the Seven does not allow writing to it.';
+  // Daniel's words, 2026-08-16. Verbatim.
+  const BANK1_LOCK_TIP = 'Crumar reserves Bank 1 for its 8 models — they can not be overwritten.';
   const LOCK =
     '<svg class="bank-tab-lock" viewBox="0 0 12 14" width="10" height="12" aria-hidden="true" ' +
     'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" ' +
