@@ -107,16 +107,11 @@
   // its own, which on most rows repeated the patch's name and on the rest
   // took width from it — so the fact moved into the badge that was already
   // there to classify it (Daniel, 2026-08-13).
-  // A capture of the factory bank. It is worth marking on the row because
-  // those files behave differently from everything around them: they seed
-  // every generated patch of that model, so the app copies rather than edits
-  // them in place (Daniel, 2026-08-14).
-  const isFactoryCapture = (entry) => !!(entry.origin && entry.origin.bank === 1);
-  const factoryBadge = (entry) => (isFactoryCapture(entry)
-    ? '<span class="badge badge-factory" title="Crumar factory preset, captured from Bank 1. ' +
-      'Generated patches of this model are seeded from it, so edits are made on a copy.">' +
-      'Crumar preset</span>'
-    : '');
+  // No "Crumar preset" badge. It was on every row of Bank 1 and no row
+  // anywhere else, which makes it a fact about the BANK, not about any preset
+  // — so it says nothing where it stands and repeats itself eight times. The
+  // lock on the Bank 1 tab carries it now (Daniel, 2026-08-16). Model/Sample
+  // stays: that one tells rows apart in all four banks.
 
   function badge(entry) {
     const kind = entry.sampled ? 'Sample' : 'Model';
@@ -125,7 +120,6 @@
       `title="${esc(entry.soundName || kind)}">` +
       `<span class="badge-kind">${kind}</span>` +
       `<span class="badge-sound">${esc(entry.soundName || kind)}</span></span>` +
-      factoryBadge(entry) +
       (entry.missing
         ? `<span class="badge badge-warn" title="Sound not in the schema sound list">⚠ Not installed</span>`
         : `<span class="badge-gap"></span>`)
@@ -994,7 +988,6 @@
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name">${esc(displayName(entry))}</span>` +
-          `<span class="lib-badges">${factoryBadge(entry)}</span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`

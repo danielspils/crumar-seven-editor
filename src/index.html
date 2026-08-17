@@ -583,6 +583,11 @@
     }
     .bank-tab:hover { color: var(--text); }
     .bank-tab-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
+    /* Bank 1 is Crumar's and the Seven won't be written to there. One lock on
+       the tab, in place of the badge that used to repeat it on all eight rows.
+       Dim, and it does not brighten with the tab: it is a note about the bank,
+       not a second thing to read (Daniel, 2026-08-16). */
+    .bank-tab-lock { margin-left: 5px; vertical-align: -1px; color: var(--text-dim); }
     .bank-tab.active { background: var(--bg-panel); color: var(--amber); }
     .bank-tab.active .bank-tab-label { border-bottom-color: var(--amber); }
     /* The eight bank rows are always fully visible — they never scroll out of
@@ -637,10 +642,6 @@
        than the warning badge, because nothing is wrong (Daniel, 2026-08-14). */
     .badge-borrowed {
       color: var(--text-dim); border: 1px dashed var(--line);
-    }
-    .badge-factory {
-      color: var(--text-dim); border: 1px solid var(--line);
-      white-space: nowrap;
     }
     .badge-gap { width: 0; }
 

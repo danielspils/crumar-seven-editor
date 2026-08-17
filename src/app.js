@@ -1199,11 +1199,28 @@
   // prompts will tell the user which physical button to press.
   const bankLabel = (i) => `Bank ${banks[i].name}`;
 
+  // Bank 1 is Crumar's, and the Seven refuses writes to it. That used to be a
+  // badge on all eight of its rows and on none anywhere else — a fact about
+  // the bank, worn by the presets. It belongs on the tab, once
+  // (Daniel, 2026-08-16). The lock is decoration for the label beside it, so
+  // it is hidden from the accessibility tree and the tab keeps its own name.
+  // PROPOSED WORDING, pending Daniel's word on it (2026-08-16).
+  const BANK1_LOCK_TIP = 'Crumar’s factory bank — the Seven does not allow writing to it.';
+  const LOCK =
+    '<svg class="bank-tab-lock" viewBox="0 0 12 14" width="10" height="12" aria-hidden="true" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" ' +
+    'stroke-linejoin="round"><rect x="1.7" y="6" width="8.6" height="7" rx="1.4"/>' +
+    '<path d="M3.8 6V4.1a2.2 2.2 0 0 1 4.4 0V6"/></svg>';
+
   function renderTabs() {
     tabsEl.innerHTML = banks
-      .map((b, i) =>
-        `<button class="bank-tab${i === bankIndex ? ' active' : ''}" data-bank="${i}" type="button"><span class="bank-tab-label">Bank ${b.name}</span></button>`
-      )
+      .map((b, i) => {
+        const locked = b.name === '1';
+        return `<button class="bank-tab${i === bankIndex ? ' active' : ''}` +
+          `${locked ? ' is-locked' : ''}" data-bank="${i}" type="button"` +
+          `${locked ? ` title="${BANK1_LOCK_TIP}"` : ''}>` +
+          `<span class="bank-tab-label">Bank ${b.name}</span>${locked ? LOCK : ''}</button>`;
+      })
       .join('');
   }
 

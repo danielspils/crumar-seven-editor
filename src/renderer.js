@@ -630,13 +630,10 @@
         `title="${esc(patch.soundName)}">` +
         `<span class="badge-kind">${patch.sampled ? 'Sample' : 'Model'}</span>` +
         `<span class="badge-sound">${esc(patch.soundName)}</span></span>` +
-        // Bank 1 is the factory bank, hardware write-protected. Marked here as
-        // well as in the library, because the same eight patches appear in
-        // both lists and should read the same way (Daniel, 2026-08-14).
-        (bank === 1
-          ? '<span class="badge badge-factory" title="Crumar factory preset. The Seven does not ' +
-            'allow writing to Bank 1.">Crumar preset</span>'
-          : '') +
+        // Bank 1's write protection is a fact about the BANK — it was true of
+        // all eight rows here and of no row in the other three banks, so as a
+        // per-row badge it said nothing eight times over. The lock on the
+        // Bank 1 tab says it once (Daniel, 2026-08-16).
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
         // An inherited name is not a name the instrument knows — the Seven
         // stores none. It came from a library patch holding these exact
