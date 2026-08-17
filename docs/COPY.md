@@ -184,7 +184,6 @@ Most need a blocked plan, a missing file, or a sound this instrument lacks.
 - Bank 1 tab lock (icon only, no label) — app.js, tooltip `Crumar reserves Bank 1 for its 8 models — they can not be overwritten.` Daniel's words, 2026-08-16, verbatim. It replaces the `Crumar preset` badge, which sat on all eight Bank 1 rows and no others.
 - `⚠ Not installed` — renderer.js:640, tooltip `Sound not installed on this instrument`
 - `(!)` on a setlist slot — library-view.js:887, same meaning
-- `borrowed name` — renderer.js:646, tooltip `Name from "Kitchen Dishes Delay" — a library patch with these exact values. The Seven does not store names.`
 - `Model` / `Sample` — renderer.js:631
 - Backup row tooltip: `Backed up 12 Aug — older than the rest of this bank` — renderer.js:621 ⚑ needs a bank backed up across two runs
 - `Created here` — library-view.js:271

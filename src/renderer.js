@@ -635,13 +635,13 @@
         // per-row badge it said nothing eight times over. The lock on the
         // Bank 1 tab says it once (Daniel, 2026-08-16).
         (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
-        // An inherited name is not a name the instrument knows — the Seven
-        // stores none. It came from a library patch holding these exact
-        // values, and it will go back to a generated name the moment someone
-        // edits a parameter on the panel. Saying so is what keeps that legible.
-        (patch.nameFrom
-          ? `<span class="badge badge-borrowed" title="Name from “${esc(patch.nameFrom.name)}” — a library patch with these exact values. The Seven does not store names.">borrowed name</span>`
-          : '') +
+        // No "borrowed name" badge. It marked the EXPECTED case — a record
+        // named after the patch you put in that slot — and could not mark the
+        // surprising one, where a panel edit makes the values stop matching
+        // and the name reverts to generated: by then there is no inherited
+        // name left to badge (Daniel, 2026-08-16). Inheritance itself stays,
+        // and `nameFrom` stays in the file, so provenance still records which
+        // patch lent the name.
         `</button>`
       );
     }

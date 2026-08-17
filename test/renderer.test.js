@@ -168,18 +168,21 @@ test('“not installed” follows the connected instrument, not the schema', () 
   assert.strictEqual(R.isMissing(known), false);
 });
 
-test('a borrowed name says so, and a chosen one does not', () => {
+// An inherited name is not marked on the row. The badge that used to be here
+// flagged the expected case — a record named after the patch you put in that
+// slot — and could not flag the surprising one: once a panel edit stops the
+// values matching, the name reverts to generated and there is nothing left to
+// badge (Daniel, 2026-08-16). Inheritance and `nameFrom` both stay; only the
+// marking goes, so an inherited name must render exactly like any other.
+test('an inherited name is not marked on the row', () => {
   const R = loadRenderer();
   const base = patchFor(schema.sounds[0]);
   const plain = R.renderPatchRow({ ...base }, 0, -1, null, 2);
-  assert.ok(!/badge-borrowed/.test(plain), 'nothing to say about an ordinary name');
-
   const borrowed = R.renderPatchRow(
     { ...base, nameFrom: { file: 'kitchen-dishes-delay.sevenlib.json', name: 'Kitchen Dishes Delay' } },
     0, -1, null, 2
   );
-  assert.match(borrowed, /badge-borrowed/);
-  assert.match(borrowed, /borrowed name/);
-  assert.match(borrowed, /Kitchen Dishes Delay/, 'the tooltip names the lender');
-  assert.match(borrowed, /Seven does not store names/);
+  assert.strictEqual(borrowed, plain, 'nameFrom changes nothing on screen');
+  assert.ok(!/borrowed/.test(borrowed), 'and leaves no trace of the old badge');
+  assert.ok(!/Kitchen Dishes Delay/.test(borrowed), 'the lender is not named on the row');
 });

@@ -101,20 +101,21 @@ who changes their mind can find it. It never counts as a showing.
 **This Seven Goes to Eleven**, verbatim. Daniel's words, 2026-08-16. Not to be
 edited, tightened or "improved" without him:
 
-> This Seven Goes to Eleven is free.
->
-> Code signing and hosting run about $220 a year. If 7/11 is useful to you,
-> $10 helps cover the cost.
->
-> Thanks from Seattle! — Daniel
+> This Seven Goes to Eleven is free. But donations help cover code signing and
+> hosting. Thanks from Seattle! — Daniel
 
-Why it reads the way it does, so a later edit does not undo the reasoning:
-the cost is a checkable number rather than "support development"; $220 is the
-combined annual figure for both apps (Apple $99, Azure ~$120) stated **once**,
-not per app; and the ask names an amount without preselecting or requiring it.
+Revised by Daniel on 2026-08-16, replacing a longer version that named the
+annual cost ($220) and a suggested amount ($10). Both numbers are gone from
+the ask; the amount is Ko-fi's business, on Ko-fi's page. What survives the
+edit is the shape: the app is free, stated first and without qualification;
+the money is named as a cost that exists, not as support for a person; and
+nothing is required.
 
-JP Patches needs its own version of these three lines — the first sentence
-names the app, and the same total must not be claimed twice.
+The figures below stay here because they are what the ask refers to, and
+because they are worth checking before anyone writes a number into copy again.
+
+JP Patches needs its own version of these lines — the first sentence names the
+app, and the same costs must not be claimed twice.
 
 | Item | Cost |
 |---|---|
