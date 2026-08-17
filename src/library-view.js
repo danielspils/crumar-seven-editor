@@ -777,7 +777,13 @@
       }).join('');
       return `<div class="lib-group"><div class="lib-group-title">Bank ${b.bank}</div>${rows}</div>`;
     }).join('');
-    return `<button type="button" class="lib-back" data-pick-run-back>‹ Backups</button>${banks}`;
+    // Which backup you are inside. The way back said "Backups" and nothing
+    // said WHICH one, so four runs of thirty-two presets all looked the same
+    // once you were in one (Daniel, 2026-08-16).
+    return '<div class="pick-run-head">' +
+      '<button type="button" class="lib-back" data-pick-run-back>‹ Backups</button>' +
+      `<span class="pick-run-title">${esc(fmtDate(run.date))} Backup</span>` +
+      `</div>${banks}`;
   }
 
   function renderPicker(data, state, sounds, allSounds) {
@@ -1160,7 +1166,72 @@
     let lastNameClick = { key: null, t: 0 };
     let openTimer = null;
 
-    el.addEventListener('click', (e) => {
+    el.addEventListener('click', async (e) => {
+      // THE PICKER ANSWERS FIRST, AND ALONE. It is an overlay across the whole
+      // panel, so while it is up nothing underneath is reachable — and its own
+      // controls reuse classes the library uses below it. Its "‹ Backups" step
+      // is a .lib-back, which the library's branch claimed first: one click
+      // closed the picker AND left the setlist (Daniel, 2026-08-16). Anything
+      // it does not recognise does nothing at all, which is what a modal
+      // means; falling through is what produced the bug.
+      if (state.picking != null) {
+        const pickRun = e.target.closest('[data-pick-run]');
+        if (pickRun) { state.pickRun = pickRun.dataset.pickRun; render(); return; }
+        if (e.target.closest('[data-pick-run-back]')) { state.pickRun = null; render(); return; }
+        const mode = e.target.closest('[data-pick-mode]');
+        if (mode) {
+          state.pickMode = mode.dataset.pickMode;
+          state.pickRun = null;
+          state.pickSearch = '';
+          render();
+          return;
+        }
+
+        const pickSound = e.target.closest('[data-pick-sound]');
+        if (pickSound) {
+          const slot = state.picking;
+          const name = pickSound.dataset.pickSound;
+          const search = state.pickSearch;
+          state.picking = null;
+          state.pickSearch = '';
+          state.slotPulse = { slot, kind: 'restored' };
+          // Choosing an instrument asks for a patch name, and that can be
+          // cancelled. Clearing the state above and never putting it back left
+          // the picker sitting on screen with nothing behind it: every tile
+          // click fell through and did nothing, and only Cancel still worked
+          // (Daniel, 2026-08-16). The assignment says whether it happened; the
+          // picker goes back exactly as it was if it did not.
+          const done = await on.assignSlot(state.setlistIndex, slot, `${SOUND_REF}${name}`);
+          if (done === false) {
+            state.picking = slot;
+            state.pickSearch = search;
+            state.slotPulse = null;
+            render();
+          }
+          return;
+        }
+
+        const pick = e.target.closest('[data-pick-file]');
+        if (pick) {
+          // A backup record assigns BY REFERENCE — the slot points at the file
+          // that already exists. No copy, no prompt, and filling eight slots
+          // from a run makes no new files at all (Daniel, 2026-08-16).
+          const slot = state.picking;
+          state.picking = null;
+          state.pickRun = null;
+          state.pickSearch = '';
+          if (on.assignSlot) on.assignSlot(state.setlistIndex, slot, pick.dataset.pickFile);
+          return;
+        }
+        if (e.target.classList.contains('pick-overlay') || e.target.closest('.pick-cancel')) {
+          state.picking = null;
+          state.pickSearch = '';
+          render();
+          return;
+        }
+        return;
+      }
+
       const nameEl = e.target.closest('.patch-name');
       if (nameEl) {
         const setlistRow = nameEl.closest('[data-setlist]');
@@ -1209,7 +1280,9 @@
         render();
         return;
       }
-      if (e.target.closest('.lib-back') && !e.target.closest('.pick-cancel')) {
+      // No .pick-cancel exclusion needed any more: while the picker is up it
+      // answers every click above and never reaches here.
+      if (e.target.closest('.lib-back')) {
         state.setlistIndex = null;
         state.backupRun = null;
         state.lastCleared = null;
@@ -1249,47 +1322,6 @@
         return;
       }
 
-      const pickRun = e.target.closest('[data-pick-run]');
-      if (pickRun) { state.pickRun = pickRun.dataset.pickRun; render(); return; }
-      if (e.target.closest('[data-pick-run-back]')) { state.pickRun = null; render(); return; }
-      const mode = e.target.closest('[data-pick-mode]');
-      if (mode) {
-        state.pickMode = mode.dataset.pickMode;
-        state.pickRun = null;
-        state.pickSearch = '';
-        render();
-        return;
-      }
-
-      const pickSound = e.target.closest('[data-pick-sound]');
-      if (pickSound && state.picking != null) {
-        const slot = state.picking;
-        const name = pickSound.dataset.pickSound;
-        state.picking = null;
-        state.pickSearch = '';
-        state.slotPulse = { slot, kind: 'restored' };
-        on.assignSlot(state.setlistIndex, slot, `${SOUND_REF}${name}`);
-        return;
-      }
-
-      const pick = e.target.closest('[data-pick-file]');
-      if (pick) {
-        // A backup record assigns BY REFERENCE — the slot points at the file
-        // that already exists. No copy, no prompt, and filling eight slots
-        // from a run makes no new files at all (Daniel, 2026-08-16).
-        const slot = state.picking;
-        state.picking = null;
-        state.pickRun = null;
-        state.pickSearch = '';
-        if (on.assignSlot) on.assignSlot(state.setlistIndex, slot, pick.dataset.pickFile);
-        return;
-      }
-      if (e.target.classList.contains('pick-overlay') || e.target.closest('.pick-cancel')) {
-        state.picking = null;
-        state.pickSearch = '';
-        render();
-        return;
-      }
       const undo = e.target.closest('[data-slot-undo]');
       if (undo) {
         const u = state.lastCleared;

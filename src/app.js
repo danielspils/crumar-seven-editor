@@ -2167,7 +2167,10 @@
         // (Daniel, 2026-08-14).
         if (String(file).startsWith('sound:')) {
           const made = await generateFromInstrument(String(file).slice('sound:'.length));
-          if (!made) return; // cancelled at the dialog
+          // Cancelled at the naming dialog. The FALSE matters: the picker is
+          // still on screen behind this prompt, and it needs to know the
+          // assignment never happened so it can put itself back.
+          if (!made) return false;
           file = made;
         }
         await window.sevenAPI.setlists.assign(index, slot, file);
@@ -2177,6 +2180,7 @@
           else await window.sevenAPI.setlists.clear(index, slot);
           await refreshLibrary();
         });
+        return true;
       },
       async clearSlot(index, slot) {
         const prev = ((libData.setlists[index] || {}).slots || [])[slot] || null;
