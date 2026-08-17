@@ -4,10 +4,16 @@
 # land on the SAME GitHub release, and nothing is visible to users until both
 # are there. JP Patches published them as two releases per version, so the
 # Windows updater looked for latest.yml on a release that carried only Mac
-# assets and 404'd in silence for months. Here the platform jobs publish into
-# a DRAFT, and a final job — which runs only if both succeeded — is what makes
-# the release public. A failed Windows build leaves a draft nobody updates
-# against, rather than a live release that quietly breaks updates forever.
+# assets and 404'd in silence for months.
+#
+# NEITHER PLATFORM JOB PUBLISHES. They build with `--publish never` and hand
+# their artifacts to a final job, which creates ONE release from both.
+#
+# The first attempt had them both publish into a draft, and that raced: two
+# concurrent electron-builder publishers each created their own draft, and
+# GitHub happily holds several drafts on one tag. v1.0.0's first run produced
+# FOUR, between them holding a single asset anybody could see. Uploading
+# artifacts and creating the release once, from one job, cannot race.
 #
 # Secrets are not exposed to fork pull requests, and this only ever runs on a
 # tag pushed to this repository, so an unsigned build cannot reach a release.
@@ -83,7 +89,16 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac --universal --publish always
+        run: npx electron-builder --mac --universal --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: |
+            dist/*.dmg
+            dist/*-mac.zip
+            dist/*.blockmap
+            dist/latest-mac.yml
+          if-no-files-found: error
 
   win:
     name: Windows (NSIS x64, Azure-signed)
@@ -119,7 +134,15 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --x64 --publish always
+        run: npx electron-builder --win --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
 
   publish:
     name: Publish the release
@@ -129,22 +152,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      # Both platforms are on the draft by now. Un-drafting is the moment the
-      # release exists for users and for every installed copy's updater, and
-      # it happens exactly once, after both builds have succeeded.
-      - name: Un-draft the release for this tag
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+      - name: Everything an updater needs, before anything is public
+        run: |
+          find assets -type f | sort
+          have() { find assets -type f -name "$1" | grep -q . || { echo "missing: $1"; exit 1; }; }
+          # Both metadata files: without one, that platform's installed copies
+          # would never see this version.
+          have 'latest.yml'
+          have 'latest-mac.yml'
+          have '*.exe'
+          have '*.dmg'
+          have '*-mac.zip'    # the mac updater reads the zip, not the dmg
+      - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view "$GITHUB_REF_NAME" --json assets \
-            --jq '.assets[].name' | sort
-          # Every asset an updater needs, on this one release. Missing either
-          # metadata file means that platform's installed copies would never
-          # see this version.
-          ASSETS="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')"
-          echo "$ASSETS" | grep -q '^latest.yml$'      || { echo "no latest.yml (Windows)"; exit 1; }
-          echo "$ASSETS" | grep -q '^latest-mac.yml$'  || { echo "no latest-mac.yml (macOS)"; exit 1; }
-          echo "$ASSETS" | grep -q '\.exe$'            || { echo "no Windows installer"; exit 1; }
-          echo "$ASSETS" | grep -q '\.dmg$'            || { echo "no macOS disk image"; exit 1; }
-          echo "$ASSETS" | grep -q '\-mac\.zip$'       || { echo "no macOS zip — the updater reads this one"; exit 1; }
-          gh release edit "$GITHUB_REF_NAME" --draft=false
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            $(find assets -type f | sort)
