@@ -181,7 +181,7 @@ Most need a blocked plan, a missing file, or a sound this instrument lacks.
 
 ### Badges and row tooltips
 
-- `Crumar preset` — renderer.js:637, tooltip `Crumar factory preset. The Seven does not allow writing to Bank 1.`
+- Bank 1 tab lock (icon only, no label) — app.js, tooltip `Crumar’s factory bank — the Seven does not allow writing to it.` **Proposed wording, awaiting approval (2026-08-16).** It replaces the `Crumar preset` badge, which sat on all eight Bank 1 rows and no others.
 - `⚠ Not installed` — renderer.js:640, tooltip `Sound not installed on this instrument`
 - `(!)` on a setlist slot — library-view.js:887, same meaning
 - `borrowed name` — renderer.js:646, tooltip `Name from "Kitchen Dishes Delay" — a library patch with these exact values. The Seven does not store names.`
