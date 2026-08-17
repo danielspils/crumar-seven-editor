@@ -5,6 +5,10 @@ node_modules/
 dist/
 out/
 
+# Intermediates from tools/build-icons.py; the containers it produces are
+# committed, the loose PNGs are not.
+build/.icons/
+
 # build/ is INPUT, not output: electron-builder reads it as buildResources.
 # The icon and the entitlements have to be in the repo or a CI build produces
 # an app with the default Electron logo and no hardened-runtime exceptions.

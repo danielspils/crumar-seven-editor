@@ -38,7 +38,12 @@ files:
 
 mac:
   category: public.app-category.music
-  icon: build/icon.png
+  # icns and ico, not a single PNG. electron-builder will generate both from
+  # one image, and the result is mush: at 32px the wordmark is grey noise and
+  # at 16px it is gone. tools/build-icons.py assembles each container with the
+  # right ART PER SIZE — the full drawing at 128 and up, the knob alone below
+  # that. Rebuild with: python3 tools/build-icons.py
+  icon: build/icon.icns
   # Universal: a Crumar Seven owner may well be playing through an Intel Mac,
   # and one architecture means one latest-mac.yml with nothing to get wrong.
   # It doubles the download; that is the trade (Daniel, 2026-08-16).
@@ -79,7 +84,7 @@ dmg:
   artifactName: This-Seven-Goes-to-Eleven-${version}.${ext}
 
 win:
-  icon: build/icon.png
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: x64

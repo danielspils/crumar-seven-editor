@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"
+     viewBox="0 0 1024 1024" style="--k-glow-fill: hsla(120, 90%, 55%, 0.3); --k-bore-fill: hsla(120, 90%, 72%, 1); --k-bore-stroke: hsla(120, 90%, 55%, 1); --k-top-stroke: hsla(120, 90%, 70%, 0.65); --k-mid-stroke: hsla(120, 90%, 65%, 0.35); --k-skirt-stroke: hsla(120, 90%, 65%, 0.55); --k-rib-stroke: hsla(120, 90%, 70%, 0.4); --k-shadow: hsla(120, 90%, 55%, 0.45);">
+  <title>This Seven Goes to Eleven</title>
+  <defs>
+    <radialGradient id="kg-body" cx="0.5" cy="0.4" r="0.65">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#e8e8ee" stop-opacity="0.16"/>
+      <stop offset="0.85" stop-color="#cfcfd8" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#9a9aa4" stop-opacity="0.24"/>
+    </radialGradient>
+    <radialGradient id="kg-top" cx="0.5" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.7" stop-color="#e6e6ec" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#b9b9c2" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="lamp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="hsl(120, 90%, 55%)" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="hsl(120, 90%, 50%)" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="hsl(120, 90%, 45%)" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#343437"/>
+      <stop offset="1" stop-color="#232326"/>
+    </linearGradient>
+    <!-- The app's own lit-knob shadow, at 6px against a 72px knob, kept in
+         proportion here. NO DOUBLE HYPHENS IN THIS COMMENT, and none in any
+         other: the custom property it refers to cannot be named here, because
+         a double hyphen inside an XML comment is illegal and the whole file
+         is then rejected by anything parsing it strictly. Rendering the SVG
+         inside a page hid it (HTML parsing is lenient); drawing it through an
+         Image, which is how the icons are rasterised, failed with nothing but
+         "svg failed to decode". -->
+    <filter id="litglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7.4"
+                    flood-color="hsl(120, 90%, 55%)" flood-opacity="0.45"/>
+    </filter>
+    <clipPath id="body"><rect width="1024" height="1024" rx="180"/></clipPath>
+  </defs>
+  <g clip-path="url(#body)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <circle cx="472" cy="520" r="450" fill="url(#lamp)"/>
+    <circle cx="472" cy="520" r="268" fill="#2b2b2d"/>
+    <g transform="translate(472.0 520.0) scale(7.3611)" filter="url(#litglow)">
+      <g id="knob-glass">
+      <circle class="k-glow" r="34.71" style="fill: var(--k-glow-fill, transparent)"/>
+      <circle class="k-skirt" r="36.0" style="fill: url(#kg-body); stroke: var(--k-skirt-stroke, rgba(255,255,255,0.28)); stroke-width: 1.4"/>
+      <g class="k-ribs" style="stroke: var(--k-rib-stroke, rgba(255,255,255,0.20)); stroke-width: 1.9; stroke-linecap: round"><line x1="0.00" y1="-29.31" x2="0.00" y2="-35.10"/><line x1="6.09" y1="-28.67" x2="7.30" y2="-34.33"/><line x1="11.92" y1="-26.78" x2="14.28" y2="-32.07"/><line x1="17.23" y1="-23.71" x2="20.63" y2="-28.40"/><line x1="21.78" y1="-19.61" x2="26.08" y2="-23.49"/><line x1="25.38" y1="-14.66" x2="30.40" y2="-17.55"/><line x1="27.88" y1="-9.06" x2="33.38" y2="-10.85"/><line x1="29.15" y1="-3.06" x2="34.91" y2="-3.67"/><line x1="29.15" y1="3.06" x2="34.91" y2="3.67"/><line x1="27.88" y1="9.06" x2="33.38" y2="10.85"/><line x1="25.38" y1="14.65" x2="30.40" y2="17.55"/><line x1="21.78" y1="19.61" x2="26.08" y2="23.49"/><line x1="17.23" y1="23.71" x2="20.63" y2="28.40"/><line x1="11.92" y1="26.78" x2="14.28" y2="32.07"/><line x1="6.09" y1="28.67" x2="7.30" y2="34.33"/><line x1="0.00" y1="29.31" x2="0.00" y2="35.10"/><line x1="-6.09" y1="28.67" x2="-7.30" y2="34.33"/><line x1="-11.92" y1="26.78" x2="-14.28" y2="32.07"/><line x1="-17.23" y1="23.71" x2="-20.63" y2="28.40"/><line x1="-21.78" y1="19.61" x2="-26.08" y2="23.49"/><line x1="-25.38" y1="14.66" x2="-30.40" y2="17.55"/><line x1="-27.88" y1="9.06" x2="-33.38" y2="10.85"/><line x1="-29.15" y1="3.06" x2="-34.91" y2="3.67"/><line x1="-29.15" y1="-3.06" x2="-34.91" y2="-3.67"/><line x1="-27.88" y1="-9.06" x2="-33.38" y2="-10.85"/><line x1="-25.38" y1="-14.66" x2="-30.40" y2="-17.55"/><line x1="-21.78" y1="-19.61" x2="-26.08" y2="-23.49"/><line x1="-17.23" y1="-23.71" x2="-20.63" y2="-28.40"/><line x1="-11.92" y1="-26.78" x2="-14.28" y2="-32.07"/><line x1="-6.09" y1="-28.67" x2="-7.30" y2="-34.33"/></g>
+      <circle class="k-mid" r="27.0" style="fill: none; stroke: var(--k-mid-stroke, rgba(255,255,255,0.16)); stroke-width: 1.2"/>
+      <circle class="k-top" r="17.36" style="fill: url(#kg-top); stroke: var(--k-top-stroke, rgba(255,255,255,0.32)); stroke-width: 1.3"/>
+      <circle class="k-bore" r="8.36" style="fill: var(--k-bore-fill, rgba(228,228,236,0.30)); stroke: var(--k-bore-stroke, rgba(255,255,255,0.14)); stroke-width: 1.2"/>
+    </g>
+    </g>
+    <!-- SEVEN, set exactly as the panel sets REVERB. -->
+    <path transform="translate(236.02 186.55) scale(0.61126)" fill="#e8e8ea" d="M77.70 3.60Q66.30 3.60 54.30 0.60Q42.30-2.40 32.10-8.85Q21.90-15.30 15.60-25.80Q9.30-36.30 9.30-51.60Q9.30-56.70 9.90-62.25Q10.50-67.80 10.80-69.90L50.40-69.90Q50.10-68.10 49.50-64.65Q48.90-61.20 48.90-55.50Q48.90-50.40 51.15-44.25Q53.40-38.10 60.15-33.75Q66.90-29.40 80.10-29.40Q88.20-29.40 94.20-31.65Q100.20-33.90 104.40-37.65Q108.60-41.40 110.70-46.20Q112.80-51 112.80-56.10Q112.80-66.60 106.50-73.50Q100.20-80.40 90.30-85.20Q80.40-90 69.30-94.95Q58.20-99.90 48.30-106.20Q38.40-112.50 32.10-122.40Q25.80-132.30 25.80-147.30Q25.80-162.30 32.55-176.55Q39.30-190.80 54.60-200.10Q69.90-209.40 95.40-209.40Q121.50-209.40 135.30-200.55Q149.10-191.70 154.35-177.15Q159.60-162.60 159.60-145.20L120.90-145.20Q120.90-153.90 118.05-160.95Q115.20-168 109.20-172.05Q103.20-176.10 93.30-176.10Q90.90-176.10 86.40-175.50Q81.90-174.90 77.25-172.80Q72.60-170.70 69.30-166.35Q66-162 66-154.80Q66-145.50 72.30-139.65Q78.60-133.80 88.50-129.45Q98.40-125.10 109.35-120.45Q120.30-115.80 130.20-108.90Q140.10-102 146.40-91.35Q152.70-80.70 152.70-63.90Q152.70-47.70 147-35.10Q141.30-22.50 131.10-13.95Q120.90-5.40 107.25-0.90Q93.60 3.60 77.70 3.60M318.90 0L187.50 0L216.30-205.80L345.90-205.80L341.10-171.60L249.60-171.60L242.70-122.40L321.30-122.40L316.50-88.20L237.90-88.20L230.10-34.20L323.70-34.20L318.90 0M449.70 0L411.60 0L378.30-205.80L417.30-205.80L438.60-59.40L439.80-59.40L502.20-205.80L540.60-205.80L449.70 0M677.10 0L545.70 0L574.50-205.80L704.10-205.80L699.30-171.60L607.80-171.60L600.90-122.40L679.50-122.40L674.70-88.20L596.10-88.20L588.30-34.20L681.90-34.20L677.10 0M758.40 0L724.80 0L753.60-205.80L787.20-205.80L834.30-92.40Q835.50-90 837-85.35Q838.50-80.70 839.70-76.95Q840.90-73.20 840.90-73.20L841.80-74.10Q841.80-74.10 842.25-77.70Q842.70-81.30 843.15-85.50Q843.60-89.70 843.90-91.20L859.80-205.80L893.70-205.80L864.90 0L831 0L783.90-113.40Q783-115.50 781.35-120.15Q779.70-124.80 778.50-128.70Q777.30-132.60 777.30-132.60L776.10-131.70Q776.10-131.70 775.80-128.55Q775.50-125.40 775.20-121.35Q774.90-117.30 774.30-114.60"/>
+    <!-- "11" where #pwr-icon goes, at the dashboard's own offset. -->
+    <path transform="translate(601.17 933.93) scale(0.58889)" fill="#e8e8ea" d="M122.40 0L-0.60 0L3.30-30.30L48.90-30.30L67.20-158.70L21-158.70L24.30-182.70Q33-183.60 44.85-186.75Q56.70-189.90 69.15-194.85Q81.60-199.80 91.80-205.80L109.20-205.80L84.60-30.30L126.60-30.30L122.40 0M257.70 0L134.70 0L138.60-30.30L184.20-30.30L202.50-158.70L156.30-158.70L159.60-182.70Q168.30-183.60 180.15-186.75Q192-189.90 204.45-194.85Q216.90-199.80 227.10-205.80L244.50-205.80L219.90-30.30L261.90-30.30"/>
+  </g>
+</svg>
