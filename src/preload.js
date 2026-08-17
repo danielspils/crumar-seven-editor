@@ -172,6 +172,15 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Newest post on thissevengoestoeleven.com, so the app can point at Notes
   // rather than run a mailing list. Fetch and URL are fixed in the main
   // process; this side can only ask.
+  // The donation prompt. The renderer can ask whether an ask is due, say that
+  // one was shown, and report the answer — it cannot reach Ko-fi itself, and
+  // there is no payment surface anywhere in this app (docs/DONATIONS.md).
+  donations: {
+    due: () => ipcRenderer.invoke('donations:due'),
+    shown: () => ipcRenderer.invoke('donations:shown'),
+    answer: (answer) => ipcRenderer.invoke('donations:answer', answer),
+    open: () => ipcRenderer.invoke('donations:open'),
+  },
   notes: {
     latest: () => ipcRenderer.invoke('notes:latest'),
     open: (url) => ipcRenderer.invoke('notes:open', url),

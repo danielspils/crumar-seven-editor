@@ -9,6 +9,7 @@ const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { LibraryStore } = require('./library-store');
+const { Donations } = require('./donations');
 const { buildReport, reportFileName } = require('./instrument-report');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
@@ -506,6 +507,41 @@ function registerBackupIpc() {
 const NOTES_FEED_URL = 'https://thissevengoestoeleven.com/feed.xml';
 const NOTES_SITE = 'https://thissevengoestoeleven.com/';
 
+// The ONE address, and the only thing this app ever does about money: open
+// Ko-fi in the browser. No in-app payment handling of any kind, no embedded
+// view, no card fields (docs/DONATIONS.md).
+const KOFI_URL = 'https://ko-fi.com/danielspils';
+let donations = null;
+
+function getDonations() {
+  if (!donations) {
+    donations = new Donations(app.getPath('userData'));
+    // SEVEN_RESET_DONATIONS: development only, and permanent. Without it the
+    // second showing is seven days away and "I already donated" is a dead end,
+    // so any change to this copy or these triggers would be unverifiable.
+    if (process.env.SEVEN_RESET_DONATIONS) {
+      donations.reset();
+      console.log('[donations] state reset (SEVEN_RESET_DONATIONS)');
+    }
+  }
+  return donations;
+}
+
+function registerDonationIpc() {
+  // Which showing this trigger earns, or 0. The renderer asks only after an
+  // operation has COMPLETED and its summary has been dismissed — a cancelled
+  // or failed run never gets here.
+  ipcMain.handle('donations:due', () => getDonations().dueShowing());
+  ipcMain.handle('donations:shown', () => { getDonations().recordShown(); });
+  ipcMain.handle('donations:answer', (_e, answer) => {
+    getDonations().recordAnswer(String(answer || ''));
+    if (answer === 'donate') shell.openExternal(KOFI_URL);
+  });
+  // The Help menu's way in. It opens the same page and touches no state:
+  // asking for it is not the app asking, so it can never count as a showing.
+  ipcMain.handle('donations:open', () => { shell.openExternal(KOFI_URL); });
+}
+
 function registerNotesIpc() {
   ipcMain.handle('notes:latest', async () => {
     try {
@@ -614,6 +650,10 @@ function buildMenu(win) {
         // The only update path that reports anything. Everything automatic is
         // silent, including its failures.
         { label: 'Check for Updates…', click: () => checkForUpdates({ manual: true }) },
+        { type: 'separator' },
+        // Always available, so anyone who changes their mind can find it.
+        // Never counts as a showing (docs/DONATIONS.md).
+        { label: 'Support this app', click: () => shell.openExternal(KOFI_URL) },
         { type: 'separator' },
         {
           label: 'Report an Issue',
@@ -815,6 +855,7 @@ app.whenReady().then(() => {
   registerEditIpc();
   registerTransferIpc();
   registerNotesIpc();
+  registerDonationIpc();
   forwardMidiEvents();
   createWindow();
   app.on('activate', () => {

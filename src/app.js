@@ -1051,6 +1051,9 @@
     if (modal) {
       await modal.replace({ title, bodyHtml, confirmLabel: 'Done', tone });
       await modal.action();
+      modal.close();
+      // The summary is gone; now, and only for a run that finished.
+      if (!report.error && !report.cancelled) await maybeAsk();
     } else {
       // No dialog to reuse (nothing reaches this today; kept so a future caller
       // that reports without a walk still says the same things).
@@ -1432,6 +1435,54 @@
   // empty field falls back to the suggestion rather than making something
   // unnamed. Shared by "new patch from a sound" and "duplicate out of a
   // backup", because they ask the same question.
+
+  // ---- The donation ask (docs/DONATIONS.md) --------------------------------
+  // Called ONLY after an operation completed and its summary was dismissed.
+  // Never on launch, never on a timer, and never on top of a result: the user
+  // waited through the operation to read what it did, and covering that with
+  // an ask squanders the goodwill the operation just earned.
+  //
+  // Whether it actually appears is the main process's decision — two showings
+  // ever, seven days apart, and never again after "I already donated". This
+  // side only asks and draws.
+  async function maybeAsk() {
+    let showing = 0;
+    try {
+      showing = await window.sevenAPI.donations.due();
+    } catch {
+      return; // a donation prompt must never break the thing that triggered it
+    }
+    if (!showing) return;
+
+    // Daniel's words, 2026-08-16, verbatim. Not to be edited, tightened or
+    // "improved" without him (docs/DONATIONS.md).
+    const body =
+      'This Seven Goes to Eleven is free. But donations help cover code ' +
+      'signing and hosting. Thanks from Seattle! - Daniel';
+
+    // The middle button is the only difference between the two showings, and
+    // all three carry the same weight on purpose: the way out has to be as
+    // easy as the way in, or this is a trick rather than an ask.
+    const middle = showing === 1
+      ? { label: 'Remind me later', value: 'later' }
+      : { label: "Don't ask again", value: 'never' };
+
+    await window.sevenAPI.donations.shown();
+    const answer = await SevenModal.choose({
+      title: 'This app is free',
+      body,
+      choices: [
+        { label: 'Donate', value: 'donate' },
+        middle,
+        { label: 'I already donated', value: 'already' },
+      ],
+      cancelLabel: 'Close',
+    });
+    // Dismissed with Escape or the corner X: the same as "later" — it does not
+    // silence anything, and the two-showing cap still holds.
+    await window.sevenAPI.donations.answer(answer || 'later');
+  }
+
   async function askForName({ title, suggested, confirmLabel }) {
     const m = SevenModal.open({
       title,
@@ -2833,6 +2884,10 @@
       m.body.appendChild(buildSoundsBody(soundTable));
       await m.action();
       m.close();
+      // Seeing what your instrument actually holds is the third thing this app
+      // does that is worth something — and like the other two, the ask waits
+      // until the reader has finished with the result.
+      await maybeAsk();
     };
 
     // ---- Instrument settings (the nine globals) ---------------------------
@@ -3072,7 +3127,7 @@
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;
 
-    const showBackupDone = (ev) => {
+    const showBackupDone = async (ev) => {
       backupRunning = false;
       backupBtn.textContent = 'Back up instrument';
       connBtn.disabled = false;
@@ -3104,6 +3159,10 @@
         cancelLabel: 'Close', // the corner X's accessible name, not a button
         tone: 'is-announce',
       });
+      // The announcement has been dismissed. A cancelled run does not count:
+      // it saved what it reached, which is worth confirming and is not the
+      // completed operation the ask is owed to (docs/DONATIONS.md).
+      if (!ev.cancelled) await maybeAsk();
     };
 
     backupBtn.addEventListener('click', async () => {
