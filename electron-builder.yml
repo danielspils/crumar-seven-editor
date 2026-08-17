@@ -16,6 +16,11 @@ directories:
   output: dist
   buildResources: build
 
+# Notarizes and staples the DMG itself, then asks Gatekeeper whether it took.
+# electron-builder does the .app and stops there, which is how v1.0.0 shipped
+# with a perfect app inside a disk image macOS refused to open.
+afterAllArtifactBuild: scripts/staple-dmg.js
+
 # DERIVED, NOT GUESSED. Every entry is something the running app reads off
 # disk: schema/ and data/expansions.json through preload, assets/ for the
 # fonts, the instrument art and the panel SVG, and src/ for the app itself.
@@ -80,6 +85,10 @@ mac:
   artifactName: This-Seven-Goes-to-Eleven-${version}-${arch}-mac.${ext}
 
 dmg:
+  # The image gets its own Developer ID signature. Unsigned, Gatekeeper has
+  # nothing to assess and rejects it out of hand — the app inside being
+  # notarized does not help, because the user meets the container first.
+  sign: true
   title: This Seven Goes to Eleven ${version}
   artifactName: This-Seven-Goes-to-Eleven-${version}.${ext}
 
