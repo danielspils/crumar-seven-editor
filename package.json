@@ -1,12 +1,12 @@
 {
   "name": "crumar-seven-editor",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Cross-platform desktop editor for the Crumar Seven physical-modeling stage piano (reverse-engineered USB-MIDI SysEx).",
   "license": "MIT",
   "type": "commonjs",
   "main": "src/main.js",
-  "productName": "Crumar Seven Editor",
+  "productName": "This Seven Goes to Eleven",
   "scripts": {
     "start": "electron .",
     "fixtures": "node fixtures/generate.js",
@@ -15,15 +15,22 @@
     "probe:open-items": "node tools/probe.js open-items",
     "fixtures:roundtrip": "node fixtures/generate-roundtrip.js",
     "test": "node --test \"test/*.test.js\"",
-    "test:ui": "node test/ui/run.js"
+    "test:ui": "node test/ui/run.js",
+    "rebuild": "electron-rebuild -f -m . -o @julusian/midi",
+    "dist:mac": "npm run rebuild && electron-builder --mac --universal",
+    "dist:mac:unsigned": "npm run rebuild && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --universal -c.mac.notarize=false --publish never",
+    "dist:win": "npm run rebuild && electron-builder --win --x64"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "@julusian/midi": "^3.1.1"
+    "@julusian/midi": "^3.1.1",
+    "electron-updater": "6.3.9"
   },
   "devDependencies": {
-    "electron": "^43.2.0"
+    "@electron/rebuild": "^4.2.0",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
   }
 }

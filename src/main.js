@@ -5,6 +5,7 @@
 // data reaches it through preload.js (see there for the swap point).
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { LibraryStore } = require('./library-store');
@@ -607,6 +608,21 @@ function buildMenu(win) {
       ],
     },
     { role: 'windowMenu' },
+    {
+      role: 'help',
+      submenu: [
+        // The only update path that reports anything. Everything automatic is
+        // silent, including its failures.
+        { label: 'Check for Updates…', click: () => checkForUpdates({ manual: true }) },
+        { type: 'separator' },
+        {
+          label: 'Report an Issue',
+          click: () => shell.openExternal(
+            'https://github.com/danielspils/crumar-seven-editor/issues/new'
+          ),
+        },
+      ],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -690,7 +706,108 @@ function createWindow() {
   }
 }
 
+// ── Auto-update (electron-updater + GitHub Releases) ────────────────────────
+// Silent on launch: check, download in the background, and say one thing when
+// there is something to say. Declining is not deferral — autoInstallOnAppQuit
+// means the update lands the next time the app closes, without asking again.
+//
+// Background failures stay silent. Someone on a festival stage with no wifi
+// does not need a dialog about GitHub; the only path that ever reports an
+// error is the menu item, where a person just asked.
+//
+// The release layout this depends on: ONE release per version carrying BOTH
+// platforms' assets. JP Patches published Mac and Windows as separate
+// releases, so the Windows updater looked for latest.yml on a release that
+// only had Mac assets and 404'd silently for months. The workflow in
+// .github/workflows/release.yml enforces the single release; this end just
+// assumes it.
+let manualUpdateCheck = false;
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-not-available', () => {
+    if (!manualUpdateCheck) return;
+    manualUpdateCheck = false;
+    dialog.showMessageBox({
+      type: 'info',
+      message: 'You’re up to date',
+      detail: `This Seven Goes to Eleven ${app.getVersion()} is the latest version.`,
+      buttons: ['OK'],
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    manualUpdateCheck = false;
+    dialog.showMessageBox({
+      type: 'info',
+      message: 'Update ready to install',
+      detail: `Version ${(info && info.version) || ''} has been downloaded. `
+        + 'Restart now to finish updating, or it will be installed the next '
+        + 'time you quit.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    if (!manualUpdateCheck) return;
+    manualUpdateCheck = false;
+    dialog.showMessageBox({
+      type: 'error',
+      message: 'Update check failed',
+      detail: String((err && err.message) || err),
+      buttons: ['OK'],
+    });
+  });
+}
+
+function checkForUpdates({ manual = false } = {}) {
+  if (!app.isPackaged) {
+    if (manual) {
+      dialog.showMessageBox({
+        type: 'info',
+        message: 'Updates unavailable in development',
+        detail: 'Auto-update only works in the installed app.',
+        buttons: ['OK'],
+      });
+    }
+    return;
+  }
+  manualUpdateCheck = manual;
+  autoUpdater.checkForUpdates().catch(() => { /* reported by the error handler */ });
+}
+
+// The library folder Electron picks is derived from productName, and 1.0
+// renames the app from "Crumar Seven Editor" to what it has been called
+// everywhere else — which moves that folder. Bring an existing library
+// across, ONCE, and only by copying: if any of this is wrong, the original is
+// still sitting where it was. Guarded, because failing to find an old library
+// must never stop the app opening.
+function migrateLegacyLibrary() {
+  if (process.env.SEVEN_LIBRARY_DIR) return;
+  try {
+    const dest = path.join(app.getPath('userData'), 'Library');
+    if (fs.existsSync(dest)) return;
+    const legacy = path.join(
+      path.dirname(app.getPath('userData')), 'Crumar Seven Editor', 'Library'
+    );
+    if (!fs.existsSync(legacy)) return;
+    fs.cpSync(legacy, dest, { recursive: true });
+    console.log(`[library] carried over from ${legacy}`);
+  } catch (err) {
+    console.warn(`[library] could not carry over the old folder: ${err.message}`);
+  }
+}
+
 app.whenReady().then(() => {
+  migrateLegacyLibrary();
+  setupAutoUpdater();
+  checkForUpdates();
   registerLibraryIpc();
   registerMidiIpc();
   registerBackupIpc();

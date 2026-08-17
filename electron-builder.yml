@@ -1,0 +1,111 @@
+# Packaging. In YAML rather than package.json's "build" block for one reason:
+# every non-obvious line here needs a comment, and JSON has nowhere to put one.
+
+appId: com.danielspils.this-seven-goes-to-eleven
+# The name the app has everywhere else — the site, the Notes, the donation
+# copy. It also decides the userData folder, so main.js carries a one-time
+# copy of any library left in the old "Crumar Seven Editor" folder.
+productName: This Seven Goes to Eleven
+
+publish:
+  provider: github
+  owner: danielspils
+  repo: crumar-seven-editor
+
+directories:
+  output: dist
+  buildResources: build
+
+# DERIVED, NOT GUESSED. Every entry is something the running app reads off
+# disk: schema/ and data/expansions.json through preload, assets/ for the
+# fonts, the instrument art and the panel SVG, and src/ for the app itself.
+#
+# fixtures/sample-library.json is the trap. It looks like test data and it is
+# not — main.js reads it to seed a new user's library, so a build without it
+# installs fine and then fails on first launch for exactly the people this
+# release is for.
+#
+# Deliberately absent: test/, tools/, docs/, fixtures/generate*.js and
+# fixtures/library-roundtrip.json. The only runtime reference into test/ is
+# test/ui/harness.js, behind the SEVEN_UI_TEST development flag.
+files:
+  - package.json
+  - src/**/*
+  - schema/**/*
+  - data/**/*
+  - assets/**/*
+  - fixtures/sample-library.json
+
+mac:
+  category: public.app-category.music
+  icon: build/icon.png
+  # Universal: a Crumar Seven owner may well be playing through an Intel Mac,
+  # and one architecture means one latest-mac.yml with nothing to get wrong.
+  # It doubles the download; that is the trade (Daniel, 2026-08-16).
+  target:
+    - target: dmg
+      arch: universal
+    - target: zip      # the updater reads the zip, not the dmg
+      arch: universal
+  # WHY THESE EXCLUSIONS. macOS warns "includes a component that will not work
+  # with a future release of macOS" for any x86_64-ONLY Mach-O in a bundle, and
+  # @julusian/midi carries several: bin/darwin-<arch>-<abi>/midi.node from
+  # electron-rebuild, and prebuilds/midi-darwin-<arch>/ shipped in the package.
+  # Each is one architecture by construction.
+  #
+  # None of them is loaded. pkg-prebuilds resolves build/Debug → build/Release
+  # → prebuilds/, and never looks in bin/ at all; electron-builder rebuilds the
+  # module per architecture while packaging, so build/Release/midi.node differs
+  # between the two halves and @electron/universal lipos it into a genuinely
+  # universal binary. That is the one the app loads, verified loading under
+  # both arm64 and x64.
+  #
+  # So the single-architecture copies are dead weight that costs us the Intel
+  # warning. They go. If build/Release ever failed to appear, MIDI would break
+  # loudly at launch rather than silently falling back to a binary of the wrong
+  # architecture — which is the better failure.
+  files:
+    - '!node_modules/@julusian/midi/bin/**'
+    - '!node_modules/@julusian/midi/prebuilds/**'
+  hardenedRuntime: true
+  notarize: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: This-Seven-Goes-to-Eleven-${version}-${arch}-mac.${ext}
+
+dmg:
+  title: This Seven Goes to Eleven ${version}
+  artifactName: This-Seven-Goes-to-Eleven-${version}.${ext}
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: x64
+  artifactName: This-Seven-Goes-to-Eleven-${version}-${arch}-win.${ext}
+  # NOT azureSignOptions. electron-builder's built-in Azure path runs
+  # Install-Module inside a captured-pipe PowerShell with no module check,
+  # which deadlocks on GitHub runners — three silent 29-43 minute timeouts on
+  # JP Patches before the job limit killed them. scripts/win-sign.js calls
+  # Invoke-TrustedSigning directly with stdio inherited: same certificate,
+  # same signature, no captured pipe.
+  #
+  # publisherName sits INSIDE signtoolOptions in electron-builder 26 — at the
+  # win level it fails schema validation with the unhelpful "configuration.win
+  # should be one of these: null". It must match the certificate's CN exactly
+  # ("CN=Daniel Spils"), or the installer fails verification against its own
+  # signature.
+  signtoolOptions:
+    sign: ./scripts/win-sign.js
+    publisherName: Daniel Spils
+    signingHashAlgorithms:
+      - sha256
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: This Seven Goes to Eleven

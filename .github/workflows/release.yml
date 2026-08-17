@@ -1,0 +1,135 @@
+# One tag, one release, both platforms.
+#
+# THE RULE THIS WORKFLOW EXISTS TO ENFORCE: a version's Mac and Windows assets
+# land on the SAME GitHub release, and nothing is visible to users until both
+# are there. JP Patches published them as two releases per version, so the
+# Windows updater looked for latest.yml on a release that carried only Mac
+# assets and 404'd in silence for months. Here the platform jobs publish into
+# a DRAFT, and a final job — which runs only if both succeeded — is what makes
+# the release public. A failed Windows build leaves a draft nobody updates
+# against, rather than a live release that quietly breaks updates forever.
+#
+# Secrets are not exposed to fork pull requests, and this only ever runs on a
+# tag pushed to this repository, so an unsigned build cannot reach a release.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  # Available by hand for a dry run: builds and signs, publishes nothing.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Tests and version guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+      # A tag that disagrees with package.json produces a release whose
+      # updater metadata points at a version the app will never match. Catch
+      # it here, where the cost is one red X instead of a bad release.
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG package.json=$PKG"
+          test "$TAG" = "$PKG"
+
+  mac:
+    name: macOS (universal, signed + notarized)
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      # @julusian/midi is native: without this the packaged app opens and then
+      # cannot see a single MIDI port.
+      - run: npm run rebuild
+      - name: Build, sign, notarize, publish to the draft release
+        env:
+          # Developer ID Application certificate, exported as .p12 and
+          # base64-encoded, plus its password.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Notarization. An app-specific password, never the Apple ID's own.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --universal --publish always
+
+  win:
+    name: Windows (NSIS x64, Azure-signed)
+    needs: verify
+    runs-on: windows-latest
+    # Azure signing is a network round trip per binary — the app exe, the
+    # uninstaller pieces and the installer itself.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run rebuild
+      # Installed here rather than by electron-builder: its own Azure path
+      # runs Install-Module inside a captured pipe and hangs (see
+      # scripts/win-sign.js). Pre-installing is fast and visible.
+      - name: Install the TrustedSigning module
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name TrustedSigning -Force -Scope CurrentUser -AllowClobber
+      - name: Build, sign, publish to the draft release
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --x64 --publish always
+
+  publish:
+    name: Publish the release
+    needs: [mac, win]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Both platforms are on the draft by now. Un-drafting is the moment the
+      # release exists for users and for every installed copy's updater, and
+      # it happens exactly once, after both builds have succeeded.
+      - name: Un-draft the release for this tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --json assets \
+            --jq '.assets[].name' | sort
+          # Every asset an updater needs, on this one release. Missing either
+          # metadata file means that platform's installed copies would never
+          # see this version.
+          ASSETS="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')"
+          echo "$ASSETS" | grep -q '^latest.yml$'      || { echo "no latest.yml (Windows)"; exit 1; }
+          echo "$ASSETS" | grep -q '^latest-mac.yml$'  || { echo "no latest-mac.yml (macOS)"; exit 1; }
+          echo "$ASSETS" | grep -q '\.exe$'            || { echo "no Windows installer"; exit 1; }
+          echo "$ASSETS" | grep -q '\.dmg$'            || { echo "no macOS disk image"; exit 1; }
+          echo "$ASSETS" | grep -q '\-mac\.zip$'       || { echo "no macOS zip — the updater reads this one"; exit 1; }
+          gh release edit "$GITHUB_REF_NAME" --draft=false

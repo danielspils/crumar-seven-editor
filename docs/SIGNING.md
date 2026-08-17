@@ -69,14 +69,17 @@ runner. This constrains the release process, not just the build script.
    signing. Today that is JP Patches; this repo has no remote and no
    workflow yet, so its secrets are still to come.
 
-### Not yet done, here
+### Done here as of 2026-08-16
 
-1. **Packaging at all.** This repo has no electron-builder dependency, no
-   `build` block, no icons and no `.github/`. The config below is the target,
-   not an edit to something that exists.
-2. **electron-builder configuration** — see below.
-3. **A first signed build**, verified on a clean Windows machine that has
+Packaging exists: `electron-builder.yml`, `scripts/win-sign.js`, `build/`
+(icon and entitlements) and `.github/workflows/release.yml`. A universal macOS
+build has been made and run locally, unsigned. What is still outstanding:
+
+1. **Repository secrets** — Azure's three, plus the Apple set. This repo has
+   none yet; JP Patches holds the Azure ones today.
+2. **A first signed build**, verified on a clean Windows machine that has
    never seen the app.
+3. **A real app icon.** `build/icon.png` is a placeholder.
 
 Deliberately not started yet: the pre-release audit fixes come first. A
 signed installer that misreports the owner's instrument is worse than an
@@ -84,24 +87,39 @@ unsigned one that doesn't — signing makes a build trustworthy, not correct
 (Daniel, 2026-08-14). The signing setup pays off in JP Patches first, which
 already has packaging and a Windows workflow.
 
-### electron-builder
+### electron-builder — NOT `azureSignOptions`
 
-Signing is configured under `win.azureSignOptions`. The three values above go
-in the config; credentials come from the environment.
+**Do not use `win.azureSignOptions`.** This section used to recommend it. It
+deadlocks on GitHub runners: electron-builder's `initialize()` runs
+`Install-Module` unconditionally inside a captured-pipe PowerShell, with no
+check for whether the module is already present, so pre-installing cannot
+prevent the call and the job hangs until it is killed. JP Patches lost three
+runs to it — 31864994891, 31887238438, 31888913488 — at 29 to 43 silent
+minutes each.
 
-```jsonc
-"win": {
-  "azureSignOptions": {
-    "endpoint": "https://wus2.codesigning.azure.net/",
-    "codeSigningAccountName": "t7gt11signing",
-    "certificateProfileName": "T7GT11SEATTLE",
-    "publisherName": "Daniel Spils"
-  }
-}
+What works, and what this repo does: a custom sign hook that calls
+`Invoke-TrustedSigning` directly with stdio inherited. Same certificate, same
+signature, visible output, no captured pipe.
+
+```yaml
+# electron-builder.yml
+win:
+  signtoolOptions:
+    sign: ./scripts/win-sign.js
+    publisherName: Daniel Spils
+    signingHashAlgorithms: [sha256]
 ```
 
-`publisherName` must match the certificate's CN exactly, or the installer
-will fail verification against its own signature.
+The workflow installs the `TrustedSigning` PowerShell module itself, once,
+before the build — fast and visible, unlike the built-in path.
+
+Two details that cost time if you get them wrong:
+
+- `publisherName` lives **inside `signtoolOptions`** in electron-builder 26.
+  At the `win` level it fails validation with the unhelpful message
+  `configuration.win should be one of these: null`.
+- It must match the certificate's CN exactly, or the installer fails
+  verification against its own signature.
 
 Authentication uses `DefaultAzureCredential`, which resolves in order:
 
@@ -152,6 +170,40 @@ Requirements for a distributable build:
 An app-specific password or an App Store Connect API key is needed for
 notarization; both belong in the keychain or CI secrets, never in the repo.
 
+### Universal builds and the native module
+
+macOS warns **"includes a component that will not work with a future release
+of macOS"** for any x86_64-only Mach-O inside a bundle — even one nothing
+loads. `@julusian/midi` ships several: `bin/darwin-<arch>-<abi>/midi.node`
+from electron-rebuild, and `prebuilds/midi-darwin-<arch>/`. Each is one
+architecture by construction, so a universal app containing them is flagged.
+
+The fix is not to lipo them. **Nothing loads them.** `pkg-prebuilds` resolves
+`build/Debug` → `build/Release` → `prebuilds/`, and never looks in `bin/` at
+all. electron-builder rebuilds the module once per target architecture while
+packaging, so `build/Release/midi.node` genuinely differs between the two
+halves and `@electron/universal` lipos it into a universal binary — which is
+the one the app loads. So the single-architecture copies are excluded from the
+package in `mac.files`, and every Mach-O that ships is universal.
+
+Verify after any change to the native module or its version:
+
+```sh
+find dist/mac-universal/*.app -type f -name '*.node' -o -name '*.dylib' \
+  | while read f; do echo "$(lipo -archs "$f") $f"; done
+```
+
+Every line must read `x86_64 arm64`. Then confirm the module actually loads in
+both slices — `arch -x86_64 env ELECTRON_RUN_AS_NODE=1 <app binary> probe.js`
+against the native run — because "universal" and "loads" are different claims.
+
+### `x64ArchFiles` is a trap here
+
+`@electron/universal` refuses an identical Mach-O found in both halves unless
+a `x64ArchFiles` pattern names it. Adding that pattern makes the build pass
+and ships a single-architecture binary — the very thing macOS warns about.
+Exclude the file instead.
+
 ---
 
 ## Annual cost
@@ -167,6 +219,41 @@ outright with that error. A budget alert is worth setting, since a stray
 resource on a pay-as-you-go subscription bills without warning.
 
 ---
+
+## What ships inside the bundle
+
+The `files` list in `electron-builder.yml` is **derived from what the app
+reads at runtime**, not assumed. `src/`, `schema/` (three JSON files, all read
+through preload), `data/expansions.json`, `assets/` (fonts, instrument art,
+the panel SVG) — and `fixtures/sample-library.json`, which is the one that
+looks like test data and is not: `main.js` reads it to seed a new user's
+library. A build without it installs and then fails on first launch for
+exactly the people a release is for.
+
+Left out deliberately: `test/`, `tools/`, `docs/`, `fixtures/generate*.js` and
+`fixtures/library-roundtrip.json`. The only runtime reference into `test/` is
+`test/ui/harness.js`, behind the `SEVEN_UI_TEST` development flag.
+
+## One release per version
+
+Mac and Windows assets go on the **same** GitHub release, always.
+`.github/workflows/release.yml` enforces it: both platform jobs publish into a
+draft, and a final job — gated on both succeeding, and checking that
+`latest.yml`, `latest-mac.yml`, the `.dmg`, the `-mac.zip` and the `.exe` are
+all present — is what makes the release public.
+
+The failure this prevents: JP Patches published Mac and Windows as separate
+releases per version, so the Windows updater looked for `latest.yml` on a
+release carrying only Mac assets and 404'd silently for months.
+
+## The app's name and its data folder
+
+The bundle is **This Seven Goes to Eleven**, and `productName` in
+`package.json` matches it — which is what Electron reads for
+`app.getPath('userData')`. That moved the library folder out of
+`Crumar Seven Editor`, so `migrateLegacyLibrary()` in `main.js` copies an
+existing library across on first run. It copies, never moves: if any of it is
+wrong the original is still there. Verified on the real library, 62 files.
 
 ## Release checklist
 

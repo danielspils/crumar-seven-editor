@@ -3,8 +3,12 @@ node_modules/
 
 # Build output
 dist/
-build/
 out/
+
+# build/ is INPUT, not output: electron-builder reads it as buildResources.
+# The icon and the entitlements have to be in the repo or a CI build produces
+# an app with the default Electron logo and no hardened-runtime exceptions.
+!build/
 
 # Logs
 *.log

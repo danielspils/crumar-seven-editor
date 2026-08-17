@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Electron's renderer JIT. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- @julusian/midi is a native module loaded at runtime; the hardened
+       runtime refuses to load it without this. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <!-- Saving a patch or an instrument report through the file dialog. -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <!-- No microphone and no audio-input entitlement: this app speaks MIDI
+       only. JP Patches needs those for tape dumps; nothing here records. -->
+</dict>
+</plist>
