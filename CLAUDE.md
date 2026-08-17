@@ -309,12 +309,10 @@ judgement — and a fixed sleep is not a test. The script polls
 `window.sevenAPI.devSignal()`; whoever is driving writes the file when the
 person has done their part. Unset, the call returns null and nothing polls.
 
-**`SEVEN_RESET_DONATIONS=1`** clears the donation prompt's state — and is now
-the only way to see the ask at all, since the rules allow two showings ever
-and the state file starts empty. `npm run test:ui donation-ask` needs it too.
-It clears — shown
+**`SEVEN_RESET_DONATIONS=1`** clears the donation prompt's state — shown
 count, last shown date, never-ask flag — so the next qualifying trigger is
-showing 1 again. Permanent, for the same reason as the flag below: that state
+showing 1 again. It is the only way to see the ask at all after the first two,
+and `npm run test:ui donation-ask` needs it. Permanent, for the same reason as the flag below: that state
 is one-directional and slow, so without a reset the second showing is seven
 days away and "I already donated" is a dead end. Every change to the copy or
 the trigger logic needs it (docs/DONATIONS.md).
