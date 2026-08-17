@@ -792,14 +792,41 @@
     selectLibraryEntry(entry, { inSetlist: !!next.closest('.lib-slot'), slot });
   }
 
+  // Left and right walk the bank tabs, the way up and down walk the presets
+  // inside one. Navigation only, exactly like clicking a tab: browsing banks
+  // changes no selection and sends the instrument nothing (Daniel, 2026-08-16).
+  // It CLAMPS rather than wrapping — the tabs stand for four buttons on the
+  // panel, and those do not wrap either.
+  function moveBankTab(dir) {
+    // Not while the tabs are off screen: with the library open full the tray
+    // has no height, and stepping a bank nobody can see is a keypress that
+    // appears to do nothing.
+    if (!tabsEl.offsetParent) return false;
+    const next = bankIndex + dir;
+    if (next < 0 || next >= banks.length) return true; // at the end; still ours
+    bankIndex = next;
+    renderAll();
+    return true;
+  }
+
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    const vertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+    const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+    if (!vertical && !horizontal) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     // A dialog owns the keyboard while it is up — including the picker, where
     // the arrows belong to the grid.
     if (document.querySelector('.seven-modal-overlay, .pick-overlay')) return;
+    if (horizontal) {
+      // The library was the last thing touched, so its list owns the arrows.
+      // Left and right mean nothing there yet, and swapping the bank behind an
+      // open library would move something the reader is not looking at.
+      if (lastTouched === 'library') return;
+      if (moveBankTab(e.key === 'ArrowRight' ? 1 : -1)) e.preventDefault();
+      return;
+    }
     e.preventDefault();
     const dir = e.key === 'ArrowDown' ? 1 : -1;
     if (lastTouched === 'library') moveLibrarySelection(dir);
