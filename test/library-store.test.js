@@ -102,6 +102,84 @@ test('two different names that slugify alike get different files', () => {
   assert.deepStrictEqual(entries(store).map((e) => e.name).sort(), ['Alpha', 'Alpha!']);
 });
 
+// The other half of the rule: rename is not the only path that sets a name.
+// Duplicating out of a backup opens the name prompt, so a person can type a
+// name that is already somebody's — and a copy that lands on a taken name is
+// the same two-identical-tiles bug arriving by a different door.
+test('duplicating onto a typed name another patch already has is refused', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const alphaFile = byName(store, 'Alpha').file;
+  const beta = byName(store, 'Beta');
+
+  assert.throws(
+    () => store.duplicate(beta.file, beta.patchIndex, 'Alpha'),
+    (err) => err.code === 'NAME_TAKEN' && /already a patch called/.test(err.message)
+  );
+
+  // The refusal happens BEFORE anything is written: no orphan copy on disk.
+  assert.deepStrictEqual(entries(store).map((e) => e.name).sort(), ['Alpha', 'Beta']);
+  assert.ok(fs.existsSync(path.join(store.dir, alphaFile)), 'Alpha untouched');
+  assert.strictEqual(
+    fs.readdirSync(store.dir).filter((f) => f.endsWith('.sevenlib.json')).length, 2,
+    'no third patch file was written'
+  );
+});
+
+// THE BUG DANIEL HIT. Duplicate with no typed name used to land on
+// "<name> copy" every single time, so doing it twice produced two patches
+// called "Alpha copy" — identical tiles, which is the whole thing this rule
+// exists to prevent. A generated name is never refused; it moves up instead.
+test('duplicating the same patch repeatedly numbers the copies', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const alpha = byName(store, 'Alpha');
+
+  const made = [
+    store.duplicate(alpha.file, alpha.patchIndex),
+    store.duplicate(alpha.file, alpha.patchIndex),
+    store.duplicate(alpha.file, alpha.patchIndex),
+  ];
+
+  const names = made.map((m) => store.readFile(m.file).library.patches[m.patchIndex].name);
+  assert.deepStrictEqual(names, ['Alpha copy', 'Alpha copy 2', 'Alpha copy 3']);
+  // And they are three separate files, each listed under its own name.
+  assert.strictEqual(new Set(made.map((m) => m.file)).size, 3, 'three files');
+  assert.deepStrictEqual(
+    entries(store).map((e) => e.name).sort(),
+    ['Alpha', 'Alpha copy', 'Alpha copy 2', 'Alpha copy 3', 'Beta']
+  );
+});
+
+// THE NAMESPACE IS YOUR PATCHES, NOT THE FOLDER. A backup record can carry a
+// borrowed name identical to the patch it was named after, so counting records
+// would make the first copy taken from a backup arrive as "Alpha copy 2" —
+// numbered around a name nothing of yours is using.
+test('a backup record sharing the name does not push the copy number up', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const alpha = byName(store, 'Alpha');
+
+  // Make a real backup record called "Alpha copy": duplicate once, then give
+  // that file a slot on the instrument, which is what list() reads as a
+  // capture (kind is derived from the bank number, never stored).
+  const record = store.duplicate(alpha.file, alpha.patchIndex);
+  const parsed = store.readFile(record.file);
+  parsed.library.patches[record.patchIndex].origin = { bank: 2, preset: 4 };
+  fs.writeFileSync(
+    path.join(store.dir, record.file), JSON.stringify(parsed.library, null, 2)
+  );
+  assert.strictEqual(
+    entries(store).find((e) => e.file === record.file).origin.kind, 'backup',
+    'the fixture really is a backup record'
+  );
+
+  // The next copy takes the name back, because no PATCH of yours holds it.
+  const made = store.duplicate(alpha.file, alpha.patchIndex);
+  const name = store.readFile(made.file).library.patches[made.patchIndex].name;
+  assert.strictEqual(name, 'Alpha copy');
+});
+
 test('setlist slots follow a renamed file', () => {
   const { store } = freshStore();
   store.seedDemoLibrary();   // this test needs library content
