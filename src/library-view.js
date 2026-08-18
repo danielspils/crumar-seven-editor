@@ -245,10 +245,10 @@
           'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/>' +
           '<path d="M10.5 2.5h-8v8"/></svg>' +
-          // "Duplicate", not "Duplicate to Patches": the copy lands in
-          // Patches and the row you are taken to says so, so the button does
-          // not have to carry the destination too (Daniel, 2026-08-17).
-          '<span class="patch-duplicate-label">Duplicate</span></button>'
+          // "Copy to edit" — the destination is not the point, the REASON is:
+          // a backup record is read-only, and this is how you get a version
+          // you can change (Daniel, 2026-08-17).
+          '<span class="patch-duplicate-label">Copy to edit</span></button>'
         : '') +
       (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
