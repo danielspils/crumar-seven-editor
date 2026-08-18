@@ -150,8 +150,9 @@ say so plainly. "On this computer" — the on-disk library with setlists. Plus
 the panel strip (inlined SVG, addressable ids), a live connection row, and a
 two-column detail view (engine group + effects chain, switch-driven dimming,
 default-muted values, FX2-conditional sub-params). **Fixtures no longer reach
-the renderer** — `getLibrary` is gone from preload; fixture data only seeds a
-first-run demo library in the main process. Dev note: Electron must be ≥ a
+the renderer** — `getLibrary` is gone from preload — and as of 2026-08-17 they
+do not seed a library either: a new library is EMPTY (see "1.0 shipped demo
+patches"). Dev note: Electron must be ≥ a
 current major — macOS XProtect flags outdated Electron binaries as malware and
 trashes them (this bit us on v31; fixed on v43).
 
@@ -258,6 +259,131 @@ ids, plus the table fingerprint and read time that backups reference.
 Daniel's own 32 presets are backed up and the seeded demo patches were
 trashed — the library is real data only.
 
+## 1.0.0 shipped (2026-08-17)
+
+Public, signed, notarized, auto-updating:
+**github.com/danielspils/crumar-seven-editor/releases/tag/v1.0.0**, linked from
+thissevengoestoeleven.com. First outside downloads arrived the same day.
+
+**Packaging** (`electron-builder.yml`, in YAML so every non-obvious line can
+carry a comment). macOS universal dmg + zip, Windows NSIS x64. Four things
+that cost time and are written down where they bit:
+
+- **Windows signing does NOT use `azureSignOptions`.** electron-builder's
+  built-in Azure path runs `Install-Module` inside a captured-pipe PowerShell
+  and deadlocks on GitHub runners — three JP Patches runs died that way.
+  `scripts/win-sign.js` calls `Invoke-TrustedSigning` directly. `publisherName`
+  lives INSIDE `signtoolOptions` in electron-builder 26.
+- **The DMG needs its own signature, notarization and staple.** 1.0.0's first
+  attempt shipped a perfect app inside a disk image Gatekeeper rejected
+  outright. `scripts/staple-dmg.js` does it and then ASKS Gatekeeper, failing
+  the build if the answer is no — reading `spctl`'s verdict from **stderr**,
+  which is where it writes.
+- **Universal + native module.** macOS flags any x86_64-only Mach-O in the
+  bundle. `@julusian/midi` ships single-arch copies under `bin/` and
+  `prebuilds/` that NOTHING loads (`pkg-prebuilds` resolves build/Release
+  first), so they are excluded in `mac.files`. `x64ArchFiles` is a trap: it
+  makes the build pass by shipping exactly what macOS objects to.
+- **One release per version, enforced.** Both platform jobs build with
+  `--publish never` and upload artifacts; a final job creates ONE release from
+  both after checking latest.yml, latest-mac.yml, the dmg, the mac zip and the
+  exe are all present. Two concurrent publishers raced and produced FOUR
+  drafts on one tag before this shape.
+
+`files` is derived from what the app reads at runtime, not assumed —
+`fixtures/sample-library.json` is the trap, since main.js reads it and a build
+without it installs and then fails on first launch.
+
+**The app is named "This Seven Goes to Eleven"** — `productName` in
+package.json, which moves the userData folder. `migrateLegacyLibrary()` copies
+an existing library across on first run, copy never move (verified on the real
+62-file library).
+
+**Auto-update** is JP's UX: silent launch check, background download, one
+dialog when ready, silent apply on quit if declined, background failures
+swallowed. Help ▸ Check for Updates is the only path that ever speaks.
+
+**The icon** is the panel's own encoder: `#knob-glass` and `#pwr-icon` lifted
+from `assets/seven-panel.svg`, lit green by app.js's own `updateKnobLit()`
+values at hue 120, with SEVEN and 11 in the panel's label face converted to
+outlines. TWO drawings — below 128px the words are dropped and the tile goes
+to the knob, because at 32px lettering is grey noise. Rebuild with
+`python3 tools/build-icons.py`. A double hyphen inside an XML comment is
+illegal and made the whole SVG fail to decode as an image; the comments there
+say so.
+
+## 1.0 shipped demo patches, and that was the worst bug of the day
+
+A new library arrived holding 32 fixture patches and a five-slot "Stage
+Setlist (demo)". **Measured against the real transfer runner**: a new owner who
+had backed up nothing could send "Sunset Rhodes" to Bank 2 Preset 1 — one
+sound change, 110 parameter writes — and be told by the app to hold the preset
+for three seconds, storing fiction over a preset they had no copy of. Two of
+the 32 named sounds no Seven has ever had ("Steinway D Berlin", "Fazioli
+F308"), and **the first user report of 1.0.0** was somebody hunting Crumar's
+site for a download that cannot exist.
+
+Three changes came out of it:
+
+1. **Nothing is seeded.** A new library is empty and lands on the Backups
+   tab's own empty state, which already said what to do. `SEVEN_SEED_DEMO=1`
+   brings the fixtures back for screenshots.
+2. **`src/demo-cleanup.js` removes them on update**, once per install, for
+   everyone — told, not asked, with a one-time notice carrying the REAL count.
+   Only EXACT matches against the shipped fixture go: edit a value, rename it,
+   or put it in a setlist of your own and it stays. Removal goes through the
+   Trash. A library that cannot be read is left alone.
+3. **The flat Patches list warns again.** It suppressed the whole badge to be
+   rid of the Model/Sample pill and took "⚠ Not installed" with it — so a
+   patch this instrument cannot play looked ordinary, and selecting it
+   appeared to do nothing. That is precisely what the user reported.
+
+## Interrupted writes (2026-08-17)
+
+Every write in `library-store.js` goes through `writeAtomic` — temp file,
+fsync, rename. A plain `writeFileSync` truncates first, and `setlists.json`
+holds EVERY setlist in one file: truncated, it read back as zero setlists
+where there had been one, silently. Patch files survived only because they are
+one file each. `patch-order.json` had the same shape.
+
+## Still open from the QA pass
+
+In Daniel's order, items 3 and 4 of five:
+
+- **`wfp` has no real test.** Test `parseGlobals` against a payload carrying an
+  actual password and assert it cannot survive, then fix the fake so it returns
+  what a device returns rather than the redacted string.
+- **The fixture ignores each parameter's max** (returns 64 for everything), so
+  hash and dedupe tests cannot distinguish parameters.
+- **Hardware, when the Seven is next plugged in**: the mismatch gate has still
+  never met a real mismatched unit (`SEVEN_FORCE_MISMATCH` needs a device,
+  since it synthesises the verdict during connect), and unplugging mid-transfer
+  and mid-connect is unexercised. Mid-backup IS exercised and is graceful:
+  completed slots kept, the run labelled "failed", nothing corrupted.
+- **Test-layer gap**, ranked by cost: `seven-midi.js` (894 lines, param table
+  only), `main.js` (877, none), `app.js` (3348, a few UI scenarios),
+  `audition.js` (877, none), `modal.js`, `preload.js`, `undo.js`. The pattern:
+  the further from a pure function, the less coverage — and every bug found by
+  hand this week was in that half.
+
+## The website (this-seven-goes-to-eleven)
+
+Download buttons resolve the newest release's actual .dmg/.exe at runtime
+(`assets/js/download.js`) — no version is written anywhere; buttons ship
+pointing at /releases/latest so they work with JS off. The header's MAC and PC
+buttons were never wired at all until 2026-08-17. SVG anchors need
+`setAttribute('href')`; assigning `.href` fails silently. A SmartScreen note
+sits under the PC button. `/metrics/` reads `docs/metrics/data.json` and counts
+INSTALLERS only — latest.yml is the updater checking in. GoatCounter is live at
+`thissevengoestoeleven.goatcounter.com`; page views and downloads are never
+added together. The daily download-report email works and sends.
+
+**The donation ask is built** (`src/donations.js` + the modal in app.js), per
+docs/DONATIONS.md: three triggers, fires on DISMISSAL of a completion summary,
+two showings ever at least 7 days apart, then never automatically. "I already
+donated" and "Don't ask again" are permanent. Help ▸ Support this app never
+counts as a showing. Daniel's revised copy, no numbers in the ask.
+
 ## How to check your work
 
 Two suites and a way to drive the real app. **Use them before reporting
@@ -309,6 +435,12 @@ judgement — and a fixed sleep is not a test. The script polls
 `window.sevenAPI.devSignal()`; whoever is driving writes the file when the
 person has done their part. Unset, the call returns null and nothing polls.
 
+**`SEVEN_SEED_DEMO=1`** puts the 32 fixture patches and the demo setlist into
+a NEW library folder. Nothing is seeded without it — see "1.0 shipped demo
+patches" below for why — so this is how a screenshot or a manual UI session
+gets content. Tests call `store.seedDemoLibrary()` instead, which says the
+same thing out loud.
+
 **`SEVEN_RESET_DONATIONS=1`** clears the donation prompt's state — shown
 count, last shown date, never-ask flag — so the next qualifying trigger is
 showing 1 again. It is the only way to see the ask at all after the first two,
@@ -322,6 +454,26 @@ really reported. What was read from the device is left untouched, so a report
 saved under the flag still carries this unit's genuine table, and everything
 downstream of the verdict is the real code path. Unset, it does nothing;
 `npm test` asserts that.
+
+**MUTATION TESTING IS THE RELEASE RITUAL** (2026-08-17). Coverage counts
+measure nothing; removing a behaviour and seeing whether the suite notices
+measures something. The first sweep ran 13 mutations, 10 caught, 3 missed —
+record that count each release. The three misses are what a coverage
+percentage would never have shown:
+
+- `wfp` redaction in the 0x33 parser could be deleted with the suite green,
+  because the fake instrument returns `wfp: '[wfp redacted]'` ITSELF. The test
+  named "the globals snapshot is written with wfp already redacted" asserts a
+  string the fixture hard-codes. **Still open** — Rule 6's primary defence has
+  no test.
+- The row-level "⚠ Not installed" badge could be deleted with the suite green.
+  Fixed and covered.
+- `FakeSeven.readParamValue` returns 64 for every id regardless of a
+  parameter's max, so backup's hash and dedupe tests cannot tell parameters
+  apart. **Still open.**
+
+Run one with: break a behaviour, `npm test`, restore. A test that passes with
+the thing under test removed is testing nothing.
 
 Some habits that this project earned the hard way:
 
