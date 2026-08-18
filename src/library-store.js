@@ -894,4 +894,4 @@ class LibraryStore {
   }
 }
 
-module.exports = { LibraryStore, slugify };
+module.exports = { LibraryStore, slugify, writeAtomic };

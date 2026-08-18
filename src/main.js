@@ -8,9 +8,10 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('el
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
-const { LibraryStore } = require('./library-store');
+const { LibraryStore, writeAtomic } = require('./library-store');
 const { Donations } = require('./donations');
 const demoCleanup = require('./demo-cleanup');
+const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
@@ -881,9 +882,26 @@ async function runDemoCleanup() {
   }
 }
 
+// Redacts the 1.0 leak out of globals snapshots already on disk. Quiet on
+// purpose — a console line, no dialog: it only affects someone whose Wi-Fi
+// password contains a semicolon, and announcing it would alarm everyone else
+// for something that did not happen to them (Daniel, 2026-08-17).
+function runGlobalsCleanup() {
+  try {
+    globalsCleanup.run({
+      dir: getStore().dir,
+      userDataDir: app.getPath('userData'),
+      write: writeAtomic,
+    });
+  } catch (err) {
+    console.warn(`[globals-cleanup] skipped: ${err.message}`);
+  }
+}
+
 app.whenReady().then(async () => {
   migrateLegacyLibrary();
   await runDemoCleanup();
+  runGlobalsCleanup();
   setupAutoUpdater();
   checkForUpdates();
   registerLibraryIpc();
