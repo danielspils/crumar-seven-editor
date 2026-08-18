@@ -66,6 +66,9 @@ function setup({ sounds = ['Tine Piano', 'Clavi Piano'], connected = true, deaf 
       { name: 'Beta', soundName: 'Clavi Piano', params: params(20) },
     ] }],
   });
+  // Content on purpose: a real library starts empty since 2026-08-17, when
+  // seeded demo patches turned out to be sendable to the instrument.
+  store.seedDemoLibrary();
   const entries = store.list().patches;
   const midi = fakeMidi({ sounds, connected, deaf, sendPc });
   const sent = [];

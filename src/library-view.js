@@ -113,6 +113,12 @@
   // lock on the Bank 1 tab carries it now (Daniel, 2026-08-16). Model/Sample
   // stays: that one tells rows apart in all four banks.
 
+  // The warning on its own, for lists that carry no pill. One definition, so
+  // the two cannot drift into saying different things about the same fact.
+  const warnBadge = (entry) => (entry.missing
+    ? '<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>'
+    : '<span class="badge-gap"></span>');
+
   function badge(entry) {
     const kind = entry.sampled ? 'Sample' : 'Model';
     return (
@@ -120,9 +126,7 @@
       `title="${esc(entry.soundName || kind)}">` +
       `<span class="badge-kind">${kind}</span>` +
       `<span class="badge-sound">${esc(entry.soundName || kind)}</span></span>` +
-      (entry.missing
-        ? `<span class="badge badge-warn" title="Sound not in the schema sound list">⚠ Not installed</span>`
-        : `<span class="badge-gap"></span>`)
+      warnBadge(entry)
     );
   }
 
@@ -213,7 +217,14 @@
       // records are not in that tab at all, and every row there is yours. The
       // detail column keeps the indication, which is where you would try to
       // edit one (Daniel, 2026-08-16).
-      `<span class="lib-badges">${opts.flat && !opts.readOnly ? '' : badge(entry)}</span>` +
+      // The PILL goes in the flat list; the WARNING never does. Suppressing
+      // the badge wholesale took the "not installed" flag with it, and the
+      // first user report of 1.0.0 was the consequence: a patch naming a sound
+      // his instrument does not have looked completely ordinary in the list,
+      // so selecting it and having nothing happen read as the app being broken
+      // (2026-08-17). A pill repeated forty times is noise; a row that cannot
+      // play is not a classification, it is a problem with that row.
+      `<span class="lib-badges">${opts.flat && !opts.readOnly ? warnBadge(entry) : badge(entry)}</span>` +
       `</button>` +
       // A button cannot contain a button, so the trailing control is a SIBLING
       // and the wrapper positions it over the row's right edge.

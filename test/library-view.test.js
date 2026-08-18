@@ -365,3 +365,31 @@ test('the picker has three tabs and reaches a backup by run, bank and preset', (
   assert.strictEqual((inside.match(/data-pick-file=/g) || []).length, 16, 'sixteen presets');
   assert.match(inside, /data-pick-run-back/, 'and a way back to the run list');
 });
+
+// THE FIRST USER REPORT OF 1.0.0, in test form. A patch naming a sound the
+// connected instrument does not have looked completely ordinary in the flat
+// Patches list, because that list suppressed the whole badge to be rid of the
+// Model/Sample pill — and took the warning with it. Selecting such a patch
+// then appears to do nothing, which is exactly how it was reported: "the
+// presets on computer don't seem to work for me" (2026-08-17).
+test('a patch whose sound this instrument lacks is flagged in the flat list', () => {
+  const entry = {
+    file: 'berlin.sevenlib.json', patchIndex: 0, name: 'Berlin Grand',
+    soundName: 'Steinway D Berlin', sampled: true, missing: true,
+    mtime: Date.now(), origin: { kind: 'created', created: '2026-08-17T00:00:00Z' },
+  };
+  const flat = SevenLibraryView.renderBody(
+    { patches: [entry], setlists: [] }, { tab: 'patches', search: '' }, []
+  );
+  assert.match(flat, /Not installed/, 'the flat Patches list warns');
+
+  // And the pill stays out of that list — the reason the badge was suppressed
+  // in the first place.
+  assert.doesNotMatch(flat, /badge-kind/, 'without bringing the Model/Sample pill back');
+
+  // A patch whose sound IS present says nothing at all.
+  const fine = SevenLibraryView.renderBody(
+    { patches: [{ ...entry, missing: false }], setlists: [] }, { tab: 'patches', search: '' }, []
+  );
+  assert.doesNotMatch(fine, /Not installed/);
+});

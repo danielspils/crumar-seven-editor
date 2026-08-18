@@ -191,8 +191,30 @@ class LibraryStore {
 
   // First run: create the folder and seed it from the fixture library so the
   // UI has content. DEMO data — fixtures are never evidence (CLAUDE.md).
+  // A NEW LIBRARY IS EMPTY. It used to arrive holding 32 fixture patches and a
+  // five-slot "Stage Setlist (demo)", and that was not a labelling problem —
+  // it was a hazard. Measured on 2026-08-17 against the real transfer runner:
+  // a brand-new owner, having backed up nothing, could send "Sunset Rhodes" to
+  // Bank 2 Preset 1 — one sound change, 110 parameter writes — and be told by
+  // the app to "Hold preset 1 on the Seven for three seconds", which stores
+  // fiction over a preset they have no copy of. That is precisely the loss
+  // this app exists to prevent (Daniel, 2026-08-17).
+  //
+  // Nothing is seeded now, so nothing fictional can be sent, and the first
+  // thing a new owner sees is the empty state telling them to back up their
+  // own instrument. SEVEN_SEED_DEMO=1 brings the fixtures back for screenshots
+  // and manual UI work; it is development tooling and is documented as such.
   ensureSeeded() {
     if (fs.existsSync(this.dir)) return;
+    fs.mkdirSync(this.dir, { recursive: true });
+    if (!process.env.SEVEN_SEED_DEMO || !this.fixtureLibrary) return;
+    this.seedDemoLibrary();
+  }
+
+  // The old first-run content, now reachable only on purpose: the dev flag
+  // above, or a test that says outright that it wants demo data.
+  seedDemoLibrary() {
+    if (!this.fixtureLibrary) return;
     fs.mkdirSync(this.dir, { recursive: true });
     const seededAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
     const files = [];

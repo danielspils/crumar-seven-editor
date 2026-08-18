@@ -48,8 +48,9 @@ const byName = (store, name) => entries(store).find((e) => e.name === name);
 const listIndex = (store, name) => store.readSetlists().findIndex((s) => s.name === name);
 const listNamed = (store, name) => store.readSetlists().find((s) => s.name === name);
 
-test('seeds a first-run library from the fixture', () => {
+test('demo content exists only when a test or the dev flag asks for it', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const all = entries(store);
   assert.strictEqual(all.length, 2);
   assert.ok(byName(store, 'Alpha'), 'Alpha is there');
@@ -59,6 +60,7 @@ test('seeds a first-run library from the fixture', () => {
 
 test('rename moves the file and the entry follows', () => {
   const { store, dir } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const before = byName(store, 'Alpha');
   const target = store.rename(before.file, before.patchIndex, 'Rhodes Mk1');
   assert.notStrictEqual(target, before.file, 'the file is renamed too');
@@ -69,6 +71,7 @@ test('rename moves the file and the entry follows', () => {
 
 test('renaming onto an existing filename does not overwrite it', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const originalAlphaFile = byName(store, 'Alpha').file;
   const beta = byName(store, 'Beta');
   const target = store.rename(beta.file, beta.patchIndex, 'Alpha'); // collides
@@ -82,6 +85,7 @@ test('renaming onto an existing filename does not overwrite it', () => {
 
 test('setlist slots follow a renamed file', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const alpha = byName(store, 'Alpha');
   store.createSetlist('Gig');
   const gig = listIndex(store, 'Gig');
@@ -284,6 +288,7 @@ test('old sound-only slots migrate to patches', () => {
 
 test('clear, move and delete behave', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const alpha = byName(store, 'Alpha');
   store.createSetlist('Gig');
   const gig = listIndex(store, 'Gig');
@@ -311,6 +316,7 @@ test('createOrReplaceSetlist replaces the same name instead of stacking', () => 
 
 test('savePatchParams writes known keys and stamps both dates', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const alpha = byName(store, 'Alpha');
   store.savePatchParams(alpha.file, alpha.patchIndex, { rho_atk: 12, not_a_key: 5 });
   const after = byName(store, 'Alpha');
@@ -321,6 +327,7 @@ test('savePatchParams writes known keys and stamps both dates', () => {
 
 test('verified is preferred over captured for the displayed date', () => {
   const { store, dir } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const alpha = byName(store, 'Alpha');
   assert.ok(alpha, 'the seeded patch is there');
   const raw = JSON.parse(fs.readFileSync(path.join(dir, alpha.file), 'utf8'));
@@ -335,6 +342,7 @@ test('verified is preferred over captured for the displayed date', () => {
 
 test('touchVerified marks a patch current without touching its values', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const alpha = byName(store, 'Alpha');
   assert.strictEqual(alpha.origin.kind, 'created', 'a created patch, not a backup');
   const before = { ...alpha.params };
@@ -419,6 +427,7 @@ test('a backup setlist is stamped when it is written and when it is replaced', (
 // "this patch is a Clavi now".
 test('a patch’s sound can be changed without disturbing its parameters', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const entry = store.list().patches[0];
   const before = store.readFile(entry.file).library.patches[entry.patchIndex || 0];
   const params = { ...before.params };
@@ -441,6 +450,7 @@ test('a patch’s sound can be changed without disturbing its parameters', () =>
 // needs to know where it landed (Daniel, 2026-08-13).
 test('duplicate returns where the copy went, and does not claim to be a backup', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   // Give it a patch that IS a backup record, which is the case that mattered:
   // saving edits on one of those always copies now.
   const src = byName(store, 'Alpha');
@@ -470,6 +480,7 @@ test('duplicate returns where the copy went, and does not claim to be a backup',
 // middle untouched (Daniel, 2026-08-14).
 test('moving a slot inserts it, shifting the ones it passes', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   store.createSetlist('Order');
   const gig = listIndex(store, 'Order');
   const a = byName(store, 'Alpha');
@@ -494,6 +505,7 @@ test('moving a slot inserts it, shifting the ones it passes', () => {
 
 test('moving a slot past an empty one carries the empty with it', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   store.createSetlist('Gaps');
   const gig = listIndex(store, 'Gaps');
   const a = byName(store, 'Alpha');
@@ -660,6 +672,7 @@ test('a new setlist records when it was created, and keeps it', async () => {
 
 test('a patch is missing when the INSTRUMENT lacks its sound, not when the schema does', () => {
   const { store } = freshStore();
+  store.seedDemoLibrary();   // this test needs library content
   const file = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file;
   // A sound this build has never heard of — an expansion the schema predates.
   store.savePatchSound(file, 0, 'Nord Lead Expansion', true);
