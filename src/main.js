@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { LibraryStore } = require('./library-store');
 const { Donations } = require('./donations');
+const demoCleanup = require('./demo-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
@@ -543,6 +544,14 @@ function registerDonationIpc() {
 }
 
 function registerNotesIpc() {
+  // Read once and cleared: the notice is a single sentence after an update,
+  // not a state the app keeps returning to.
+  ipcMain.handle('demo-cleanup:notice', () => {
+    const notice = demoCleanupNotice;
+    demoCleanupNotice = null;
+    return notice;
+  });
+
   ipcMain.handle('notes:latest', async () => {
     try {
       const res = await fetch(NOTES_FEED_URL, { signal: AbortSignal.timeout(6000) });
@@ -844,8 +853,37 @@ function migrateLegacyLibrary() {
   }
 }
 
-app.whenReady().then(() => {
+// What the cleanup did, for the renderer to say once. Held in memory: if the
+// app closes before it is read, the marker on disk still stops the cleanup
+// running again, and a notice nobody saw is not worth a second file.
+let demoCleanupNotice = null;
+
+// Removes the demo patches 1.0 shipped by mistake. Runs once per install,
+// before any window exists, so the library is already correct when it renders.
+// Failure here must never stop the app opening — a cleanup that cannot run is
+// a library left exactly as it was.
+async function runDemoCleanup() {
+  try {
+    const result = await demoCleanup.run({
+      store: getStore(),
+      fixture: JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'fixtures', 'sample-library.json'), 'utf8')),
+      userDataDir: app.getPath('userData'),
+      trash: (abs) => shell.trashItem(abs),
+    });
+    if (result.ran && result.removed > 0) demoCleanupNotice = result;
+    if (result.ran) {
+      console.log(`[demo-cleanup] removed ${result.removed}, kept ${result.keptEdited} edited, ` +
+        `${result.keptInSetlist} in setlists`);
+    }
+  } catch (err) {
+    console.warn(`[demo-cleanup] skipped: ${err.message}`);
+  }
+}
+
+app.whenReady().then(async () => {
   migrateLegacyLibrary();
+  await runDemoCleanup();
   setupAutoUpdater();
   checkForUpdates();
   registerLibraryIpc();

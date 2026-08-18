@@ -2561,6 +2561,29 @@
   setLibraryOpen(localStorage.getItem(LIB_OPEN_KEY) === '1', { scroll: false });
   refreshLibrary();
 
+  // THE DEMO PATCHES 1.0 SHIPPED BY MISTAKE. The main process removes them
+  // once, before this window exists; this says so, once. Told rather than
+  // asked: they were never the user's patches, two of them named sounds no
+  // Seven has ever had, and any of them could be sent to an instrument by
+  // someone who had backed nothing up. Silent removal is what makes people
+  // uneasy; removal they were told about is a fix (Daniel, 2026-08-17).
+  //
+  // The count is the REAL one — anything edited, renamed, or used in a setlist
+  // of their own was left alone, so it is not always 32.
+  (async () => {
+    if (!window.sevenAPI.demoCleanup) return;
+    const notice = await window.sevenAPI.demoCleanup.notice();
+    if (!notice || !notice.removed) return;
+    const n = notice.removed;
+    await SevenModal.confirm({
+      title: 'Demo patches removed',
+      body: `Removed the ${n} demo ${n === 1 ? 'patch' : 'patches'} that mistakenly ` +
+        'shipped with 1.0. Sorry!',
+      confirmLabel: 'OK',
+      cancelLabel: 'Close',
+    });
+  })();
+
   // ---- View menu commands (main process → here) -----------------------------
   if (window.sevenAPI.onViewCommand) {
     window.sevenAPI.onViewCommand((msg) => {

@@ -181,6 +181,11 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     answer: (answer) => ipcRenderer.invoke('donations:answer', answer),
     open: () => ipcRenderer.invoke('donations:open'),
   },
+  // What the one-time demo cleanup removed, if anything. Read once: the main
+  // process clears it, so a reload cannot repeat the notice.
+  demoCleanup: {
+    notice: () => ipcRenderer.invoke('demo-cleanup:notice'),
+  },
   notes: {
     latest: () => ipcRenderer.invoke('notes:latest'),
     open: (url) => ipcRenderer.invoke('notes:open', url),
