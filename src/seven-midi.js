@@ -155,7 +155,18 @@ function parseGlobals(text) {
     if (key === 'tun') out.tun = Number(val);
     else if (key === 'glb') out.glb = val.split(',').map(Number);
     else if (key === 'wfp') out.wfp = WFP_REDACTED; // never keep the real value
-    else out[key] = val;
+    // UNKNOWN KEYS ARE DROPPED, and the reason is Rule 6 rather than tidiness.
+    // The reply is split on ';', so a Wi-Fi password containing a semicolon
+    // breaks into a second pair — "wfp=pass;word=secret" — and a catch-all
+    // `out[key] = val` then keeps "secret" under a key nobody is watching,
+    // straight into the globals snapshot on disk. Found by the test that was
+    // finally written for this on 2026-08-17.
+    //
+    // The KEY is logged and the value never is: a field this build does not
+    // know is worth noticing (Rule 2 — the device is the authority, and a new
+    // field means the schema wants revisiting), but it cannot be shown,
+    // because a fragment of a password is exactly what it might be.
+    else console.warn(`[midi] globals reply carried an unknown field "${key}" — dropped`);
   }
   return out;
 }

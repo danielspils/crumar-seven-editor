@@ -14,6 +14,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { BackupRunner } = require('../src/backup-runner');
+const { parseGlobals } = require('../src/seven-midi');
 const { LibraryStore } = require('../src/library-store');
 const schema = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'schema', 'seven-1.37.json'), 'utf8')
@@ -48,11 +49,19 @@ class FakeSeven extends EventEmitter {
       this.dropped.add(id);
       throw new Error('timeout waiting for 0x23');
     }
-    return { id, key: schema.parameters.find((p) => p.id === id).key, value: 64 };
+    const p = schema.parameters.find((q) => q.id === id);
+    return { id, key: p.key, value: deviceValue(p) };
   }
 
+  // Through the REAL parser, from a reply shaped like the instrument's — with
+  // an actual password in it. Returning '[wfp redacted]' directly was the
+  // tautology that hid a missing guard for weeks: the snapshot test asserted a
+  // string this fixture handed it, so deleting the redaction entirely left the
+  // suite green (2026-08-17).
   async readGlobals() {
-    return { tun: 440, glb: this.globals.glb, wfp: '[wfp redacted]' };
+    return parseGlobals(
+      `tun=440;glb=${this.globals.glb.join(',')};wfp=hunter2-correct-horse`
+    );
   }
 }
 
@@ -182,14 +191,27 @@ test('refuses to run without a connection', async () => {
 // Every slot the fake instrument reports reads back identically (value 64 on
 // every parameter), so a patch built the same way matches every slot's
 // contents. `name` and `origin` are what each test varies.
-const libraryPatch = (store, { name, bank, preset, value = 64 }) => store.saveBackupPatch({
+// WHAT THIS INSTRUMENT ANSWERS, in one place. The fake used to say 64 for
+// every parameter whatever its max, so every patch hashed the same shape and
+// the dedupe and name-inheritance tests could not tell one parameter from
+// another — they passed for the wrong reason (Daniel, 2026-08-15, fixed
+// 2026-08-17). Now each id gets a different value that its own max allows,
+// deterministically, and the FIXTURES below derive from the same function so
+// the two cannot drift back apart.
+const deviceValue = (p) => (p.id * 7) % (p.max + 1);
+const deviceParams = () =>
+  Object.fromEntries(schema.parameters.map((p) => [p.key, deviceValue(p)]));
+
+// `value` overrides every parameter, for the fixtures that must NOT match what
+// the instrument holds — clamped per parameter, since a patch claiming a value
+// above a parameter's max is not a patch the app could ever have written.
+const libraryPatch = (store, { name, bank, preset, value = null }) => store.saveBackupPatch({
   name,
   origin: { bank, preset, soundId: 0, soundTableFingerprint: 'ffff' },
   sound: { name: schema.sounds[0].name, id: 0 },
-  // The fake instrument answers 64 for EVERY parameter, whatever its max, so a
-  // fixture that clamps to max would never hash the same as what the run reads
-  // back — and every one of these tests would pass for the wrong reason.
-  params: Object.fromEntries(schema.parameters.map((p) => [p.key, value])),
+  params: value == null
+    ? deviceParams()
+    : Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(value, p.max)])),
   captured: '2026-08-01T00:00:00Z',
   verified: '2026-08-01T00:00:00Z',
 });
