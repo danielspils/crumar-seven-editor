@@ -7,10 +7,18 @@
 //
 // Four rules this module enforces in code, not convention:
 //
-// 1. wfp (the instrument's plaintext Wi-Fi password, in the 0x33 globals
-//    reply) is redacted IN THE PARSE LAYER. A raw 0x33 frame is decoded and
-//    discarded inside _onMessage; the password never reaches a log, an event,
-//    an IPC message, an error, or disk.
+// 1. NO CREDENTIALS ARE KEPT, of any kind, from any source — the class, not a
+//    field name. The Seven volunteers its Wi-Fi password in plaintext in the
+//    0x33 globals reply, unprompted, to anyone on the USB port; that is the
+//    INSTRUMENT's behaviour, not something this app introduced, and the only
+//    thing an app can do about it is decline to keep it. So a raw 0x33 frame
+//    is decoded and discarded inside _onMessage, redaction happens in the
+//    PARSE layer where no caller can forget it, and UNKNOWN KEYS FROM THAT
+//    REPLY ARE DROPPED rather than trusted — the payload is split on ';', so a
+//    password containing one breaks into a second pair and a catch-all would
+//    store the tail under a key nobody is watching. That shipped in 1.0
+//    (docs/protocol.md, CLAUDE.md rule 6). Defending the NAME "wfp" is exactly
+//    what let the fragment through.
 // 2. The liveness probe is mandatory. A port opened mid-SysEx wedges silently
 //    (one garbled frame, then permanent silence — captured 2026-08-09), and a
 //    STRING-4 round-trip is the only defence. connect() never resolves on an

@@ -88,13 +88,38 @@ overwrites the raw hex** — decoded views live *alongside* the raw bytes, never
 place of them. If a decode is later found wrong, the raw bytes are still there to
 re-decode. Preserve the raw, always.
 
-### 6. The globals reply leaks a plaintext secret — redact `wfp`, never commit it
+### 6. This app stores no credentials, of any kind, from any source
 
-The globals reply (`0x33`) includes **`wfp`, the instrument's Wi-Fi password in
-plaintext**. Any logger, capture writer, error reporter, or crash handler **must
-redact `wfp`**, and a **raw globals dump must never be committed** to this public
-repo. Redaction lives in code; `.gitignore` is only a backstop. When in doubt,
-mask it.
+Not "redact `wfp`". **The class, not the field name.** A password, a key, a
+token or a passphrase does not get written to a file, a log, a capture, an
+error report or a crash handler, whatever it is called and wherever it came
+from. A raw globals dump is never committed to this public repo.
+
+The rule was "always redact `wfp`" until 2026-08-17, and that is exactly what
+the semicolon bug walked past. The `0x33` reply is split on `;`, so a Wi-Fi
+password *containing* a semicolon broke into a second pair — `wfp=pass;word=secret`
+— and the parser's catch-all kept `secret` under a key nobody was watching,
+into a snapshot on disk. Every named-field defence was working perfectly. The
+field name was never the thing worth defending.
+
+What follows from the class rule:
+
+- **Unknown keys in a `0x33` reply are dropped, not kept** — the value is
+  discarded and only the KEY is logged, because a fragment of a password is
+  exactly what an unrecognised value might be (`parseGlobals`).
+- **A secret that is already on disk gets cleaned up**, not just prevented
+  going forward (`src/globals-cleanup.js`).
+- **Redaction lives in code**, at the parse layer, so nothing downstream has
+  to remember. `.gitignore` is only a backstop.
+- When in doubt, mask it. A masked field can be un-masked in the next build; a
+  leaked one is in somebody's bug report forever.
+
+**The instrument volunteers this.** The Seven returns its Wi-Fi password, in
+the clear, in the ordinary globals reply — unprompted, to anyone on the USB
+port. The app never asks for it, never keeps it, and never displays it. That
+is the instrument's behaviour, not something this app introduced, and it is
+documented in `docs/protocol.md` because someone reading the protocol layer
+needs to know before they write a logger.
 
 ---
 

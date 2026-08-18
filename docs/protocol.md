@@ -480,8 +480,32 @@ tun=440;glb=0,1,1,0,0,1,0,1,0;wfp=00000000
 | `glb` | Nine global options, each set individually by index via `0x30` (see below) |
 | `wfp` | **Wi-Fi password, plaintext** |
 
-> **`wfp` returns the instrument's Wi-Fi password in the clear.** Redact it from any log,
-> capture file, or crash report your app produces. Do not commit a raw globals dump.
+> ### The Seven volunteers its Wi-Fi password, in plaintext, unprompted
+>
+> `wfp` is the instrument's Wi-Fi password **in the clear**. Nothing asks for
+> it: it arrives inside the ordinary globals reply, to anyone on the USB port,
+> the moment `0x32` is sent. **This is the instrument's behaviour. No app
+> introduced it and no app can turn it off** — it can only decline to keep it.
+>
+> This one is stated here, at the protocol layer, because that is where someone
+> writing a logger, a capture tool or a crash reporter will meet it — after
+> which it is too late to find out.
+>
+> **What this project does, and what anything reading this reply should do:**
+>
+> - Redact at the PARSE layer, so no caller downstream has to remember. Raw
+>   `0x33` frames never leave the parser (`parseGlobals` in `src/seven-midi.js`).
+> - **Drop unknown keys from this reply entirely.** The payload is split on
+>   `;`, so a password *containing a semicolon* breaks into a second pair —
+>   `wfp=pass;word=secret` — and a catch-all that keeps unrecognised fields
+>   will store `secret` under a key nobody is watching. This project shipped
+>   that bug in 1.0 and fixed it on 2026-08-17. Log the KEY if you like; never
+>   the value.
+> - Never commit a raw globals dump, and never put one in a bug report.
+>
+> The wider rule this belongs to: **the app stores no credentials of any kind,
+> from any source** — the class, not the field name. Defending the name `wfp`
+> is precisely what let the fragment through.
 
 The nine `glb` slots correspond, in order, to the editor's home-page dropdowns. A full
 nine-index sweep confirmed that **`0x30 <index>` addresses `glb[index]` 1:1 for all nine
