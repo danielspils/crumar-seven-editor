@@ -15,6 +15,35 @@ const { serializeLibrary, parseLibrary } = require('./format');
 
 const APP_TAG = 'crumar-seven-editor 0.0.0';
 
+// EVERY WRITE IN THIS FILE GOES THROUGH HERE. A plain writeFileSync truncates
+// the target first, so an app killed mid-write leaves a half-file — and for
+// setlists.json, which holds every setlist in one place, that is silent total
+// loss: measured on 2026-08-17, a truncated setlists.json read back as zero
+// setlists where there had been one, with a console warning and no other
+// sign. Patch files survived because they are one file each.
+//
+// Write to a temp file beside the target, flush it to the platter, then
+// rename. Rename is atomic within a directory on both macOS and Windows, so a
+// reader sees either the old file or the new one, never half of either.
+function writeAtomic(target, contents) {
+  const tmp = `${target}.tmp-${process.pid}-${Date.now()}`;
+  let fd;
+  try {
+    fd = fs.openSync(tmp, 'w');
+    fs.writeFileSync(fd, contents);
+    // fsync before the rename: without it the rename can land before the
+    // bytes do, and a power cut leaves an intact name over an empty file.
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    fs.renameSync(tmp, target);
+  } catch (err) {
+    if (fd != null) { try { fs.closeSync(fd); } catch { /* already gone */ } }
+    try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch { /* leave it */ }
+    throw err;
+  }
+}
+
 function slugify(name) {
   return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'patch';
 }
@@ -98,7 +127,7 @@ class LibraryStore {
   writePatchOrder(keys) {
     this.ensureSeeded();
     const order = (keys || []).filter((k) => typeof k === 'string');
-    fs.writeFileSync(this.patchOrderFile(), `${JSON.stringify({ order }, null, 2)}\n`);
+    writeAtomic(this.patchOrderFile(), `${JSON.stringify({ order }, null, 2)}\n`);
     return order;
   }
 
@@ -143,7 +172,7 @@ class LibraryStore {
       for (const s of setlists) {
         if (s && s.name === 'Stage Set (demo)') s.name = 'Stage Setlist (demo)';
       }
-      fs.writeFileSync(target, `${JSON.stringify({ setlists }, null, 2)}\n`);
+      writeAtomic(target, `${JSON.stringify({ setlists }, null, 2)}\n`);
     } catch {
       /* unreadable legacy manifest — start fresh rather than fail the app */
     }
@@ -230,12 +259,12 @@ class LibraryStore {
           sound: { name: p.soundName, id: sound ? sound.id : null },
           params: p.params,
         });
-        fs.writeFileSync(path.join(this.dir, file), serializeLibrary(container));
+        writeAtomic(path.join(this.dir, file), serializeLibrary(container));
         files.push(file);
       }
     }
     // One demo setlist: five filled slots, three left empty.
-    fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({
+    writeAtomic(this.setlistsFile(), `${JSON.stringify({
       setlists: [{ name: 'Stage Setlist (demo)', slots: [...files.slice(0, 5), null, null, null] }],
     }, null, 2)}\n`);
   }
@@ -287,7 +316,7 @@ class LibraryStore {
     // and a setlist write into a missing directory throws ENOENT. Found by
     // test/library-store.test.js, which starts from an empty machine.
     this.ensureSeeded();
-    fs.writeFileSync(this.setlistsFile(), `${JSON.stringify({ setlists }, null, 2)}\n`);
+    writeAtomic(this.setlistsFile(), `${JSON.stringify({ setlists }, null, 2)}\n`);
   }
 
   // ---- setlist mutations — every one persists immediately ------------------
@@ -404,7 +433,7 @@ class LibraryStore {
   saveBackupPatch(patch) {
     this.ensureSeeded();
     const file = this.uniqueFile(patch.name);
-    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(this.singlePatchContainer(patch)));
+    writeAtomic(path.join(this.dir, file), serializeLibrary(this.singlePatchContainer(patch)));
     return file;
   }
 
@@ -446,7 +475,7 @@ class LibraryStore {
   writeGlobalsSnapshot(dateStr, globals) {
     this.ensureSeeded();
     const file = `globals-${dateStr}.json`;
-    fs.writeFileSync(
+    writeAtomic(
       path.join(this.dir, file),
       `${JSON.stringify({ captured: new Date().toISOString(), ...globals }, null, 2)}\n`
     );
@@ -573,7 +602,7 @@ class LibraryStore {
         target = fs.existsSync(path.join(this.dir, wanted)) ? this.uniqueFile(newName) : wanted;
       }
     }
-    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    writeAtomic(path.join(this.dir, file), serializeLibrary(parsed.library));
     if (target !== file) {
       fs.renameSync(path.join(this.dir, file), path.join(this.dir, target));
       // Keep setlist references pointing at the renamed file.
@@ -630,7 +659,7 @@ class LibraryStore {
     // NOT touching `verified`: the instrument has not confirmed this patch
     // since the change, and saying otherwise would be a claim we cannot make.
     patch.captured = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    writeAtomic(path.join(this.dir, file), serializeLibrary(parsed.library));
     return { ok: true, previous };
   }
 
@@ -649,7 +678,7 @@ class LibraryStore {
     const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
     patch.captured = now;
     patch.verified = now;
-    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    writeAtomic(path.join(this.dir, file), serializeLibrary(parsed.library));
     return { ok: true, captured: now };
   }
 
@@ -663,7 +692,7 @@ class LibraryStore {
     const patch = parsed.library.patches[patchIndex];
     if (!patch) throw new Error('No such patch in file');
     patch.verified = iso;
-    fs.writeFileSync(path.join(this.dir, file), serializeLibrary(parsed.library));
+    writeAtomic(path.join(this.dir, file), serializeLibrary(parsed.library));
   }
 
   // `newName` is what the copy should be called — the name prompt supplies it
@@ -704,7 +733,7 @@ class LibraryStore {
       };
     }
     const target = this.uniqueFile(copy.name);
-    fs.writeFileSync(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(copy)));
+    writeAtomic(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(copy)));
     // { file, patchIndex }, not a bare filename. audition.js reads copy.file
     // to follow the live session onto the copy, and against a string that was
     // always undefined — so every save that took the copy path failed with
@@ -815,7 +844,7 @@ class LibraryStore {
     };
     this.ensureSeeded();
     const target = this.uniqueFile(patch.name);
-    fs.writeFileSync(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(patch)));
+    writeAtomic(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(patch)));
     return { file: target, patchIndex: 0, name: patch.name, params, source };
   }
 

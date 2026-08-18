@@ -727,3 +727,49 @@ test('a new patch records the instrument it was made on, not the schema', () => 
   ), 'utf8'));
   assert.strictEqual(after.source.soundList.length, schema.sounds.length);
 });
+
+// ---- Interrupted writes ---------------------------------------------------
+//
+// Every write in the store goes through writeAtomic: temp file, fsync, rename.
+// The reason is setlists.json, which holds EVERY setlist in one file — a plain
+// writeFileSync truncates before it writes, so an app killed mid-write left
+// zero setlists where there had been one, silently (measured 2026-08-17).
+
+test('a write that fails part-way leaves the previous file intact', () => {
+  const { dir, store } = freshStore();
+  store.createSetlist('Keeper');
+  const before = fs.readFileSync(path.join(dir, 'setlists.json'), 'utf8');
+
+  // Fail the write at the moment the bytes are going down — after the target
+  // would have been truncated by the old implementation.
+  const realWrite = fs.writeFileSync;
+  fs.writeFileSync = (target, data) => {
+    if (typeof target === 'number') throw new Error('disk full');   // the temp fd
+    return realWrite(target, data);
+  };
+  let threw = false;
+  try { store.createSetlist('Doomed'); } catch { threw = true; } finally {
+    fs.writeFileSync = realWrite;
+  }
+
+  assert.ok(threw, 'the failure surfaced rather than being swallowed');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'setlists.json'), 'utf8'), before,
+    'the old setlists.json is byte-for-byte what it was');
+  assert.deepStrictEqual(store.readSetlists().map((s) => s.name), ['Keeper'],
+    'and it still reads');
+});
+
+test('no temp files are left behind, on success or on failure', () => {
+  const { dir, store } = freshStore();
+  store.createSetlist('One');
+  const realWrite = fs.writeFileSync;
+  fs.writeFileSync = (target, data) => {
+    if (typeof target === 'number') throw new Error('disk full');
+    return realWrite(target, data);
+  };
+  try { store.createSetlist('Two'); } catch { /* expected */ } finally {
+    fs.writeFileSync = realWrite;
+  }
+  const strays = fs.readdirSync(dir).filter((f) => f.includes('.tmp-'));
+  assert.deepStrictEqual(strays, [], 'the temp file was cleaned up');
+});
