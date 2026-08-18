@@ -240,16 +240,16 @@
         // read-only, "Duplicate to Patches" replaced rename so the action
         // would say what it does.
         ? `<button type="button" class="patch-duplicate" data-duplicate-to-patches="${esc(entry.file)}" ` +
-          `data-pi="${entry.patchIndex}" title="Duplicate “${esc(name)}” to Patches">` +
+          `data-pi="${entry.patchIndex}" title="Copy “${esc(name)}” to edit">` +
           '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
           'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/>' +
           '<path d="M10.5 2.5h-8v8"/></svg>' +
-          // "Duplicate to edit" — the REASON rather than the destination: a
-          // backup record is read-only, and this is how you get a version you
-          // can change. Shares its verb with the prompt it opens and with the
-          // context menu, so the three read as one action (Daniel, 2026-08-17).
-          '<span class="patch-duplicate-label">Duplicate to edit</span></button>'
+          // "Copy to edit" — the REASON rather than the destination: a backup
+          // record is read-only, and this is how you get a version you can
+          // change. The prompt it opens uses the same verb, because one action
+          // gets one name (Daniel, 2026-08-17).
+          '<span class="patch-duplicate-label">Copy to edit</span></button>'
         : '') +
       (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +

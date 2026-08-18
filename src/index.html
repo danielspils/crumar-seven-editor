@@ -641,9 +641,11 @@
       border: 1px solid var(--line); border-radius: 4px;
       opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
     }
-    /* Visible on the row it belongs to, rather than on every row at once: 32
-       copies of a labelled button is a wall, and the record you are pointing
-       at is the one you might copy. Focus reveals it for the keyboard. */
+    /* VISIBLE ON THE SELECTED ROW, and on hover or focus anywhere else. All
+       32 at once is a wall of chrome; none until you sweep the row is how it
+       went unrecognised in the first place (Daniel, 2026-08-17). The row you
+       have chosen is the one you might copy, so that one says so outright. */
+    .lib-row-wrap:has(.lib-row.selected) .patch-duplicate,
     .lib-row-wrap:hover .patch-duplicate,
     .patch-duplicate:focus-visible { opacity: 1; }
     .patch-duplicate:hover { color: var(--text); border-color: var(--text-muted); }
