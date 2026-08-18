@@ -2396,12 +2396,22 @@
   // selected in the library — and falls back to bank-only when no preset has
   // been selected this session.
   function updateBankStrip() {
+    // TWO PARTS, because only one of them may give way. A long patch name
+    // wrapped the strip onto a second line and made the header grow — "Bank 1
+    // · Crumar Experimental Piano" is enough to do it (Daniel, 2026-08-17).
+    // The bank and the as-of date are short and load-bearing, so they stay
+    // whole; the name truncates, and carries the full text as its tooltip.
     if (deviceSel) {
       const bank = banks[deviceSel.bank];
       const patch = bank.patches[deviceSel.preset];
-      bankStripLabel.textContent = `— Bank ${bank.name}${patch ? ` · ${patch.name}` : ''}`;
+      bankStripLabel.innerHTML =
+        // A NON-BREAKING space after the separator: a normal one is at the
+        // element's edge and HTML collapses it, which read as "Bank 1 ·Crumar".
+        `<span class="strip-bank">— Bank ${esc(bank.name)}${patch ? ' ·\u00a0' : ''}</span>` +
+        (patch ? `<span class="strip-patch" title="${esc(patch.name)}">${esc(patch.name)}</span>` : '');
     } else {
-      bankStripLabel.textContent = `— Bank ${banks[bankIndex].name}`;
+      bankStripLabel.innerHTML =
+        `<span class="strip-bank">— Bank ${esc(banks[bankIndex].name)}</span>`;
     }
     // The honesty label rides along, so collapsing the region never hides the
     // fact that this view is only as fresh as the last backup.

@@ -628,6 +628,25 @@
     }
     .lib-row-wrap:hover .patch-delete, .patch-delete:focus-visible { opacity: 1; }
     .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
+    /* Duplicate to Patches, inside a backup run. It had NO styles at all, so
+       it fell onto its own line below each preset as a bare unlabelled icon
+       (Daniel, 2026-08-17). Same anchoring as the delete control beside it —
+       the row's right edge — but it keeps its words: this is the one action a
+       read-only record offers, and it has to say so. */
+    .patch-duplicate {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; cursor: pointer; font: inherit; font-size: 11px;
+      color: var(--text-dim); background: var(--bg-panel);
+      border: 1px solid var(--line); border-radius: 4px;
+      opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+    }
+    /* Visible on the row it belongs to, rather than on every row at once: 32
+       copies of a labelled button is a wall, and the record you are pointing
+       at is the one you might copy. Focus reveals it for the keyboard. */
+    .lib-row-wrap:hover .patch-duplicate,
+    .patch-duplicate:focus-visible { opacity: 1; }
+    .patch-duplicate:hover { color: var(--text); border-color: var(--text-muted); }
     /* The swap happens on the PILL itself, not on the row. Row-wide hover
        flipped every badge you passed over on the way somewhere else, which
        made the list twitch (Daniel, 2026-08-13). */
@@ -681,7 +700,15 @@
     #bank-strip:hover { background: var(--bg-raised); }
     #bank-strip .strip-chevron { transform: rotate(-90deg); }
     #bank-strip .fx-title { flex: none; }
-    #bank-strip-label { flex: 1; }
+    /* One line, always. min-width:0 on both the flex item and the truncating
+       span is what actually lets a flex child shrink below its content —
+       without it the name pushes the strip wider and wraps instead. */
+    #bank-strip-label { flex: 1; min-width: 0; display: flex; align-items: baseline; }
+    #bank-strip-label .strip-bank { flex: none; white-space: nowrap; }
+    #bank-strip-label .strip-patch {
+      flex: 0 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .strip-asof { font-size: 12px; color: var(--text-dim); flex: none; }
     /* One title line only: while the strip is showing, it IS the header. */
     #library.lib-open #seven-head { display: none; }

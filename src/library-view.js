@@ -233,12 +233,22 @@
       // read-only, and making a record yours is a copy that lands in Patches
       // with a name of your choosing. The record stays as it was.
       (opts.readOnly
+        // LABELLED, and on the row. It shipped as a bare icon with no styles
+        // at all, so it flowed onto its own line under each preset and read as
+        // a stray artifact — "I had no idea what it was" (Daniel, 2026-08-17).
+        // The label was the point of this control: when backups became
+        // read-only, "Duplicate to Patches" replaced rename so the action
+        // would say what it does.
         ? `<button type="button" class="patch-duplicate" data-duplicate-to-patches="${esc(entry.file)}" ` +
           `data-pi="${entry.patchIndex}" title="Duplicate “${esc(name)}” to Patches">` +
           '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
           'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/>' +
-          '<path d="M10.5 2.5h-8v8"/></svg></button>'
+          '<path d="M10.5 2.5h-8v8"/></svg>' +
+          // "Duplicate", not "Duplicate to Patches": the copy lands in
+          // Patches and the row you are taken to says so, so the button does
+          // not have to carry the destination too (Daniel, 2026-08-17).
+          '<span class="patch-duplicate-label">Duplicate</span></button>'
         : '') +
       (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
