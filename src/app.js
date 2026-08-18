@@ -1898,12 +1898,12 @@
       async duplicateToPatches(entry) {
         const base = String(entry.name || 'Patch').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
         const suggested = await window.sevenAPI.library.nextPatchName(base);
-        // Same words as the control that opened it. "Duplicate to Patches"
-        // named the destination, which was the older idea — the copy lands in
-        // Patches and the app takes you there, so the prompt does not have to
-        // say it (Daniel, 2026-08-17).
+        // The same words as the control that opened it. It said "Duplicate to
+        // Patches" with a "Duplicate" button — naming the destination, which
+        // was the older idea: the copy lands in Patches and the app takes you
+        // there, so nothing else has to say so (Daniel, 2026-08-17).
         const chosen = await askForName({
-          title: 'Copy to edit', suggested, confirmLabel: 'Copy',
+          title: 'Duplicate to edit', suggested, confirmLabel: 'Duplicate',
         });
         if (!chosen) return;
         const copy = await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex || 0, chosen);

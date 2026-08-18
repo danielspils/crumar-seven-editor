@@ -293,6 +293,11 @@ One modal, from Settings → `Sounds on this Seven` (app.js:2736).
 - `This patch` — audition.js:644 (fallback name)
 - `Choose this patch's sound` / `The settings stay as they are — only which instrument the patch names changes.` / `Give it the Clavi Piano sound` — app.js:338–350
 - `Sound is now Clavi Piano` — app.js:364
+- `Duplicate to edit` — the control on a preset row inside a backup run
+  (library-view.js), tooltip `Duplicate “<name>” to edit`. Its prompt matches:
+  title `Duplicate to edit`, confirm `Duplicate` (app.js).
+  **DUPLICATE is the app's verb for this act.** "Copy" is not a second word
+  for it anywhere in the interface (Daniel, 2026-08-17).
 - `Duplicate and edit` dialog: `This is a Crumar factory preset, captured from Bank 1. Every patch generated from this model is built from it, so it is kept as it is.` + `Your changes on a copy instead?` — app.js:310–312
 - `Make your changes` — app.js:600
 - Section heads: `Master Volume / EQ`, `Amp Simulator`, `Synth Pad`, `Expression Pedal` — renderer.js:89–95
