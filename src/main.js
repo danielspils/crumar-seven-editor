@@ -39,10 +39,22 @@ function getStore() {
 
 function registerLibraryIpc() {
   ipcMain.handle('library:list', () => getStore().list());
-  ipcMain.handle('library:rename', (_e, { file, patchIndex, newName }) =>
-    getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled'));
-  ipcMain.handle('library:duplicate', (_e, { file, patchIndex, name }) =>
-    getStore().duplicate(file, patchIndex, name));
+  ipcMain.handle('library:rename', (_e, { file, patchIndex, newName }) => {
+    try {
+      return getStore().rename(file, patchIndex, String(newName).trim() || 'Untitled');
+    } catch (err) {
+      if (err.code === 'NAME_TAKEN') return { ok: false, error: err.message };
+      throw err;
+    }
+  });
+  ipcMain.handle('library:duplicate', (_e, { file, patchIndex, name }) => {
+    try {
+      return getStore().duplicate(file, patchIndex, name);
+    } catch (err) {
+      if (err.code === 'NAME_TAKEN') return { ok: false, error: err.message };
+      throw err;
+    }
+  });
   ipcMain.handle('library:saveSound', (_e, { file, patchIndex, soundName, sampled }) =>
     getStore().savePatchSound(file, patchIndex || 0, soundName, sampled));
   ipcMain.handle('library:saveParams', (_e, { file, patchIndex, params }) =>
@@ -102,6 +114,23 @@ function registerLibraryIpc() {
   });
   // The name a new patch is offered before it is made: the sound's own,
   // numbered if that is taken.
+  // Inline validation for the naming prompt: is this name free, and if not,
+  // what should the field say. One answer from the store, so the dialog and
+  // the write cannot disagree.
+  ipcMain.handle('library:nameAvailable', (_e, { name, exceptFile, exceptPatchIndex }) => {
+    try {
+      const clash = getStore().nameTakenBy(name, { exceptFile, exceptPatchIndex });
+      return clash
+        ? { available: false, message: `There's already a patch called “${String(name).trim()}”.` }
+        : { available: true };
+    } catch (err) {
+      // A library that cannot be read must not block the dialog; the write
+      // itself is still guarded by the store.
+      console.warn(`[library] name check failed: ${err.message}`);
+      return { available: true };
+    }
+  });
+
   ipcMain.handle('library:nextPatchName', (_e, { name }) => {
     try { return getStore().nextPatchName(name); }
     catch { return name; }

@@ -588,11 +588,67 @@ class LibraryStore {
     };
   }
 
+  // ---- One name, one patch ------------------------------------------------
+  //
+  // THE NAMESPACE IS YOUR PATCHES, not the whole folder. Backup records are
+  // excluded deliberately: a record can carry a BORROWED name identical to the
+  // patch it was named after, so counting records would make every first copy
+  // from a backup collide with its own source and arrive as "Reed Piano 2"
+  // (Daniel, 2026-08-18). The picker keeps records and patches on separate
+  // tabs; this keeps their names apart the same way.
+  //
+  // Every path that sets a display name goes through here — rename, duplicate
+  // (from a backup, from a Crumar preset, from the context menu, from the save
+  // bar) and create-from-instrument — because duplicateForEditing and
+  // duplicateToPatches have already drifted apart once.
+  namedPatches({ exceptFile = null, exceptPatchIndex = 0 } = {}) {
+    return this.list({ skipMigration: true }).patches.filter((e) =>
+      !e.invalid
+      && (e.origin || {}).kind !== 'backup'
+      && !(e.file === exceptFile && (e.patchIndex || 0) === (exceptPatchIndex || 0)));
+  }
+
+  // The patch already using this name, or null. Compared on the name AS
+  // STORED, trimmed — which is what the library lists and what a person types.
+  nameTakenBy(name, opts = {}) {
+    const wanted = String(name || '').trim();
+    if (!wanted) return null;
+    return this.namedPatches(opts).find((e) => String(e.name || '').trim() === wanted) || null;
+  }
+
+  // Binding, not advisory. Throws so no caller can proceed on a name that is
+  // already somebody's — the suggestion was always free, so this only fires
+  // when a person typed over it.
+  assertNameFree(name, opts = {}) {
+    const clash = this.nameTakenBy(name, opts);
+    if (clash) {
+      const err = new Error(`There's already a patch called “${String(name).trim()}”.`);
+      err.code = 'NAME_TAKEN';
+      err.file = clash.file;
+      throw err;
+    }
+  }
+
+  // For names the APP generates rather than a person types: never refuse,
+  // just find the next free one. "Reed Piano copy", "Reed Piano copy 2"…
+  uniqueName(base) {
+    const wanted = String(base || 'Patch').trim() || 'Patch';
+    if (!this.nameTakenBy(wanted)) return wanted;
+    for (let n = 2; n < 500; n++) {
+      const candidate = `${wanted} ${n}`;
+      if (!this.nameTakenBy(candidate)) return candidate;
+    }
+    return wanted;
+  }
+
   rename(file, patchIndex, newName) {
     const parsed = this.readFile(file);
     if (!parsed.library) throw new Error('File is not readable');
     const patch = parsed.library.patches[patchIndex];
     if (!patch) throw new Error('No such patch in file');
+    // Renaming a patch to the name it already has is a no-op, not a clash:
+    // the check excludes the patch being renamed.
+    this.assertNameFree(newName, { exceptFile: file, exceptPatchIndex: patchIndex });
     patch.name = newName;
     let target = file;
     // Filename follows the patch name only for single-patch files.
@@ -704,7 +760,13 @@ class LibraryStore {
     const patch = parsed.library.patches[patchIndex];
     if (!patch) throw new Error('No such patch in file');
     const copy = JSON.parse(JSON.stringify(patch));
-    copy.name = String(newName || '').trim() || `${copy.name || 'Patch'} copy`;
+    // A NAME SOMEBODY TYPED is binding; a name the app made up is made free.
+    // The no-name callers — the context menu, the save bar, and duplicating a
+    // Crumar preset — used to land on "<name> copy" every time, so doing it
+    // twice produced two patches with one name.
+    const typed = String(newName || '').trim();
+    if (typed) this.assertNameFree(typed);
+    copy.name = typed || this.uniqueName(`${copy.name || 'Patch'} copy`);
     // A copy is yours, so it does not carry a borrowed name's provenance: the
     // name is now one you chose.
     delete copy.nameFrom;
@@ -807,6 +869,9 @@ class LibraryStore {
   // backed up — and a patch made from an earlier one of your own is what the
   // Patches list is for.
   createPatchFromSound(name, { factoryDefaults, patchName } = {}) {
+    // A typed name is binding here too; nextPatchName's suggestion is free by
+    // construction, so this only refuses something a person typed over it.
+    if (String(patchName || '').trim()) this.assertNameFree(patchName);
     const sound = this.soundByName.get(name);
     if (!sound) throw new Error(`Unknown sound: ${name}`);
     const factory = ((factoryDefaults || this._factoryDefaults()).sounds || {})[name] || null;
@@ -830,7 +895,7 @@ class LibraryStore {
     }
 
     const patch = {
-      name: String(patchName || name).trim() || name,
+      name: String(patchName || name).trim() || name,   // checked by the caller below
       sound: { name, sampled: !!sound.sampled },
       params,
       origin: {
@@ -851,7 +916,10 @@ class LibraryStore {
   // The name a new patch is offered: the sound's own, numbered if that is
   // taken. "Clavi Piano", then "Clavi Piano 2".
   nextPatchName(soundName) {
-    const taken = new Set(this.list({ skipMigration: true }).patches.map((e) => e.name));
+    // YOUR patches, not backup records — see namedPatches(). Counting records
+    // would number the first copy taken from a backup, because a record can
+    // hold the very name being suggested.
+    const taken = new Set(this.namedPatches().map((e) => String(e.name || '').trim()));
     if (!taken.has(soundName)) return soundName;
     for (let n = 2; n < 500; n++) {
       const candidate = `${soundName} ${n}`;

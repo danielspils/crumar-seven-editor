@@ -120,6 +120,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // `file#patchIndex` keys, or cleared to go back to sorting by recency.
     // What a generated patch would copy its values from, and the write itself.
     nextPatchName: (name) => ipcRenderer.invoke('library:nextPatchName', { name }),
+    // Asked while someone types in the naming prompt, so the refusal arrives
+    // before the button rather than after the write.
+    nameAvailable: (name, exceptFile, exceptPatchIndex) =>
+      ipcRenderer.invoke('library:nameAvailable', { name, exceptFile, exceptPatchIndex }),
     generateFromSound: (name, patchName) =>
       ipcRenderer.invoke('library:generateFromSound', { name, patchName }),
     setPatchOrder: (keys) => ipcRenderer.invoke('library:patchOrder', { keys }),

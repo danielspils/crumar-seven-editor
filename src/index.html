@@ -460,6 +460,14 @@
       border: 1px solid var(--line); border-radius: 4px;
     }
     .name-input:focus { outline: none; border-color: var(--action); }
+    /* The name rule, said where the name is typed. Short and plain: the field
+       is where someone is looking, and a toast after the press would be a
+       refusal arriving after the moment they believed it worked
+       (Daniel, 2026-08-18). */
+    .name-taken {
+      margin: 6px 2px 0; font-size: 12px; color: var(--warn-text, #c0392b);
+    }
+    .seven-modal-ok[disabled] { opacity: .45; cursor: not-allowed; }
     .exp-modal { max-width: 100%; }
     /* Two columns: the permanent sixteen on the left, the ten expansions on
        the right. Roughly balanced by row count, and both visible at once —

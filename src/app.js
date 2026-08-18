@@ -1483,21 +1483,57 @@
     await window.sevenAPI.donations.answer(answer || 'later');
   }
 
-  async function askForName({ title, suggested, confirmLabel }) {
+  // `except` is the patch being renamed, so renaming something to the name it
+  // already has is not a clash. Absent for the paths that MAKE a patch.
+  async function askForName({ title, suggested, confirmLabel, except = null }) {
     const m = SevenModal.open({
       title,
-      bodyHtml: `<input class="name-input" type="text" spellcheck="false" value="${esc(suggested)}">`,
+      bodyHtml: `<input class="name-input" type="text" spellcheck="false" value="${esc(suggested)}">`
+        + '<p class="name-taken" hidden></p>',
       confirmLabel,
       cancelLabel: 'Cancel',
     });
     const field = m.body.querySelector('.name-input');
+    const note = m.body.querySelector('.name-taken');
+    const okBtn = m.body.parentElement.querySelector('.seven-modal-ok');
+
+    // INLINE, WHILE TYPING. The name rule is binding in the store, so without
+    // this the refusal would arrive as an error after the press — and the
+    // press is the moment someone believes it worked. The suggested name is
+    // free by construction, so this only ever fires on something typed over
+    // it (Daniel, 2026-08-18).
+    let seq = 0;
+    let free = true;
+    const check = async () => {
+      const typed = field.value.trim();
+      const mine = ++seq;
+      if (!typed) {                       // empty falls back to the suggestion
+        if (mine === seq) setState(true, '');
+        return;
+      }
+      const r = await window.sevenAPI.library.nameAvailable(
+        typed, except && except.file, except && (except.patchIndex || 0)
+      );
+      if (mine !== seq) return;           // a later keystroke already answered
+      setState(!r || r.available !== false, (r && r.message) || '');
+    };
+    const setState = (available, message) => {
+      free = available;
+      note.textContent = message;
+      note.hidden = available;
+      if (okBtn) okBtn.disabled = !available;
+    };
+
     if (field) {
       field.focus();
       field.select();
+      field.addEventListener('input', check);
       field.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); m.confirm(); }
+        // Enter cannot slip past a name the store will refuse.
+        if (e.key === 'Enter') { e.preventDefault(); if (free) m.confirm(); }
       });
     }
+
     const ok = await m.action();
     const typed = field ? field.value.trim() : '';
     m.close();

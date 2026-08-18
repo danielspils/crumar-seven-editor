@@ -69,18 +69,37 @@ test('rename moves the file and the entry follows', () => {
   assert.strictEqual(byName(store, 'Rhodes Mk1').file, target);
 });
 
-test('renaming onto an existing filename does not overwrite it', () => {
+// This used to assert that renaming onto a taken name was ALLOWED and left
+// two patches called "Alpha". That is the thing being outlawed: two patches
+// with one name render identically in the picker (2026-08-18).
+test('renaming onto a name another patch already has is refused', () => {
   const { store } = freshStore();
-  store.seedDemoLibrary();   // this test needs library content
-  const originalAlphaFile = byName(store, 'Alpha').file;
+  store.seedDemoLibrary();
+  const alphaFile = byName(store, 'Alpha').file;
   const beta = byName(store, 'Beta');
-  const target = store.rename(beta.file, beta.patchIndex, 'Alpha'); // collides
-  assert.notStrictEqual(target, originalAlphaFile, 'it takes a different filename');
-  assert.ok(fs.existsSync(path.join(store.dir, originalAlphaFile)), 'the original file survives');
-  // Both patches survive, and both are still readable.
-  const names = entries(store).map((e) => e.name).sort();
-  assert.deepStrictEqual(names, ['Alpha', 'Alpha']);
+
+  assert.throws(
+    () => store.rename(beta.file, beta.patchIndex, 'Alpha'),
+    (err) => err.code === 'NAME_TAKEN' && /already a patch called/.test(err.message)
+  );
+
+  // Nothing moved: both patches are where they were, under the names they had.
+  assert.ok(fs.existsSync(path.join(store.dir, alphaFile)), 'Alpha untouched');
+  assert.deepStrictEqual(entries(store).map((e) => e.name).sort(), ['Alpha', 'Beta']);
   assert.strictEqual(entries(store).filter((e) => e.invalid).length, 0);
+});
+
+// The guarantee the old test was really about, kept: two DIFFERENT names can
+// still slugify to one filename, and the second must not overwrite the first.
+test('two different names that slugify alike get different files', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const alphaFile = byName(store, 'Alpha').file;
+  const beta = byName(store, 'Beta');
+  const target = store.rename(beta.file, beta.patchIndex, 'Alpha!');
+  assert.notStrictEqual(target, alphaFile, 'it takes a filename of its own');
+  assert.ok(fs.existsSync(path.join(store.dir, alphaFile)), 'the original file survives');
+  assert.deepStrictEqual(entries(store).map((e) => e.name).sort(), ['Alpha', 'Alpha!']);
 });
 
 test('setlist slots follow a renamed file', () => {
