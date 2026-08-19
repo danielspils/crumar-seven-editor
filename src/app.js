@@ -2193,6 +2193,14 @@
       // The runner owns the rules; this walks the player through them. Bank 1
       // is absent from the choices AND refused by the runner, so neither this
       // nor any future caller can write over the factory presets.
+      // A gig sheet you can read on a phone. Beside Send because it is the
+      // same idea — this setlist, somewhere else — and the clipboard is the
+      // whole of it: whatever the player already uses to read things on stage
+      // is a better destination than anything this app could build.
+      async copySetlist(name, slots) {
+        await window.sevenAPI.setlists.copyText(name, slots);
+        toast('Setlist copied');
+      },
       async sendSetlist(index, name) {
         if (!isConnected()) {
           toast('Connect the Seven to send a setlist to it');

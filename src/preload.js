@@ -221,6 +221,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     setOrder: (indexes) => ipcRenderer.invoke('setlist:order', { indexes }),
     clearOrder: () => ipcRenderer.invoke('setlist:clearOrder'),
     contextMenu: () => ipcRenderer.invoke('setlist:contextMenu'),
+    // Plain text on the clipboard, for pasting into whatever the player reads
+    // on stage. `slots` is eight display names (or nulls) — the view resolves
+    // them, because it is what knows what each row says.
+    copyText: (name, slots) => ipcRenderer.invoke('setlist:copyText', { name, slots }),
     deletePrompt: (name) => ipcRenderer.invoke('setlist:deletePrompt', { name }),
   },
 });

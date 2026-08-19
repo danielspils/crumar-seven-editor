@@ -915,6 +915,15 @@
   // picker hands to the store (Daniel, 2026-08-14).
   const SOUND_REF = 'sound:';
 
+  // What a slot's row SAYS, as plain text — the first patch of a file
+  // represents it, the same rule the rows use. "Copy as text" has to say what
+  // the screen says, so it asks here rather than reading the file reference.
+  function slotDisplay(data, file) {
+    if (!file) return null;
+    const entry = data.patches.find((e) => e.file === file);
+    return entry ? displayName(entry) : `Missing file: ${file}`;
+  }
+
   function renderSetlistSlots(data, state, opts = {}) {
     const setlist = data.setlists[state.setlistIndex];
     if (!setlist) return renderSetlistList(data, state);
@@ -1028,6 +1037,11 @@
       // Also here, not only on the row you hovered to get in: this is the view
       // where you finish arranging a setlist, and it is the moment you want to
       // put it on the instrument.
+      // Beside Send, because it is the same kind of thing: this setlist, taken
+      // somewhere else. Send puts it on the instrument; Copy puts it where you
+      // can read it on a phone.
+      `<button type="button" class="setlist-copy" data-setlist-copy="${state.setlistIndex}" ` +
+      `title="Copy “${esc(setlist.name)}” as text, to paste anywhere">Copy as text</button>` +
       `<button type="button" class="setlist-send" data-setlist-send="${state.setlistIndex}" ` +
       `title="Load “${esc(setlist.name)}” onto a bank on the Seven">Send to Seven →</button>` +
       `</div>` +
@@ -1323,6 +1337,22 @@
         render();
         return;
       }
+      const copy = e.target.closest('[data-setlist-copy]');
+      if (copy) {
+        const i = Number(copy.dataset.setlistCopy);
+        // The VIEW resolves the slots, because it is the half that already
+        // knows how to turn a slot value into what the row shows — a patch
+        // name, a bare sound, a file that has gone missing. The formatter
+        // takes names and nothing else.
+        if (data.setlists[i] && on.copySetlist) {
+          on.copySetlist(
+            data.setlists[i].name,
+            (data.setlists[i].slots || []).map((f) => slotDisplay(data, f))
+          );
+        }
+        return;
+      }
+
       const send = e.target.closest('[data-setlist-send]');
       if (send) {
         const i = Number(send.dataset.setlistSend);

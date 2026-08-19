@@ -4,7 +4,7 @@
 // window that renders the fixture library. The renderer never talks to a device;
 // data reaches it through preload.js (see there for the swap point).
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +13,7 @@ const { Donations } = require('./donations');
 const demoCleanup = require('./demo-cleanup');
 const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
+const { formatSetlist } = require('./setlist-text');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
 // enabled, checked 2026-08-15. It pointed at this-seven-goes-to-eleven, which
@@ -137,6 +138,17 @@ function registerLibraryIpc() {
   });
   ipcMain.handle('library:patchOrder', (_e, { keys }) => getStore().writePatchOrder(keys));
   ipcMain.handle('library:clearPatchOrder', () => getStore().clearPatchOrder());
+  // A setlist as plain text, on the clipboard. The player pastes it wherever
+  // they already read things on a phone — no file, no save dialog, nothing
+  // platform-specific. The renderer resolves the slots to the names its own
+  // rows show and sends those; the formatting is src/setlist-text.js, which is
+  // pure and tested, and the CLOCK IS READ HERE and passed in, so the
+  // formatter has nothing to stub.
+  ipcMain.handle('setlist:copyText', (_e, { name, slots }) => {
+    const text = formatSetlist({ name, slots }, new Date());
+    clipboard.writeText(text);
+    return { ok: true, text };
+  });
   ipcMain.handle('setlist:order', (_e, { indexes }) => getStore().writeSetlistOrder(indexes));
   ipcMain.handle('setlist:clearOrder', () => getStore().clearSetlistOrder());
   ipcMain.handle('setlist:rename', (_e, { index, name }) => getStore().renameSetlist(index, name));

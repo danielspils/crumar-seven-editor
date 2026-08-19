@@ -1000,7 +1000,17 @@
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
        row here to hover — so it was present and invisible. */
+    .lib-setlist-head .setlist-copy { margin-left: auto; }
+    .lib-setlist-head .setlist-copy + .setlist-send { margin-left: 0; }
     .lib-setlist-head .setlist-send { margin-left: auto; opacity: 1; }
+    /* Same shape as Send — they are the same kind of act — but no arrow and no
+       accent on hover: Send moves the instrument, Copy only fills a clipboard. */
+    .setlist-copy {
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: none; border: 1px solid var(--line); border-radius: 4px;
+      padding: 3px 9px; cursor: pointer; flex: none;
+    }
+    .setlist-copy:hover { color: var(--text); border-color: var(--text-muted); }
     /* Same reason inside a backup: a bank heading is not a hoverable row, so
        its Send would have stayed invisible (Daniel, 2026-08-13). */
     .lib-group-title-row .setlist-send { opacity: 1; }
