@@ -9,6 +9,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { throwIfRefused } = require('./ipc-result');
 
 const root = path.join(__dirname, '..');
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
@@ -105,7 +106,19 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // entries in, file operations out — the renderer never touches the disk.
   library: {
     list: () => ipcRenderer.invoke('library:list'),
-    rename: (file, patchIndex, newName) => ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
+    // THROWS when the store refuses the name. The handler answers either with
+    // a filename or with { ok: false, error }, and a union whose success half
+    // is a bare string has no marker on it — so the failure half read as a
+    // truthy result and sailed through every caller. It cost an undo that
+    // reported success while doing nothing at all (2026-08-18).
+    //
+    // Throwing is the only shape a caller cannot ignore by accident. See
+    // CLAUDE.md, "Two conventions for a refused write" — this is the target
+    // shape for calls that either do the thing or don't.
+    rename: async (file, patchIndex, newName) => throwIfRefused(
+      await ipcRenderer.invoke('library:rename', { file, patchIndex, newName }),
+      'NAME_TAKEN'
+    ),
     duplicate: (file, patchIndex, name) =>
       ipcRenderer.invoke('library:duplicate', { file, patchIndex, name }),
     trash: (file) => ipcRenderer.invoke('library:trash', { file }),

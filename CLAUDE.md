@@ -371,6 +371,44 @@ holds EVERY setlist in one file: truncated, it read back as zero setlists
 where there had been one, silently. Patch files survived only because they are
 one file each. `patch-order.json` had the same shape.
 
+## Two conventions for a refused write, and which one is the target (2026-08-18)
+
+A main-process handler that either does the thing or doesn't answers in one of
+two shapes, and the app currently uses both. **The target is THROWING**, via
+`throwIfRefused` in `src/ipc-result.js`, applied at the preload seam.
+
+The reason is not taste. `{ ok: false, error }` is a union whose success half
+is a bare value — `rename` answers with a filename — so **the failure half is
+a perfectly truthy result that reads as success**, and every caller that
+forgets to check proceeds on it. Four of the five name-carrying call sites
+forgot. The one that cost something was the undo of a rename: the store
+refused, the renderer stored `{ ok: false, … }` as if it were a filename, the
+undo closure returned normally, and the toast said **"Undid: rename to …"**
+while nothing had happened. A thrown error is the only shape a caller cannot
+ignore by accident — forget it and the action stops loudly.
+
+- **`library.rename` throws.** So does anything added from here.
+- **`library.duplicate` still returns the union** and is the next to move. Its
+  one refusable call site checks, but says nothing when refused — a refused
+  duplicate is indistinguishable from a cancelled one.
+- **`library.generateFromSound` returns `{ ok: true, … }` / `{ ok: false, error }`**
+  and is the one place that handles its own union correctly (`app.js`, checks
+  `made.ok`, toasts `made.error`). It should migrate when it is next touched,
+  and it is not urgent precisely because it is handled. **The thing to avoid is
+  a THIRD shape**, not the second one sitting there correctly used.
+- **A CANCELLATION IS NOT A REFUSAL.** `{ ok: false, cancelled: true }` is a
+  file dialog saying somebody pressed Cancel. `throwIfRefused` passes it
+  through — an error in front of a person who chose not to do something is
+  worse than no message at all.
+
+**`contextBridge` strips custom properties off a thrown Error.** Measured, not
+assumed: `err.code` arrives `undefined` in the renderer with no own keys at
+all, even though the seam sets it. Only `message` survives. So the message has
+to carry the meaning — a renderer cannot branch on an error code from the main
+process, and code that looks like it does is dead. The store's own sentence
+("There's already a patch called “Alpha”.") is what the user ends up reading,
+which is a reason to write those sentences for a person rather than for a log.
+
 ## Still open from the QA pass
 
 In Daniel's order, items 3 and 4 of five:
@@ -421,6 +459,13 @@ npm test          # unit suites (node:test)
 npm run test:ui   # scenarios in test/ui/scenarios/, driving a real window
 npm start         # the app; keep an instance running while working
 ```
+
+**Only `npm test` runs by itself.** Its glob is `test/*.test.js`, which never
+descends into `test/ui/` — so no scenario is in the default suite or in CI,
+and a scenario is a guard only while somebody remembers to type the second
+command. When a change is covered by both, say which half is automatic; two
+tests where one of them only fires on request is one test and a good
+intention.
 
 **`SEVEN_UI_TEST=<file.js> npm start` runs a script inside the running
 renderer and prints what it found.** This is the important one. It is how a

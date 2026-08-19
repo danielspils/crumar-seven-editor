@@ -1804,7 +1804,16 @@
     const entry = patch && libEntries.find((x) => x.file === patch.file);
     const name = String(value).trim();
     if (!entry || !name || name === entry.name) { renderAll(); return; }
-    await window.sevenAPI.library.rename(entry.file, entry.patchIndex, name);
+    // This field has no validation in front of it — the naming PROMPT checks
+    // while you type, but the bank view renames inline. A refusal used to be
+    // discarded here, so the row quietly reverted and said nothing.
+    try {
+      await window.sevenAPI.library.rename(entry.file, entry.patchIndex, name);
+    } catch (err) {
+      toast(err.message);
+      renderAll();   // the field goes back to the name that is actually stored
+      return;
+    }
     await refreshLibrary();
   }
 
@@ -1969,9 +1978,35 @@
       },
       async rename(entry, newName) {
         const oldName = entry.name;
-        const newFile = await window.sevenAPI.library.rename(entry.file, entry.patchIndex, newName);
+        let newFile;
+        try {
+          newFile = await window.sevenAPI.library.rename(entry.file, entry.patchIndex, newName);
+        } catch (err) {
+          // Nothing happened, so nothing goes on the undo stack. It used to
+          // push an entry for a rename that never took place, and then reveal
+          // the ERROR OBJECT as if it were a filename.
+          toast(err.message);
+          return;
+        }
         // Renaming moves the FILE too, so the undo has to address the new one.
         undoStack.push(`rename to “${newName}”`, async () => {
+          // THE UNDO HAS NO PROMPT TO VALIDATE IN. If the old name belongs to
+          // something else by now, the honest answer is that this cannot be
+          // put back — not a name nobody chose ("Alpha 2"), and not a dialog
+          // in front of a keystroke people press without looking.
+          //
+          // Throwing is how an undo says so: runUndo catches it and toasts,
+          // and src/undo.js discards an entry that throws rather than leaving
+          // it on top to jam every later undo. That rule already covers "a
+          // file renamed underneath it"; a name taken out from under it is
+          // the same thing.
+          //
+          // Nothing is caught and re-worded here, because it CANNOT be:
+          // contextBridge strips custom properties off a thrown Error, so the
+          // `code` the seam sets does not survive into the renderer — measured
+          // 2026-08-18, `err.code` arrives undefined with no own keys at all.
+          // The store's own sentence crosses intact and is the better one
+          // anyway: "There's already a patch called “Alpha”."
           await window.sevenAPI.library.rename(newFile, entry.patchIndex, oldName);
           await refreshLibrary();
         });
