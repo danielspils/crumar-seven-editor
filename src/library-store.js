@@ -48,6 +48,16 @@ function slugify(name) {
   return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'patch';
 }
 
+// A patch is a BACKUP RECORD when it claims a slot on the instrument. Derived
+// from the file, never stored — `origin.kind` is computed in list() and does
+// not exist on disk, so anything else asking the same question has to ask it
+// the same way. It lives here because two places now need it and a copy of the
+// test in each would drift: the first attempt at the copy-provenance fix
+// checked kind==='backup' inside the store and matched nothing at all.
+function isBackupRecord(patch) {
+  return !!(patch && patch.origin && typeof patch.origin.bank === 'number');
+}
+
 class LibraryStore {
   constructor(dir, schema, fixtureLibrary) {
     this.dir = dir;
@@ -522,7 +532,7 @@ class LibraryStore {
         const soundName = (p.sound && p.sound.name) || '';
         const sound = this.soundByName.get(soundName);
         let origin;
-        if (p.origin && typeof p.origin.bank === 'number') {
+        if (isBackupRecord(p)) {
           origin = {
             kind: 'backup',
             bank: p.origin.bank,
@@ -648,7 +658,18 @@ class LibraryStore {
     if (!patch) throw new Error('No such patch in file');
     // Renaming a patch to the name it already has is a no-op, not a clash:
     // the check excludes the patch being renamed.
-    this.assertNameFree(newName, { exceptFile: file, exceptPatchIndex: patchIndex });
+    //
+    // AND THE CHECK IS SYMMETRIC. namedPatches leaves backup records out of
+    // the set being SEARCHED, because a record can carry a borrowed name
+    // identical to the patch it was named after — so it must also leave them
+    // out of the set being CHECKED. Renaming a RECORD is not constrained by
+    // your patches' names at all; the rule is one name per patch, and a
+    // record is not one of your patches. Half of that rule is not the rule:
+    // asking only the first question refused a legitimate rename in the bank
+    // view, where every row IS a record.
+    if (!isBackupRecord(patch)) {
+      this.assertNameFree(newName, { exceptFile: file, exceptPatchIndex: patchIndex });
+    }
     patch.name = newName;
     let target = file;
     // Filename follows the patch name only for single-patch files.

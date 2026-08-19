@@ -89,6 +89,40 @@ test('renaming onto a name another patch already has is refused', () => {
   assert.strictEqual(entries(store).filter((e) => e.invalid).length, 0);
 });
 
+// THE RULE IS SYMMETRIC, and it was only half-applied. namedPatches leaves
+// backup records out of the set being SEARCHED — a record can carry a borrowed
+// name identical to the patch it was named after — but rename() ran the check
+// no matter WHAT was being renamed, so renaming a record onto a patch's name
+// was refused. Every row in the bank view is a record, so that refusal was
+// reachable there and nowhere else (found 2026-08-18).
+test('records and patches are separate namespaces, in both directions', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const patch = byName(store, 'Alpha');
+
+  // Turn Beta into a capture of Bank 2 Preset 4, which is how list() reads a
+  // record: a bank number in the origin, never a stored `kind`.
+  const beta = byName(store, 'Beta');
+  const parsed = store.readFile(beta.file);
+  parsed.library.patches[beta.patchIndex].origin = { bank: 2, preset: 4 };
+  fs.writeFileSync(path.join(store.dir, beta.file), JSON.stringify(parsed.library, null, 2));
+  const record = entries(store).find((e) => e.file === beta.file);
+  assert.strictEqual(record.origin.kind, 'backup', 'the fixture really is a record');
+
+  // A RECORD may take a name one of your patches holds.
+  store.rename(record.file, record.patchIndex, 'Alpha');
+  const both = entries(store).filter((e) => e.name === 'Alpha');
+  assert.strictEqual(both.length, 2, 'the record and the patch both answer to Alpha');
+  assert.strictEqual(both.filter((e) => e.origin.kind === 'backup').length, 1);
+  assert.strictEqual(both.filter((e) => e.origin.kind !== 'backup').length, 1);
+
+  // And a PATCH may take a name a record holds — the half that already worked.
+  // rename returns the file it ended up in: renaming moves single-patch files.
+  const moved = store.rename(patch.file, patch.patchIndex, 'Bank 2 Preset 4');
+  const again = entries(store).find((e) => e.file === moved);
+  assert.strictEqual(again.name, 'Bank 2 Preset 4');
+});
+
 // The guarantee the old test was really about, kept: two DIFFERENT names can
 // still slugify to one filename, and the second must not overwrite the first.
 test('two different names that slugify alike get different files', () => {
