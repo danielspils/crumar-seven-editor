@@ -807,14 +807,39 @@
        because only the row had a hover state, pointing at the button lit up
        the whole row, i.e. said "collapse" when it meant "open Finder"
        (Daniel, 2026-08-16). Two hovers, never both at once. */
+    /* WHY EVERY ICON BUTTON WAS MISSING ITS TOOLTIP (measured 2026-08-19).
+       Inside an <svg>, a tooltip comes from a <title> CHILD ELEMENT — the HTML
+       `title` ATTRIBUTE on an ancestor is not consulted. So the pointer landed
+       on a <path>, Chromium found no SVG title, and nothing appeared; hovering
+       the button's padding just outside the glyph DID work, which is why it
+       read as sporadic. Text buttons like Assign were always fine because the
+       hit target is the button itself.
+       Making the glyph transparent to the pointer hands every hit back to the
+       button, so one `title` per control serves both the tooltip and the
+       accessible name. Events bubbled to the button anyway, so no handler
+       changes — and e.target is now the button, which is stricter, not looser. */
+    button svg { pointer-events: none; }
+
     .lib-reveal {
       flex: none; padding: 3px 8px;
-      background: transparent; border: 1px solid var(--line); border-radius: 4px;
+      /* OPAQUE AT REST, deliberately. The row's hover is a translucent wash
+         (--shade) across the whole header, and a transparent button let that
+         wash through — so pointing anywhere on the row lit the button up too,
+         and you could not tell whether the button itself was hovered
+         (Daniel, 2026-08-19). Its own ground stops that at the border. */
+      background-color: var(--bg-raised); border: 1px solid var(--line); border-radius: 4px;
       color: var(--text-muted); font: inherit; font-size: 11px; line-height: 1.4;
       cursor: pointer; transition: background .15s, color .15s, border-color .15s;
     }
-    .lib-reveal:hover { background: var(--bg-raised); border-color: var(--text-muted); color: var(--text); }
-    .lib-reveal:active { background: var(--shade); }
+    /* The old hover set background: var(--bg-raised) — the SAME colour the
+       button now sits on, so the fill never visibly changed and only the
+       border moved. The shade goes on as an image layer instead, which
+       composites over the button's own ground rather than replacing it. */
+    .lib-reveal:hover {
+      background-image: linear-gradient(var(--shade-hard), var(--shade-hard));
+      border-color: var(--text-muted); color: var(--text);
+    }
+    .lib-reveal:active { background-image: linear-gradient(var(--shade), var(--shade)); }
     .lib-reveal:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
     /* Pointer on the button is not pointer on the row: suppress the row's own
        hover so the two targets never claim the pointer together. */
@@ -1000,17 +1025,38 @@
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
        row here to hover — so it was present and invisible. */
-    .lib-setlist-head .setlist-copy { margin-left: auto; }
-    .lib-setlist-head .setlist-copy + .setlist-send { margin-left: 0; }
-    .lib-setlist-head .setlist-send { margin-left: auto; opacity: 1; }
-    /* Same shape as Send — they are the same kind of act — but no arrow and no
-       accent on hover: Send moves the instrument, Copy only fills a clipboard. */
-    .setlist-copy {
-      font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
-      background: none; border: 1px solid var(--line); border-radius: 4px;
-      padding: 3px 9px; cursor: pointer; flex: none;
+    /* Back on the left, everything else flushed right: icons, then Send.
+       This lives on the BACK button rather than on the first icon —
+       `.setlist-icon:first-of-type` matched nothing, because :first-of-type
+       counts element type and the first <button> in this row is .lib-back. */
+    .lib-setlist-head .lib-back { margin-right: auto; }
+    .lib-setlist-head .setlist-send { opacity: 1; }
+    /* Drawn on the same grid as .slot-clear (the trash can on a slot row):
+       no fill, hairline stroke, round joins — and the same colour and the same
+       colour-only hover, so they read as one family rather than two. */
+    .setlist-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; flex: none;
+      background: none; border: none; border-radius: 5px;
+      color: var(--text-dim); cursor: pointer;
     }
-    .setlist-copy:hover { color: var(--text); border-color: var(--text-muted); }
+    /* THE GLYPH BRIGHTENS, AND NOTHING ELSE HAPPENS — the same hover the trash
+       can on a slot row has (.slot-clear:hover, colour only). A filled halo
+       behind the icon is a second shape appearing on hover, and next to a
+       panel of hairlines it reads as a button growing rather than an icon
+       waking up (Daniel, 2026-08-19). */
+    .setlist-icon:hover { color: var(--text); }
+    .setlist-icon:focus-visible { color: var(--text); }
+    /* An empty setlist exports eight dashes and a timestamp, which is no use
+       to anybody. Dimmed, unclickable, and the tooltip says why. */
+    .setlist-icon[disabled] { opacity: .35; cursor: default; }
+    .setlist-icon[disabled]:hover { color: var(--text-dim); }
+    /* The name gets a line of its own: setlist names are user-written and get
+       long, and one cannot share a row with three controls. */
+    .lib-setlist-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      padding: 0 2px 8px; line-height: 1.25;
+    }
     /* Same reason inside a backup: a bank heading is not a hoverable row, so
        its Send would have stayed invisible (Daniel, 2026-08-13). */
     .lib-group-title-row .setlist-send { opacity: 1; }

@@ -48,6 +48,32 @@ function slugify(name) {
   return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'patch';
 }
 
+// THE ONE COMPARISON KEY FOR PATCH NAMES. Names are compared through this and
+// nothing else — nameTakenBy, assertNameFree, uniqueName and nextPatchName all
+// go through it, because the drift between two copies of a rule has already
+// bitten this project twice.
+//
+// What it folds away, and why each one is a case of TWO TILES THAT LOOK ALIKE:
+//
+//   NFC        "Café" typed on one keyboard and "Café" pasted from another are
+//              different byte sequences that render as THE SAME PIXELS. This is
+//              the strongest case of the four: nobody could ever work out why
+//              one was allowed and the other refused (Daniel, 2026-08-19).
+//   whitespace A trailing space is invisible. So is a doubled internal one.
+//   case       "Alpha" and "alpha" are not the same string but they are the
+//              same word, and on a stage nobody is reading case.
+//
+// toLowerCase, NOT toLocaleLowerCase: locale-sensitive folding answers
+// differently for I/i under Turkish, so the same two names would collide on
+// one machine and not on another. Default Unicode folding is predictable
+// everywhere, which is the only property that matters here.
+//
+// THE STORED NAME IS UNTOUCHED. This is a key for comparison, never a value —
+// what the user typed is what the library shows and what the file holds.
+function nameKey(name) {
+  return String(name || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 // A patch is a BACKUP RECORD when it claims a slot on the instrument. Derived
 // from the file, never stored — `origin.kind` is computed in list() and does
 // not exist on disk, so anything else asking the same question has to ask it
@@ -305,6 +331,10 @@ class LibraryStore {
           // every setlist means nobody has, and the list sorts by creation.
           ...(Number.isFinite(s.order) ? { order: s.order } : {}),
           ...(typeof s.createdAt === 'string' ? { createdAt: s.createdAt } : {}),
+          // WHICH BANK THIS SETLIST WAS LAST SENT TO, written only after a
+          // transfer actually landed. Absent means never sent, which is a real
+          // answer and not a missing one — nothing may invent a bank.
+          ...(Number.isInteger(s.bank) ? { bank: s.bank } : {}),
           slots: Array.from({ length: 8 }, (_, i) => {
             const v = s.slots[i];
             if (v == null) return null;
@@ -343,6 +373,18 @@ class LibraryStore {
   _touch(setlists, index) {
     if (setlists[index]) setlists[index].touchedAt = new Date().toISOString();
     return setlists;
+  }
+
+  // Stamped by the transfer runner when a send SUCCEEDS. Last successful send
+  // wins: sending the same setlist to a different bank later overwrites it,
+  // because the sheet should say where it is now.
+  setSetlistBank(index, bank) {
+    if (!Number.isInteger(bank) || bank < 1 || bank > 4) return false;
+    const setlists = this.readSetlists();
+    if (!setlists[index]) return false;
+    setlists[index].bank = bank;
+    this.writeSetlists(setlists);
+    return true;
   }
 
   touchSetlist(index) {
@@ -621,9 +663,9 @@ class LibraryStore {
   // The patch already using this name, or null. Compared on the name AS
   // STORED, trimmed — which is what the library lists and what a person types.
   nameTakenBy(name, opts = {}) {
-    const wanted = String(name || '').trim();
+    const wanted = nameKey(name);
     if (!wanted) return null;
-    return this.namedPatches(opts).find((e) => String(e.name || '').trim() === wanted) || null;
+    return this.namedPatches(opts).find((e) => nameKey(e.name) === wanted) || null;
   }
 
   // Binding, not advisory. Throws so no caller can proceed on a name that is
@@ -632,7 +674,11 @@ class LibraryStore {
   assertNameFree(name, opts = {}) {
     const clash = this.nameTakenBy(name, opts);
     if (clash) {
-      const err = new Error(`There's already a patch called “${String(name).trim()}”.`);
+      // THE EXISTING NAME, NOT THE TYPED ONE. Type "alpha" while "Alpha" is
+      // taken and a message quoting "alpha" reads as the app being broken —
+      // what you typed plainly is not on screen anywhere. Quoting "Alpha"
+      // explains itself in one line (Daniel, 2026-08-19).
+      const err = new Error(`There's already a patch called “${clash.name}”.`);
       err.code = 'NAME_TAKEN';
       err.file = clash.file;
       throw err;
@@ -940,11 +986,15 @@ class LibraryStore {
     // YOUR patches, not backup records — see namedPatches(). Counting records
     // would number the first copy taken from a backup, because a record can
     // hold the very name being suggested.
-    const taken = new Set(this.namedPatches().map((e) => String(e.name || '').trim()));
-    if (!taken.has(soundName)) return soundName;
+    // BOTH SIDES THROUGH THE KEY. The set holds normalised names, so the
+    // lookups have to be normalised too — comparing a raw candidate against a
+    // folded set is the same class of half-applied rule as the record/patch
+    // asymmetry, and it would offer "Tine Piano" while "tine piano" existed.
+    const taken = new Set(this.namedPatches().map((e) => nameKey(e.name)));
+    if (!taken.has(nameKey(soundName))) return soundName;
     for (let n = 2; n < 500; n++) {
       const candidate = `${soundName} ${n}`;
-      if (!taken.has(candidate)) return candidate;
+      if (!taken.has(nameKey(candidate))) return candidate;
     }
     return soundName;
   }

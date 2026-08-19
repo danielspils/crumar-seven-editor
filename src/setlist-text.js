@@ -53,7 +53,18 @@ function oneLine(text) {
 function formatSetlist(setlist, when) {
   const name = oneLine((setlist && setlist.name) || 'Untitled setlist');
   const slots = (setlist && setlist.slots) || [];
-  const lines = [name, ''];
+  const lines = [name];
+  // BANK N, and ONLY when it is known. A setlist that has never been sent has
+  // no honest answer, and a guess on a sheet somebody is reading at a gig is
+  // worse than a blank line — so the line is omitted entirely rather than
+  // rendered as "BANK —" or "BANK ?". Same rule as the version numbers in the
+  // download report: print it when it is known, say nothing when it is not.
+  // A REAL bank, 1 to 4 — the instrument has four. Anything else (0, a
+  // string, a stray NaN) is not a bank we know, and the rule is the same as
+  // not knowing at all: say nothing.
+  const bank = setlist && setlist.bank;
+  if (Number.isInteger(bank) && bank >= 1 && bank <= 4) lines.push(`BANK ${bank}`);
+  lines.push('');
   for (let i = 0; i < 8; i++) {
     const slot = slots[i];
     const label = slot == null || oneLine(slot) === '' ? '—' : oneLine(slot);

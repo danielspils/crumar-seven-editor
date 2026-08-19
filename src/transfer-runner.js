@@ -541,14 +541,40 @@ class TransferRunner extends EventEmitter {
           return !!(slot && sampled.has(slot.soundName));
         });
       })(),
+      setlistIndex: st.setlistIndex,
       // Never claim more than we know. A confirmed slot is one the PLAYER said
       // they stored; the instrument does not report stores.
       note: 'Presets are listed as stored because you confirmed the hold — the Seven does not report stores.',
     };
     this.running = false;
     this.state = null;
+    this._recordBank(report);
     this.emit('event', report);
     return report;
+  }
+
+  // WHERE THIS SETLIST NOW LIVES, recorded here rather than at selectBank():
+  // picking a bank and then backing out must not stamp anything, and
+  // selectBank happens before the "replace this bank?" question.
+  //
+  // "Successful" is stricter than "did not error". A run the player walked
+  // without confirming a single hold stored NOTHING, so the bank does not hold
+  // this setlist and saying otherwise would put a wrong number on a sheet
+  // somebody reads on stage — the exact harm the omit-when-unknown rule exists
+  // to prevent. Something has to have landed: a confirmed store, or a preset
+  // that already held its patch.
+  //
+  // A single-slot send carries setlistIndex null and never gets here.
+  // Failures are swallowed: a setlist file that cannot be written must not
+  // take the summary down with it.
+  _recordBank(report) {
+    const landed = report.confirmed.length + (report.alreadyThere || []).length;
+    if (report.setlistIndex == null || report.error || report.cancelled || !landed) return;
+    try {
+      this.store.setSetlistBank(report.setlistIndex, report.bank);
+    } catch (err) {
+      console.warn(`[transfer] could not record bank ${report.bank}: ${err.message}`);
+    }
   }
 
   // What effects a bare sound arrives with.

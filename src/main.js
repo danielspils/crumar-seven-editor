@@ -14,6 +14,7 @@ const demoCleanup = require('./demo-cleanup');
 const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
 const { formatSetlist } = require('./setlist-text');
+const { mailSetlist } = require('./mailto');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
 // enabled, checked 2026-08-15. It pointed at this-seven-goes-to-eleven, which
@@ -120,11 +121,13 @@ function registerLibraryIpc() {
   // the write cannot disagree.
   ipcMain.handle('library:nameAvailable', (_e, { name, exceptFile, exceptPatchIndex }) => {
     try {
-      const clash = getStore().nameTakenBy(name, { exceptFile, exceptPatchIndex });
-      return clash
-        ? { available: false, message: `There's already a patch called “${String(name).trim()}”.` }
-        : { available: true };
+      // The STORE's own sentence, not a second copy of it here. Two copies of
+      // one message drift, and this one now has to name the EXISTING patch —
+      // which only the store knows.
+      getStore().assertNameFree(name, { exceptFile, exceptPatchIndex });
+      return { available: true };
     } catch (err) {
+      if (err.code === 'NAME_TAKEN') return { available: false, message: err.message };
       // A library that cannot be read must not block the dialog; the write
       // itself is still guarded by the store.
       console.warn(`[library] name check failed: ${err.message}`);
@@ -144,10 +147,29 @@ function registerLibraryIpc() {
   // rows show and sends those; the formatting is src/setlist-text.js, which is
   // pure and tested, and the CLOCK IS READ HERE and passed in, so the
   // formatter has nothing to stub.
-  ipcMain.handle('setlist:copyText', (_e, { name, slots }) => {
-    const text = formatSetlist({ name, slots }, new Date());
+  ipcMain.handle('setlist:copyText', (_e, { name, slots, bank }) => {
+    const text = formatSetlist({ name, slots, bank }, new Date());
     clipboard.writeText(text);
     return { ok: true, text };
+  });
+  // The same text, handed to whatever mail client the person already uses,
+  // with no recipient — they choose who. SEVEN_NO_MAIL_CLIENT=1 forces the
+  // no-client branch, which is otherwise unreachable on a machine that has
+  // one: the failure it stands for is somebody else's empty Mail.app, and a
+  // branch nobody can reach is a branch nobody has seen.
+  ipcMain.handle('setlist:email', async (_e, { name, slots, bank }) => {
+    // ONE formatter. The mail body is the clipboard text, character for
+    // character, so BANK N arrives here for free and the two can never
+    // disagree about what a setlist looks like.
+    const text = formatSetlist({ name, slots, bank }, new Date());
+    return mailSetlist({
+      subject: name,
+      body: text,
+      openExternal: (url) => (process.env.SEVEN_NO_MAIL_CLIENT
+        ? Promise.reject(new Error('no application knows how to open mailto: (SEVEN_NO_MAIL_CLIENT)'))
+        : shell.openExternal(url)),
+      writeClipboard: (t) => clipboard.writeText(t),
+    });
   });
   ipcMain.handle('setlist:order', (_e, { indexes }) => getStore().writeSetlistOrder(indexes));
   ipcMain.handle('setlist:clearOrder', () => getStore().clearSetlistOrder());

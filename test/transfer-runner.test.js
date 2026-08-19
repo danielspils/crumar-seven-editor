@@ -654,3 +654,70 @@ test('a short read or a partial patch never skips', async () => {
   assert.ok(!step.alreadyThere, 'without a parameter table it asks for the hold');
   assert.match(step.instruction, /Hold preset 1/);
 });
+
+// WHERE THE SETLIST NOW LIVES. The bank is passed to preflight and selectBank
+// and was never written down, so an exported gig sheet could not say which
+// bank to reach for. It is recorded at the END, on success — picking a bank
+// and backing out must not stamp anything.
+test('a successful transfer records the bank on that setlist', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file, entries[1].file]);
+  assert.strictEqual(store.readSetlists()[list].bank, undefined, 'nothing recorded yet');
+
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 3);
+  await runner.nextSlot();
+  await runner.confirmSlot();
+  const done = await runner.confirmSlot();
+
+  assert.strictEqual(done.type, 'transfer-done');
+  assert.strictEqual(store.readSetlists()[list].bank, 3, 'the setlist knows its bank');
+
+  // Last successful send wins.
+  const again = new TransferRunner({ midi, store, sender });
+  again.start(list, 2);
+  await again.nextSlot();
+  await again.confirmSlot();
+  await again.confirmSlot();
+  assert.strictEqual(store.readSetlists()[list].bank, 2, 'sending elsewhere moves it');
+});
+
+test('a cancelled transfer records nothing', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file, entries[1].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 3);
+  await runner.nextSlot();     // preset 1 loaded, nothing stored
+  const done = runner.cancel();
+
+  assert.strictEqual(done.cancelled, true);
+  assert.strictEqual(store.readSetlists()[list].bank, undefined,
+    'walking away from a bank must not claim the setlist is in it');
+});
+
+// "Did not error" is not the same as "landed". A run the player walked without
+// confirming a single hold stored NOTHING, so the bank does not hold this
+// setlist and a sheet saying otherwise sends them to the wrong preset.
+test('a completed run that stored nothing records nothing', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 4);
+  await runner.nextSlot();          // loaded into the buffer, never confirmed
+  const done = runner.cancel();
+
+  assert.deepStrictEqual(done.confirmed, []);
+  assert.deepStrictEqual(done.loadedNotConfirmed, [1]);
+  assert.strictEqual(store.readSetlists()[list].bank, undefined);
+});
+
+// A single-preset send is not a setlist and must never stamp one.
+test('sending one preset does not record a bank against any setlist', async () => {
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.startSlot(3, 5, entries[0].file);
+  await runner.nextSlot();
+  await runner.confirmSlot();
+  assert.strictEqual(store.readSetlists()[list].bank, undefined);
+});

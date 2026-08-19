@@ -224,7 +224,12 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // Plain text on the clipboard, for pasting into whatever the player reads
     // on stage. `slots` is eight display names (or nulls) — the view resolves
     // them, because it is what knows what each row says.
-    copyText: (name, slots) => ipcRenderer.invoke('setlist:copyText', { name, slots }),
+    copyText: (name, slots, bank) => ipcRenderer.invoke('setlist:copyText', { name, slots, bank }),
+    // Opens the default mail client with the message composed and no
+    // recipient. Answers { ok: true, via: 'mail' | 'clipboard' } — BOTH are
+    // successes, so this is not the throwing convention: the caller is picking
+    // a sentence, not handling a failure.
+    email: (name, slots, bank) => ipcRenderer.invoke('setlist:email', { name, slots, bank }),
     deletePrompt: (name) => ipcRenderer.invoke('setlist:deletePrompt', { name }),
   },
 });

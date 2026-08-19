@@ -123,6 +123,118 @@ test('records and patches are separate namespaces, in both directions', () => {
   assert.strictEqual(again.name, 'Bank 2 Preset 4');
 });
 
+// NAMES ARE COMPARED THROUGH ONE NORMALISED KEY: NFC, trimmed, internal
+// whitespace collapsed, case-folded. Each of these four is a pair of tiles that
+// look alike on screen, which is the whole point of the rule.
+//
+// The stored name is never touched — what the user typed is what the library
+// shows. Only the comparison folds.
+test('names that look alike collide, whatever their case, spacing or unicode form', () => {
+  const cases = [
+    ['case', 'alpha'],
+    ['case', 'ALPHA'],
+    ['trailing space', 'Alpha '],
+    ['leading space', ' Alpha'],
+    ['both ends', '   Alpha   '],
+    ['doubled internal space', 'Al  pha'],   // against a stored "Al pha"
+    // Contains an I, which is where locale-sensitive folding diverges: under
+    // Turkish rules "I" lowercases to a DOTLESS i and this pair would stop
+    // colliding. The rule must answer the same on every machine.
+    ['dotted I', 'ALPHA I'],
+  ];
+  for (const [what, typed] of cases) {
+    const { store } = freshStore();
+    store.seedDemoLibrary();
+    if (what === 'doubled internal space') {
+      const a = byName(store, 'Alpha');
+      store.rename(a.file, a.patchIndex, 'Al pha');
+    }
+    if (what === 'dotted I') {
+      const a = byName(store, 'Alpha');
+      store.rename(a.file, a.patchIndex, 'Alpha i');
+    }
+    const beta = byName(store, 'Beta');
+    assert.throws(
+      () => store.duplicate(beta.file, beta.patchIndex, typed),
+      (err) => err.code === 'NAME_TAKEN',
+      `${what}: “${typed}” should collide`
+    );
+  }
+});
+
+// THE ONE THAT SETTLED THE DESIGN. These two strings are different byte
+// sequences that render as identical pixels, so allowing one and refusing the
+// other could never be explained to anybody.
+test('NFC and NFD spellings of one name collide', () => {
+  const NFC = 'Caf\u00e9';        // é as a single code point
+  const NFD = 'Cafe\u0301';       // e + combining acute
+  assert.notStrictEqual(NFC, NFD, 'the fixture really is two different strings');
+
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const a = byName(store, 'Alpha');
+  store.rename(a.file, a.patchIndex, NFC);
+  const beta = byName(store, 'Beta');
+
+  assert.throws(
+    () => store.duplicate(beta.file, beta.patchIndex, NFD),
+    (err) => err.code === 'NAME_TAKEN'
+  );
+  // And the STORED name is the one that was typed, byte for byte — the key is
+  // for comparing, never for writing.
+  assert.strictEqual(entries(store).find((e) => /^Caf/.test(e.name)).name, NFC);
+});
+
+// Recasing your OWN patch has to keep working, or the rule reads as broken.
+// It does, because the check excludes the patch being renamed.
+test('renaming a patch to a differently-cased version of its own name is allowed', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const a = byName(store, 'Alpha');
+  const moved = store.rename(a.file, a.patchIndex, 'ALPHA');
+  assert.strictEqual(entries(store).find((e) => e.file === moved).name, 'ALPHA');
+  // …and again, with spacing rather than case.
+  const again = store.rename(moved, 0, ' ALPHA ');
+  assert.strictEqual(entries(store).find((e) => e.file === again).name, ' ALPHA ',
+    'stored exactly as typed');
+});
+
+// The message has to name the patch that EXISTS. Type "alpha" while "Alpha" is
+// taken and a message quoting "alpha" reads as the app being broken.
+test('the refusal quotes the existing name, not the one that was typed', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const beta = byName(store, 'Beta');
+  assert.throws(
+    () => store.duplicate(beta.file, beta.patchIndex, 'ALPHA'),
+    (err) => /already a patch called “Alpha”/.test(err.message)
+      && !/ALPHA/.test(err.message)
+  );
+});
+
+// uniqueName and nextPatchName go through the SAME key, or they offer a name
+// the write would then refuse — which is the drift this project has been bitten
+// by twice.
+test('generated names use the same comparison as the refusal', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const a = byName(store, 'Alpha');
+
+  // A copy exists under a different CASE: the next copy must move past it.
+  const first = store.duplicate(a.file, a.patchIndex);          // "Alpha copy"
+  store.rename(first.file, 0, 'alpha COPY');
+  const second = store.duplicate(a.file, a.patchIndex);
+  assert.strictEqual(
+    store.readFile(second.file).library.patches[0].name, 'Alpha copy 2',
+    'uniqueName must see "alpha COPY" as taking "Alpha copy"'
+  );
+
+  // Same for the name offered to a new patch from a sound.
+  const b = byName(store, 'Beta');
+  store.rename(b.file, b.patchIndex, 'tine  piano');
+  assert.strictEqual(store.nextPatchName('Tine Piano'), 'Tine Piano 2');
+});
+
 // The guarantee the old test was really about, kept: two DIFFERENT names can
 // still slugify to one filename, and the second must not overwrite the first.
 test('two different names that slugify alike get different files', () => {
@@ -903,4 +1015,32 @@ test('no temp files are left behind, on success or on failure', () => {
   }
   const strays = fs.readdirSync(dir).filter((f) => f.includes('.tmp-'));
   assert.deepStrictEqual(strays, [], 'the temp file was cleaned up');
+});
+
+// The setlist reader REBUILDS each entry from a named list of fields, so a new
+// field that nobody adds to that list is silently dropped on the next write.
+// That is how touchedAt was lost once already.
+test('a setlist’s bank survives a save and reload', () => {
+  const { store } = freshStore();
+  store.createSetlist('Long Winters');
+  const i = listIndex(store, 'Long Winters');
+
+  assert.strictEqual(store.readSetlists()[i].bank, undefined, 'a new setlist has no bank');
+  assert.strictEqual(store.setSetlistBank(i, 3), true);
+  assert.strictEqual(store.readSetlists()[i].bank, 3);
+
+  // The round trip that matters: any OTHER write re-serialises every setlist
+  // through the normaliser, which is where an unlisted field disappears.
+  store.touchSetlist(i);
+  store.createSetlist('Something Else');
+  assert.strictEqual(listNamed(store, 'Long Winters').bank, 3, 'the bank is still there');
+
+  // Last successful send wins.
+  assert.strictEqual(store.setSetlistBank(i, 2), true);
+  assert.strictEqual(listNamed(store, 'Long Winters').bank, 2);
+
+  // Bank 1 cannot be stored to, and there is no bank 5.
+  assert.strictEqual(store.setSetlistBank(i, 5), false);
+  assert.strictEqual(store.setSetlistBank(i, '3'), false);
+  assert.strictEqual(listNamed(store, 'Long Winters').bank, 2, 'a refused write changes nothing');
 });

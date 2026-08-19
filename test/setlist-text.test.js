@@ -95,3 +95,22 @@ test('a name that could break the layout still renders on one line', () => {
     '4. 9. Not A Slot',
   ]);
 });
+
+// BANK N — the second line, and only when it is known.
+test('the bank prints under the name when the setlist has one', () => {
+  const lines = formatSetlist({ ...FULL, bank: 3 }, WHEN).split('\n');
+  assert.strictEqual(lines[0], 'PIKE PLACE — 28 AUG');
+  assert.strictEqual(lines[1], 'BANK 3');
+  assert.strictEqual(lines[2], '', 'still a blank line before slot 1');
+  assert.match(lines[3], /^1\. /);
+});
+
+// A setlist that has never been sent has no honest answer. A blank is better
+// than a guess on a sheet somebody reads at a gig.
+test('the bank line is omitted entirely when it is not known', () => {
+  for (const bank of [undefined, null, 0, '3', NaN]) {
+    const body = formatSetlist({ ...FULL, bank }, WHEN);
+    assert.ok(!/BANK/.test(body), `no BANK line for ${JSON.stringify(bank)}:\n${body}`);
+    assert.strictEqual(body.split('\n')[1], '', 'the name is still followed by a blank line');
+  }
+});

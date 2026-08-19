@@ -2197,9 +2197,19 @@
       // same idea — this setlist, somewhere else — and the clipboard is the
       // whole of it: whatever the player already uses to read things on stage
       // is a better destination than anything this app could build.
-      async copySetlist(name, slots) {
-        await window.sevenAPI.setlists.copyText(name, slots);
+      async copySetlist(name, slots, bank) {
+        await window.sevenAPI.setlists.copyText(name, slots, bank);
         toast('Setlist copied');
+      },
+      // Hands the setlist to the mail client with no recipient. If there is no
+      // mail client the click would do nothing visible, so the setlist goes to
+      // the clipboard instead and the toast says which of the two happened —
+      // either way you are holding it.
+      async emailSetlist(name, slots, bank) {
+        const r = await window.sevenAPI.setlists.email(name, slots, bank);
+        toast(r && r.via === 'clipboard'
+          ? 'No mail app — setlist copied instead'
+          : 'Setlist ready to send');
       },
       async sendSetlist(index, name) {
         if (!isConnected()) {

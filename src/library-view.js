@@ -893,7 +893,7 @@
       `<div class="pick-overlay">` +
       `<div class="pick-modal" role="dialog" aria-label="Choose a patch">` +
       `<div class="pick-modal-head">` +
-      `<span class="pick-title">Assigning Slot ${slot + 1}</span>` +
+      `<span class="pick-title">Selecting Slot ${slot + 1}</span>` +
       `<div class="pick-modes">` +
       `<button type="button" class="pick-mode${mode === 'patches' ? ' on' : ''}" data-pick-mode="patches">Patches</button>` +
       `<button type="button" class="pick-mode${mode === 'sounds' ? ' on' : ''}" data-pick-mode="sounds">Instruments</button>` +
@@ -915,6 +915,70 @@
   // picker hands to the store (Daniel, 2026-08-14).
   const SOUND_REF = 'sound:';
 
+  // The two export controls in the setlist header. Same skeleton as the trash
+  // can on a slot row so they sit on one optical grid: 16-unit box drawn at
+  // 13px, no fill, 1.4 stroke, round caps and joins.
+  //
+  // COPY IS A CLIPBOARD WITH AN ARROW GOING INTO IT, deliberately not a
+  // two-sheets glyph: a duplicate-looking icon already means "duplicate this
+  // patch" everywhere else in this app, which is a different act on a
+  // different object.
+  const ICONS = {
+    copy: {
+      label: 'Copy setlist as text',
+      // THE BOARD'S OUTLINE IS BROKEN TWICE, on purpose (Daniel, 2026-08-19).
+      // The top edge stops short on both sides of the clip, and the right edge
+      // stops short where the arrow crosses it. Those two gaps are what let
+      // the eye read three separate things at 16px — board, clip, arrow —
+      // instead of one busy shape where the arrow merges into the border.
+      //
+      // The arrow comes in horizontally from the RIGHT and points INTO the
+      // board. A downward arrow inside the board reads as "save"; coming in
+      // from outside reads as "this is being put in here".
+      paths:
+        // left side, bottom, and up the right as far as the arrow's gap
+        '<path d="M5.1 4H4.2a.9.9 0 0 0-.9.9v7.2a.9.9 0 0 0 .9.9h6.9a.9.9 0 0 0 .9-.9v-1.6"/>'
+        // the short top-right run, stopping above the same gap
+        + '<path d="M10.1 4h1a.9.9 0 0 1 .9.9v2.5"/>'
+        // THE CLIP, with the curl on top and clear air on both sides. Two
+        // details Daniel called out as load-bearing (2026-08-19): the curl is
+        // what makes it read as a clipboard clamp rather than a plain tab, and
+        // the gaps where the board's top edge stops short are what keep the
+        // clip from fusing into the board's outline at 24px. Those gaps are
+        // ~1.05 units, matched to the clearance the arrow already has where it
+        // crosses the right edge — one gap size in the drawing, so the eye
+        // reads them as the same device rather than two accidents.
+        + '<path d="M6.15 5.3V4a.5.5 0 0 1 .5-.5h.4a.55.55 0 0 1 1.1 0h.4a.5.5 0 0 1 .5.5v1.3z"/>'
+        // shaft in from the right, head inside the board
+        + '<path d="M13.2 8.9H7.5"/><path d="m9.3 7.1-1.8 1.8 1.8 1.8"/>',
+    },
+    email: {
+      label: 'Email setlist',
+      paths: '<path d="M3.6 4.3h8.8a.9.9 0 0 1 .9.9v5.6a.9.9 0 0 1-.9.9H3.6a.9.9 0 0 1-.9-.9V5.2a.9.9 0 0 1 .9-.9z"/>'
+        + '<path d="m2.9 5 5.1 3.9L13.1 5"/>',
+    },
+  };
+
+  function exportBtn(kind, index, empty) {
+    const { label, paths } = ICONS[kind];
+    // An unlabelled icon nobody can identify is a feature nobody finds, so
+    // both carry a title AND an aria-label — the tooltip for the mouse, the
+    // label for anything reading the page aloud.
+    const title = empty ? `${label} — nothing in this setlist yet` : label;
+    return `<button type="button" class="setlist-icon" data-setlist-${kind}="${index}" `
+      + `title="${esc(title)}" aria-label="${esc(label)}"${empty ? ' disabled aria-disabled="true"' : ''}>`
+      // BIGGER THAN THE TRASH CAN, WITH THE SAME HAIRLINE. These are the
+      // header's own controls sitting beside a labelled button, not a row
+      // affordance, so the glyph is drawn at 24px instead of 13 — and the
+      // stroke is scaled DOWN to keep the LINE identical: the 16-unit box
+      // renders at 24px, so 0.77 units lands at 1.15 device px, the same
+      // hairline as the trash can's 1.4 at 13px. Scaling the drawing without
+      // scaling the stroke back would have made these the heaviest strokes on
+      // the panel, which is what makes an icon look imported.
+      + '<svg viewBox="0 0 16 16" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" '
+      + `stroke-width="0.77" stroke-linecap="round" stroke-linejoin="round">${paths}</svg></button>`;
+  }
+
   // What a slot's row SAYS, as plain text — the first patch of a file
   // represents it, the same rule the rows use. "Copy as text" has to say what
   // the screen says, so it asks here rather than reading the file reference.
@@ -935,7 +999,7 @@
     // offers an Assign target for it — both selections stay visible.
     const sel = selectedEntry(data, state);
     const assignBtn = (i) =>
-      `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Choose a patch for slot ${i + 1}">Assign</button>`;
+      `<button type="button" class="slot-assign" data-slot-assign="${i}" title="Choose a patch for slot ${i + 1}">Select</button>`;
     const clearBtn = (i) =>
       `<button type="button" class="slot-clear" data-slot-clear="${i}" title="Remove from slot ${i + 1} (the patch stays in the library)">` +
       '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
@@ -1026,6 +1090,8 @@
       })
       .join('');
     state.slotPulse = null; // consumed
+    // Nothing to export from a setlist with nothing in it.
+    const empty = !(setlist.slots || []).some((f) => !!f);
     const overlay = state.picking != null
       ? renderPicker(data, state, state.pickMode === 'sounds', opts.sounds)
       : '';
@@ -1033,18 +1099,28 @@
       overlay +
       `<div class="lib-setlist-head">` +
       `<button type="button" class="lib-back">‹ Setlists</button>` +
-      `<span class="lib-setlist-name">${esc(setlist.name)}</span>` +
       // Also here, not only on the row you hovered to get in: this is the view
       // where you finish arranging a setlist, and it is the moment you want to
       // put it on the instrument.
-      // Beside Send, because it is the same kind of thing: this setlist, taken
-      // somewhere else. Send puts it on the instrument; Copy puts it where you
-      // can read it on a phone.
-      `<button type="button" class="setlist-copy" data-setlist-copy="${state.setlistIndex}" ` +
-      `title="Copy “${esc(setlist.name)}” as text, to paste anywhere">Copy as text</button>` +
+      // TWO ICONS, drawn on the trash can's geometry (slot-clear, below):
+      // viewBox 0 0 16 16 at 13px, fill none, stroke currentColor at 1.4,
+      // round caps and joins. Nothing is imported — an icon set's heavier
+      // strokes or rounded corners would read as a foreign object beside the
+      // panel's hairlines.
+      //
+      // DISABLED WHEN THE SETLIST IS EMPTY. Copying eight dashes and a
+      // timestamp is not useful to anyone, and the tooltip says why rather
+      // than leaving a grey control to guess at.
+      exportBtn('copy', state.setlistIndex, empty) +
+      exportBtn('email', state.setlistIndex, empty) +
+      // Send stays a labelled button, and stays heavier: it is the one action
+      // here that overwrites a bank on the instrument.
       `<button type="button" class="setlist-send" data-setlist-send="${state.setlistIndex}" ` +
       `title="Load “${esc(setlist.name)}” onto a bank on the Seven">Send to Seven →</button>` +
       `</div>` +
+      // ITS OWN LINE. Setlist names are user-written and get long — "Long
+      // Winters Gig in Seattle" cannot share a row with the controls.
+      `<div class="lib-setlist-title">${esc(setlist.name)}</div>` +
       rows
     );
   }
@@ -1337,6 +1413,19 @@
         render();
         return;
       }
+      const mail = e.target.closest('[data-setlist-email]');
+      if (mail) {
+        const i = Number(mail.dataset.setlistEmail);
+        if (data.setlists[i] && on.emailSetlist) {
+          on.emailSetlist(
+            data.setlists[i].name,
+            (data.setlists[i].slots || []).map((f) => slotDisplay(data, f)),
+            data.setlists[i].bank
+          );
+        }
+        return;
+      }
+
       const copy = e.target.closest('[data-setlist-copy]');
       if (copy) {
         const i = Number(copy.dataset.setlistCopy);
@@ -1347,7 +1436,8 @@
         if (data.setlists[i] && on.copySetlist) {
           on.copySetlist(
             data.setlists[i].name,
-            (data.setlists[i].slots || []).map((f) => slotDisplay(data, f))
+            (data.setlists[i].slots || []).map((f) => slotDisplay(data, f)),
+            data.setlists[i].bank
           );
         }
         return;
