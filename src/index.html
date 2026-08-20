@@ -578,7 +578,10 @@
       border-right: 1px solid var(--line);
       display: flex; flex-direction: column; min-height: 0;
     }
-    #bank-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    /* .bank-tabs admits a second instance of the same component — the backup
+       detail view's tabs (SEVEN_BANK_TABS prototype). The tabs themselves are
+       .bank-tab either way; only the container needed a class. */
+    #bank-tabs, .bank-tabs { display: flex; border-bottom: 1px solid var(--line); }
     /* Subtle tabs: selection is carried by the same raised background as a
        selected patch row — no tab outline, no radius. The amber underline is
        text-width (on the label span), so it doesn't stack with the patch row's

@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Development only (SEVEN_UI_SIGNAL): lets a UI test wait for a human step —
   // a panel hold, a listening judgement — instead of guessing at a delay.
   devSignal: () => ipcRenderer.invoke('dev:signal'),
+  // Development only, read once at load so a render can branch on it without
+  // an await. SEVEN_BANK_TABS=1 gives the backup detail view the same bank
+  // tabs "On the Seven" uses, instead of four stacked headings — a prototype
+  // to look at, flipped by relaunching rather than rebuilding.
+  devFlags: { bankTabs: !!process.env.SEVEN_BANK_TABS },
   getExpansions: () => {
     try { return readJson('data/expansions.json'); } catch { return null; }
   },

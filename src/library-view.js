@@ -20,6 +20,13 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SevenLibraryView = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
+  // PROTOTYPE FLAG (SEVEN_BANK_TABS=1), read once at load. Module scope
+  // because renderBackupRun is a module-level function; inside the component
+  // it was out of scope and every backup render threw. A relaunch is the only
+  // way to change it, which is the point — flip the view without a rebuild.
+  const BANK_TABS = !!(typeof window !== 'undefined'
+    && window.sevenAPI && window.sevenAPI.devFlags && window.sevenAPI.devFlags.bankTabs);
+
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -526,6 +533,71 @@
     if (!run) return renderBackupList(data, state);
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
+
+    // ---- PROTOTYPE: bank tabs (SEVEN_BANK_TABS=1) -------------------------
+    // The same four banks "On the Seven" shows as tabs, shown here as tabs
+    // instead of four stacked headings — so the two views are one visual
+    // system rather than two. The .bank-tab markup and CSS are the ones the
+    // instrument list uses, unchanged; only the container selector was
+    // widened to admit a second instance. Building a second tab component
+    // would defeat the point, since two of them drift.
+    //
+    // NO LOCK GLYPH. On the instrument it says "Crumar reserves Bank 1"; in a
+    // backup it would be decoration attached to a fact that does not apply —
+    // these eight records can be sent to any bank.
+    const runHead = (extra) => (
+      '<div class="lib-setlist-head">' +
+      '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
+      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
+      `${run.partial ? ' · failed' : ''}</span>` + (extra || '') +
+      '</div>'
+    );
+    const slotsOf = (b) => (data.setlists[b.index] || {}).slots || [];
+
+    if (BANK_TABS) {
+      const searching = !!String(state.search || '').trim();
+
+      // SEARCHING HIDES THE TABS. A tab is a filter, and a search across four
+      // filtered lists asks the player to check four places for their own
+      // word. So typing flattens the run into one list of what matched, and
+      // each row says which bank and slot it came from ("2·3") because the
+      // heading that used to say it is gone. Clearing brings the tabs back.
+      if (searching) {
+        const hits = run.banks.flatMap((b) => slotsOf(b).map((f, i) => ({
+          entry: f ? byFile.get(f) : null, bank: b.bank, preset: i + 1,
+        }))).filter((x) => x.entry && matches(x.entry, state.search));
+        return runHead('') + (hits.length
+          ? `<div class="lib-group">${hits.map((x) => renderPatchRow(
+            x.entry, state, { flat: true, readOnly: true, n: `${x.bank}·${x.preset}` }
+          )).join('')}</div>`
+          : '<div class="lib-empty">Nothing in this backup matches that.</div>');
+      }
+
+      const at = Math.min(Math.max(Number(state.backupBank) || 0, 0), run.banks.length - 1);
+      const b = run.banks[at];
+      const tabs = run.banks.map((bb, i) =>
+        `<button class="bank-tab${i === at ? ' active' : ''}" data-backup-bank="${i}" ` +
+        `type="button"><span class="bank-tab-label">Bank ${bb.bank}</span></button>`).join('');
+      // ONE SEND, IN THE HEADER, NAMING ITS BANK. Per-bank is still right — a
+      // transfer walks eight slots into one bank — but with only one bank on
+      // screen, four buttons cannot exist and an unlabelled one would silently
+      // change meaning with the tab. So it says which eight it will send.
+      const send = `<button type="button" class="setlist-send" data-setlist-send="${b.index}" ` +
+        `title="Load these eight patches onto a bank on the Seven">` +
+        `Send Bank ${b.bank} to Seven →</button>`;
+      const rows = slotsOf(b)
+        .map((f) => (f ? byFile.get(f) : null))
+        .map((e, i) => (e
+          ? renderPatchRow(e, state, { inRun: true, flat: true, readOnly: true })
+          : `<div class="lib-row lib-slot-empty"><span class="patch-num">${i + 1}</span>` +
+            '<span class="lib-empty-slot">empty</span></div>'))
+        .join('');
+      return runHead(send) +
+        `<div class="bank-tabs lib-bank-tabs">${tabs}</div>` +
+        `<div class="lib-group">${rows}</div>`;
+    }
+    // ---- end prototype ----------------------------------------------------
+
     const banks = run.banks.map((b) => {
       const slots = (data.setlists[b.index] || {}).slots || [];
       const rows = slots
@@ -1220,6 +1292,9 @@
       pickSearch: '',
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
       slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
+      // PROTOTYPE (SEVEN_BANK_TABS=1). Which bank the open backup is showing.
+      // Only read when the flag is on; the stacked-headings view ignores it.
+      backupBank: 0,
     };
     // NAVIGATION CLEARS THE SEARCH. A filter belongs to the list you are
     // looking at, not to the library — leave a run with a search running and
@@ -1440,6 +1515,15 @@
         }
       }
 
+      // PROTOTYPE (SEVEN_BANK_TABS): which bank the open backup shows. View
+      // state only — it selects nothing and touches no file.
+      const bankTab = e.target.closest('[data-backup-bank]');
+      if (bankTab) {
+        state.backupBank = Number(bankTab.dataset.backupBank) || 0;
+        render();
+        return;
+      }
+
       const seg = e.target.closest('.seg-btn');
       if (seg) {
         state.tab = seg.dataset.tab;
@@ -1455,6 +1539,7 @@
         clearSearch();
         state.setlistIndex = null;
         state.backupRun = null;
+        state.backupBank = 0;
         state.lastCleared = null;
         state.picking = null;
         render();
@@ -1580,6 +1665,7 @@
         // so clicking a backup did nothing at all (Daniel, 2026-08-13).
         if (setlistRow.dataset.backup) {
           state.backupRun = setlistRow.dataset.backup;
+          state.backupBank = 0; // every run opens on Bank 1 (prototype)
           render();
           return;
         }
