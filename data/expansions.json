@@ -4,7 +4,7 @@
   "source": "https://www.crumar.it/?a=support&b=36",
   "readOn": "2026-08-15",
   "note": "Sizes are ZIP DOWNLOAD sizes as published by Crumar. They were NOT measured on an instrument, and installed size is not known to be the same. No opcode reports the size of an installed sample set.",
-  "soundNamesNote": "`sounds` holds the names the INSTRUMENT reports, which differ from the download titles on Crumar's page — the page says 'Electric Grand 70BXL', the device says 'Electric Grand 70B XL'. Names here were taken from Daniel's own unit's sound table (24 sounds, fingerprint 741ecb059575ba38, read 2026-08-15). `sounds: null` means nobody here owns that expansion and its sound names have never been seen; it is never guessed. A future instrument report can fill one in.",
+  "soundNamesNote": "`sounds` holds the names the INSTRUMENT reports, which differ from the download titles on Crumar's page — the page says 'Electric Grand 70BXL', the device says 'Electric Grand 70B XL'. Names here were taken from Daniel's own unit's sound table (24 sounds, fingerprint 741ecb059575ba38, read 2026-08-15; extended to 27 sounds, fingerprint 4cf1434f54c9b036, read 2026-08-20 after installing C5, CFX and K8). `sounds: null` means nobody here owns that expansion and its sound names have never been seen; it is never guessed. A future instrument report can fill one in.",
   "expansions": [
     {
       "title": "Venice Upright U1/Felt",
@@ -22,7 +22,9 @@
       "title": "Venice Grand C5",
       "released": "2022-03",
       "downloadMb": 234.08,
-      "sounds": null
+      "sounds": [
+        "Venice Grand C5"
+      ]
     },
     {
       "title": "Electric Grand 70BXL",
@@ -52,7 +54,9 @@
       "title": "Venice Grand CFX",
       "released": "2023-03",
       "downloadMb": 184.97,
-      "sounds": null
+      "sounds": [
+        "Venice Grand CFX"
+      ]
     },
     {
       "title": "Venice Grand Breeze",
@@ -64,7 +68,9 @@
       "title": "Venice Upright K8",
       "released": "2022-09",
       "downloadMb": 116.26,
-      "sounds": null
+      "sounds": [
+        "Venice Upright K8"
+      ]
     }
   ]
 }

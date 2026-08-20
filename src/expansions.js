@@ -114,5 +114,19 @@
   // that is a number of unknown meaning (docs/protocol.md).
   const downloadSize = (mb) => (typeof mb === 'number' ? `${mb.toFixed(2)} Mb` : '—');
 
-  return { classify, kindOf, downloadSize, MODELED_MAX, INCLUDED_MAX };
+  // How many of these the owner could still get. UNVERIFIED IS NOT COUNTED.
+  // An entry whose sound names nobody here has seen is reported "never as
+  // missing, because 'we don't know' and 'you don't have it' are different
+  // answers" — and then the count said missing anyway, offering a stranger a
+  // sample set he had already installed (Rich Olivieri, 2026-08-19).
+  //
+  // Its row stays on screen with its size, unchanged. The only thing that goes
+  // is a summary number asserting something nobody established.
+  //
+  // Lives here, beside classify, so the header and the tests cannot drift onto
+  // two different definitions of the same word.
+  const availableCount = (expansions) =>
+    (expansions || []).filter((e) => e.status !== 'installed' && e.status !== 'unverified').length;
+
+  return { classify, kindOf, downloadSize, availableCount, MODELED_MAX, INCLUDED_MAX };
 });

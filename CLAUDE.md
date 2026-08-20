@@ -27,11 +27,17 @@ better UX around four things the stock editor doesn't do well:
 
 Two hardware realities shape all four features:
 
-- **Sound IDs are not portable.** A patch using "Venice Grand CB1898" is sound ID
-  18 on one unit; a Seven with different expansions has a different list entirely.
-  The patch format therefore stores the sound **name** and resolves it on import,
-  **warning when the target instrument lacks it**. Never persist a bare sound ID as
-  a patch's identity (see `soundsNote` in the schema).
+- **Sound IDs are not portable, and they are not stable either.** A patch using
+  "Venice Grand CB1898" is sound ID 18 on one unit; a Seven with different
+  expansions has a different list entirely. **And the same unit renumbers
+  itself**: installing Venice Grand C5 on 2026-08-20 moved CB1898 from 18 to 19
+  and Venice Upright U1/Felt from [22, 23] to [25, 26], because the table is
+  alphabetical and an insert shifts everything after it. So an id is not even a
+  durable reference to a sound on the instrument you read it from — a backup
+  taken this morning names ids that this afternoon's install has already
+  reassigned. The patch format therefore stores the sound **name** and resolves
+  it on import, **warning when the target instrument lacks it**. Never persist a
+  bare sound ID as a patch's identity (see `soundsNote` in the schema).
 - **Storing a preset needs a physical three-second button hold.** The app can load
   a patch into the edit buffer over USB, but the user finishes the save on the
   panel. The UI must **say this plainly** rather than pretend to work around it.
@@ -153,6 +159,53 @@ Two fences on the new code, in the spirit of Rule 2:
   neutral default**; these are the positions the factory chose per sound, which
   answers "did I change this?" and nothing more. The old `min(64, max)` guess
   survives only as `seedValue` for `fixtures/`, and is not a default.
+
+## Cataloguing an expansion you do not own
+
+`data/expansions.json` needs the names the INSTRUMENT reports for each sample
+set. Those names are what matching runs on, and getting one wrong lists a sound
+twice — once as "Installed, not in the catalogue" and once as "Unverified" —
+which is what a real user hit in 2026-08-19 for the three sets Daniel had not
+bought.
+
+**The name is in the README PDF's page footer.** Every package ships one, and
+every page of it carries:
+
+```
+Crumar Seven – <DEVICE NAME> - Page N/2
+```
+
+The text is stored as subset-font glyph ids, so it needs decoding through the
+PDF's ToUnicode CMap — `strings` and Preview's copy-paste both give nothing
+useful.
+
+**Two sources that look right and are wrong. Never use either:**
+
+- **The download title on Crumar's page.** It says "Electric Grand 70BXL"; the
+  instrument says "Electric Grand 70B XL". It says "Venice upright U1/Felt";
+  the instrument says "Venice Upright U1 Felt".
+- **The filename.** `VeniceGrandC5.7ex` is unspaced and is not what anything
+  displays.
+
+**The `.7ex` payload is opaque.** Encrypted or compressed, high entropy from
+byte 0, no header or magic. A search of all 196 MB of one package found zero
+occurrences of its own name in ASCII or UTF-16. Do not go looking again.
+
+**One package can supply several sounds**, so a catalogue entry holds a LIST.
+`Venice Upright U1/Felt` is the only multi-sound download known — it gives
+"Venice Upright U1 Felt" and "Venice Upright U1" — and every other README
+describes a single piano.
+
+**Hit rate: 4 for 4** (2026-08-20). Venice Grand CB1898 was the control, its
+footer matching a name already known from the instrument. The other three —
+Venice Grand C5, Venice Grand CFX, Venice Upright K8 — were predicted from
+their footers in writing BEFORE installation and then confirmed exactly,
+character for character, against the sound table.
+
+**The instrument still outranks the footer.** Where someone owns the expansion,
+read the names off their unit and record that as the source; the footer is for
+sets nobody here has. The three added on 2026-08-20 are device-sourced for
+exactly this reason, even though the footers had already predicted them.
 
 ## Status
 
@@ -637,6 +690,17 @@ Kept here because they otherwise live only in a chat that ends.
   dismissed rather than over it, or that a cancelled run never reaches it.
   Those are three call sites in `src/app.js` and the rule they encode is the
   one most easily lost in a refactor (docs/DONATIONS.md).
+- **Connect an unverified expansion row to the unrecognised sounds below it —
+  in COPY, not by matching.** When an entry has `sounds: null` the owner sees
+  the same sample set twice: once as "Unverified", once as
+  "Installed, not in the catalogue". Both statements are true and the app
+  cannot join them, because the only link is the title and titles demonstrably
+  lie — the 70B XL has three published spellings ("Electric Grand 70BXL" on
+  Crumar's download page, "Electric Grand 70 BXL" on GSi's product page,
+  "Electric Grand 70B XL" on the instrument). A line on the unverified row
+  saying it *may* be one of the unrecognised sounds listed below would connect
+  them honestly without claiming a match. Parked deliberately 2026-08-20; do
+  not build matching for it.
 - **Do the sample player's parameters do anything?** Whether "Piano Harp",
   "Rel. Smp. Level" and "Ped. Smp. Level" bite on a given sample set is
   unknown, and the v1.22 manual does not cover it (Rule 1). A sweep of each

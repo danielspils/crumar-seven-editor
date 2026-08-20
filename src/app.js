@@ -2998,7 +2998,7 @@
       // your Seven.
       const cat = window.SevenExpansions.classify(expansionCatalogue || {},
         soundTable ? soundTable.sounds : null);
-      const available = cat.expansions.filter((e) => e.status !== 'installed').length;
+      const available = window.SevenExpansions.availableCount(cat.expansions);
       const m = window.SevenModal.open({
         title: soundTable
           ? `Sounds on this Seven — ${soundTable.sounds.length} installed · ${available} available`
