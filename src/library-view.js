@@ -1950,6 +1950,26 @@
         render();
         return true;
       },
+      // DOES THE LIBRARY HAVE A LIST THE ARROWS OBVIOUSLY BELONG TO?
+      //
+      // Same shape and same reason as moveBackupBank above: the arrows are
+      // claimed by what is VISIBLY on screen, not by whatever was selected
+      // last. Opening a backup run selects nothing, so `lastTouched` stays
+      // 'device' and up/down drove the INSTRUMENT's selection instead — the
+      // centre column changed while no row in the run ever highlighted
+      // (Daniel, 2026-08-20). That is the exact trap the horizontal branch
+      // already documents falling into.
+      //
+      // Answering only for an OPEN RUN or an OPEN SETLIST keeps it narrow: a
+      // list you have deliberately stepped into, with its rows on screen. The
+      // flat Patches list is left to `lastTouched`, where clicking a row is
+      // the selection that claims the keys anyway.
+      ownsVerticalArrows() {
+        if (!el.querySelector('.lib-row.lib-patch, .lib-slot[data-file]')) return false;
+        if (state.tab === 'backups' && state.backupRun != null) return true;
+        if (state.setlistIndex != null) return true;
+        return false;
+      },
       update(next) {
         data = next;
         // Drop a selection whose row no longer exists (file trashed/renamed).

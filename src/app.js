@@ -837,12 +837,31 @@
         e.preventDefault();
         return;
       }
-      if (lastTouched === 'library') return;
+      // The library owns left/right only while it is OPEN. Closing it is the
+      // other way of "going back to On the Seven", and it needs no click in
+      // this region to count — pressing an arrow the moment the tray is back
+      // on screen must move the tabs, not be swallowed by a selection made
+      // before the library was shut (Daniel, 2026-08-20).
+      //
+      // While it IS open, the gate stands: swapping the instrument's bank
+      // behind somebody reading their library moves something they are not
+      // looking at.
+      if (lastTouched === 'library' && document.querySelector('#library.lib-open')) return;
       if (moveBankTab(dir)) e.preventDefault();
       return;
     }
     e.preventDefault();
     const dir = e.key === 'ArrowDown' ? 1 : -1;
+    // AN OPEN LIST ANSWERS FIRST, whatever was touched last — the same rule
+    // the horizontal arrows already use for a backup's bank tabs. Opening a
+    // run is not "selecting", so lastTouched stayed 'device' and up/down moved
+    // the INSTRUMENT's selection: the centre column changed while no row in
+    // the run ever highlighted, because the highlight belonged to a list the
+    // keys were not driving (Daniel, 2026-08-20).
+    if (libView.ownsVerticalArrows && libView.ownsVerticalArrows()) {
+      moveLibrarySelection(dir);
+      return;
+    }
     if (lastTouched === 'library') moveLibrarySelection(dir);
     else moveBankSelection(dir);
   });
@@ -1807,8 +1826,6 @@
   tabsEl.addEventListener('click', (e) => {
     const tab = e.target.closest('.bank-tab');
     if (!tab) return;
-    // Navigation only — browsing banks never changes either SELECTION.
-    //
     // Navigation only — browsing banks never changes either selection.
     //
     // NOT YET: auto-selecting preset 1 here (Daniel wants that) fired a recall
