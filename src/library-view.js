@@ -20,13 +20,6 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SevenLibraryView = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
-  // PROTOTYPE FLAG (SEVEN_BANK_TABS=1), read once at load. Module scope
-  // because renderBackupRun is a module-level function; inside the component
-  // it was out of scope and every backup render threw. A relaunch is the only
-  // way to change it, which is the point — flip the view without a rebuild.
-  const BANK_TABS = !!(typeof window !== 'undefined'
-    && window.sevenAPI && window.sevenAPI.devFlags && window.sevenAPI.devFlags.bankTabs);
-
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -546,7 +539,15 @@
     const byFile = new Map();
     for (const e of data.patches) if (!byFile.has(e.file)) byFile.set(e.file, e);
 
-    // ---- PROTOTYPE: bank tabs (SEVEN_BANK_TABS=1) -------------------------
+    // BANK TABS. The same four banks "On the Seven" shows as tabs, shown here
+    // as tabs too — one relationship, one visual system. These are the
+    // .bank-tab buttons the instrument list uses, unchanged; only the
+    // container selector was widened to admit a second instance. A second tab
+    // component would drift within a month.
+    //
+    // NO LOCK GLYPH. On the instrument it says Crumar reserves Bank 1; in a
+    // backup those eight records can be sent to any bank, so the lock would
+    // decorate a fact that does not apply.
     // The same four banks "On the Seven" shows as tabs, shown here as tabs
     // instead of four stacked headings — so the two views are one visual
     // system rather than two. The .bank-tab markup and CSS are the ones the
@@ -566,7 +567,7 @@
     );
     const slotsOf = (b) => (data.setlists[b.index] || {}).slots || [];
 
-    if (BANK_TABS) {
+    {
       const searching = !!String(state.search || '').trim();
 
       // SEARCHING HIDES THE TABS. A tab is a filter, and a search across four
@@ -608,46 +609,6 @@
         `<div class="bank-tabs lib-bank-tabs">${tabs}</div>` +
         `<div class="lib-group">${rows}</div>`;
     }
-    // ---- end prototype ----------------------------------------------------
-
-    const banks = run.banks.map((b) => {
-      const slots = (data.setlists[b.index] || {}).slots || [];
-      const rows = slots
-        .map((f) => (f ? byFile.get(f) : null))
-        // Searching inside a run filters its records; a slot whose record does
-        // not match reads as empty, because the run's shape is eight positions
-        // and hiding rows would renumber them.
-        .map((e) => (e && matches(e, state.search) ? e : null))
-        .map((e, i) => (e
-          // No pill here either: a backup is a list of forty rows the same
-          // way, and selecting one answers the question in the centre column
-          // (Daniel, 2026-08-13). The preset NUMBER still leads the row —
-          // that is what a backup is a record of.
-          ? renderPatchRow(e, state, { inRun: true, flat: true, readOnly: true })
-          : `<div class="lib-row lib-slot-empty"><span class="patch-num">${i + 1}</span>` +
-            '<span class="lib-empty-slot">empty</span></div>'))
-        .join('');
-      // One Send per BANK, not one per run: a transfer walks eight slots into
-      // one bank, and the target bank is chosen in the dialog — so this offers
-      // "these eight patches, onto a bank of your choosing" (Daniel,
-      // 2026-08-13). Bank 1's eight are offered too: they cannot be written
-      // BACK to Bank 1, but sending the factory eight to Bank 3 is a
-      // perfectly ordinary thing to want.
-      return (
-        '<div class="lib-group">' +
-        `<div class="lib-group-title lib-group-title-row">Bank ${b.bank}` +
-        `<button type="button" class="setlist-send" data-setlist-send="${b.index}" ` +
-        `title="Load these eight patches onto a bank on the Seven">Send to Seven →</button>` +
-        '</div>' + rows + '</div>'
-      );
-    }).join('');
-    return (
-      '<div class="lib-setlist-head">' +
-      '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtDateLong(run.date))}` +
-      `${run.partial ? ' · failed' : ''}</span>` +
-      '</div>' + banks
-    );
   }
 
   // The runs themselves: one row per backup, newest first.
@@ -1304,8 +1265,7 @@
       pickSearch: '',
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
       slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
-      // PROTOTYPE (SEVEN_BANK_TABS=1). Which bank the open backup is showing.
-      // Only read when the flag is on; the stacked-headings view ignores it.
+      // Which bank the open backup is showing.
       backupBank: 0,
     };
     // NAVIGATION CLEARS THE SEARCH. A filter belongs to the list you are
@@ -1527,7 +1487,7 @@
         }
       }
 
-      // PROTOTYPE (SEVEN_BANK_TABS): which bank the open backup shows. View
+      // Which bank the open backup shows. View
       // state only — it selects nothing and touches no file.
       const bankTab = e.target.closest('[data-backup-bank]');
       if (bankTab) {
@@ -1677,7 +1637,7 @@
         // so clicking a backup did nothing at all (Daniel, 2026-08-13).
         if (setlistRow.dataset.backup) {
           state.backupRun = setlistRow.dataset.backup;
-          state.backupBank = 0; // every run opens on Bank 1 (prototype)
+          state.backupBank = 0; // every run opens on Bank 1
           render();
           return;
         }
@@ -1967,7 +1927,7 @@
     );
 
     return {
-      // PROTOTYPE (SEVEN_BANK_TABS). Left/right walk the backup's bank tabs,
+      // Left/right walk the backup's bank tabs,
       // the way they walk the instrument's — up and down already walk the rows
       // inside one, and the two views should answer the same keys the same way
       // or the resemblance is only skin deep (Daniel, 2026-08-20).
@@ -1980,7 +1940,6 @@
       // run is open, or a search has replaced them with a flat list. Stepping
       // a tab nobody can see is a keypress that appears to do nothing.
       moveBackupBank(dir) {
-        if (!BANK_TABS) return false;
         if (state.tab !== 'backups' || state.backupRun == null) return false;
         if (String(state.search || '').trim()) return false;
         const run = backupRuns(data).find((r) => r.key === state.backupRun);

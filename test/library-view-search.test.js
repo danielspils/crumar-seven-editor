@@ -130,14 +130,14 @@ test('a search inside a backup filters it and stays open', async () => {
   const m = mount();
   await startSearch(m, 'preset 3');
   assert.ok(boxOpen(m), 'the box is open');
-  // Inside a run the row shows the STRIPPED name — bank and preset live in the
-  // heading — so the assertion is about how many slots still hold a record.
-  // Non-matching slots blank rather than disappear: the run's shape is eight
-  // positions and hiding rows would renumber them.
+  // Searching a run FLATTENS it across all four banks — the tabs are a filter,
+  // and searching inside four filtered lists would ask someone to check four
+  // places for their own word. So the result is the matches themselves, with
+  // no empty placeholders standing in for the slots that did not match.
   const kept = (m.list.innerHTML.match(/lib-patch/g) || []).length;
   const blanked = (m.list.innerHTML.match(/lib-slot-empty/g) || []).length;
   assert.equal(kept, 4, 'one slot per bank matched "preset 3"');
-  assert.equal(blanked, 28, 'the other twenty-eight blanked');
+  assert.equal(blanked, 0, 'and the run is flattened, not blanked out');
 });
 
 test('leaving a run ends the search', async () => {
