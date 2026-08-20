@@ -36,6 +36,8 @@
   const SLOT_COUNT = 32;
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
   const fmtDate = (iso) => {
     // "2026-08-13" parses as UTC midnight, which is 13 Aug only east of
     // Greenwich — here it rendered as 12 Aug (Daniel, 2026-08-13). Date-only
@@ -43,6 +45,16 @@
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
     const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
     return Number.isNaN(d.getTime()) ? '' : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  };
+
+  // A backup names a DAY, and the row it names it on has room — abbreviating
+  // there saved nothing anybody needed (Daniel, 2026-08-20). The short form
+  // stays where space is genuinely tight: an origin line inside a patch row,
+  // a sound tile's caption.
+  const fmtDateLong = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : `${d.getDate()} ${MONTHS_FULL[d.getMonth()]}`;
   };
 
   // How long ago, in the units a person would use. "Created 13 Aug" makes you
@@ -548,7 +560,7 @@
     const runHead = (extra) => (
       '<div class="lib-setlist-head">' +
       '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
+      `<span class="lib-setlist-name">${esc(fmtDateLong(run.date))}` +
       `${run.partial ? ' · failed' : ''}</span>` + (extra || '') +
       '</div>'
     );
@@ -632,7 +644,7 @@
     return (
       '<div class="lib-setlist-head">' +
       '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtDate(run.date))}` +
+      `<span class="lib-setlist-name">${esc(fmtDateLong(run.date))}` +
       `${run.partial ? ' · failed' : ''}</span>` +
       '</div>' + banks
     );
@@ -670,14 +682,14 @@
         '<div class="lib-row lib-setlist-row">' +
         `<button type="button" class="lib-setlist" data-backup="${esc(r.key)}">` +
         `<span class="patch-num">${i + 1}</span>` +
-        `<span class="lib-setlist-name">${esc(fmtDate(r.date))} Backup</span>` +
+        `<span class="lib-setlist-name">${esc(fmtDateLong(r.date))} Backup</span>` +
         (impossible
           ? `<span class="lib-setlist-count is-wrong" role="button" tabindex="0" ` +
             `data-over-count="${slots}" title="More patches than the Seven has">${esc(count)}</span>`
           : `<span class="lib-setlist-count">${esc(count)}</span>`) +
         '</button>' +
         `<button type="button" class="setlist-delete" data-backup-delete="${esc(r.key)}" ` +
-        `title="Delete the ${esc(fmtDate(r.date))} backup ` +
+        `title="Delete the ${esc(fmtDateLong(r.date))} backup ` +
         `(the patches stay in the library)">` +
         '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
         'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
@@ -1955,6 +1967,30 @@
     );
 
     return {
+      // PROTOTYPE (SEVEN_BANK_TABS). Left/right walk the backup's bank tabs,
+      // the way they walk the instrument's — up and down already walk the rows
+      // inside one, and the two views should answer the same keys the same way
+      // or the resemblance is only skin deep (Daniel, 2026-08-20).
+      //
+      // Returns true when it took the keypress, so app.js can leave the
+      // instrument's tabs alone. CLAMPS rather than wrapping, matching the
+      // panel: those four buttons do not wrap either.
+      //
+      // Answers nothing when the tabs are not on screen — the flag is off, no
+      // run is open, or a search has replaced them with a flat list. Stepping
+      // a tab nobody can see is a keypress that appears to do nothing.
+      moveBackupBank(dir) {
+        if (!BANK_TABS) return false;
+        if (state.tab !== 'backups' || state.backupRun == null) return false;
+        if (String(state.search || '').trim()) return false;
+        const run = backupRuns(data).find((r) => r.key === state.backupRun);
+        if (!run || !run.banks.length) return false;
+        const next = (Number(state.backupBank) || 0) + dir;
+        if (next < 0 || next >= run.banks.length) return true; // at the end; still ours
+        state.backupBank = next;
+        render();
+        return true;
+      },
       update(next) {
         data = next;
         // Drop a selection whose row no longer exists (file trashed/renamed).

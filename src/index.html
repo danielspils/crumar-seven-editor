@@ -1033,6 +1033,17 @@
        `.setlist-icon:first-of-type` matched nothing, because :first-of-type
        counts element type and the first <button> in this row is .lib-back. */
     .lib-setlist-head .lib-back { margin-right: auto; }
+    /* The date sits BETWEEN the two controls rather than beside the back
+       button: it names what you are looking at, and a title tucked against the
+       left edge reads as a caption on the button next to it. Absolute, not a
+       flex child, so it centres on the HEADER — centring it in the leftover
+       space would move it every time the Send button's bank number changed
+       width (Daniel, 2026-08-20). */
+    .lib-setlist-head { position: relative; }
+    .lib-setlist-head .lib-setlist-name {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      white-space: nowrap; pointer-events: none;
+    }
     .lib-setlist-head .setlist-send { opacity: 1; }
     /* Drawn on the same grid as .slot-clear (the trash can on a slot row):
        no fill, hairline stroke, round joins — and the same colour and the same

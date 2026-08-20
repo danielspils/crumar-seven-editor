@@ -218,8 +218,8 @@ test('each run row opens ITS run, not the first one sharing its date', () => {
     const html = SevenLibraryView.renderBody(data, { tab: 'backups', backupRun: key, search: '' });
     return /lib-setlist-name">([^<]*)</.exec(html)[1];
   };
-  assert.strictEqual(header('2026-08-16|partial'), '16 Aug · failed');
-  assert.strictEqual(header('2026-08-16'), '16 Aug', 'the clean run opens as itself');
+  assert.strictEqual(header('2026-08-16|partial'), '16 August · failed');
+  assert.strictEqual(header('2026-08-16'), '16 August', 'the clean run opens as itself');
 });
 
 test('runs sort newest first, and a later run of the same day leads', () => {
@@ -252,7 +252,7 @@ test('runs sort newest first, and a later run of the same day leads', () => {
   const html = SevenLibraryView.renderBody({ patches: [], setlists: days, files: 0 },
     { tab: 'backups', search: '' });
   const names = [...html.matchAll(/lib-setlist-name">([^<]+)</g)].map((m) => m[1]);
-  assert.deepStrictEqual(names, ['16 Aug Backup', '12 Aug Backup']);
+  assert.deepStrictEqual(names, ['16 August Backup', '12 August Backup']);
 });
 
 // --- Patches is yours ------------------------------------------------------

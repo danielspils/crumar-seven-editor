@@ -820,11 +820,25 @@
     // the arrows belong to the grid.
     if (document.querySelector('.seven-modal-overlay, .pick-overlay')) return;
     if (horizontal) {
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
       // The library was the last thing touched, so its list owns the arrows.
-      // Left and right mean nothing there yet, and swapping the bank behind an
-      // open library would move something the reader is not looking at.
+      // An open backup answers them with its own bank tabs (SEVEN_BANK_TABS);
+      // anywhere else in the library they still mean nothing, and swapping the
+      // instrument's bank behind an open library would move something the
+      // reader is not looking at.
+      // An OPEN BACKUP answers first, whatever was touched last. Gating this on
+      // lastTouched looked right and did nothing: opening a run is not
+      // "selecting" anything, so lastTouched was still 'device' and the arrows
+      // walked the instrument's tabs while a backup filled the screen
+      // (Daniel, 2026-08-20). moveBackupBank answers false unless its tabs are
+      // actually visible — flag on, a run open, no search — so this claims the
+      // keys only in the one state where they obviously belong to it.
+      if (libView.moveBackupBank && libView.moveBackupBank(dir)) {
+        e.preventDefault();
+        return;
+      }
       if (lastTouched === 'library') return;
-      if (moveBankTab(e.key === 'ArrowRight' ? 1 : -1)) e.preventDefault();
+      if (moveBankTab(dir)) e.preventDefault();
       return;
     }
     e.preventDefault();
