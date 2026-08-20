@@ -206,6 +206,9 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   notes: {
     latest: () => ipcRenderer.invoke('notes:latest'),
     open: (url) => ipcRenderer.invoke('notes:open', url),
+    // Dismissing and following both count as having been told, so the strip
+    // does not come back on the next launch.
+    dismiss: (url) => ipcRenderer.invoke('notes:dismiss', url),
   },
   // Setlist mutations (setlists.json; every mutation persists immediately).
   setlists: {

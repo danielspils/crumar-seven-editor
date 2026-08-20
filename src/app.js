@@ -858,6 +858,53 @@
     runUndo();
   });
 
+  // ---- Notes strip ----------------------------------------------------------
+  //
+  // THE HALF THAT WAS NEVER WRITTEN. The main process has answered
+  // `notes:latest` since 2026-08-10 and nothing ever called it, so the strip
+  // could not appear for anybody — and because its absence is also its normal
+  // state, ten days passed without a sign (Daniel, 2026-08-20).
+  //
+  // ONCE, AT LAUNCH. A blog post is not urgent; polling would be a background
+  // network call in an app whose only other network call is the updater. If it
+  // is missed today it is there on the next launch, because "seen" is the URL
+  // that was dismissed, not a date that expires.
+  //
+  // Every decline is silent to the user and logged with its reason in the main
+  // process. Someone opening the app to back up presets never learns that a
+  // blog was unreachable.
+  async function showNotesStrip() {
+    const strip = document.getElementById('notes-strip');
+    const openBtn = document.getElementById('notes-strip-open');
+    const closeBtn = document.getElementById('notes-strip-close');
+    if (!strip || !openBtn || !closeBtn) return;
+
+    let latest;
+    try {
+      latest = await window.sevenAPI.notes.latest();
+    } catch {
+      return; // the main process has already said why
+    }
+    if (!latest || !latest.ok || latest.seen || !latest.title) return;
+
+    openBtn.textContent = `New in Notes — ${latest.title}`;
+    openBtn.title = latest.title;
+    strip.hidden = false;
+
+    // Following it counts as having been told: it must not be waiting again
+    // on the next launch.
+    const done = () => {
+      strip.hidden = true;
+      window.sevenAPI.notes.dismiss(latest.url);
+    };
+    openBtn.addEventListener('click', () => {
+      window.sevenAPI.notes.open(latest.url);
+      done();
+    });
+    closeBtn.addEventListener('click', done);
+  }
+  showNotesStrip();
+
   window.sevenAPI.onViewCommand((msg) => {
     if (msg && msg.type === 'undo') runUndo();
   });
@@ -1760,6 +1807,8 @@
   tabsEl.addEventListener('click', (e) => {
     const tab = e.target.closest('.bank-tab');
     if (!tab) return;
+    // Navigation only — browsing banks never changes either SELECTION.
+    //
     // Navigation only — browsing banks never changes either selection.
     //
     // NOT YET: auto-selecting preset 1 here (Daniel wants that) fired a recall

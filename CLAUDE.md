@@ -470,6 +470,78 @@ process, and code that looks like it does is dead. The store's own sentence
 ("There's already a patch called “Alpha”.") is what the user ends up reading,
 which is a reason to write those sentences for a person rather than for a log.
 
+## A feature that was never wired up, and looked shipped for ten days (2026-08-20)
+
+The Notes strip — a one-line pointer at the newest post on the website — did not
+appear when a post went live. The reason was not the feed, the cache, or the
+parse. **Nothing in the renderer ever called it.**
+
+`ipcMain.handle('notes:latest')` and `sevenAPI.notes.latest` both existed and
+both worked; running the handler's own regexes against the live feed returned
+the right title and URL. There was simply no consumer, and there never had
+been — `git log --all -S "sevenAPI.notes" -- src/app.js` is empty, so no
+renderer half was lost in a merge. It was absent from the v1.3.0 tag too.
+
+**Two things made it invisible for ten days:**
+
+1. **The plumbing arrived as a side-carry.** It went in on 2026-08-10 in
+   `8c40831` — *"Modeled reads blue, Sampled green"* — a commit about badge
+   colours that also touched `main.js`, `preload.js` and `index.html`. Nobody
+   returns to a badge commit to check whether its unrelated passenger got
+   connected. **A capability added inside a commit about something else is a
+   capability nobody remembers to finish.** Land plumbing in its own commit,
+   with its consumer, or not yet.
+2. **THE TELL IS A PRELOAD SURFACE WITH ZERO CALLERS.** `sevenAPI.notes.latest`
+   was exposed, documented, and called from nowhere — and that is greppable in
+   one line. Anything on `sevenAPI` that nothing calls is either dead or
+   unfinished, and both are worth knowing:
+
+   ```
+   grep -c "sevenAPI\.<name>" src/*.js       # 0 means nobody is using it
+   ```
+
+**And the failure looked exactly like the idle state.** The strip is absent most
+days because there is usually no new post, so "broken" and "nothing to say" were
+one observable — the same shape as the Buttondown subscribe form and the
+download report. Seven distinct paths all returned a bare `{ ok: false }`.
+
+Every one of them now returns its own reason and logs it in the main process
+(`[notes] no strip: …`) — never to the user, who opened the app to back up
+presets and should not learn that a blog was unreachable. The parse lives in
+`src/notes-feed.js` and the seen-state in `src/notes-seen.js`, both pure with
+injected paths, so `npm test` can reach every refusal.
+
+`SEVEN_RESET_NOTES` and `SEVEN_NOTES_DEBUG` are permanent, for the same reason
+`SEVEN_RESET_DONATIONS` is: the state is one-directional, so without them the
+feature can be seen exactly once per published post and no change to it could
+be verified.
+
+## A test that SKIPS on failure is worse than no test (2026-08-20)
+
+The first version of `test/ui/scenarios/notes-strip.js` skipped whenever the
+feed returned `{ ok: false }`. That meant **a 404, or a feed whose shape had
+changed, would have gone green** — rebuilding precisely the property that let
+the original bug hide, inside the test written to catch it. A skip reads as
+"fine, not applicable" and nobody looks again.
+
+Now only genuine unreachability skips:
+
+```js
+if (!latest.ok && /^feed unreachable/.test(latest.reason)) { note(); return; }
+if (!latest.ok) { check(false, latest.reason); }   // everything else FAILS
+```
+
+**The general rule: a scenario may skip only for a precondition it cannot
+control — no instrument attached, no network — and never for a result the
+feature is responsible for.** When writing the skip, say which of the two it is.
+
+Related: prove a test fails for the reason you think. Deleting the consumer
+reproduced the original bug and the scenario named it exactly ("the feed offered
+X and nothing rendered — is the renderer half wired up?"). And an end-to-end
+test cannot reach shapes the real world never serves: the mutation deleting the
+title guard PASSED against the live feed, because the site always has titles.
+That case only exists in `test/notes-feed.test.js`.
+
 ## Still open from the QA pass
 
 In Daniel's order, items 3 and 4 of five:

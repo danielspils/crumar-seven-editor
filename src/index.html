@@ -1090,6 +1090,29 @@
        appeared (Daniel, 2026-08-12 — "I'm still seeing a modal in the lower
        portion flash by"). Everything the app says now arrives in the same
        place the modals do. */
+    /* The Notes strip: one quiet line, the width of the window. Nothing on it
+       but the sentence and a way to make it go away. */
+    #notes-strip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      background: var(--bg-raised); border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+    #notes-strip[hidden] { display: none; }
+    #notes-strip-open {
+      flex: 1 1 auto; min-width: 0; text-align: left;
+      background: none; border: none; padding: 0;
+      font: inherit; color: var(--text-muted); cursor: pointer;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #notes-strip-open:hover { color: var(--text); text-decoration: underline; }
+    #notes-strip-close {
+      flex: none; width: 20px; height: 20px;
+      background: none; border: none; border-radius: 4px;
+      color: var(--text-dim); font-size: 15px; line-height: 1; cursor: pointer;
+    }
+    #notes-strip-close:hover { color: var(--text); }
+
     #undo-toast {
       position: fixed; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 8px));
       z-index: 80; pointer-events: none;
@@ -2523,6 +2546,15 @@
   <div id="write-gate" hidden>
     <span id="write-gate-text"></span>
     <button id="report-instrument" type="button">Report this instrument</button>
+  </div>
+  <!-- One line, above everything, when a Notes post is newer than the last one
+       dismissed. Follows the write-gate banner's position because it is the
+       same kind of thing — a message about the app rather than a control in
+       it — but unlike that banner this one CAN be waved away, and stays away:
+       it is news, not a safety gate. -->
+  <div id="notes-strip" hidden>
+    <button type="button" id="notes-strip-open"></button>
+    <button type="button" id="notes-strip-close" aria-label="Dismiss">&times;</button>
   </div>
   <div id="main">
     <div id="library">

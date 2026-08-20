@@ -15,6 +15,8 @@ const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
 const { formatSetlist } = require('./setlist-text');
 const { mailSetlist } = require('./mailto');
+const { NotesSeen } = require('./notes-seen');
+const { parseNotesFeed } = require('./notes-feed');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
 // enabled, checked 2026-08-15. It pointed at this-seven-goes-to-eleven, which
@@ -578,6 +580,22 @@ const NOTES_SITE = 'https://thissevengoestoeleven.com/';
 const KOFI_URL = 'https://ko-fi.com/danielspils';
 let donations = null;
 
+let notesSeen = null;
+function getNotesSeen() {
+  if (!notesSeen) {
+    notesSeen = new NotesSeen(app.getPath('userData'));
+    // SEVEN_RESET_NOTES: development only, and permanent, for the same reason
+    // SEVEN_RESET_DONATIONS is — this state is one-directional, so without it
+    // the strip can be seen exactly once per published post and no change to
+    // it could ever be verified.
+    if (process.env.SEVEN_RESET_NOTES) {
+      notesSeen.reset();
+      console.log('[notes] seen-state reset (SEVEN_RESET_NOTES)');
+    }
+  }
+  return notesSeen;
+}
+
 function getDonations() {
   if (!donations) {
     donations = new Donations(app.getPath('userData'));
@@ -616,25 +634,58 @@ function registerNotesIpc() {
     return notice;
   });
 
+  // EVERY WAY THIS CAN DECLINE NOW SAYS WHICH ONE IT WAS.
+  //
+  // The old version returned a bare { ok: false } from seven different paths,
+  // and the strip's absence is also its normal state — so a feed that had
+  // 404'd, a shape that had changed, and "no new post" were one observable.
+  // The renderer half was missing entirely for ten days and nothing could have
+  // revealed it (Daniel, 2026-08-20). The log line is for the maintainer, in
+  // the terminal; users are never told the blog was unreachable.
+  const noStrip = (reason) => {
+    console.warn(`[notes] no strip: ${reason}`);
+    return { ok: false, reason };
+  };
+
   ipcMain.handle('notes:latest', async () => {
+    const debug = !!process.env.SEVEN_NOTES_DEBUG;
+    let res;
     try {
-      const res = await fetch(NOTES_FEED_URL, { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) return { ok: false };
-      const xml = await res.text();
-      const entry = (xml.match(/<entry>[\s\S]*?<\/entry>/) || [])[0];
-      if (!entry) return { ok: false };
-      const title = (entry.match(/<title[^>]*>([\s\S]*?)<\/title>/) || [])[1] || '';
-      const url = (entry.match(/<link[^>]*href="([^"]+)"/) || [])[1] || '';
-      const published = (entry.match(/<published>([^<]+)<\/published>/) || [])[1] || '';
-      // Only ever hand back a link to the site itself.
-      if (!url.startsWith(NOTES_SITE)) return { ok: false };
-      const decode = (t) => t
-        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-      return { ok: true, title: decode(title).trim(), url, published };
-    } catch {
-      return { ok: false };
+      res = await fetch(NOTES_FEED_URL, { signal: AbortSignal.timeout(6000) });
+    } catch (err) {
+      // Offline, DNS, TLS, or the 6s timeout — all arrive here.
+      return noStrip(`feed unreachable (${(err && err.name) || 'error'}: ${(err && err.message) || err})`);
     }
+    if (!res.ok) return noStrip(`feed returned HTTP ${res.status}`);
+
+    let xml;
+    try {
+      xml = await res.text();
+    } catch (err) {
+      return noStrip(`feed body unreadable (${(err && err.message) || err})`);
+    }
+
+    // The parse lives in src/notes-feed.js so `npm test` can reach every one
+    // of its refusals — the UI scenario runs against the LIVE feed and cannot
+    // produce a title-less entry.
+    const parsed = parseNotesFeed(xml, NOTES_SITE);
+    if (!parsed.ok) return noStrip(parsed.reason);
+    const { title, url, published } = parsed;
+
+    // SEVEN_NOTES_DEBUG shows the strip whatever has been dismissed, so the
+    // feature can be seen more than once per published post.
+    const seen = debug ? false : getNotesSeen().hasSeen(url);
+    if (debug) console.log(`[notes] ${JSON.stringify(title)} → ${url} (seen check bypassed)`);
+    else if (seen) console.log(`[notes] newest post already dismissed: ${url}`);
+
+    return { ok: true, title, url, published, seen };
+  });
+
+  // Dismissed, or followed — both count as having been told.
+  ipcMain.handle('notes:dismiss', (_e, url) => {
+    const wrote = getNotesSeen().markSeen(url);
+    if (!wrote) console.warn(`[notes] could not record dismissal of ${url}`);
+    return { ok: wrote };
   });
   // Opening is gated on the same prefix — a renderer bug can't launch
   // arbitrary URLs.
