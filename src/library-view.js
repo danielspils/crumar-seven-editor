@@ -1125,19 +1125,34 @@
     );
   }
 
+  // WHICH LIST IS SHOWING. One definition, because there used to be two: the
+  // search box re-renders `.lib-list` on its own (a full render would replace
+  // the input and lose the caret), and its copy of this routing had no
+  // backups branch. So typing inside an open backup run swapped the run for
+  // the flat Patches list — which does not contain captured records at all —
+  // and every search inside a backup answered "No patches match the search"
+  // about words that were on screen (Daniel, 2026-08-20).
+  //
+  // Anything that needs the list's markup calls this. A third copy would go
+  // stale the same way.
+  function renderList(data, state, sounds) {
+    if (state.tab === 'backups') {
+      return state.backupRun == null
+        ? renderBackupList(data, state)
+        : renderBackupRun(data, state);
+    }
+    if (state.tab === 'setlists') {
+      return state.setlistIndex == null
+        ? renderSetlistList(data, state)
+        : renderSetlistSlots(data, state, { sounds });
+    }
+    return renderAllPatches(data, state);
+  }
+
   function renderBody(data, state, sounds) {
     const tab = (id, label) =>
       `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}"><span class="seg-label">${label}</span></button>`;
-    const listHtml =
-      state.tab === 'backups'
-        ? (state.backupRun == null
-          ? renderBackupList(data, state)
-          : renderBackupRun(data, state))
-        : state.tab === 'setlists'
-          ? (state.setlistIndex == null
-            ? renderSetlistList(data, state)
-            : renderSetlistSlots(data, state, { sounds }))
-          : renderAllPatches(data, state);
+    const listHtml = renderList(data, state, sounds);
     return (
       `<div class="lib-bar">` +
       `<div class="lib-seg">${tab('backups', 'Backups')}${tab('patches', 'Patches')}` +
@@ -1728,14 +1743,7 @@
       if (e.target.classList.contains('lib-search')) {
         state.search = e.target.value;
         const list = el.querySelector('.lib-list');
-        if (list) {
-          list.innerHTML =
-            state.tab === 'setlists'
-              ? state.setlistIndex == null
-                ? renderSetlistList(data, state)
-                : renderSetlistSlots(data, state, { sounds: on.sounds })
-              : renderAllPatches(data, state);
-        }
+        if (list) list.innerHTML = renderList(data, state, on.sounds);
       }
     });
 
