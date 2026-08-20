@@ -1221,6 +1221,16 @@
       lastCleared: null, // { setlist, slot, file } — offer back an accidental clear
       slotPulse: null,   // { slot, kind } — one-shot, consumed by the next render
     };
+    // NAVIGATION CLEARS THE SEARCH. A filter belongs to the list you are
+    // looking at, not to the library — leave a run with a search running and
+    // come back, and you land in a filtered view you did not ask for, with the
+    // box collapsed to a magnifier so nothing on screen says why most of the
+    // backup is missing (Daniel, 2026-08-20).
+    //
+    // Every way INTO or OUT OF a detail view calls this. Typing is a thing you
+    // do to a list; going somewhere else ends it.
+    const clearSearch = () => { state.search = ''; state.searchOpen = false; };
+
     let data = { patches: [], setlists: [] };
 
     const entryAt = (node) => {
@@ -1286,6 +1296,28 @@
     let lastNameClick = { key: null, t: 0 };
     let openTimer = null;
 
+    // Clicks that never reach the library at all: the bank rows, the panel
+    // strip, the detail pane. Same rule — the filter belongs to the list being
+    // looked at, and that is no longer the thing being looked at.
+    if (typeof document !== 'undefined') {
+      // CAPTURE PHASE, deliberately. In the bubble phase the library's own
+      // handler has already re-rendered, so the clicked node is DETACHED and
+      // `closest('#library')` finds nothing — every click on a result looked
+      // like a click outside the library and cleared the search that produced
+      // it (Daniel, 2026-08-20). Capture runs before any of that, while the
+      // node is still where it was clicked.
+      document.addEventListener('click', (e) => {
+        if (!state.search || state.picking != null) return;
+        // `el`, this component's own element — NOT #library, which is the whole
+        // left panel and contains the bank rows too, so clicking a preset on
+        // the instrument counted as staying inside the library and left the
+        // search running (Daniel, 2026-08-20).
+        if (!e.target || (el.contains && el.contains(e.target))) return;
+        clearSearch();
+        render();
+      }, true);
+    }
+
     el.addEventListener('click', async (e) => {
       // THE PICKER ANSWERS FIRST, AND ALONE. It is an overlay across the whole
       // panel, so while it is up nothing underneath is reachable — and its own
@@ -1294,6 +1326,23 @@
       // closed the picker AND left the setlist (Daniel, 2026-08-16). Anything
       // it does not recognise does nothing at all, which is what a modal
       // means; falling through is what produced the bug.
+      // A CLICK AWAY FROM THE RESULTS ENDS THE SEARCH. Not just navigation:
+      // anything that is not the box, the magnifier that opens it, or one of
+      // the results themselves (Daniel, 2026-08-20). The picker is exempt —
+      // it has its own search and its own state, and it is answered below.
+      let searchEnded = false;
+      if (state.search && state.picking == null
+        && !e.target.closest('.lib-search, [data-search-open], .lib-row')) {
+        clearSearch();
+        searchEnded = true;
+        // Cleared BEFORE the branches run, so whatever this click does, it
+        // builds an unfiltered list. The catch is a click that matches no
+        // branch at all — the run header, a group title, the panel's own
+        // chrome — which changes state and renders nothing, leaving four rows
+        // on screen and an empty search box. So the fall-through at the bottom
+        // renders when nothing else did.
+      }
+
       if (state.picking != null) {
         const pickRun = e.target.closest('[data-pick-run]');
         if (pickRun) { state.pickRun = pickRun.dataset.pickRun; render(); return; }
@@ -1403,6 +1452,7 @@
       // No .pick-cancel exclusion needed any more: while the picker is up it
       // answers every click above and never reaches here.
       if (e.target.closest('.lib-back')) {
+        clearSearch();
         state.setlistIndex = null;
         state.backupRun = null;
         state.lastCleared = null;
@@ -1524,6 +1574,7 @@
       }
       const setlistRow = e.target.closest('.lib-setlist');
       if (setlistRow) {
+        clearSearch();
         // A BACKUP row shares this class but carries a date instead of a
         // setlist index. This handler ran first and set setlistIndex to NaN,
         // so clicking a backup did nothing at all (Daniel, 2026-08-13).
@@ -1563,6 +1614,9 @@
           if (on.select) on.select(entry, { inSetlist: state.setlistIndex != null });
         }
       }
+      // Nothing above returned, so nothing above rendered. If this click ended
+      // a search, the list on screen is still the filtered one.
+      if (searchEnded) render();
     });
 
     el.addEventListener('contextmenu', (e) => {
