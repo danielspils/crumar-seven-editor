@@ -124,9 +124,35 @@ window.ui = (() => {
     return live();
   }
 
+  // WAIT FOR A HUMAN. Some of this app's behaviour cannot be synthesised: a
+  // three-second panel hold, a knob turned by hand, a listening judgement. A
+  // fixed sleep is not a test — it either races the person or wastes their
+  // time — so the scenario blocks until whoever is driving writes the file
+  // named by SEVEN_UI_SIGNAL.
+  //
+  // The hook has existed in main.js since the UI suite was built and NOTHING
+  // has ever used it (2026-08-20), so treat its first use as unproven: it
+  // returns null when the env var is unset, which is indistinguishable from
+  // "not signalled yet". That is why an unset var is an explicit skip here
+  // rather than a wait that would hang forever.
+  async function waitForHuman(prompt, { timeout = 120000 } = {}) {
+    const first = await window.sevenAPI.devSignal();
+    if (first === null) {
+      note(`cannot wait for a human step: SEVEN_UI_SIGNAL is not set (${prompt})`);
+      return false;
+    }
+    note(`WAITING FOR YOU: ${prompt}`);
+    const ok = await waitFor(async () => {
+      const v = await window.sevenAPI.devSignal();
+      return typeof v === 'string' && v.length > 0;
+    }, { timeout, step: 250, what: `the human step: ${prompt}` });
+    if (ok) note('signal received — carrying on');
+    return ok;
+  }
+
   return {
     sleep, check, note, click, hitTarget, waitFor, waitEl, $, $$, connected, live,
-    requireDevice, selectBankPreset, enterAudition, openLibrary,
+    requireDevice, selectBankPreset, enterAudition, openLibrary, waitForHuman,
     result: () => ({ failures, notes }),
   };
 })();
