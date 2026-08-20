@@ -91,15 +91,15 @@ as "Installed, not in the catalogue" from the device side. Both rows individuall
 true, describing the same sound. The header also counted the unverified entries as
 available, offering him sounds he already owned.
 
-**Status:** fixed in 1.2.1. I bought and installed all three, read the names off my
-own instrument, and filled them in. The available count no longer treats "we don't
+**Status:** fixed in 1.2.1. I downloaded and installed all three — they are free
+from Crumar — read the names off my own instrument, and filled them in. The available count no longer treats "we don't
 know" as "you don't have it" — which the module's own header had said all along.
 
 **What it produced beyond the fix:** the free README PDF that ships with each
 expansion carries the instrument's exact sound name in its page footer. Predicted
 all three names from footers before installing and was right character for
-character. So every future Crumar expansion can be catalogued without buying it,
-installing it, or waiting for an owner. That's the permanent fix; the three lines
+character. So every future Crumar expansion can be catalogued without installing
+it or waiting for an owner. That's the permanent fix; the three lines
 of data were just today's.
 
 Also learned: installing expansions RENUMBERS the instrument's sound ids. Ids

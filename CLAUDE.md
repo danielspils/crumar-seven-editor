@@ -173,8 +173,12 @@ installed.
 **The expansions are FREE DOWNLOADS from Crumar, not purchases.** Each README
 says so in its own first line ("This free wavetable expansion for the Crumar
 Seven"). "Available" in the Sounds header means a set this instrument does not
-have, not a shopping list — several code comments still say "buy" and are
-wrong (Daniel, 2026-08-20).
+have, not a shopping list.
+
+**So never describe one as bought, purchased, sold or paid for** — in UI copy,
+comments, docs or release notes. A future session reads those as fact and
+repeats them to users, which misrepresents Crumar. Say downloaded, installed,
+or owned. ("Available" is accurate and stays.)
 
 **The name is in the README PDF's page footer.** Every package ships one, and
 every page of it carries:

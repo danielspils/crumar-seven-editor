@@ -2815,7 +2815,7 @@
     // imply it can: installing happens on the instrument's own Wi-Fi editor,
     // which needs Crumar's Wi-Fi USB adapter. Someone without that dongle
     // cannot install expansions at all, and should learn that here rather than
-    // after buying one.
+    // after downloading one.
     const expansionCatalogue = window.sevenAPI.getExpansions();
 
     const buildSoundsBody = (table) => {
@@ -2898,16 +2898,28 @@
         unknown: ['', ''],
       };
 
-      // ONE ROW PER SOUND, not per download. Venice Upright U1/Felt is a
-      // single purchase supplying two sounds, and listing it as one row meant
-      // a row numbered "23, 24" — so it lists as the two sounds it installs,
-      // which is also what the left column lists (Daniel, 2026-08-15).
+      // BOTH VIEWS LIST SOUNDS. What differs is the NUMBER beside each one and
+      // what the size column can honestly say — and the heading names both
+      // units so either view reconciles against it. Do not "fix" the two views
+      // into agreement: the numbers mean different things on purpose.
       //
-      // The SIZE stays on the first row of each download: it is one file, and
-      // repeating it would read as two purchases. Where the sound names have
-      // never been seen there is nothing to expand, so that download keeps its
-      // catalogue title on a single row.
-      const expRows = (e) => {
+      //   DISCONNECTED  1-11, the sound's place in this list. There is no
+      //                 instrument, so a device position does not exist.
+      //   CONNECTED     the device's own position, 17 and up, behind sixteen
+      //                 built-ins (ids 0-15, rendered id+1).
+      //
+      // THEY CANNOT COLLIDE while the built-ins number sixteen. IF THAT COUNT
+      // EVER DROPS BELOW ELEVEN the ranges start overlapping and this needs
+      // revisiting — "number 4" would then mean two different things depending
+      // on whether a cable was plugged in.
+      //
+      // THE SIZE BELONGS TO THE DOWNLOAD, NOT THE SOUND. Venice Upright U1/Felt
+      // is one file supplying two sounds, so only one row can carry 354.09 Mb;
+      // printing it on both would imply 708 Mb of downloads. The second row
+      // used to be BLANK, which reads as missing data — that is how a user
+      // reported this (Rich Olivieri via Daniel, 2026-08-20). It now says what
+      // is true instead: that the sound arrives with the other one.
+      const expRows = (e, numberFrom) => {
         const size = window.SevenExpansions.downloadSize(e.downloadMb);
         const withPill = (row, status) => {
           const [label, cls] = PILL[status] || PILL.unknown;
@@ -2921,16 +2933,36 @@
           row.appendChild(pill);
           return row;
         };
+
+        // Nothing is known about what this download installs, so the catalogue
+        // title is all there is to list — one row, and it is not a sound.
         if (!e.soundRows) {
-          return [withPill(gridRow(e.title, { size }), e.status)];
+          return [withPill(
+            gridRow(e.title, { ids: r.connected ? '' : String(numberFrom), size }),
+            e.status
+          )];
         }
-        return e.soundRows.map((s, i) => withPill(
-          gridRow(s.name, {
-            ids: s.id === null ? '' : position(s.id),
-            size: i === 0 ? size : '',
-          }),
-          r.connected ? (s.installed ? 'installed' : 'not-installed') : 'unknown'
-        ));
+
+        return e.soundRows.map((sr, i) => {
+          // MEASURED: the size column is 65px, which holds "354.09 Mb" and
+          // little else — "with Venice Upright U1 Felt" overflowed it. So the
+          // cell says the short true thing and the full sentence, with the
+          // download's own name and its size, rides on the tooltip.
+          const shared = i > 0;
+          const row = gridRow(sr.name, {
+            ids: r.connected ? (sr.id === null ? '' : position(sr.id)) : String(numberFrom + i),
+            size: shared ? 'included' : size,
+          });
+          if (shared) {
+            row.classList.add('exp-shared-download');
+            const cell = row.querySelector('.exp-size');
+            if (cell) cell.title = `Included in the ${e.title} download (${size}) — not a separate file`;
+          }
+          return withPill(
+            row,
+            r.connected ? (sr.installed ? 'installed' : 'not-installed') : 'unknown'
+          );
+        });
       };
 
       // TWO COLUMNS, not tabs. The whole question this modal answers is "what
@@ -2958,9 +2990,17 @@
         ));
       }
 
+      // Numbered ACROSS the flattened list, not within each download: a
+      // multi-sound download contributes two numbers, so the counter has to
+      // carry between entries.
+      let soundNo = 1;
       const expansionRows = [...r.expansions]
         .sort((a, b) => a.title.localeCompare(b.title))
-        .flatMap(expRows);
+        .flatMap((e) => {
+          const rows = expRows(e, soundNo);
+          soundNo += rows.length;
+          return rows;
+        });
       // Sounds the instrument reports that no catalogue entry claims. Shown,
       // never dropped: if the matching is wrong, a sound you own must appear
       // as unaccounted for rather than be silently reported missing.
@@ -2973,7 +3013,14 @@
         expansionRows.push(row);
       }
       right.appendChild(group(
-        'is-sampled', `Expansions (${r.expansions.length})`,
+        // BOTH NUMBERS DERIVED. Downloads is the catalogue entry count; sounds
+        // is the total across their sounds arrays. An entry whose sounds are
+        // unknown contributes none, so the second number is what the catalogue
+        // can account for — today that is every one of them.
+        'is-sampled',
+        `Expansions (${r.expansions.length} downloads / `
+          + `${r.expansions.reduce((n, e) => n + ((e.sounds && e.sounds.length) || 0), 0)}`
+          + ' total sounds)',
         'Available from Crumar — can be added and removed.',
         expansionRows
       ));
@@ -3032,7 +3079,7 @@
     // beside the sound list because it answers the next question that list
     // provokes — "what about the ones I don't have?" — and it is offered with
     // NOTHING CONNECTED as well, because the catalogue is worth reading before
-    // buying an expansion, and because that is when someone is deciding.
+    // downloading an expansion, and because that is when someone is deciding.
     const soundsRow = () => {
       const link = document.createElement('button');
       link.type = 'button';
@@ -3073,7 +3120,9 @@
         return;
       }
       // The header IS the answer at a glance: how many sounds this instrument
-      // has, and how many more exist to buy. Offline there is no first number,
+      // has, and how many more are available to download — Crumar's expansions
+      // are FREE, so "available" means a set this Seven does not have, never a
+      // shopping list. Offline there is no first number,
       // and the title says what the list is instead of implying it describes
       // your Seven.
       const cat = window.SevenExpansions.classify(expansionCatalogue || {},
@@ -3216,7 +3265,7 @@
       // without one — but the gear stays put and says so, rather than
       // disappearing and leaving you hunting for it.
       // The globals need an instrument; the expansion catalogue does not, and
-      // this is exactly when someone is thinking about buying one.
+      // this is exactly when someone is deciding which to download.
       settingsPanel.querySelector('.settings-rows').replaceChildren(soundsRow());
       const foot = settingsPanel.querySelector('.settings-foot');
       foot.hidden = false;
