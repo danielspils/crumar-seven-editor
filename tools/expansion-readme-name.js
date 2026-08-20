@@ -27,7 +27,7 @@
 //
 // THE INSTRUMENT STILL OUTRANKS THIS. Where somebody owns the expansion, read
 // the names off their unit and record that as the source. This is for sets
-// nobody here has.
+// nobody here has installed. (They are free downloads, not purchases.)
 
 const fs = require('node:fs');
 const zlib = require('node:zlib');

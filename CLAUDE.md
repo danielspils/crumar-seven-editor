@@ -168,7 +168,13 @@ Two fences on the new code, in the spirit of Rule 2:
 set. Those names are what matching runs on, and getting one wrong lists a sound
 twice — once as "Installed, not in the catalogue" and once as "Unverified" —
 which is what a real user hit in 2026-08-19 for the three sets Daniel had not
-bought.
+installed.
+
+**The expansions are FREE DOWNLOADS from Crumar, not purchases.** Each README
+says so in its own first line ("This free wavetable expansion for the Crumar
+Seven"). "Available" in the Sounds header means a set this instrument does not
+have, not a shopping list — several code comments still say "buy" and are
+wrong (Daniel, 2026-08-20).
 
 **The name is in the README PDF's page footer.** Every package ships one, and
 every page of it carries:
