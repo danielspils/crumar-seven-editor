@@ -827,8 +827,16 @@ function createWindow() {
         // executeJavaScript resolves with the script's LAST expression, and it
         // has to survive structured cloning. The harness ends by building an
         // object full of functions, so end on a primitive instead.
+        // A scenario runs in the RENDERER and cannot read process.env, so the
+        // few flags one needs are handed across here. Only SEVEN_-prefixed
+        // names, and only as data — a scenario opting in to something has to
+        // do it through a flag the operator set, not by reaching for it.
+        const testEnv = Object.fromEntries(
+          Object.entries(process.env).filter(([k]) => k.startsWith('SEVEN_'))
+        );
         await win.webContents.executeJavaScript(
-          `${fs.readFileSync(path.join(root, 'test', 'ui', 'harness.js'), 'utf8')}\n;true;`
+          `window.__SEVEN_ENV = ${JSON.stringify(testEnv)};\n`
+          + `${fs.readFileSync(path.join(root, 'test', 'ui', 'harness.js'), 'utf8')}\n;true;`
         );
         const outcome = await win.webContents.executeJavaScript(
           `Promise.resolve(${fs.readFileSync(process.env.SEVEN_UI_TEST, 'utf8')})` +

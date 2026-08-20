@@ -141,16 +141,33 @@ window.ui = (() => {
       note(`cannot wait for a human step: SEVEN_UI_SIGNAL is not set (${prompt})`);
       return false;
     }
+    // A FRESH SIGNAL, not any signal. The first version waited for the file to
+    // be non-empty, so a second call in the same run returned INSTANTLY on the
+    // first call's leftover "go" — the person was never asked, and the step
+    // they were meant to perform silently did not happen. It cost a real
+    // instrument state: a preset was overwritten and the restore that should
+    // have followed was skipped (Daniel, 2026-08-20).
+    //
+    // The contents must therefore CHANGE from whatever is there when the wait
+    // begins. The operator writes something different each time, or empties
+    // the file between steps.
+    const before = first;
     note(`WAITING FOR YOU: ${prompt}`);
     const ok = await waitFor(async () => {
       const v = await window.sevenAPI.devSignal();
-      return typeof v === 'string' && v.length > 0;
+      return typeof v === 'string' && v.length > 0 && v !== before;
     }, { timeout, step: 250, what: `the human step: ${prompt}` });
     if (ok) note('signal received — carrying on');
     return ok;
   }
 
+  // The SEVEN_-prefixed environment, handed in by main.js. A scenario cannot
+  // read process.env, and opting in to something destructive must come from a
+  // flag the operator set rather than from the scenario deciding for itself.
+  const env = (name) => (window.__SEVEN_ENV || {})[name] || null;
+
   return {
+    env,
     sleep, check, note, click, hitTarget, waitFor, waitEl, $, $$, connected, live,
     requireDevice, selectBankPreset, enterAudition, openLibrary, waitForHuman,
     result: () => ({ failures, notes }),

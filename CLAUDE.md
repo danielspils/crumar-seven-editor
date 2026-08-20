@@ -542,6 +542,40 @@ test cannot reach shapes the real world never serves: the mutation deleting the
 title guard PASSED against the live feed, because the site always has titles.
 That case only exists in `test/notes-feed.test.js`.
 
+## Two coordinate conventions, one seam apart (2026-08-20)
+
+`midi.recall(bank, preset)` is **0-BASED** — it sends `bank * 8 + preset` as a
+global program number. The transfer runner is **1-BASED** —
+`(bank - 1) * 8 + slotIndex`. Both describe "bank and preset" and they are one
+IPC call apart.
+
+`recall(3, 1)` therefore lands on **Bank 4, preset 2**, not Bank 3 preset 1.
+That happened while verifying a store: the instrument was moved to a slot
+nobody asked for, what Daniel played was a different bank entirely, and the
+mismatch read as "the restore corrupted my preset" for several minutes. The
+store itself had gone to the right place all along.
+
+Before reading a slot back, work out the program number explicitly and say
+which convention you are using. A read that lands on the wrong slot does not
+fail — it returns somebody else's patch, confidently.
+
+## The instrument does not store patch names (2026-08-20)
+
+The Seven holds 110 parameters and a sound. A NAME exists only in the
+`.sevenlib.json` on the computer, which is why the format makes the sound name
+authoritative and the patch name provenance.
+
+So "is Bank 3 preset 1 Kitchen Dishes Delay or Tine Piano?" can have no answer
+from the hardware, and the question cost real time. Both files existed,
+captured from Bank 3 preset 1 and Bank 4 preset 1 — and they differ in **0 of
+110 parameters**. One set of values, two names, and nothing playable tells them
+apart.
+
+When someone reports a slot holding the wrong patch, compare PARAMETERS, not
+names. The runner already does this and says it in one line:
+"Preset 1 already holds this patch" is a verified 110-parameter read, and it is
+better evidence than any sampling of five values by hand.
+
 ## Still open from the QA pass
 
 In Daniel's order, items 3 and 4 of five:
