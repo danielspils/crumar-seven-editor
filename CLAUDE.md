@@ -132,7 +132,9 @@ needs to know before they write a logger.
 ## Layout
 
 ```
-docs/        DEVICE.md (manufacturer docs, not evidence), protocol.md (v1.37 spec)
+docs/        DEVICE.md (manufacturer docs, not evidence), protocol.md (v1.37 spec),
+             FEEDBACK.md — one entry per user report, with what it CONFIRMS on
+             hardware that is not ours kept separate from what it ASKS FOR
 captures/    raw MIDI logs (ground truth, committed) — pc-recall/pc-receive sessions
 schema/      seven-<firmware>.json — version-gated parameter maps
 tools/       capture-hook.js, probe.js, listen.js (passive wfp-redacting recorder)
