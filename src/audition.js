@@ -506,31 +506,6 @@
   });
 
   el.addEventListener('click', async (e) => {
-    if (e.target.closest('#done-live-btn')) {
-      const target = auditionTarget();
-      // Leaving with unsaved edits is a decision, not a side effect. What the
-      // instrument holds is untouched either way — it keeps them until a
-      // preset is recalled — but the library copy is what survives.
-      const liveEditWasDirty = !!(liveEdit && liveEdit.dirty);
-      if (liveEditWasDirty) {
-        const go = await SevenModal.confirm({
-          title: 'Leave without saving?',
-          body:
-            'Your edits stay in the Seven\u2019s buffer until you recall a preset, ' +
-            'but they will not be saved to this computer.',
-          confirmLabel: 'Leave Without Saving',
-          tone: 'is-warning',
-        });
-        if (!go) return;
-      }
-      liveEdit = null;
-      auditionNote = liveEditWasDirty
-        ? { kind: 'is-error', file: target && target.file,
-            text: 'Left audition mode. Those edits were not saved to the library.' }
-        : null;
-      deps.renderDetail();
-      return;
-    }
     if (e.target.closest('#save-live-btn')) {
       const btn = e.target.closest('#save-live-btn');
       btn.disabled = true;
