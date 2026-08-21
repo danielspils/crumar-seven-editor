@@ -290,7 +290,23 @@ class SevenMidi extends EventEmitter {
 
   // --- connect / disconnect -------------------------------------------------
 
+  // SEVEN_NO_DEVICE: pretend the port isn't there.
+  //
+  // THE ONE STATE THIS PROJECT COULD NOT TEST. Ten of seventeen scenarios don't
+  // call requireDevice(), so they run in whatever state the desk is in — and on
+  // the only desk here the Seven is always plugged in. Every automated run this
+  // repo has ever done was a CONNECTED run, which is how three disconnected-state
+  // bugs reached a user (the expansion double-listing, the 10-vs-11 heading, and
+  // "⚠ Not installed" on a sound the owner has). SEVEN_FORCE_MISMATCH cannot
+  // cover it: it needs a device, since it synthesises the verdict during connect.
+  //
+  // It lies HERE, at the port lookup, and nowhere else — so connect() fails
+  // through the genuine no-port path, portPresent() answers false for the real
+  // reason, and everything downstream is the same code a user without an
+  // instrument runs. A flag that synthesised "disconnected" further up would be
+  // testing the flag.
   _findPort(io) {
+    if (process.env.SEVEN_NO_DEVICE) return -1;
     const n = io.getPortCount();
     for (let i = 0; i < n; i++) {
       if (/seven|crumar/i.test(io.getPortName(i))) return i;

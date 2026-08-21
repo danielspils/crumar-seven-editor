@@ -749,6 +749,31 @@ SEVEN_FORCE_MISMATCH=1.22 npm start     # …and the banner says 1.22
 SEVEN_FORCE_MISMATCH=nofw npm start     # …with an unreadable firmware string
 ```
 
+**`SEVEN_NO_DEVICE=1` forces the app OFFLINE**, which until 2026-08-21 was the
+one state this project could not test.
+
+```
+SEVEN_NO_DEVICE=1 npm start
+SEVEN_NO_DEVICE=1 npm run test:ui offline-state
+```
+
+**Ten of seventeen scenarios do not call `requireDevice()`, so they run in
+whatever state the desk is in — and on the only desk here the Seven is always
+plugged in.** Every automated run this repo has ever done was a CONNECTED run.
+That is not a gap in one test; it is a whole half of the app that no test had
+ever looked at, and it is how three disconnected-state bugs reached a user
+inside two days: the expansion double-listing, the 10-versus-11 heading, and
+"⚠ Not installed" on a sound the owner has installed.
+
+**A state nobody chooses is a state nobody tests.** `SEVEN_FORCE_MISMATCH`
+cannot stand in — it needs a device, since it synthesises its verdict during
+connect.
+
+The flag lies at ONE place, `_findPort` in `seven-midi.js`, so `connect()` fails
+through the genuine no-port path and everything downstream is the same code a
+user without an instrument runs. A flag that synthesised "disconnected" further
+up would be testing the flag.
+
 **`SEVEN_UI_SIGNAL=<file>`** lets a UI test wait for a HUMAN step. Several of
 this project's tests need one — a three-second panel hold, a listening
 judgement — and a fixed sleep is not a test. The script polls
