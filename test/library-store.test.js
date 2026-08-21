@@ -1025,6 +1025,42 @@ test('a copy was created WHEN IT WAS COPIED, not when the original was made', ()
     'and the list agrees, which is what the user actually sees');
 });
 
+test('a patch file records the version that actually wrote it', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  const src = store.readFile(made.file).library.source;
+
+  // NOT a literal. Asserting `=== 'crumar-seven-editor 1.4.0'` would pass today
+  // and rot at 1.4.1 — the exact failure class CLAUDE.md names, and how the
+  // original froze at 0.0.0 for five releases. This asserts the tag tracks
+  // whatever the single source says, whatever that value is.
+  const version = require('../package.json').version;
+  assert.strictEqual(src.app, `crumar-seven-editor ${version}`);
+  assert.ok(!/0\.0\.0/.test(src.app), 'and is not the frozen literal it used to be');
+
+  // Injection wins over the default, which is what main.js relies on.
+  const other = new LibraryStore(freshStore().dir, schema, fixture, { appVersion: '9.9.9-test' });
+  const mine = other.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  assert.strictEqual(other.readFile(mine.file).library.source.app,
+    'crumar-seven-editor 9.9.9-test');
+});
+
+test('main.js actually injects the version, rather than leaning on the default', () => {
+  // A STATIC SOURCE CHECK, and it is here for a specific reason: the default
+  // and the injection resolve to the same package.json, so the test above
+  // passes just as happily if main.js quietly stops passing appVersion — and
+  // then a packaged app writing a version different from the repo's
+  // package.json would go unnoticed. This asserts the wiring, not the value.
+  //
+  // main.js cannot be require()d here: it pulls in Electron. Same approach as
+  // test/css-hazards.test.js.
+  const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
+  const call = /new LibraryStore\(([\s\S]*?)\n\s*\);/.exec(main);
+  assert.ok(call, 'main.js constructs a LibraryStore');
+  assert.match(call[1], /appVersion:\s*app\.getVersion\(\)/,
+    'and passes the RUNNING app’s version into it');
+});
+
 test('a new patch records the instrument it was made on, not the schema', () => {
   const { store } = freshStore();
 

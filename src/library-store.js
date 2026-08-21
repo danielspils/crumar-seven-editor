@@ -13,7 +13,24 @@ const fs = require('fs');
 const path = require('path');
 const { serializeLibrary, parseLibrary } = require('./format');
 
-const APP_TAG = 'crumar-seven-editor 0.0.0';
+// WHICH VERSION WROTE THIS FILE — asked, not remembered.
+//
+// This was the literal 'crumar-seven-editor 0.0.0'. It was accurate on
+// 2026-08-09, the day it was typed, when package.json really did say 0.0.0 —
+// and it then froze while everything else moved. Every patch file written by
+// 1.0.0 through 1.4.0 records 0.0.0, so "which version wrote this" is
+// unanswerable for all of them.
+//
+// A RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE (CLAUDE.md) — the mirror
+// of the rule the provenance bugs broke. The tell is a literal standing where a
+// live read belongs.
+//
+// package.json is the single source: electron-builder stamps its `${version}`
+// onto the bundle, CI's guard compares the git tag against it, and
+// app.getVersion() reads it. Verified against the SHIPPED 1.4.0 artifact, not a
+// stale local build — Info.plist and the asar's own package.json both read
+// 1.4.0.
+const appTag = (version) => `crumar-seven-editor ${version}`;
 
 // EVERY WRITE IN THIS FILE GOES THROUGH HERE. A plain writeFileSync truncates
 // the target first, so an app killed mid-write leaves a half-file — and for
@@ -85,10 +102,15 @@ function isBackupRecord(patch) {
 }
 
 class LibraryStore {
-  constructor(dir, schema, fixtureLibrary) {
+  // appVersion is INJECTED, because this module runs in `npm test` with no
+  // Electron and cannot call app.getVersion() itself. main.js passes the real
+  // one; the default keeps the same single source for anything constructing a
+  // store directly (tools, tests).
+  constructor(dir, schema, fixtureLibrary, { appVersion } = {}) {
     this.dir = dir;
     this.schema = schema;
     this.fixtureLibrary = fixtureLibrary;
+    this.appTag = appTag(appVersion || require('../package.json').version);
     // The SCHEMA's sounds — what this build knows about. Correct when nothing
     // is plugged in, and wrong the moment a Seven with different expansions is.
     this.schemaSoundByName = new Map(schema.sounds.map((s) => [s.name, s]));
@@ -256,7 +278,7 @@ class LibraryStore {
   // Patches already saved are correct as they stand and are never migrated.
   singlePatchContainer(patch, inherit = null) {
     const source = inherit || {
-      app: APP_TAG,
+      app: this.appTag,
       firmware: this.deviceFirmware || null,
       schema: 'seven-1.37.json',
       soundList: this.deviceSoundList || null,

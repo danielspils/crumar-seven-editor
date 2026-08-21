@@ -35,7 +35,12 @@ function getStore() {
     store = new LibraryStore(
       process.env.SEVEN_LIBRARY_DIR || path.join(app.getPath('userData'), 'Library'),
       JSON.parse(fs.readFileSync(path.join(root, 'schema', 'seven-1.37.json'), 'utf8')),
-      JSON.parse(fs.readFileSync(path.join(root, 'fixtures', 'sample-library.json'), 'utf8'))
+      JSON.parse(fs.readFileSync(path.join(root, 'fixtures', 'sample-library.json'), 'utf8')),
+      // What the RUNNING app reports as its own version, into every patch file
+      // it writes. Verified trustworthy when packaged against the shipped 1.4.0
+      // artifact (Info.plist and the asar's package.json both 1.4.0), which is
+      // the thing the whole injection rests on.
+      { appVersion: app.getVersion() }
     );
   }
   return store;

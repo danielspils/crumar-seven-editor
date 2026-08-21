@@ -662,10 +662,57 @@ Two corollaries worth stating separately, because each was violated on its own:
   instrument — with ONE line per region explaining why, never a marker per row,
   because the uncertainty is a property of the view and not of each patch.
 
+**Its mirror is the section below — A RECORDED FACT MUST NOT STAND IN FOR
+CURRENT STATE. Read both; the next bug of this family can arrive from either
+side.**
+
 **The general tell: a fallback whose fallback value is "whatever is loaded right
 now".** `a || b` where `b` is current state is almost always this bug. It reads
 as robustness and behaves as fabrication — and when it is written to a file, no
 later code can tell it from a real reading.
+
+## A RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE (2026-08-21)
+
+**The counterpart to the rule above, and the same failure running the other
+way.** That one fills a gap in the record with whatever is loaded right now.
+This one answers a question about right now with something written down once.
+Both produce a confident statement nobody checked; they differ only in which
+direction the staleness points. **Read them together** — a value is wrong here
+either because it was copied when it should have been asked, or asked when it
+should have been kept.
+
+**First instance: `APP_TAG`.** `src/library-store.js` carried the literal
+`'crumar-seven-editor 0.0.0'`, written into `source.app` of every patch file the
+app has ever created. It was ACCURATE on 2026-08-09, the day it was typed —
+package.json really did say `0.0.0` then — and it froze while everything else
+moved. **All 54 files in Daniel's library record `0.0.0`**, so "which version
+wrote this" is unanswerable for anything made before 2026-08-21, and no
+migration can recover it.
+
+Note what was NOT wrong: package.json has been the single source all along.
+electron-builder stamps its `${version}`, CI's release guard compares the git
+tag against it, and `app.getVersion()` reads it — verified against the SHIPPED
+1.4.0 artifact rather than a stale local build (Info.plist and the asar's own
+`package.json` both `1.4.0`). Nothing was missing. One copy had simply stopped
+tracking.
+
+**The tell is a literal, or a cached value, standing where a live read belongs.**
+A version, a count, a date, a device's own answer. Ask whether the thing can
+change while the app runs — if it can, storing it is a decision that needs a
+reason written beside it.
+
+Two things that follow, both learned the hard way here:
+
+- **A test asserting the literal is the bug wearing a badge.**
+  `assert(tag === 'crumar-seven-editor 1.4.0')` passes today and rots at 1.4.1.
+  Assert that the value MATCHES THE SOURCE, whatever the source currently says.
+- **When the default and the injection resolve to the same place, a test can
+  pass while the wiring is gone.** `library-store.js` defaults to
+  `require('../package.json').version` and `main.js` injects
+  `app.getVersion()` — identical in dev, and different in exactly the case that
+  matters. So a second test asserts the WIRING by reading `main.js` as text
+  (it cannot be required — it pulls in Electron; same approach as
+  `css-hazards.test.js`). Mutation-checked: delete the injection and it fails.
 
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
