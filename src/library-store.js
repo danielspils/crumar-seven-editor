@@ -897,7 +897,17 @@ class LibraryStore {
         copiedFrom: { ...from, bank: copy.origin.bank, preset: copy.origin.preset },
       };
     } else {
-      copy.origin = { ...(copy.origin || {}), copiedFrom: from };
+      // CREATED NOW. A copy inherited the original's `created`, so a patch
+      // made seconds ago read "Created 40 days ago" — measured 2026-08-21 —
+      // and every copy in every library misreported its own age. The
+      // container's own `created` beside it was correct the whole time.
+      //
+      // Note the direction: provenance about the INSTRUMENT is inherited
+      // (above), because the copy came from wherever the original did — but
+      // when the COPY itself was made is a fact about the copy, and today is
+      // the honest answer. Both follow the same rule: record what actually
+      // happened, and do not let one of them stand in for the other.
+      copy.origin = { ...(copy.origin || {}), created: new Date().toISOString(), copiedFrom: from };
     }
     const target = this.uniqueFile(copy.name);
     // INHERITED, not rebuilt. A copy was not made on whatever is plugged in

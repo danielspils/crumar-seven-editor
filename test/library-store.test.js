@@ -1001,6 +1001,30 @@ test('every copy records where it came from, not only copies of backups', () => 
   assert.strictEqual(copy.origin.copiedFrom.patchIndex, 0);
 });
 
+test('a copy was created WHEN IT WAS COPIED, not when the original was made', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+
+  // Age the original, the way any real library does.
+  const file = path.join(store.dir, made.file);
+  const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const old = new Date(Date.now() - 40 * 864e5).toISOString();
+  doc.patches[0].origin.created = old;
+  fs.writeFileSync(file, JSON.stringify(doc, null, 2));
+
+  const dup = store.duplicate(made.file, 0);
+  const copy = store.readFile(dup.file).library.patches[0];
+  assert.notStrictEqual(copy.origin.created, old,
+    'a copy made today does not claim to be 40 days old');
+  const age = Date.now() - new Date(copy.origin.created).getTime();
+  assert.ok(age >= 0 && age < 60000, `the copy was created just now (${age}ms ago)`);
+
+  // The row's date follows, since that is what "Created 5 days ago" reads.
+  const listed = entries(store).find((e) => e.file === dup.file);
+  assert.ok(Date.now() - new Date(listed.origin.date).getTime() < 60000,
+    'and the list agrees, which is what the user actually sees');
+});
+
 test('a new patch records the instrument it was made on, not the schema', () => {
   const { store } = freshStore();
 
