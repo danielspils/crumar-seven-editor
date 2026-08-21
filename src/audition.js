@@ -103,21 +103,25 @@
     const bar = (live, note, kind = '') =>
       `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
       `<span class="save-actions">` +
+      // SHOWN ONLY WHEN THERE IS SOMETHING TO SAVE, and hidden rather than
+      // removed: the slot keeps its height either way, so the panel does not
+      // jump the instant somebody touches a knob. A control that shoves the
+      // layout around on the first edit is worse than one that is always there
+      // (Daniel, 2026-08-21).
+      //
+      // It was DISABLED before, which is not the same thing — a disabled
+      // button still drew in full, in the action colour, on a patch nobody had
+      // edited. Measured on an unedited backup record: disabled=true,
+      // color rgb(79,185,106), opacity 1.
+      //
+      // `live` is this bar's own argument — whether anything has drifted — so
+      // the button follows drift everywhere except ON THE SEVEN, where it is
+      // always present because there is no file to compare against.
       `<button type="button" id="save-live-btn" data-save-mode="${savesAsNew ? 'new' : 'overwrite'}"` +
-      // `live` is this bar's own argument — whether there is anything to save —
-      // so the button follows drift everywhere except ON THE SEVEN, where it
-      // is always available because there is nothing to compare against.
-      `${onSeven || live ? '' : ' disabled'}>${saveLabel}</button>` +
-      // Send to Seven belongs to a patch ON THIS COMPUTER — it is how a file
-      // reaches the instrument. From ON THE SEVEN it was the only way to copy
-      // one preset to another slot, and it is removed there as a DELIBERATE,
-      // REVERSIBLE TRIAL (see the commit that did it): does anyone miss it?
-      // Absent on Bank 1 either way, where the hardware refuses a store — a
-      // control that explains why it cannot work should not be a control.
-      (onFactoryBank || onSeven
-        ? ''
-        : `<span class="save-sep" aria-hidden="true">·</span>` +
-          `<button type="button" class="save-seven-link" data-save-to-seven>Send to Seven</button>`) +
+      `${onSeven || live ? '' : ' class="is-hidden" tabindex="-1" aria-hidden="true" disabled'}>` +
+      `${saveLabel}</button>` +
+      // NO "Send to Seven" HERE, in any context. It is not a link: it moved to
+      // the rows, where every other per-patch action already lives.
       `</span>` +
       (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
       `</div>`;

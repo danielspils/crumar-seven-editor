@@ -458,6 +458,12 @@ function registerEditIpc() {
     };
   });
 
+  // Re-read the free-space figure. One frame, silent — no recall, nothing
+  // audible — so anything already talking to the device can refresh it.
+  ipcMain.handle('midi:refreshStorage', async () => {
+    try { return { ok: true, storage: await getMidi().refreshStorage() }; }
+    catch (err) { return { ok: false, error: String(err.message || err) }; }
+  });
   ipcMain.handle('midi:setGlobal', async (_e, { index, value }) => {
     try {
       return { ok: true, ...(await getMidi().setGlobalOption(index, value)) };

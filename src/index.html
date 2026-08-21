@@ -638,6 +638,21 @@
       opacity: 0; transition: opacity .12s;
     }
     .lib-row-wrap:hover .patch-delete, .patch-delete:focus-visible { opacity: 1; }
+    /* Send to Seven, on a backup row. Same anchoring and reveal as the delete
+       control it stands in place of — a record is read-only, so this is the
+       one action its row offers. */
+    .patch-send {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; cursor: pointer; font: inherit; font-size: 11px;
+      color: var(--text-dim); background: var(--bg-panel);
+      border: 1px solid var(--line); border-radius: 4px;
+      opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+    }
+    .lib-row-wrap:has(.lib-row.selected) .patch-send,
+    .lib-row-wrap:hover .patch-send,
+    .patch-send:focus-visible { opacity: 1; }
+    .patch-send:hover { color: var(--text); border-color: var(--text-muted); }
     .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
     /* .badge-modeled / .badge-sampled are the DETAIL PANEL's pill only. The
        list rows lost theirs on 2026-08-21 — engine type describes the patch
@@ -1788,6 +1803,14 @@
       outline: 2px solid var(--action); outline-offset: 2px; border-radius: 3px;
     }
     #save-live-btn:disabled { cursor: default; }
+    /* RESERVED, not removed. visibility keeps the slot's height, so the panel
+       does not jump when an edit arrives and the button appears. */
+    #save-live-btn.is-hidden { visibility: hidden; }
+    /* The strip's honesty label needs air after the bank it follows —
+       "Bank 2 ·3 of 32" ran together in every state where the label is long
+       enough to notice (Daniel, 2026-08-21). A margin fixes it once, for every
+       state, rather than threading a space through each string. */
+    #bank-strip-asof { margin-left: 6px; }
 
 
     /* Coming alive is an ANIMATION, not a transition: the panel is re-rendered
@@ -2624,6 +2647,7 @@
     <script src="send-choice.js"></script>
     <script src="ots-freshness.js"></script>
     <script src="send-pc-prompt.js"></script>
+    <script src="storage-label.js"></script>
     <script src="day-rollover.js"></script>
     <script src="library-view.js"></script>
   <script src="app.js"></script>

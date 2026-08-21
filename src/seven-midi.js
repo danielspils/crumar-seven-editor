@@ -873,6 +873,23 @@ class SevenMidi extends EventEmitter {
     return { index, value: this.globals.glb[index] };
   }
 
+  // RE-READ the storage figure, updating what status() reports.
+  //
+  // It is FREE SPACE (measured 2026-08-21), so it moves whenever an expansion
+  // is installed — and _connect() reads it exactly once. A value read once and
+  // shown for the rest of a session is the fossil this project keeps writing
+  // rules about, so anything that is already talking to the instrument can
+  // refresh it. Never fatal: a firmware that will not answer costs a string.
+  async refreshStorage() {
+    if (this.state !== 'connected') return null;
+    try {
+      this.storage = await this.readStorage();
+    } catch {
+      this.storage = null;
+    }
+    return this.storage;
+  }
+
   async setSendPc(value) {
     if (this.state !== 'connected') throw new Error('not connected');
     const current = this.globals.glb[GLB_SEND_PC];

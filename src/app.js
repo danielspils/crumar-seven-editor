@@ -1941,6 +1941,14 @@
       // Kept, not discarded: what was read is true, and the header says how
       // much of it there is.
     } finally {
+      // The sweep is already talking to the instrument and the player asked
+      // for it, so the free-space figure is refreshed on the same trip. One
+      // silent frame — no recall, nothing audible — and it stops the number
+      // being a fossil read once at connect and shown all session.
+      try {
+        const r = await window.sevenAPI.midi.refreshStorage();
+        if (r && r.ok) deviceStorage = r.storage || null;
+      } catch { /* a figure we cannot refresh is left as it was */ }
       hideToast();
       sweeping = false;
       // Put the instrument back where the player left it, rather than on
@@ -3423,7 +3431,16 @@
       val.className = 'set-value';
       // The count that means something: what this instrument has. Offline
       // there is no such number, and the modal's own header says why.
-      val.textContent = soundTable ? String(soundTable.sounds.length) : '';
+      //
+      // FREE SPACE SITS BESIDE IT because that pairing is the question the
+      // number actually answers — will another expansion fit. The word "free"
+      // is not optional: a bare "2.5GB" beside a sound count reads as capacity,
+      // which is the misreading that got this display deleted once already
+      // (c052079, and see src/storage-label.js).
+      const free = SevenStorageLabel.storageLabel(deviceStorage);
+      val.textContent = soundTable
+        ? `${soundTable.sounds.length}${free ? ` \u00b7 ${free}` : ''}`
+        : '';
       const chev = document.createElement('span');
       chev.className = 'set-chev';
       chev.textContent = '›';

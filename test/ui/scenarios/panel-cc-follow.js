@@ -23,11 +23,15 @@
     const row = ui.$(`.param[data-key="${KEY}"] .param-value`);
     return row ? row.textContent.trim() : null;
   };
-  const saveBtn = () => ui.$('#save-live-btn');
-  const dirty = () => {
-    const b = saveBtn();
-    return !!b && !b.disabled;
-  };
+  // IS ANYTHING UNSAVED? Read the BAR, not the button.
+  //
+  // This used to ask whether #save-live-btn was enabled, which was the same
+  // question until 2026-08-21. It is not any more: ON THE SEVEN the control is
+  // always available, because there is no file behind a bank slot to compare
+  // against — so an enabled button there means "you may save this", not "you
+  // changed something". The bar's own class still follows drift in every
+  // context, which is the thing this scenario actually means.
+  const dirty = () => !!ui.$('.audition-bar.is-live');
 
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
