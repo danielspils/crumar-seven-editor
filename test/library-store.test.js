@@ -711,8 +711,13 @@ test('duplicate returns where the copy went, and does not claim to be a backup',
   const copy = store.readFile(made.file).library.patches[0];
   assert.ok(copy.origin.created, 'a copy is a patch you made');
   assert.strictEqual(copy.origin.bank, undefined, 'and claims no slot on the instrument');
-  assert.deepStrictEqual(copy.origin.copiedFrom, { bank: 2, preset: 4 },
-    'but it remembers where it came from');
+  // Extended 2026-08-21: every copy now records the FILE it came from, not
+  // only the slot. Copies of ordinary patches recorded nothing at all, so
+  // nothing linked a copy back to the file still holding the truth.
+  assert.strictEqual(copy.origin.copiedFrom.bank, 2);
+  assert.strictEqual(copy.origin.copiedFrom.preset, 4);
+  assert.strictEqual(copy.origin.copiedFrom.file, src.file,
+    'and which file, so a bad copy can be traced to its original');
   // And the LIST must file it away from the bank groups.
   const listed = entries(store).find((e) => e.file === made.file);
   assert.strictEqual(listed.origin.kind, 'created');
@@ -941,15 +946,77 @@ test('a patch is missing when the INSTRUMENT lacks its sound, not when the schem
   assert.strictEqual(after.missing, false, 'the schema knows Tine Piano');
 });
 
+// ---- Provenance is a RECORD, not a snapshot of right now -------------------
+//
+// These three pin the rule in CLAUDE.md: current state must not stand in for
+// recorded fact. Each one FAILED before the fix that made it pass, and the
+// failure was a file on disk carrying a claim nobody could later distinguish
+// from truth.
+
+test('a copy inherits the provenance of the patch it came from', () => {
+  const { store } = freshStore();
+  // Made on a 27-sound unit running a firmware this build has never seen.
+  const unit = [...schema.sounds.map((x, i) => ({ id: i, name: x.name })),
+    { id: 24, name: 'Venice Grand CFX' }, { id: 25, name: 'Venice Grand C5' },
+    { id: 26, name: 'Venice Upright K8' }];
+  store.setDeviceSounds({ sounds: unit });
+  store.setDeviceFirmware('CRUMAR Seven v.1.42');
+  const made = store.createPatchFromSound('Venice Grand CFX', { factoryDefaults: { sounds: {} } });
+
+  // Unplugged, then copied — the ordinary case for somebody organising their
+  // library away from the instrument.
+  store.setDeviceSounds(null);
+  store.setDeviceFirmware(null);
+  const dup = store.duplicate(made.file, 0);
+
+  const src = store.readFile(dup.file).library.source;
+  assert.strictEqual(src.soundList.length, 27,
+    'the copy still says it came from the 27-sound unit');
+  assert.strictEqual(src.firmware, 'CRUMAR Seven v.1.42');
+  assert.ok(src.soundList.some((x) => x.name === 'Venice Grand CFX'),
+    'AND ITS OWN SOUND IS IN ITS OWN LIST — the copy used to claim it came ' +
+    'from an instrument that never had the sound the patch is made of');
+});
+
+test('a patch made with nothing attached records that there was no instrument', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  const src = store.readFile(made.file).library.source;
+  // NOT the schema's 24 sounds and NOT firmware "1.37". There was no
+  // instrument; the schema is what this BUILD knows, and writing it here is a
+  // phantom unit recorded permanently in somebody's file.
+  assert.strictEqual(src.soundList, null, 'no sound list, because no instrument');
+  assert.strictEqual(src.firmware, null, 'and no firmware, for the same reason');
+  assert.strictEqual(src.schema, 'seven-1.37.json',
+    'the SCHEMA is still named — that is a fact about this build and is true');
+});
+
+test('every copy records where it came from, not only copies of backups', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  const dup = store.duplicate(made.file, 0);
+  const copy = store.readFile(dup.file).library.patches[0];
+  assert.ok(copy.origin.copiedFrom, 'a copy of an ordinary patch is traceable too');
+  assert.strictEqual(copy.origin.copiedFrom.file, made.file);
+  assert.strictEqual(copy.origin.copiedFrom.patchIndex, 0);
+});
+
 test('a new patch records the instrument it was made on, not the schema', () => {
   const { store } = freshStore();
 
-  // Nothing attached: the schema's list is what the app knows.
+  // NOTHING ATTACHED: nothing is claimed.
+  //
+  // INVERTED 2026-08-21. This used to assert that an offline patch records the
+  // schema's 24 sounds and firmware "1.37" — a test pinning the bug, stated as
+  // an intention, and it would have fought the fix. `source` says which
+  // INSTRUMENT a patch came from; offline there was none, and the schema is
+  // what this build knows, not a unit anybody owns. On an owner with
+  // expansions the old claim was flatly false: their Seven has 27 sounds.
   const offline = JSON.parse(fs.readFileSync(path.join(
     store.dir, store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file
   ), 'utf8'));
-  assert.strictEqual(offline.source.soundList.length, schema.sounds.length);
-  assert.strictEqual(offline.source.firmware, schema.firmware || '1.37');
+  assert.strictEqual(offline.source.soundList, null, 'no instrument, so no sound list');
+  assert.strictEqual(offline.source.firmware, null, 'and no firmware');
 
   // A 16-sound unit on a firmware this build has never seen.
   store.setDeviceSounds({
@@ -962,13 +1029,16 @@ test('a new patch records the instrument it was made on, not the schema', () => 
   assert.deepStrictEqual(written.source.soundList[3], { id: 3, name: 'Sound 3' });
   assert.strictEqual(written.source.firmware, 'CRUMAR Seven v.1.42 Build date: Mon Jan 5 09:00:00 2026');
 
-  // Unplugged again: back to what the app knows, with nothing claiming a device.
+  // Unplugged again: back to claiming nothing, and NOT back to the schema.
   store.setDeviceSounds(null);
   store.setDeviceFirmware(null);
   const after = JSON.parse(fs.readFileSync(path.join(
     store.dir, store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file
   ), 'utf8'));
-  assert.strictEqual(after.source.soundList.length, schema.sounds.length);
+  assert.strictEqual(after.source.soundList, null,
+    'the 16-sound unit is gone and no phantom takes its place');
+  assert.strictEqual(after.source.schema, 'seven-1.37.json',
+    'what this BUILD knows is still recorded — that part is true offline');
 });
 
 // ---- Interrupted writes ---------------------------------------------------

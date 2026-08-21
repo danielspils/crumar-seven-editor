@@ -52,8 +52,21 @@ their original order, `params` keys sorted lexicographically.
   uses each patch's EFFECTIVE soundList (its own, falling back to the
   library's) — never the top-level one unconditionally.
 - **`source.soundList` is the full enumerated list from the originating
-  instrument.** It is what makes a missing-expansion warning possible. Always
-  write it.
+  instrument.** It is what makes a missing-expansion warning possible. Write it
+  whenever there WAS an originating instrument.
+- **With nothing attached, `soundList` and `firmware` are `null`.** They are
+  claims about hardware, and offline there is no hardware to make them about.
+  They used to fall back to the schema's list and `"1.37"`, which wrote a
+  phantom instrument into the file — permanently, and indistinguishable
+  afterwards from a real reading. On an owner with expansions it was simply
+  false: their Seven reports 27 sounds, not 24. `schema` is still filled in,
+  because that names what the BUILD knew and is true either way.
+- **A COPY INHERITS the provenance of the patch it came from.** It was not made
+  on whatever is plugged in now. Rebuilding `source` from current state
+  produced copies claiming an instrument that never had the sound the patch is
+  made of — measured 2026-08-21, a Venice Grand CFX patch duplicated offline
+  became a file whose own `soundList` lacked CFX. `origin.copiedFrom` records
+  the file it was copied from, on every copy.
 - **`nameFrom` says the name was BORROWED, and from which file.** The Seven
   stores no preset names, so a name cannot survive a round trip on the wire: a
   transfer sends a sound and 110 values, and a backup afterwards would relabel

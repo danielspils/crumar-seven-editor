@@ -236,22 +236,47 @@ class LibraryStore {
   // every other kind of bug here, because nothing later can tell it from truth.
   //
   // So: the table actually read from the connected instrument, when there is
-  // one. With nothing attached the schema's list is what the app knows and
-  // stays the fallback — a patch made offline was not made on any instrument.
-  // Patches already saved on this unit are correct and are not migrated.
-  singlePatchContainer(patch) {
+  // one — and WHEN THERE IS NOT, nulls, which say "no instrument" rather than
+  // naming one.
+  //
+  // The schema used to be the fallback, and that was the same mistake in a
+  // more permanent place than any badge. A patch made with the cable out
+  // recorded `firmware: "1.37"` and the schema's 24 sounds — a phantom unit,
+  // written into a file, indistinguishable ever after from a real reading. On
+  // an owner with expansions it was flatly wrong: their instrument has 27.
+  // CURRENT STATE MUST NOT STAND IN FOR RECORDED FACT, and the schema is not
+  // an instrument (CLAUDE.md).
+  //
+  // `schema` stays filled in either way: that names what this BUILD knew, is
+  // true offline, and is a fact about software rather than about hardware.
+  //
+  // `inherit` is for a patch that is not being made now but COPIED: the copy
+  // keeps the original's provenance, because it came from wherever the
+  // original came from and today's connection has nothing to do with it.
+  // Patches already saved are correct as they stand and are never migrated.
+  singlePatchContainer(patch, inherit = null) {
+    const source = inherit || {
+      app: APP_TAG,
+      firmware: this.deviceFirmware || null,
+      schema: 'seven-1.37.json',
+      soundList: this.deviceSoundList || null,
+    };
     return {
       format: 'crumar-seven-library',
       formatVersion: 1,
       created: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
-      source: {
-        app: APP_TAG,
-        firmware: this.deviceFirmware || this.schema.firmware || '1.37',
-        schema: 'seven-1.37.json',
-        soundList: this.deviceSoundList || this.schema.sounds.map(({ id, name }) => ({ id, name })),
-      },
+      source,
       patches: [patch],
     };
+  }
+
+  // The provenance a patch in `file` actually carries: its own `source` when it
+  // has one, else the container's (docs/FORMAT.md — an absent patch source
+  // inherits the library's). What a copy must be given.
+  effectiveSource(library, patchIndex) {
+    const p = library.patches[patchIndex];
+    if (p && p.source && Object.keys(p.source).length) return { ...p.source };
+    return library.source ? { ...library.source } : null;
   }
 
   // First run: create the folder and seed it from the fixture library so the
@@ -855,14 +880,35 @@ class LibraryStore {
     //
     // Written the way list() recognises a created patch: `origin.created`.
     // Where it came from is kept beside it as provenance.
+    //
+    // WHERE IT CAME FROM, on every copy — not only on copies of backup
+    // records, which was the old behaviour. A copy of an ordinary patch
+    // recorded nothing at all, so nothing linked it back to the file it came
+    // from. That mattered when copies were found to be carrying wrong dates
+    // and wrong provenance (2026-08-21): the originals still held the truth
+    // and there was no way to find them. This does not repair those; it means
+    // the next time something here is wrong, the copies can be traced.
+    const from = { file, patchIndex, name: patch.name || null };
     if (copy.origin && typeof copy.origin.bank === 'number') {
       copy.origin = {
         created: new Date().toISOString(),
-        copiedFrom: { bank: copy.origin.bank, preset: copy.origin.preset },
+        // Bank and preset kept as well: for a copy of a backup record, WHICH
+        // SLOT it was captured from is the useful half of where it came from.
+        copiedFrom: { ...from, bank: copy.origin.bank, preset: copy.origin.preset },
       };
+    } else {
+      copy.origin = { ...(copy.origin || {}), copiedFrom: from };
     }
     const target = this.uniqueFile(copy.name);
-    writeAtomic(path.join(this.dir, target), serializeLibrary(this.singlePatchContainer(copy)));
+    // INHERITED, not rebuilt. A copy was not made on whatever is plugged in
+    // now — it was made wherever the original was. Rebuilding it from current
+    // state produced files claiming an instrument that never had the sound the
+    // patch is made of, measured 2026-08-21 (CFX patch → copy whose own list
+    // lacked CFX).
+    writeAtomic(
+      path.join(this.dir, target),
+      serializeLibrary(this.singlePatchContainer(copy, this.effectiveSource(parsed.library, patchIndex)))
+    );
     // { file, patchIndex }, not a bare filename. audition.js reads copy.file
     // to follow the live session onto the copy, and against a string that was
     // always undefined — so every save that took the copy path failed with
