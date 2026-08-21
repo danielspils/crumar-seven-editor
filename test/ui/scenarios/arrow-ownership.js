@@ -99,13 +99,20 @@
   ui.check(activeBank() === before,
     `ArrowLeft comes back (${after} → ${activeBank()})`);
 
-  // NO PART 3. An earlier version of this fix also let a click anywhere in the
-  // bank region reclaim the arrows, for the case where the library stays open.
-  // That case does not exist: with the library open, the ONLY thing in
-  // #bank-region a mouse can reach is the collapsed strip, and clicking it
-  // closes the library — after which the open/closed gate above hands the keys
-  // back anyway. The tabs are covered by the library's own title (measured
-  // 2026-08-20: reachable=false), and #seven-head is zero-size. The listener
-  // was removed rather than kept with a test that could only pass by
-  // dispatching a click no mouse could make.
+  // THIS FILE COVERS ONE WAY BACK. The other is arrow-ownership-open.js, and
+  // leaving it out is what let 1.4.0 ship broken.
+  //
+  // A comment here used to say there was no other way — that with the library
+  // open the only reachable thing in #bank-region is the collapsed strip, and
+  // clicking it closes the library, so no gesture could reach the bank region
+  // while a library list was still live. The MEASUREMENT was right (the tray is
+  // 0px, #seven-head is display:none, only #bank-strip is hittable). The
+  // CONCLUSION drawn from it was wrong: it forgot that a backup run left open
+  // behind the closed tray still answers both arrow axes. Daniel hit exactly
+  // that on the release, and the comment is why nobody looked.
+  //
+  // Ownership no longer depends on either gesture — it is read from focus at
+  // press time (focusedRegion in app.js) — but both are tested, because the two
+  // ways back are two different DOM states and a rule that holds for one is not
+  // evidence about the other.
 })()

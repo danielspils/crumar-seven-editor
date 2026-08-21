@@ -2557,7 +2557,7 @@
     <button type="button" id="notes-strip-close" aria-label="Dismiss">&times;</button>
   </div>
   <div id="main">
-    <div id="library">
+    <div id="library" tabindex="-1">
       <!-- Two labelled regions teach the core relationship: the four banks
            mirror what's ON THE SEVEN; the Library is files ON THIS COMPUTER.
            Transfer means moving between them, so BOTH stay visible at all
@@ -2573,7 +2573,14 @@
            travelling up and then down (Daniel, 2026-08-13). Inside a box whose
            height is tweened between measured before/after, the exchange is
            just part of the slide. -->
-      <div id="bank-region">
+      <!-- FOCUSABLE AS A REGION, not row by row. Key ownership is derived from
+           which region holds focus when a key is pressed (see app.js), and a
+           row cannot carry that: these lists re-render on every refresh and a
+           re-render destroys focus on a child, so ownership would go ambiguous
+           straight after every library refresh. The container survives its
+           children being replaced. -1 because it is reached by clicking, not
+           by tabbing. -->
+      <div id="bank-region" tabindex="-1">
       <div id="bank-tray">
         <div class="region-head" id="seven-head">On the Seven</div>
         <div id="bank-tabs"></div>

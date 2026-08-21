@@ -546,6 +546,85 @@ test cannot reach shapes the real world never serves: the mutation deleting the
 title guard PASSED against the live feed, because the site always has titles.
 That case only exists in `test/notes-feed.test.js`.
 
+## A wrong conclusion recorded as settled (2026-08-20)
+
+The arrow keys broke twice in two releases, and the second break was defended
+by a comment written during the first fix.
+
+The question is "which region do the arrows drive". It was answered by
+`lastTouched`, a flag set when something was SELECTED — and both bugs were
+states that set no selection. Each fix added a clause. 1.3.0's clause was never
+true (opening a backup run is not selecting). 1.4.0's never reset (once a patch
+had been clicked, left/right were swallowed for as long as the library stayed
+open, and up/down kept driving the library's selection — AUDITIONING a
+different patch on the instrument on every press — while the list on screen
+never moved).
+
+**A remembered flag cannot answer "where am I working now", because nothing
+that happens on screen updates it.** Ownership of an input event is now derived
+at press time from `document.activeElement.closest('#library, #bank-region')`
+(`focusedRegion` in app.js). Focus is read from the DOM when the key is
+pressed, and clicking anywhere else changes it — no clause to forget.
+
+REGION level, not row: the lists re-render on every refresh, which destroys
+focus on a child, so a row-level answer goes ambiguous immediately after each
+refresh. The container survives its children being replaced. And a CLOSED
+library owns nothing, also derived — `#library-head` is inside `#library`, so
+the click that collapses the tray leaves focus in a region with nothing on
+screen to drive.
+
+`lastTouched` still exists and is still correct for the detail panel: both
+regions hold a selection at once, the panel must show one, and "the thing you
+last chose" genuinely is not derivable from the screen. **It must never again
+decide who owns an input event**, and its declaration says so.
+
+**The part worth more than the fix.** During the first fix, a measurement
+established that with the library open the only reachable thing in
+`#bank-region` is the collapsed strip, and that clicking it closes the library.
+The measurement was right. The conclusion drawn from it — "so no gesture
+reaches the bank region while a library list is live" — was wrong: a backup run
+left open BEHIND the closed tray still answered both arrow axes. That
+conclusion was written into a test file as settled, and a listener was deleted
+on the strength of it.
+
+**A wrong conclusion recorded as settled is worse than no comment, because it
+stops the next person from looking.** A comment may record what was MEASURED
+freely. When it records what was INFERRED from the measurement, say so, and say
+what would falsify it.
+
+Two scenarios now, because the two ways back to On the Seven are two different
+DOM states: `arrow-ownership.js` closes the library, `arrow-ownership-open.js`
+leaves a backup run open behind it and reproduces Daniel's gesture from the
+release. The first passed green through the whole of the second bug.
+
+## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
+
+Fourth time this shape has cost something here, so it gets its own heading. A
+test that pins down what the code currently does — rather than what it should
+do — does not merely fail to catch the bug. **It fights the fix**, because
+correcting the code turns the suite red and the next person reads that as
+evidence they are wrong.
+
+The instances, in order of what they cost:
+
+- `wfp` redaction: the fake instrument returns `wfp: '[wfp redacted]'` itself,
+  so the test asserts a string the fixture hard-codes. Rule 6's primary defence
+  can be deleted with the suite green. **Still open.**
+- `test/ui/scenarios/notes-strip.js` skipped on `{ ok: false }`, so a 404 would
+  have gone green — rebuilding the exact property that let the original bug
+  hide, inside the test written to catch it.
+- `arrow-ownership.js` closed the library before pressing anything, and so
+  tested the one path that worked.
+- `test/library-store.test.js:924` asserts `missing === true` while nothing is
+  attached, commented "unknown to this build while nothing is attached" — the
+  offline "⚠ Not installed" bug stated as an intention. **Open as of
+  2026-08-20**: the code and the test have to change together, or the test
+  fights the fix.
+
+When writing a test, say which of two things it pins: **behaviour somebody
+decided on**, or **behaviour that happens to be there now**. The second kind
+needs a reason in the comment or it should not be written.
+
 ## Two coordinate conventions, one seam apart (2026-08-20)
 
 `midi.recall(bank, preset)` is **0-BASED** — it sends `bank * 8 + preset` as a

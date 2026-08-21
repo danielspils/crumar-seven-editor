@@ -126,6 +126,15 @@
   // which one the detail panel renders.
   let bankIndex = 0; // which bank the list DISPLAYS — navigation, not selection
   let deviceSel = { bank: 0, preset: 0 }; // the Seven boots at preset 1-1
+  // WHICH SELECTION THE DETAIL PANEL SHOWS, and nothing else. Both regions
+  // keep their selection at once, so the panel has to pick one, and "the thing
+  // you last chose" is not derivable from anything on screen — remembering is
+  // the correct semantics for that question.
+  //
+  // IT MUST NEVER AGAIN DECIDE WHO OWNS AN INPUT EVENT. It did, twice, and
+  // shipped a bug both times: first as a gate that was never true, then as one
+  // that never reset. Ownership of a keypress is answered by focusedRegion(),
+  // read from the DOM at press time (Daniel, 2026-08-20).
   let lastTouched = 'device'; // 'device' | 'library'
 
   // Where the sound carousel is parked. null = follow the patch; a number
@@ -809,6 +818,53 @@
     return true;
   }
 
+  // ---- Who owns the arrow keys ---------------------------------------------
+  //
+  // DERIVED AT PRESS TIME from which region holds focus. Never remembered.
+  //
+  // This was `lastTouched` twice, and it broke twice. First as a gate that was
+  // never true (opening a backup run is not "selecting", so the flag stayed
+  // 'device' while a run filled the screen). Then as a gate that never reset:
+  // once you had clicked a patch, left/right were swallowed for as long as the
+  // library stayed open, and up/down kept driving the library's selection —
+  // auditioning a different patch on the instrument on every press — while the
+  // list you were watching never moved (Daniel, on 1.4.0, 2026-08-20).
+  //
+  // Each fix was another clause, and the next navigation path nobody thought
+  // of would have broken it again. A remembered flag cannot answer "where am I
+  // working now", because nothing that happens on screen updates it.
+  //
+  // Focus can: it is read from the DOM when the key is pressed, and clicking
+  // anywhere else changes it. REGION level, not row: these lists re-render on
+  // every refresh and that destroys focus on a child, so a row-level answer
+  // would go ambiguous immediately after each refresh — the same bug wearing a
+  // different hat. The question is which region you are working in, not which
+  // row, and the container survives its children being replaced.
+  //
+  // Focus on neither region — a fresh launch, nothing clicked — answers
+  // 'bank-region', which is what the app opens showing.
+  const focusedRegion = () => {
+    const el = document.activeElement;
+    const region = el && el.closest ? el.closest('#library, #bank-region') : null;
+    // A CLOSED LIBRARY OWNS NOTHING. Collapsing the tray is the other way of
+    // going back to On the Seven, and #library-head is inside #library — so the
+    // click that closes it leaves focus in a region with nothing on screen to
+    // drive. Read from the DOM like the rest of this: not "what was clicked"
+    // but "what is showing".
+    if (region && region.id === 'library' && !document.querySelector('#library.lib-open')) {
+      return 'bank-region';
+    }
+    return region ? region.id : 'bank-region';
+  };
+
+  // Clicking anywhere in a region gives that region focus. Capture phase, so it
+  // runs whatever the click goes on to do, and it changes no selection — this
+  // answers only "where am I working".
+  for (const id of ['library', 'bank-region']) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => el.focus({ preventScroll: true }), true);
+  }
+
   document.addEventListener('keydown', (e) => {
     const vertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
     const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
@@ -833,36 +889,28 @@
       // (Daniel, 2026-08-20). moveBackupBank answers false unless its tabs are
       // actually visible — flag on, a run open, no search — so this claims the
       // keys only in the one state where they obviously belong to it.
-      if (libView.moveBackupBank && libView.moveBackupBank(dir)) {
-        e.preventDefault();
+      // The library answers only when you are working IN it. An open backup's
+      // bank tabs are the one thing there that left/right mean something to.
+      if (focusedRegion() === 'library') {
+        if (libView.moveBackupBank && libView.moveBackupBank(dir)) e.preventDefault();
         return;
       }
-      // The library owns left/right only while it is OPEN. Closing it is the
-      // other way of "going back to On the Seven", and it needs no click in
-      // this region to count — pressing an arrow the moment the tray is back
-      // on screen must move the tabs, not be swallowed by a selection made
-      // before the library was shut (Daniel, 2026-08-20).
-      //
-      // While it IS open, the gate stands: swapping the instrument's bank
-      // behind somebody reading their library moves something they are not
-      // looking at.
-      if (lastTouched === 'library' && document.querySelector('#library.lib-open')) return;
       if (moveBankTab(dir)) e.preventDefault();
       return;
     }
     e.preventDefault();
     const dir = e.key === 'ArrowDown' ? 1 : -1;
-    // AN OPEN LIST ANSWERS FIRST, whatever was touched last — the same rule
-    // the horizontal arrows already use for a backup's bank tabs. Opening a
-    // run is not "selecting", so lastTouched stayed 'device' and up/down moved
-    // the INSTRUMENT's selection: the centre column changed while no row in
-    // the run ever highlighted, because the highlight belonged to a list the
-    // keys were not driving (Daniel, 2026-08-20).
-    if (libView.ownsVerticalArrows && libView.ownsVerticalArrows()) {
+    // Same rule, same source of truth. ownsVerticalArrows still asks whether
+    // the library has a list worth driving — an open run or setlist with rows
+    // on screen — but it is asked ONLY when you are working in the library. On
+    // its own it claimed up/down for as long as a run stayed open, whatever
+    // you were looking at.
+    if (focusedRegion() === 'library'
+        && libView.ownsVerticalArrows && libView.ownsVerticalArrows()) {
       moveLibrarySelection(dir);
       return;
     }
-    if (lastTouched === 'library') moveLibrarySelection(dir);
+    if (focusedRegion() === 'library') moveLibrarySelection(dir);
     else moveBankSelection(dir);
   });
 
