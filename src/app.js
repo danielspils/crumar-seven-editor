@@ -288,8 +288,8 @@
         title: 'Send to Seven',
         bodyHtml:
           `<p class="bk-sum">${esc(SevenLibraryView.displayName(entry))} has been edited</p>` +
-          '<p class="bk-time">Sending the original replaces what you are hearing, ' +
-          'and your edits are lost.</p>',
+          '<p class="bk-time">Sending the original replaces what you\u2019re hearing. ' +
+          'Your edits are lost.</p>',
         secondaryLabel: 'Save edits to new patch',
         confirmLabel: 'Send original',
         cancelLabel: 'Close',
