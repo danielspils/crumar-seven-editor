@@ -1,5 +1,25 @@
 'use strict';
 
+// ASSERTIONS ABOUT SOURCE THAT NO RUNTIME TEST CAN MAKE.
+//
+// Everything here reads a file as text. That is a last resort, and each case
+// says why nothing else reaches it. Two reasons recur:
+//
+//   - A COMPONENT TEST SUPPLIES ITS OWN INPUTS, so it cannot tell whether
+//     anything in the app supplies them too. Delete the only caller and the
+//     component test stays green while the feature leaves the product — the
+//     shape this repo has been bitten by three times (sevenAPI.notes.latest,
+//     midi.auditionSound, #done-live-btn).
+//   - THE RENDERER'S IPC SURFACE IS FROZEN. contextBridge deep-freezes what it
+//     exposes — measured 2026-08-21: sevenAPI and sevenAPI.library both report
+//     Object.isFrozen true, and assigning over a method silently does nothing.
+//     So a UI scenario cannot wrap a call to observe that it happened.
+//
+// Neither reason involves hardware: these are questions about source, and none
+// of them needs a Seven attached to answer.
+
+// ---- The two optional modal buttons ---------------------------------------
+//
 // DOES ANYTHING ACTUALLY PASS THESE LABELS?
 //
 // `.seven-modal-second` and `.seven-modal-deny` render only when
@@ -59,4 +79,18 @@ test('the caller that handles the secondary answer still checks for it', () => {
   const src = code(read('audition.js'));
   assert.match(src, /===\s*'secondary'/,
     "audition.js still branches on the 'secondary' answer");
+});
+
+// ---- The library folder button --------------------------------------------
+
+test('the folder button is still wired to library.reveal', () => {
+  // test/ui/scenarios/library-reveal.js clicks the real button and separately
+  // checks where reveal() would go — but it cannot see that the CLICK is what
+  // calls it, because the frozen IPC surface cannot be wrapped and the listener
+  // discards the answer. A listener quietly dropped would leave that scenario
+  // green: it would still click a button, and still get the right path from its
+  // own direct call.
+  const src = code(read('app.js'));
+  assert.match(src, /libReveal\.addEventListener\('click',[\s\S]{0,120}?library\.reveal\(\)/,
+    "#library-reveal's click listener still calls library.reveal()");
 });

@@ -2764,6 +2764,9 @@
   // mutually exclusive — means opening the Library. Same gesture the Library
   // header has always had.
   sevenHead.addEventListener('click', () => setLibraryOpen(true));
+  // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it
+  // opened Finder and where it would have gone, which is for tests. Nothing in
+  // the UI changes either way.
   libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
 
   // Divider drag: sets the Library list height (--lib-split), persisted as a

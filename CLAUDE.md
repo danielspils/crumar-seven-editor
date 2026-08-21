@@ -916,6 +916,26 @@ SEVEN_FORCE_MISMATCH=1.22 npm start     # …and the banner says 1.22
 SEVEN_FORCE_MISMATCH=nofw npm start     # …with an unreadable firmware string
 ```
 
+**`SEVEN_NO_REVEAL=1` records where the folder button WOULD have opened,
+instead of opening it.** Revealing spawns a real Finder window that a test
+cannot un-open, but a flag that merely suppressed the call would give a test
+passing because nothing happened — and "nothing happened" is
+indistinguishable from "the wrong folder was revealed", which is the only
+failure worth catching here. Both branches answer `{ revealed, path }`.
+Contract measured before it was used: with the flag, `revealed:false` and
+Finder window count 0 → 0; without it, `revealed:true` and 0 → 1, the front
+window named after the library folder.
+
+**`contextBridge` DEEP-FREEZES the exposed API.** Measured 2026-08-21:
+`sevenAPI` and `sevenAPI.library` both report `Object.isFrozen === true`, and
+assigning over a method silently does nothing. **So a UI scenario cannot wrap
+an IPC call to observe that it happened** — which is why a click whose handler
+discards its result has to be covered in two pieces: the scenario for the
+gesture and the destination, and `test/source-wiring.test.js` for the fact that
+the button is wired to the call at all. Same reason the error-shape rule exists
+(only `message` survives a thrown Error across the bridge): the bridge is a
+harder boundary than it looks.
+
 **`SEVEN_NO_DEVICE=1` forces the app OFFLINE**, which until 2026-08-21 was the
 one state this project could not test.
 

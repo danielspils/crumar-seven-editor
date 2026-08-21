@@ -70,9 +70,23 @@ function registerLibraryIpc() {
     getStore().savePatchParams(file, patchIndex || 0, params));
   ipcMain.handle('library:trash', (_e, { file }) =>
     shell.trashItem(getStore().absPath(file)));
+  // SEVEN_NO_REVEAL: RECORD the path instead of opening it.
+  //
+  // Revealing spawns a real Finder window, which a test cannot un-spawn and a
+  // suite would spray across the desktop. But a flag that merely SUPPRESSED the
+  // call would produce a test that passes because nothing happened — and
+  // "nothing happened" is indistinguishable from "the wrong folder was
+  // revealed", which is the failure worth catching. It has to say WHERE it
+  // would have gone, and the test has to check that.
+  //
+  // Both branches answer the same shape, so the test reads one field to know
+  // which ran. Callers ignore the return today; nothing depends on it.
   ipcMain.handle('library:reveal', () => {
     getStore().ensureSeeded();
-    shell.showItemInFolder(getStore().dir);
+    const dir = getStore().dir;
+    if (process.env.SEVEN_NO_REVEAL) return { revealed: false, path: dir };
+    shell.showItemInFolder(dir);
+    return { revealed: true, path: dir };
   });
   ipcMain.handle('library:export', async (e, { file, suggestedName }) => {
     const win = BrowserWindow.fromWebContents(e.sender);
