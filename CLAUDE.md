@@ -877,6 +877,29 @@ npm run test:ui   # scenarios in test/ui/scenarios/, driving a real window
 npm start         # the app; keep an instance running while working
 ```
 
+**How long the suites take, measured 2026-08-21** — because the alternative is
+everyone forming a theory:
+
+```
+npm test         ~6s     373 pass
+npm run test:ui  204s     23 passed, 0 failed, 3 skipped  (Seven CONNECTED)
+```
+
+An attached instrument does NOT make the UI suite slow. A run once timed out at
+ten minutes and that was recorded in a commit message as "the full suite now
+exceeds ten minutes with the instrument attached" — **wrong, and it was one
+observation turned into a property.** A device-attached run had completed
+earlier in the same session, which was the counter-evidence sitting in the
+scrollback. The stall was almost certainly the machine sleeping mid-suite.
+
+**What the wrong belief cost:** a full-suite run was skipped before a commit on
+the strength of it, and the suite would have answered in three and a half
+minutes. That is the part worth remembering — a made-up cost is paid in the
+checks you stop running.
+
+Retimed with any real change to the suite. A number with a date beats a claim,
+either way round.
+
 **Only `npm test` runs by itself.** Its glob is `test/*.test.js`, which never
 descends into `test/ui/` — so no scenario is in the default suite or in CI,
 and a scenario is a guard only while somebody remembers to type the second
