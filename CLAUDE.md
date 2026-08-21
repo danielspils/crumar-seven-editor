@@ -562,6 +562,16 @@ if (!latest.ok) { check(false, latest.reason); }   // everything else FAILS
 control — no instrument attached, no network — and never for a result the
 feature is responsible for.** When writing the skip, say which of the two it is.
 
+**A DECLARATION THAT TURNS AN ASSERTION INTO SCENERY IS A DELETED TEST WEARING
+SETUP'S CLOTHES.** Setup and sabotage look identical in a diff — both are a line
+near the top of a test that changes the world it runs in — and only one of them
+leaves the assertions meaning anything. The example that produced the rule:
+`notes-strip.js` ends by asserting a dismissal was recorded, and
+`SEVEN_NOTES_DEBUG` suspends exactly that check, so declaring it would have left
+a green test asserting nothing at all. The runner REFUSES that flag by name
+rather than trusting anyone to notice (`FORBIDDEN_ENV` in `test/ui/run.js`).
+Before adding any setup line, ask which assertions it disarms.
+
 **And a precondition a scenario CAN control, it arranges itself** (2026-08-21).
 `notes-strip.js` dismisses the post it tests — the half most worth asserting,
 since an unrecorded dismissal means the strip returns forever — and dismissal
@@ -718,6 +728,23 @@ tag against it, and `app.getVersion()` reads it — verified against the SHIPPED
 1.4.0 artifact rather than a stale local build (Info.plist and the asar's own
 `package.json` both `1.4.0`). Nothing was missing. One copy had simply stopped
 tracking.
+
+**Second instance: "17 uncovered click-router branches."** That number came out
+of an audit, was written down, and was then carried across weeks — into plans,
+into a QA tier, into this file's own next-steps — as a current fact that nobody
+re-derived. Re-measured on 2026-08-21 from the source: **53 distinct
+selector-branches inside click listeners, of which 6 are uncovered by any
+suite.** Three that had been counted as uncovered were already covered by
+`library-view-picker.test.js` and `library-view-search.test.js` — the automatic
+suite, at that. Where 17 came from cannot be reconstructed, so it is retired
+rather than corrected.
+
+This one is the rule applied to OUR OWN PROCESS rather than to code. A count is
+a measurement, and a measurement has a date. Quoting one without re-taking it is
+the same act as reading a cached value where a live read belongs — and it is
+harder to catch, because a number in a plan has no test that can fail. **When a
+figure is carried forward, say when it was measured; when it is used to decide
+work, re-measure it first.**
 
 **The tell is a literal, or a cached value, standing where a live read belongs.**
 A version, a count, a date, a device's own answer. Ask whether the thing can
