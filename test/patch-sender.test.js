@@ -99,6 +99,25 @@ test('clamps a value to the schema max for that parameter', async () => {
   ]);
 });
 
+test('reports the CLAMPED values it sent, which become the drift baseline', async () => {
+  // `values` is what the instrument was actually given, and it is what the
+  // renderer holds as the baseline for drift (src/drift.js). If it reported
+  // the file's values instead, a patch holding an out-of-range number would
+  // differ from its own baseline the instant it loaded and the save button
+  // would appear with nobody having touched anything.
+  const midi = fakeMidi();
+  const r = await new PatchSender({ midi, schema: SCHEMA }).send(patch({ a_zero: 900, c_one: -5 }));
+  assert.deepStrictEqual(r.values, { a_zero: 64, c_one: 0 },
+    'clamped to max and floored at zero — not 900 and -5');
+
+  // AND THE CONSEQUENCE, pinned here so it cannot change unnoticed: a
+  // save-as-new from such a patch writes 64, not 900. The copy is not a
+  // faithful copy of the file, because the file holds a value no Seven can
+  // represent. The source is untouched, so nothing is lost — but the two now
+  // differ, and only the original carries the number that was never playable.
+  assert.notStrictEqual(r.values.a_zero, 900);
+});
+
 test('records a value the device would not take', async () => {
   const midi = fakeMidi({ clampAt: { id: 0, to: 60 } });
   const r = await new PatchSender({ midi, schema: SCHEMA }).send(patch({ a_zero: 64 }));

@@ -67,6 +67,17 @@ their original order, `params` keys sorted lexicographically.
   afterwards from a real reading. On an owner with expansions it was simply
   false: their Seven reports 27 sounds, not 24. `schema` is still filled in,
   because that names what the BUILD knew and is true either way.
+- **A VALUE OUT OF RANGE IS PRESERVED IN THE FILE AND CLAMPED EVERYWHERE ELSE.**
+  Parse keeps it verbatim and reports it (`outOfRange`, naming key, value and
+  max); the MIDI layer clamps at send time, because the instrument cannot
+  represent it. **So a patch SAVED AS NEW from such a file records the clamped
+  number, not the original.** The copy is not a faithful copy — it holds what
+  the Seven was actually given. Nothing is lost, since the source file is never
+  written to and still carries the unplayable value, but the two differ and
+  only the original has the number that never played. Pinned by
+  `test/patch-sender.test.js` ("reports the CLAMPED values it sent"), which is
+  also where drift takes its baseline from (2026-08-21).
+
 - **A COPY INHERITS the provenance of the patch it came from.** It was not made
   on whatever is plugged in now. Rebuilding `source` from current state
   produced copies claiming an instrument that never had the sound the patch is
