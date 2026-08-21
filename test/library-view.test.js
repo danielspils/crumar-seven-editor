@@ -329,10 +329,14 @@ const runData = () => {
   return { patches, setlists: [setlist(1), setlist(2), { name: 'Gig', slots: Array(8).fill(null) }], files: 17 };
 };
 
-test('a record inside a backup offers Duplicate, never Delete', () => {
+test('a record inside a backup offers no row actions at all', () => {
+  // It used to offer "Duplicate to edit" — removed 2026-08-21, when editing a
+  // backup stopped needing a copy first: the view follows the instrument, and
+  // drift offers "Save as new patch" straight from the bar. A record is
+  // read-only and its row now says that by having nothing on it.
   const html = SevenLibraryView.renderBody(runData(),
     { tab: 'backups', backupRun: '2026-08-16', search: '' });
-  assert.match(html, /data-duplicate-to-patches=/, 'duplicate is offered');
+  assert.ok(!/data-duplicate-to-patches=/.test(html), 'no duplicate control');
   assert.ok(!/data-patch-delete=/.test(html), 'and nothing there can be deleted');
   assert.ok(!/draggable="true"/.test(html), 'nor dragged into a new order');
 });

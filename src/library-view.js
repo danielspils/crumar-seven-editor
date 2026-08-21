@@ -247,25 +247,6 @@
       // Inside a backup the control is DUPLICATE, not delete: the run is
       // read-only, and making a record yours is a copy that lands in Patches
       // with a name of your choosing. The record stays as it was.
-      (opts.readOnly
-        // LABELLED, and on the row. It shipped as a bare icon with no styles
-        // at all, so it flowed onto its own line under each preset and read as
-        // a stray artifact — "I had no idea what it was" (Daniel, 2026-08-17).
-        // The label was the point of this control: when backups became
-        // read-only, this control replaced rename so the action
-        // would say what it does.
-        ? `<button type="button" class="patch-duplicate" data-duplicate-to-patches="${esc(entry.file)}" ` +
-          `data-pi="${entry.patchIndex}" title="Duplicate “${esc(name)}” to edit">` +
-          '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" ' +
-          'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
-          '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/>' +
-          '<path d="M10.5 2.5h-8v8"/></svg>' +
-          // "Duplicate to edit" — the REASON rather than the destination: a
-          // backup record is read-only, and this is how you get a version you
-          // can change. DUPLICATE is the app's verb for this everywhere; copy
-          // is not a second word for the same act (Daniel, 2026-08-17).
-          '<span class="patch-duplicate-label">Duplicate to edit</span></button>'
-        : '') +
       (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
       `data-pi="${entry.patchIndex}" title="Delete “${esc(name)}”">` +
@@ -1616,13 +1597,6 @@
             indexes: run.banks.map((b) => b.index),
           });
         }
-        return;
-      }
-      const dup = e.target.closest('[data-duplicate-to-patches]');
-      if (dup) {
-        const entry = data.patches.find((x) => x.file === dup.dataset.duplicateToPatches
-          && String(x.patchIndex) === dup.dataset.pi);
-        if (entry && on.duplicateToPatches) on.duplicateToPatches(entry);
         return;
       }
       const patchDel = e.target.closest('[data-patch-delete]');

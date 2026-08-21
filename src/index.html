@@ -639,27 +639,6 @@
     }
     .lib-row-wrap:hover .patch-delete, .patch-delete:focus-visible { opacity: 1; }
     .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
-    /* Duplicate to edit, inside a backup run. It had NO styles at all, so
-       it fell onto its own line below each preset as a bare unlabelled icon
-       (Daniel, 2026-08-17). Same anchoring as the delete control beside it —
-       the row's right edge — but it keeps its words: this is the one action a
-       read-only record offers, and it has to say so. */
-    .patch-duplicate {
-      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 2px 8px; cursor: pointer; font: inherit; font-size: 11px;
-      color: var(--text-dim); background: var(--bg-panel);
-      border: 1px solid var(--line); border-radius: 4px;
-      opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
-    }
-    /* VISIBLE ON THE SELECTED ROW, and on hover or focus anywhere else. All
-       32 at once is a wall of chrome; none until you sweep the row is how it
-       went unrecognised in the first place (Daniel, 2026-08-17). The row you
-       have chosen is the one you might copy, so that one says so outright. */
-    .lib-row-wrap:has(.lib-row.selected) .patch-duplicate,
-    .lib-row-wrap:hover .patch-duplicate,
-    .patch-duplicate:focus-visible { opacity: 1; }
-    .patch-duplicate:hover { color: var(--text); border-color: var(--text-muted); }
     /* The swap happens on the PILL itself, not on the row. Row-wide hover
        flipped every badge you passed over on the way somewhere else, which
        made the list twitch (Daniel, 2026-08-13). */

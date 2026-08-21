@@ -2104,28 +2104,6 @@
       // units (schema soundsNote).
       get sounds() { return soundList; },
       select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
-      // Making a record yours: a copy in Patches, named by you. The record is
-      // untouched, and nothing that pointed at it is re-pointed — a setlist
-      // slot still holds the record, and you would assign the copy yourself if
-      // you wanted it there (Daniel, 2026-08-16).
-      async duplicateToPatches(entry) {
-        const base = String(entry.name || 'Patch').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
-        const suggested = await window.sevenAPI.library.nextPatchName(base);
-        // The same words as the control that opened it. It said "Duplicate to
-        // Patches" with a "Duplicate" button — naming the destination, which
-        // was the older idea: the copy lands in Patches and the app takes you
-        // there, so nothing else has to say so (Daniel, 2026-08-17).
-        const chosen = await askForName({
-          title: 'Duplicate to edit', suggested, confirmLabel: 'Duplicate',
-        });
-        if (!chosen) return;
-        const copy = await window.sevenAPI.library.duplicate(entry.file, entry.patchIndex || 0, chosen);
-        await refreshLibrary();
-        if (copy && copy.file) {
-          libView.reveal(copy.file, copy.patchIndex || 0, { tab: 'patches' });
-          toast(`Duplicated to Patches: ${chosen}`);
-        }
-      },
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
         if (!action) return;

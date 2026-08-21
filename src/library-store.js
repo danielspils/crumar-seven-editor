@@ -697,9 +697,10 @@ class LibraryStore {
   // tabs; this keeps their names apart the same way.
   //
   // Every path that sets a display name goes through here — rename, duplicate
-  // (from a backup, from a Crumar preset, from the context menu, from the save
-  // bar) and create-from-instrument — because duplicateForEditing and
-  // duplicateToPatches have already drifted apart once.
+  // (from a Crumar preset, from the context menu, from the save bar) and
+  // create-from-instrument. The two duplicate paths drifted apart once, which
+  // is why they share this; one of them (duplicateToPatches, the backup row's
+  // "Duplicate to edit") was removed on 2026-08-21.
   namedPatches({ exceptFile = null, exceptPatchIndex = 0 } = {}) {
     return this.list({ skipMigration: true }).patches.filter((e) =>
       !e.invalid
