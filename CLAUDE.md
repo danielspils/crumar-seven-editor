@@ -208,11 +208,34 @@ occurrences of its own name in ASCII or UTF-16. Do not go looking again.
 "Venice Upright U1 Felt" and "Venice Upright U1" — and every other README
 describes a single piano.
 
-**Hit rate: 4 for 4** (2026-08-20). Venice Grand CB1898 was the control, its
-footer matching a name already known from the instrument. The other three —
-Venice Grand C5, Venice Grand CFX, Venice Upright K8 — were predicted from
-their footers in writing BEFORE installation and then confirmed exactly,
-character for character, against the sound table.
+**Hit rate: 4 for 4, AND THAT IS THE WHOLE SAMPLE** (2026-08-20). Venice Grand
+CB1898 was the control, its footer matching a name already known from the
+instrument. The other three — Venice Grand C5, Venice Grand CFX, Venice Upright
+K8 — were predicted from their footers in writing BEFORE installation and then
+confirmed exactly, character for character, against the sound table.
+
+**All four are expansions Daniel owns. The method is unvalidated on any set
+nobody here has — which is the only kind it exists for.**
+
+**THE 70BXL CASE IS UNCONFIRMED, and it is the one most likely to break the
+method.** Nobody here owns it, so its footer has never been compared against a
+device reading, and it cannot be until somebody who has it reports one. It is
+also the set with the worst naming record: three published spellings
+("Electric Grand 70BXL" on Crumar's download page, "Electric Grand 70 BXL" on
+GSi's, "Electric Grand 70B XL" on the instrument).
+
+What IS settled about it is the naming, and only that: **"70BXL" means a
+Yamaha CP-70B at full size.** The CP-80 is the 88-note version of the same
+instrument and is sonically identical, so XL is a cabinet distinction rather
+than a sound one. That resolves what the name refers to. **It does not resolve
+the footer-versus-device question**, which is the thing the method actually
+claims — whether the string in the PDF footer is character-for-character what
+the instrument reports.
+
+So: four checked, one reasoned about. Do not restate this as "generally
+reliable". A reader six months from now needs to be able to tell which cases
+were verified against hardware and which were inferred, and that distinction is
+the only reason this paragraph exists.
 
 **The instrument still outranks the footer.** Where someone owns the expansion,
 read the names off their unit and record that as the source; the footer is for
