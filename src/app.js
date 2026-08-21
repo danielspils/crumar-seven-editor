@@ -1765,25 +1765,24 @@
   // which is the same class of wrong the age was added to fix: a label that
   // stops tracking the thing it claims to describe.
   //
+  // The scheduling lives in src/day-rollover.js, pure and unit-tested, because
+  // the property that matters — THE NEXT TICK IS ARMED BEFORE THE CALLBACK
+  // RUNS, so one throw cannot end day tracking for the session — cannot be
+  // proven against a closure in here, and nobody is going to wait until
+  // midnight to watch it.
+  //
   // Two triggers, because neither is sufficient alone. The timer handles an app
   // sitting open on a stage all night; the focus listener handles a laptop that
   // was ASLEEP across midnight, where the timer may not have fired at all.
-  // Re-armed each time rather than set on an interval, so it lands on the day
-  // boundary instead of drifting.
-  function scheduleDayRollover() {
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 30);
-    setTimeout(() => {
-      updateSevenHead();
-      updateBankStrip();
-      scheduleDayRollover();
-    }, Math.max(1000, midnight - now));
-  }
-  window.addEventListener('focus', () => {
+  const refreshAgeLabels = () => {
     updateSevenHead();
     updateBankStrip();
-  });
-  scheduleDayRollover();
+  };
+  SevenDayRollover.startDayRollover({ onRollover: refreshAgeLabels });
+  // Labels only — NOT refreshLibrary(). Measured with 54 files: 0.096ms per
+  // focus event against 6.6ms for one library.list() round trip, so alt-tabbing
+  // costs about a seventieth of a fetch and touches no disk.
+  window.addEventListener('focus', refreshAgeLabels);
 
   function updateSevenHead() {
     // The chevron is part of the header, not decoration on the collapsed
