@@ -62,12 +62,56 @@ function makeScratchLibrary() {
   return { dir: scratch, source, copied };
 }
 
+// A scenario declares the launch state it needs, at the top of its own file:
+//
+//   // @env SEVEN_RESET_NOTES=1
+//
+// SO THAT A TEST ARRANGES ITS OWN PRECONDITION instead of instructing a human
+// to. notes-strip.js DISMISSES the post it tests — that is the half of the
+// feature most worth asserting — and dismissal is permanent, so the scenario
+// destroyed the very state it needed and every later run failed with "run with
+// SEVEN_RESET_NOTES=1". A person in a hurry re-runs it with the flag; CI never
+// will, and a suite that needs someone to read the failure and try again is a
+// suite that goes quietly red and stays there.
+//
+// Only SEVEN_-prefixed names, and NEVER from the environment this runner was
+// started in: the point is that the state is CHOSEN by the scenario and visible
+// in its source, not inherited from whatever the desk happens to have set.
+//
+// It cannot be used to weaken a check. SEVEN_NOTES_DEBUG bypasses the seen
+// rule that notes-strip.js asserts, so declaring it would turn a real assertion
+// into scenery — the sort of thing that reads as setup and behaves as a
+// deleted test. Refused by name.
+const FORBIDDEN_ENV = new Set(['SEVEN_NOTES_DEBUG']);
+
+function declaredEnv(file) {
+  const src = fs.readFileSync(path.join(dir, file), 'utf8');
+  const out = {};
+  for (const m of src.matchAll(/^\s*\/\/\s*@env\s+(SEVEN_[A-Z0-9_]+)=(\S*)\s*$/gm)) {
+    const [, name, value] = m;
+    if (FORBIDDEN_ENV.has(name)) {
+      throw new Error(`${file} declares ${name}, which suspends the behaviour a scenario would be asserting`);
+    }
+    out[name] = value;
+  }
+  return out;
+}
+
 function runScenario(file, libraryDir) {
   return new Promise((resolve) => {
+    // A bad declaration is that scenario's failure, not a crash of the run:
+    // one malformed line should not take the other sixteen with it.
+    let declared;
+    try {
+      declared = declaredEnv(file);
+    } catch (err) {
+      return resolve({ file, failures: [String(err.message || err)], notes: [], out: '' });
+    }
     const child = spawn('npx', ['electron', '.'], {
       cwd: root,
       env: {
         ...process.env,
+        ...declared,
         SEVEN_UI_TEST: path.join(dir, file),
         SEVEN_LIBRARY_DIR: libraryDir,
       },

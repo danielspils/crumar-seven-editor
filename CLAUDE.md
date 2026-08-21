@@ -562,6 +562,29 @@ if (!latest.ok) { check(false, latest.reason); }   // everything else FAILS
 control — no instrument attached, no network — and never for a result the
 feature is responsible for.** When writing the skip, say which of the two it is.
 
+**And a precondition a scenario CAN control, it arranges itself** (2026-08-21).
+`notes-strip.js` dismisses the post it tests — the half most worth asserting,
+since an unrecorded dismissal means the strip returns forever — and dismissal
+is permanent. So it consumed the state it needed, passed exactly once, and
+every run afterwards failed with "already dismissed · run with
+SEVEN_RESET_NOTES=1". Correct, loud, and useless: CI never reads a failure and
+re-runs, and neither does a person in a hurry.
+
+A scenario now declares its launch state in its own source, and the runner
+applies it:
+
+```js
+// @env SEVEN_RESET_NOTES=1
+```
+
+`SEVEN_`-prefixed names only, never inherited from the runner's own
+environment — the state must be CHOSEN by the scenario and visible to anyone
+reading it, not whatever the desk happens to have set. **`SEVEN_NOTES_DEBUG` is
+refused by name**, because it suspends the seen check that scenario ends by
+asserting: a declaration that turns a real assertion into scenery is a deleted
+test wearing setup's clothes. A bad declaration fails that scenario alone
+rather than crashing the run.
+
 Related: prove a test fails for the reason you think. Deleting the consumer
 reproduced the original bug and the scenario named it exactly ("the feed offered
 X and nothing rendered — is the renderer half wired up?"). And an end-to-end

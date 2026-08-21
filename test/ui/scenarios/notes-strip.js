@@ -6,12 +6,23 @@
 // sign (Daniel, 2026-08-20). Every failure of this feature looks exactly like
 // its idle state; that is precisely why it needs a test rather than a glance.
 //
-// Run it with the seen-state cleared, or the rule will correctly refuse:
+// @env SEVEN_RESET_NOTES=1
 //
-//   SEVEN_RESET_NOTES=1 npm run test:ui notes-strip
+// IT ARRANGES ITS OWN PRECONDITION, with the line above. This scenario
+// DISMISSES the post it tests — the half of the feature most worth asserting,
+// since a dismissal that isn't recorded means the strip returns forever — and
+// dismissal is permanent. So it destroyed the state it needs, passed exactly
+// once, and every run after that failed with "already dismissed · run with
+// SEVEN_RESET_NOTES=1". Correct, loud, and useless: CI will never read that and
+// re-run, and neither will a person in a hurry.
 //
-// Do NOT run it under SEVEN_NOTES_DEBUG: that flag suspends the seen check on
-// purpose, which is the last thing this asserts.
+// The runner reads the @env line and launches with it (test/ui/run.js). The
+// declaration is in the source, so what state this test assumes is visible to
+// anyone reading it rather than living in somebody's shell history.
+//
+// SEVEN_NOTES_DEBUG is REFUSED by the runner, not merely discouraged: it
+// suspends the seen check this scenario ends by asserting, so declaring it
+// would leave a green test asserting nothing.
 //
 // It goes to the LIVE feed on purpose. A stubbed feed would prove the renderer
 // can draw a line from an object it was handed, which was never in doubt — the
@@ -46,7 +57,12 @@
       return;
     }
     if (latest.seen) {
-      ui.check(false, 'the newest post is already dismissed — run with SEVEN_RESET_NOTES=1');
+      // With @env SEVEN_RESET_NOTES=1 the state is cleared at launch, so this
+      // is no longer "you forgot a flag" — it means the reset did not happen,
+      // and the scenario is about to assert nothing. Still a failure, and now
+      // a failure about the harness rather than an instruction to the reader.
+      ui.check(false,
+        'the post is already dismissed despite the declared reset — is @env being applied?');
       return;
     }
     // The feed WAS good and the post WAS unseen, and still no strip. That is
