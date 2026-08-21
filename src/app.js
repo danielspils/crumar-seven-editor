@@ -1975,6 +1975,57 @@
     });
   }
 
+  // SEND PC IS OFF — say so, every time.
+  //
+  // Not once, not remembered, not suppressed by a previous dismissal (Daniel,
+  // 2026-08-21). The setting lives on the player's instrument and they may turn
+  // it off again; a prompt that gave up after one showing would leave the app
+  // quietly half-working for the rest of its life.
+  //
+  // The trigger is a READ, never a default. status().sendPc is 0, 1, or null
+  // when the globals could not be read — and null is not zero
+  // (src/send-pc-prompt.js).
+  let sendPcModalOpen = false;
+  async function maybeOfferSendPc(status) {
+    if (sendPcModalOpen || !SevenSendPcPrompt.shouldPrompt(status)) return;
+    sendPcModalOpen = true;
+    try {
+      // Daniel's words, unedited.
+      const explain = 'SEND PC is a global setting on your Crumar Seven that '
+        + 'allows information to pass between the app and the Seven. It needs to '
+        + 'be on for all features to work.';
+      let note = '';
+      for (;;) {
+        const go = await SevenModal.confirm({
+          title: note ? 'SEND PC is still OFF' : 'SEND PC is OFF',
+          // The failure, when there is one, goes ABOVE the explanation: it is
+          // the news, and the explanation is the same paragraph it always was.
+          bodyHtml: (note ? `<p class="bk-sum">${esc(note)}</p>` : '')
+            + `<p class="bk-time">${esc(explain)}</p>`,
+          confirmLabel: note ? 'try again' : 'turn on SEND PC',
+          cancelLabel: 'Close',
+        });
+        // X: nothing written, the instrument untouched.
+        if (!go) return;
+
+        const r = await SevenSendPcPrompt.turnOn({
+          setGlobal: (i, v) => window.sevenAPI.midi.setGlobal(i, v),
+        });
+        if (r.ok) {
+          toast('SEND PC is on');
+          return;
+        }
+        // IT DID NOT TAKE, so the modal stays and says why. Closing here would
+        // report a change to somebody's instrument that never happened — and
+        // the setting is reachable from the Seven's own menu either way, which
+        // is worth saying once the app has failed at it.
+        note = `${r.error} You can also turn it on from the Seven\u2019s own menu.`;
+      }
+    } finally {
+      sendPcModalOpen = false;
+    }
+  }
+
   function updateSevenHead() {
     // The chevron is part of the header, not decoration on the collapsed
     // strip: expanded, this header used to lose it and with it any sign that
@@ -3585,6 +3636,7 @@
           setSoundList(s.soundTable);
         }
         deviceStorage = s.storage || null;
+        maybeOfferSendPc(s);
       } else if (s.state === 'connecting') {
         connText.textContent = 'Connecting…';
       } else {
