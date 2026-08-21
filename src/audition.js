@@ -79,24 +79,45 @@
     const donorEntry = (deps.getEntries() || []).find(
       (e) => e.file === target.file && (e.patchIndex || 0) === (target.patchIndex || 0)
     );
-    const isDonorFile = !!(donorEntry && donorEntry.origin && donorEntry.origin.bank === 1);
+    // ONE CONTROL, THREE CONTEXTS (Daniel, 2026-08-21).
+    //
+    //   ON THE SEVEN   "Save as new patch"  ALWAYS available
+    //   Backups        "Save as new patch"  when something has drifted
+    //   Patches        "Save patch"         when something has drifted
+    //
+    // The label names the DESTINATION, never "save edits": a backup is not
+    // written to and cannot be, so a label promising to save into one would be
+    // describing something the app refuses to do.
+    //
+    // ON THE SEVEN is always on because there is no file behind a bank slot to
+    // compare against. The app knows only what that slot held at the last
+    // backup, and the preset may have changed on the instrument since — so it
+    // cannot honestly claim the player edited anything, because it does not
+    // know what the slot contained. An always-available control claims
+    // nothing; a drift marker there would be a guess.
+    const onSeven = !!(deps.lastTouchedDevice && deps.lastTouchedDevice());
+    const isBackupRecord = !!(donorEntry && donorEntry.origin && donorEntry.origin.kind === 'backup');
+    const savesAsNew = onSeven || isBackupRecord;
+    const saveLabel = savesAsNew ? 'Save as new patch' : 'Save patch';
+
     const bar = (live, note, kind = '') =>
       `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
       `<span class="save-actions">` +
-      `<button type="button" id="save-live-btn"${live ? '' : ' disabled'}>` +
-      'Save to Computer</button>' +
-      // The two destinations first, together: the computer, then the
-      // instrument. Absent on Bank 1, where the hardware refuses a store — a
+      `<button type="button" id="save-live-btn" data-save-mode="${savesAsNew ? 'new' : 'overwrite'}"` +
+      // `live` is this bar's own argument — whether there is anything to save —
+      // so the button follows drift everywhere except ON THE SEVEN, where it
+      // is always available because there is nothing to compare against.
+      `${onSeven || live ? '' : ' disabled'}>${saveLabel}</button>` +
+      // Send to Seven belongs to a patch ON THIS COMPUTER — it is how a file
+      // reaches the instrument. From ON THE SEVEN it was the only way to copy
+      // one preset to another slot, and it is removed there as a DELIBERATE,
+      // REVERSIBLE TRIAL (see the commit that did it): does anyone miss it?
+      // Absent on Bank 1 either way, where the hardware refuses a store — a
       // control that explains why it cannot work should not be a control.
-      (onFactoryBank
+      (onFactoryBank || onSeven
         ? ''
         : `<span class="save-sep" aria-hidden="true">·</span>` +
           `<button type="button" class="save-seven-link" data-save-to-seven>Send to Seven</button>`) +
-      // Then the one that goes nowhere: a copy, on this computer, to edit.
-      (isDonorFile
-        ? `<span class="save-sep" aria-hidden="true">·</span>` +
-          `<button type="button" class="save-seven-link" data-duplicate-edit>Duplicate and edit</button>`
-        : '') +
       `</span>` +
       (note ? `<span class="audition-note ${kind}">${note}</span>` : '') +
       `</div>`;
@@ -531,9 +552,11 @@
   el.addEventListener('click', async (e) => {
     if (e.target.closest('#save-live-btn')) {
       const btn = e.target.closest('#save-live-btn');
+      const mode = btn.dataset.saveMode;
       btn.disabled = true;
       btn.textContent = 'Saving…';
-      await saveLiveToLibrary();
+      if (mode === 'new') await saveLiveAsNewPatch();
+      else await saveLiveToLibrary();
       deps.renderDetail();
       return;
     }
@@ -542,6 +565,56 @@
     // there is nothing left to press to "enter" anything, and the whole send
     // path that lived here now belongs to preview().
   });
+
+  // SAVE AS NEW: the buffer, as its own patch in Patches.
+  //
+  // What is saved is WHAT IS LIVE, not the contents of whatever file is open.
+  // That is the whole reason the control exists — you were playing a backup
+  // record, or a bank slot with no file behind it at all, and the thing worth
+  // keeping is what the instrument is holding. A copy-the-source
+  // implementation discards exactly the edits the button was pressed for, and
+  // it looks like it worked.
+  //
+  // Provenance is a NEW patch's: created now, instrument facts from what is
+  // connected now, and nothing claimed when nothing is attached
+  // (createPatchFromLive in library-store.js).
+  async function saveLiveAsNewPatch() {
+    const patch = deps.getPatch();
+    if (!patch) return;
+    const liveSound = deps.getLiveSound && deps.getLiveSound();
+    const soundName = (liveSound && liveSound.name) || patch.soundName || '';
+    // Whatever the buffer holds. With no live session — the ON THE SEVEN case,
+    // where nothing has been sent — the slot's own values are what is playing.
+    const params = (liveEdit && liveEdit.params) || patch.params || {};
+
+    const base = String(patch.name || soundName || 'Patch')
+      .replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
+    const suggested = await window.sevenAPI.library.nextPatchName(base);
+    const chosen = await deps.askForName({
+      title: 'Save as new patch', suggested, confirmLabel: 'Save',
+    });
+    if (!chosen) return;
+
+    let made;
+    try {
+      made = await window.sevenAPI.library.createFromLive({
+        name: chosen,
+        soundName,
+        sampled: liveSound ? !!liveSound.sampled : undefined,
+        params: { ...params },
+      });
+    } catch (err) {
+      // The seam throws on a refusal, so this cannot be mistaken for success.
+      toast(err.message || 'Could not save that patch');
+      return;
+    }
+    await deps.refreshLibrary();
+    // The live session, if there is one, does NOT follow the new patch: you
+    // were playing a record or a slot and you still are. The new patch is a
+    // copy of this moment, not a change of what is open.
+    toast(`Saved to Patches: ${chosen}`);
+    if (made && made.file && deps.revealPatch) deps.revealPatch(made.file, made.patchIndex || 0);
+  }
 
   // Writes the working copy to the patch file. Needs no instrument — the
   // values are already here, which is why switching patches never has to cost

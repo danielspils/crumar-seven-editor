@@ -1061,6 +1061,69 @@ test('main.js actually injects the version, rather than leaning on the default',
     'and passes the RUNNING app’s version into it');
 });
 
+test('save-as-new writes the LIVE values, not the source file\'s', () => {
+  // THE TRAP THIS EXISTS FOR. The naive implementation copies the source file
+  // and the edits the button was pressed to preserve are silently discarded —
+  // the user watches a patch appear and it is the one they started from.
+  const { store } = freshStore();
+  const src = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } });
+  const original = store.readFile(src.file).library.patches[0];
+  const key = Object.keys(original.params)[0];
+  const edited = { ...original.params, [key]: (Number(original.params[key]) + 7) };
+
+  const made = store.createPatchFromLive({
+    name: 'Tine Piano 2', soundName: 'Tine Piano', params: edited,
+  });
+  const saved = store.readFile(made.file).library.patches[0];
+  assert.strictEqual(Number(saved.params[key]), Number(original.params[key]) + 7,
+    'the edited value is what landed on disk');
+  assert.notStrictEqual(Number(saved.params[key]), Number(original.params[key]),
+    'and it is NOT the source file\'s value');
+  // The source is untouched: saving as new never writes back.
+  assert.strictEqual(
+    Number(store.readFile(src.file).library.patches[0].params[key]),
+    Number(original.params[key]), 'the patch it came from is unchanged');
+});
+
+test('save-as-new is a NEW patch, with new-patch provenance', () => {
+  const { store } = freshStore();
+  const unit = [...schema.sounds.map((x, i) => ({ id: i, name: x.name })),
+    { id: 24, name: 'Venice Grand CFX' }];
+  store.setDeviceSounds({ sounds: unit });
+  store.setDeviceFirmware('CRUMAR Seven v.1.42');
+
+  const made = store.createPatchFromLive({
+    name: 'From the buffer', soundName: 'Venice Grand CFX', params: { rho_atk: 40 },
+  });
+  const doc = store.readFile(made.file).library;
+  // Instrument facts recorded the way ANY new patch records them — from what
+  // is connected NOW, not inherited from whatever it was edited on top of.
+  assert.strictEqual(doc.source.soundList.length, 25);
+  assert.strictEqual(doc.source.firmware, 'CRUMAR Seven v.1.42');
+  const age = Date.now() - new Date(doc.patches[0].origin.created).getTime();
+  assert.ok(age >= 0 && age < 60000, 'created now');
+  assert.strictEqual(doc.patches[0].origin.bank, undefined, 'it claims no slot');
+});
+
+test('save-as-new offline claims nothing about an instrument', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromLive({
+    name: 'Made offline', soundName: 'Tine Piano', params: { rho_atk: 40 },
+  });
+  const src = store.readFile(made.file).library.source;
+  assert.strictEqual(src.soundList, null);
+  assert.strictEqual(src.firmware, null);
+});
+
+test('save-as-new refuses a name already taken', () => {
+  const { store } = freshStore();
+  store.createPatchFromLive({ name: 'Taken', soundName: 'Tine Piano', params: {} });
+  assert.throws(
+    () => store.createPatchFromLive({ name: 'taken', soundName: 'Tine Piano', params: {} }),
+    /already a patch called/i,
+    'and case-folds, like every other name check');
+});
+
 test('a new patch records the instrument it was made on, not the schema', () => {
   const { store } = freshStore();
 

@@ -687,6 +687,44 @@ class LibraryStore {
     };
   }
 
+  // SAVE AS NEW: what the instrument is holding RIGHT NOW, as its own patch.
+  //
+  // Not a duplicate of whatever it was edited on top of. The distinction is the
+  // whole point of the control: you were playing a backup record, or a bank
+  // slot the app has no file for, and what you want kept is the SOUND IN THE
+  // BUFFER — not the file you started from. Copying the source and hoping the
+  // edits follow is the naive version, and it silently discards exactly what
+  // the button was pressed to preserve.
+  //
+  // PROVENANCE IS A NEW PATCH'S, not the source's. `source` describes the
+  // instrument these values came from, and they came from the one connected
+  // now — so it is built from current device state like any other new patch,
+  // and with nothing attached it claims nothing (singlePatchContainer). That
+  // is the opposite of duplicate(), which INHERITS, and correctly: a copy came
+  // from wherever the original did, while this came off the wire just now.
+  createPatchFromLive({ name, soundName, sampled = null, params = {} }) {
+    const chosen = String(name || '').trim();
+    if (!chosen) throw new Error('A patch needs a name.');
+    this.assertNameFree(chosen);
+    const sound = this.soundByName.get(soundName);
+    const file = this.uniqueFile(chosen);
+    const container = this.singlePatchContainer({
+      name: chosen,
+      origin: { created: new Date().toISOString() },
+      // The id is diagnostic only and is never resolved against (FORMAT.md);
+      // null when nothing is attached, rather than a number from the schema
+      // that describes no instrument in the room.
+      sound: {
+        name: String(soundName || ''),
+        id: sound ? sound.id : null,
+        ...(sampled == null ? {} : { sampled: !!sampled }),
+      },
+      params: { ...params },
+    });
+    writeAtomic(path.join(this.dir, file), serializeLibrary(container));
+    return { file, patchIndex: 0 };
+  }
+
   // ---- One name, one patch ------------------------------------------------
   //
   // THE NAMESPACE IS YOUR PATCHES, not the whole folder. Backup records are

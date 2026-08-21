@@ -599,16 +599,6 @@
   // where they will light, and the same short lines under it. The player is
   // looking at the instrument, so "hold THAT one" is a location rather than a
   // sentence (Daniel, 2026-08-13).
-  // "Duplicate and edit", from the save bar on a Crumar capture.
-  document.addEventListener('click', async (e) => {
-    if (!e.target.closest('[data-duplicate-edit]')) return;
-    const t = currentTarget();
-    const entry = t && libEntries.find(
-      (x) => x.file === t.file && (x.patchIndex || 0) === (t.patchIndex || 0)
-    );
-    if (entry) await duplicateForEditing(entry, 'Make your changes');
-  });
-
   // "Send to Seven" now SENDS, and is named for what it does. It used to be
   // called "Save to Seven" and open a dialog that drew the panel
   // and said "hold a preset for 3 seconds" — instructions, not an action: it
@@ -1707,6 +1697,9 @@
     // carousel is not what the patch file says. Saving without this wrote the
     // new settings under the old instrument's name.
     getLiveSound: () => liveSound,
+    // The rename modal, reused: same prepopulated suggestion and the same
+    // uniqueness rules as every other place the app asks for a patch name.
+    askForName: (opts) => askForName(opts),
     // Take the user to a patch on disk: open the library, land on Patches,
     // scroll the row in and select it. Saving can CREATE a file — a backup
     // record is never overwritten, so keeping its edit makes a new patch —

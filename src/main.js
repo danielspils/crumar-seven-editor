@@ -156,6 +156,11 @@ function registerLibraryIpc() {
     }
   });
 
+  // Save as new: the live buffer as its own patch. THROWS on a taken name —
+  // the target convention (CLAUDE.md), so a caller that forgets to check
+  // cannot proceed on a refusal that looks like a filename.
+  ipcMain.handle('library:createFromLive', (_e, { name, soundName, sampled, params }) =>
+    getStore().createPatchFromLive({ name, soundName, sampled, params }));
   ipcMain.handle('library:nextPatchName', (_e, { name }) => {
     try { return getStore().nextPatchName(name); }
     catch { return name; }

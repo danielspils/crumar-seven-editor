@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // The Patches list's hand-placed order: the whole visible sequence as
     // `file#patchIndex` keys, or cleared to go back to sorting by recency.
     // What a generated patch would copy its values from, and the write itself.
+    createFromLive: (args) => throwIfRefused(ipcRenderer.invoke('library:createFromLive', args)),
     nextPatchName: (name) => ipcRenderer.invoke('library:nextPatchName', { name }),
     // Asked while someone types in the naming prompt, so the refusal arrives
     // before the button rather than after the write.
