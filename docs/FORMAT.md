@@ -43,7 +43,13 @@ their original order, `params` keys sorted lexicographically.
   ID order or array position: the ID space is firmware-specific; the key is
   the stable identity.
 - **`sound.name` is authoritative on import.** `sound.id` is diagnostic only;
-  resolution never uses it. Sound IDs are not portable across instruments with
+  resolution never uses it. Resolution itself lives in `src/patch-sender.js`
+  (`resolveSoundId`) and runs against the CONNECTED instrument's own table. A
+  `resolveSounds` in this layer, resolving against the stored `source.soundList`
+  instead, was removed on 2026-08-21: that list says what the instrument this
+  patch was made on had, which is a different question from what the instrument
+  in front of the user has (CLAUDE.md, CURRENT STATE MUST NOT STAND IN FOR
+  RECORDED FACT). Sound IDs are not portable across instruments with
   different expansions.
 - **Provenance is per-patch.** A library can legitimately hold patches from
   more than one instrument — that is the transfer use case. The top-level
@@ -120,4 +126,3 @@ if it turns out to store more.
 | `serializeLibrary(library)` | → JSON string. Deterministic order; throws on any `wfp` key at any depth. |
 | `parseLibrary(text, {schema})` | → `{ library, report }`. Never throws on recoverable problems; invalid JSON yields `library: null` with the error in the report. Never mutates. |
 | `validateLibrary(library, schema)` | → `{ errors, warnings, missingParams, outOfRange, unknownKeys }`. Returns data, prints nothing. Wrong `format` string / non-integer `formatVersion` are errors; out-of-range values and missing param keys are warnings. |
-| `resolveSounds(library, targetSoundList?)` | → per-patch `{ status: "ok", targetId, fuzzy? }` or `{ status: "unavailable", sourceId, sourceName }`. Exact name match first, then trim + case-fold + collapsed whitespace (`fuzzy: true`). No UI, no throwing on unavailable. Without a target list, each patch resolves against its own effective soundList. |

@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const schema = require('../schema/seven-1.37.json');
-const { serializeLibrary, parseLibrary, validateLibrary, resolveSounds } = require('../src/format/index.js');
+const { serializeLibrary, parseLibrary, validateLibrary } = require('../src/format/index.js');
 
 const fixturePath = path.join(__dirname, '..', 'fixtures', 'library-roundtrip.json');
 const loadFixture = () => JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
@@ -50,33 +50,6 @@ test('serialize throws when a wfp key is present at any depth', () => {
   assert.doesNotThrow(() => serializeLibrary(clean));
 });
 
-test('resolve against a target list missing one sound → exactly one unavailable', () => {
-  const lib = loadFixture();
-  lib.patches = lib.patches.slice(0, 4); // Tine, Reed, Electric Grand, Clavi
-  const target = schema.sounds
-    .filter((s) => s.name !== 'Clavi Piano')
-    .map((s) => ({ id: s.id, name: s.name }));
-  const res = resolveSounds(lib, target);
-  const unavailable = res.filter((r) => r.status === 'unavailable');
-  assert.equal(unavailable.length, 1);
-  assert.equal(unavailable[0].sourceName, 'Clavi Piano');
-  assert.equal(unavailable[0].sourceId, 3);
-  for (const r of res.filter((x) => x.status === 'ok')) {
-    assert.equal(typeof r.targetId, 'number');
-    assert.ok(!r.fuzzy);
-  }
-});
-
-test('resolve with case/whitespace differences → ok with fuzzy: true', () => {
-  const lib = loadFixture();
-  lib.patches = [lib.patches[0]];
-  lib.patches[0].sound = { name: '  tine   PIANO ', id: 0 };
-  const res = resolveSounds(lib, lib.source.soundList);
-  assert.equal(res[0].status, 'ok');
-  assert.equal(res[0].fuzzy, true);
-  assert.equal(res[0].targetId, 0);
-});
-
 test('absent param key → warning naming it, library still usable', () => {
   const lib = loadFixture();
   delete lib.patches[0].params.rho_hrd;
@@ -84,29 +57,6 @@ test('absent param key → warning naming it, library still usable', () => {
   assert.equal(report.errors.length, 0); // usable: warnings, not errors
   assert.deepEqual(report.missingParams, [{ patch: 0, key: 'rho_hrd' }]);
   assert.ok(report.warnings.some((w) => w.includes('rho_hrd')));
-});
-
-test('two patches with different soundLists each resolve against their own', () => {
-  const lib = loadFixture();
-  const soundA = { id: 20, name: 'Venice Grand Open' };
-  const soundB = { id: 5, name: 'Only On Instrument B' };
-  const a = lib.patches[0];
-  const b = lib.patches[1];
-  a.sound = { name: soundA.name, id: soundA.id };
-  b.sound = { name: soundB.name, id: soundB.id };
-  // Patch A inherits the library's soundList (which has Venice Grand Open).
-  delete a.source;
-  // Patch B carries its own instrument's list — its sound exists ONLY there.
-  b.source = { soundList: [soundB] };
-  lib.patches = [a, b];
-  const res = resolveSounds(lib); // no target: each resolves per effective list
-  assert.equal(res[0].status, 'ok');
-  assert.equal(res[0].targetId, 20);
-  assert.equal(res[1].status, 'ok');
-  assert.equal(res[1].targetId, 5);
-  // Cross-check: forcing the top-level list unconditionally would fail B.
-  const wrong = resolveSounds({ ...lib, patches: [b] }, lib.source.soundList);
-  assert.equal(wrong[0].status, 'unavailable');
 });
 
 test('structural errors: wrong format string and non-integer formatVersion', () => {
