@@ -1899,6 +1899,82 @@
   // costs about a seventieth of a fetch and touches no disk.
   window.addEventListener('focus', refreshAgeLabels);
 
+  // REFRESH ALL 32 SLOTS. Recall each one and read the sound off the broadcast
+  // it produces — the same free read a click already does, thirty-two times.
+  //
+  // NO CONFIRM DIALOG and NO CANCEL, deliberately. The sweep does no parameter
+  // reads and writes no files, so it is seconds of the instrument clicking
+  // through sounds rather than the backup run's minute of work. A dialog in
+  // front of a blip teaches people to dismiss dialogs, and cancellation
+  // machinery exists to protect file writes there are none of here (Daniel,
+  // 2026-08-21). If the real measurement comes back materially above ~10s that
+  // decision reopens — the estimate is arithmetic from the backup's own
+  // per-slot figure, not something anyone has timed.
+  //
+  // A sweep that ends early is not a failure state: the cable can be pulled or
+  // the instrument can stop answering, and the header's partial form already
+  // says exactly what happened — "16 of 32 as of 2:32pm - 16 as of last
+  // backup". So it stops at the first slot that does not answer and keeps
+  // every slot that did.
+  let sweeping = false;
+  async function refreshAllSlots() {
+    if (sweeping || !isConnected()) return;
+    sweeping = true;
+    updateSevenHead();
+    const back = deviceSel ? { bank: deviceSel.bank, preset: deviceSel.preset } : null;
+    let read = 0;
+    try {
+      for (let bank = 0; bank < 4; bank++) {
+        for (let preset = 0; preset < 8; preset++) {
+          // The same sticky toast a patch load uses. Five seconds of stuttering
+          // sound with nothing on screen is a mystery; this is the app's
+          // existing answer for a short wait and needs no new furniture.
+          toast(`Reading the Seven… ${read + 1} of 32`, { sticky: true });
+          const got = await readOneSlot(bank, preset);
+          if (!got) throw new Error('no answer');
+          read += 1;
+          renderBanks();
+          updateSevenHead();
+        }
+      }
+    } catch {
+      // Kept, not discarded: what was read is true, and the header says how
+      // much of it there is.
+    } finally {
+      hideToast();
+      sweeping = false;
+      // Put the instrument back where the player left it, rather than on
+      // whatever slot the sweep finished on.
+      if (back) {
+        expectSlotRead(back.bank, back.preset);
+        audition.recallOnDevice(back.bank, back.preset);
+      }
+      renderBanks();
+      updateSevenHead();
+    }
+  }
+
+  // One slot: recall it, and resolve when its broadcast has been banked.
+  function readOneSlot(bank, preset) {
+    return new Promise((resolve) => {
+      const before = verifiedSlots.size;
+      const seen = verifiedSlots.get(`${bank}:${preset}`);
+      expectSlotRead(bank, preset);
+      window.sevenAPI.midi.recall(bank, preset);
+      const started = Date.now();
+      const tick = setInterval(() => {
+        const now = verifiedSlots.get(`${bank}:${preset}`);
+        if (verifiedSlots.size !== before || (now && now !== seen)) {
+          clearInterval(tick);
+          resolve(true);
+        } else if (Date.now() - started > SLOT_READ_MS + 200) {
+          clearInterval(tick);
+          resolve(false);
+        }
+      }, 40);
+    });
+  }
+
   function updateSevenHead() {
     // The chevron is part of the header, not decoration on the collapsed
     // strip: expanded, this header used to lose it and with it any sign that
@@ -1910,7 +1986,18 @@
     // and this header used to build it independently, which is two places for
     // one rule to drift.
     sevenHead.innerHTML =
-      `${chev}<span>On the Seven</span> <span class="asof">${esc(asOfText())}</span>`;
+      `${chev}<span>On the Seven</span> <span class="asof">${esc(asOfText())}</span>` +
+      // The icon has to say what it does BEFORE it is clicked — nothing about a
+      // refresh glyph suggests the instrument is about to play through its
+      // presets out loud.
+      (isConnected()
+        ? `<button type="button" id="ots-refresh"${sweeping ? ' disabled' : ''} ` +
+          `title="Check every preset — the Seven plays through all 32 sounds as it goes">` +
+          '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" ' +
+          'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2v3.5H10"/></svg>' +
+          '</button>'
+        : '');
   }
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
@@ -2857,7 +2944,16 @@
   // Clicking the expanded header closes this region, which — the two being
   // mutually exclusive — means opening the Library. Same gesture the Library
   // header has always had.
-  sevenHead.addEventListener('click', () => setLibraryOpen(true));
+  sevenHead.addEventListener('click', (e) => {
+    // The refresh icon lives inside this header, and the header's own job is to
+    // open the region. Without this the icon would do both.
+    if (e.target.closest('#ots-refresh')) {
+      e.stopPropagation();
+      refreshAllSlots();
+      return;
+    }
+    setLibraryOpen(true);
+  });
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it
   // opened Finder and where it would have gone, which is for tests. Nothing in
   // the UI changes either way.
