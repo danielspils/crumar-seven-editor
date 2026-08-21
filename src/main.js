@@ -369,17 +369,6 @@ function registerAuditionIpc() {
     }
   });
 
-  // A sound with no parameters — the picker's "sound only" case.
-  ipcMain.handle('audition:sound', async (_e, { name }) => {
-    const midi = getMidi();
-    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
-    try {
-      const result = await getPatchSender().send({ sound: { name }, params: {} });
-      return { ok: true, name, ...result };
-    } catch (err) {
-      return { ok: false, error: String(err.message || err) };
-    }
-  });
 }
 
 // Live editing: one parameter, one write, to the EDIT BUFFER. The renderer

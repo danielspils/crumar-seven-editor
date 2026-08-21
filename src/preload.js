@@ -161,7 +161,6 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // Audition: load a patch (or a bare sound) into the edit buffer so it can
     // be heard. Stores nothing — keeping it needs a three-second panel hold.
     audition: (file, patchIndex) => ipcRenderer.invoke('audition:send', { file, patchIndex }),
-    auditionSound: (name) => ipcRenderer.invoke('audition:sound', { name }),
     // One live parameter write to the edit buffer; resolves to the value the
     // instrument actually took.
     setParam: (key, value) => ipcRenderer.invoke('edit:param', { key, value }),
