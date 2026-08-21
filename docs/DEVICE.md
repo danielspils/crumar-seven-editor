@@ -409,6 +409,32 @@ one field at a time while a passive watcher sampled the array
 | 7 | Velocity Curve | — | **Not in the manual.** Present on the device |
 | 8 | Memory Protect | Off / On | **On blocks preset overwriting entirely** |
 
+### Storage (ACTION `0x0A`) is FREE SPACE, and cannot be predicted
+
+Measured 2026-08-21 on Daniel's unit. It read `4.0GB` on 2026-08-09 and again
+on 2026-08-15, and **`2.5GB`** after three expansions were installed on the
+20th — Venice Grand C5, Venice Grand CFX and Venice Upright K8, all three
+confirmed present in the sound table (27 sounds).
+
+So the earlier figure was never a capacity that happened to look round: it was
+a free reading taken when more was free. **The display was removed in `c052079`
+on the grounds that the number looked unreliable — right about the symptom,
+wrong about the cause. Free space is supposed to move.**
+
+**THE INSTALLED SIZE CANNOT BE DERIVED FROM THE CATALOGUE.** The three
+downloads total **535.31 Mb** (234.08 + 184.97 + 116.26) while the free figure
+fell by **~1.5 GB** — roughly three times larger, which is unsurprising for a
+`.7ex` package that is compressed (high entropy from byte 0, `docs/protocol.md`).
+
+That is **one measurement on one unit**, not a ratio anyone should rely on. It
+is recorded to rule something out rather than to enable something: **nothing may
+compute "space needed" from a download size, or reconcile the two numbers.**
+They measure different things, and the app shows the instrument's own figure
+verbatim, labelled `free` (`src/storage-label.js`).
+
+It is read once inside `_connect()` and refreshed by anything already talking to
+the instrument (`refreshStorage`) — never polled, and never on a timer.
+
 ### Tuning is not in the glb space — open question
 
 The manual lists Tuning (A=430–450 Hz, default 440, requiring a reboot) among
