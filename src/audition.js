@@ -593,7 +593,10 @@
     const chosen = await deps.askForName({
       title: 'Save as new patch', suggested, confirmLabel: 'Save',
     });
-    if (!chosen) return;
+    // FALSE, not undefined: a caller that offered this as one of two choices
+    // needs to tell "they cancelled the name" from "it saved", so it can put
+    // its own question back rather than closing everything (app.js's send).
+    if (!chosen) return false;
 
     let made;
     try {
@@ -606,7 +609,7 @@
     } catch (err) {
       // The seam throws on a refusal, so this cannot be mistaken for success.
       toast(err.message || 'Could not save that patch');
-      return;
+      return false;
     }
     await deps.refreshLibrary();
     // The live session, if there is one, does NOT follow the new patch: you
@@ -614,6 +617,7 @@
     // copy of this moment, not a change of what is open.
     toast(`Saved to Patches: ${chosen}`);
     if (made && made.file && deps.revealPatch) deps.revealPatch(made.file, made.patchIndex || 0);
+    return true;
   }
 
   // Writes the working copy to the patch file. Needs no instrument — the
@@ -960,6 +964,17 @@
       recallOnDevice,
       saveLiveToLibrary,
       saveIsActive,
+      // Save-as-new, for a caller offering it as a choice. Resolves true when
+      // a patch was written, false when the name was cancelled or refused.
+      saveAsNew: () => saveLiveAsNewPatch(),
+      // Drift ON A NAMED PATCH, rather than "is anything drifted anywhere".
+      // Send to Seven can be reached from a row that is not the live one — the
+      // context menu — and asking about the wrong patch's edits would offer to
+      // save something the player never touched.
+      hasUnsavedEditFor: (file, patchIndex = 0) => !!(
+        liveEdit && liveEdit.file === file
+        && (liveEdit.patchIndex || 0) === (patchIndex || 0) && driftNow()
+      ),
       // A Program Change while live is ambiguous — see checkBufferAfterRecall.
       // Returns true when the app caused it, so the caller ignores its echo.
       onProgramChange(ev) {

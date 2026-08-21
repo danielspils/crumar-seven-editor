@@ -104,6 +104,31 @@
   ui.check(await answer === false, 'and Stop still answers no');
   await ui.waitFor(gone, { timeout: 2000, what: 'the modal to close' });
 
+  // ── is-equal: two answers, neither leaning ──────────────────────────────
+  //
+  // The Send-to-Seven-when-edited dialog. One choice keeps what you made, the
+  // other plays what the file says; there is no sensible default, so the filled
+  // treatment that says "this is the action" must not be on either of them.
+  answer = SevenModal.confirm({
+    title: 'Send to Seven',
+    bodyHtml: '<p class="bk-sum">Tine Piano has been edited</p>',
+    secondaryLabel: 'Save edits to new patch',
+    confirmLabel: 'Send original',
+    cancelLabel: 'Close',
+    tone: 'is-equal',
+  });
+  await ui.waitFor(() => !!btn('.seven-modal-ok'), { timeout: 3000, what: 'the equal-weight dialog' });
+  const ok = getComputedStyle(btn('.seven-modal-ok'));
+  const second = getComputedStyle(btn('.seven-modal-second'));
+  ui.note(`ok bg ${ok.backgroundColor} / second bg ${second.backgroundColor}`);
+  ui.check(ok.backgroundColor === second.backgroundColor,
+    'both buttons share a background — neither is the filled "do this one"');
+  ui.check(ok.borderStyle === second.borderStyle && ok.color === second.color,
+    'and the same border and ink');
+  ui.click(btn('.seven-modal-cancel'), 'the corner X');
+  ui.check(await answer === false, 'the X answers no, as it does everywhere');
+  await ui.waitFor(gone, { timeout: 2000, what: 'the modal to close' });
+
   // ── neither appears unasked ─────────────────────────────────────────────
   //
   // The same router, with no optional labels: a stray button here would put

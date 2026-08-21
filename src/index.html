@@ -1160,6 +1160,18 @@
       padding: 7px 14px; cursor: pointer;
     }
     .seven-modal-second:hover { color: var(--text); border-color: var(--text-muted); }
+    /* TWO ANSWERS AT EQUAL WEIGHT, for a question with no sensible default.
+       The filled treatment says "this is the action"; where both choices are
+       real — keep what you made, or play what the file says — leaning on one
+       of them is the modal answering for the reader. Same outlined weight as
+       the secondary, so neither reads as the way out. */
+    .seven-modal.is-equal .seven-modal-ok {
+      color: var(--text-muted); background: none; border: 1px solid var(--line);
+      padding: 7px 14px;
+    }
+    .seven-modal.is-equal .seven-modal-ok:hover {
+      color: var(--text); border-color: var(--text-muted);
+    }
     /* Declining, when it deserves a button rather than the corner X. Same
        outlined weight as the secondary — the filled one is the action. */
     .seven-modal-deny {
@@ -2596,6 +2608,7 @@
     <script src="key-range.js"></script>
     <script src="picker.js"></script>
     <script src="drift.js"></script>
+    <script src="send-choice.js"></script>
     <script src="day-rollover.js"></script>
     <script src="library-view.js"></script>
   <script src="app.js"></script>

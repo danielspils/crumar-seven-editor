@@ -261,8 +261,52 @@
   // Send ONE patch from the library to one preset. Same walk as a setlist
   // transfer and as the sound picker — the target is chosen here instead of
   // coming from a setlist's position.
+  // WHEN THE PATCH ON SCREEN HAS BEEN EDITED, ask before doing either thing.
+  //
+  // What used to happen: the send discarded the live edits, told the player
+  // afterwards that they were gone, sent the file's version anyway, and left
+  // them looking at a cleared save button. Every part of that was true and the
+  // player was never asked (Daniel, 2026-08-21).
+  //
+  // Both answers are offered at equal weight. There is no sensible default —
+  // one keeps what you made, the other plays what the file says — so the modal
+  // does not lean, and the corner X changes nothing at all.
+  //
+  // NO SUPPRESSION FLAG for the "your unsaved edits are gone" note on the send
+  // path. Ending the session first IS what the player chose, and the note is
+  // already gated on a live session existing, so with none there is nothing to
+  // suppress. A flag that silenced a warning could get stuck silencing a real
+  // one; this cannot, because it silences nothing.
+  async function confirmSendWhenEdited(entry) {
+    // The DECISION is in src/send-choice.js, pure and unit-tested — including
+    // the branch nobody would try by hand, where the name is cancelled and the
+    // question has to come back. Nothing here can reach a UI scenario: drift
+    // needs a live session and a live session needs the cable.
+    return SevenSendChoice.decideSend({
+      hasDrift: audition.hasUnsavedEditFor(entry.file, entry.patchIndex || 0),
+      ask: () => SevenModal.confirm({
+        title: 'Send to Seven',
+        bodyHtml:
+          `<p class="bk-sum">${esc(SevenLibraryView.displayName(entry))} has been edited</p>` +
+          '<p class="bk-time">Sending the original replaces what you are hearing, ' +
+          'and your edits are lost.</p>',
+        secondaryLabel: 'Save edits to new patch',
+        confirmLabel: 'Send original',
+        cancelLabel: 'Close',
+        tone: 'is-equal',
+      }),
+      saveAsNew: () => audition.saveAsNew(),
+    });
+  }
+
   async function sendPatchToSlot(entry) {
     if (!isConnected()) return toast('Connect the Seven to send a patch to it');
+    const choice = await confirmSendWhenEdited(entry);
+    if (choice !== 'send') return;
+    // The edits are discarded because that is what was chosen. Doing it HERE,
+    // before the walk moves the instrument, is also what keeps the recall from
+    // reporting them as lost after the fact.
+    audition.endSession();
     // The same chooser the setlist send uses: all four banks, Bank 1 shown and
     // unpickable. Two dialogs asking one question answered it two ways — one
     // hid Bank 1, the other greyed it — and hiding it left the reader to work
