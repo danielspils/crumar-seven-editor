@@ -114,6 +114,27 @@ test('bank rows render one line with the sound on the right', () => {
   assert.ok(!/Backed up/.test(fresh), 'a slot as fresh as the header does not repeat it');
 });
 
+test('a bank row carries the warning and NOT the Model/Sample pill', () => {
+  // The pill was removed from both list views on 2026-08-21: engine type
+  // describes the patch that is loaded, the detail panel says it there, and on
+  // a row it was a fact about every row said eight times per bank — taking
+  // width from the one badge that earns it.
+  //
+  // The warning stays. It tells a player their Seven cannot play this patch
+  // BEFORE they send it, which is the whole reason a row-level badge exists.
+  const known = { ...patchFor(schema.sounds[0]), date: '2026-08-09T10:00:00Z' };
+  const row = R.renderPatchRow(known, 0, 0, null);
+  assert.doesNotMatch(row, /badge-kind|badge-sound/, 'no pill');
+  assert.doesNotMatch(row, /badge-modeled|badge-sampled/, 'and neither of its colours');
+  assert.doesNotMatch(row, /badge-gap/, 'nor the empty spacer that reserved room beside it');
+  assert.doesNotMatch(row, /Not installed/, 'a sound this build knows says nothing');
+
+  // A sound the instrument does not have still warns.
+  const missing = R.renderPatchRow({ ...known, soundName: 'Steinway D Berlin' }, 0, 0, null);
+  assert.match(missing, /Not installed/, 'the warning survives the pill');
+  assert.doesNotMatch(missing, /badge-kind/, 'without bringing the pill back with it');
+});
+
 test('engine grouping maps names to families, sampled or not', () => {
   const cases = [
     ['Tine Piano', false, 'pno_rho'],

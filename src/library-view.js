@@ -128,22 +128,22 @@
   // lock on the Bank 1 tab carries it now (Daniel, 2026-08-16). Model/Sample
   // stays: that one tells rows apart in all four banks.
 
-  // The warning on its own, for lists that carry no pill. One definition, so
-  // the two cannot drift into saying different things about the same fact.
+  // THE ONLY BADGE A ROW CARRIES. The Model/Sample pill — and its hover
+  // variant, which swapped the word for the sound's name — was removed from
+  // both list views on 2026-08-21. Engine type describes the patch that is
+  // LOADED, and the detail panel is where that is said; on a row it was a
+  // fact about every row, repeated 32 times, competing for width with the one
+  // badge that earns its space.
+  //
+  // The warning stays in both views: it tells a player their Seven cannot play
+  // this patch BEFORE they send it, which is worth a row's width. When it has
+  // nothing to say it renders nothing at all — the old empty .badge-gap spacer
+  // went with the pill it was spacing.
   const warnBadge = (entry) => (entry.missing
     ? '<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>'
-    : '<span class="badge-gap"></span>');
+    : '');
 
-  function badge(entry) {
-    const kind = entry.sampled ? 'Sample' : 'Model';
-    return (
-      `<span class="badge ${entry.sampled ? 'badge-sampled' : 'badge-modeled'}" ` +
-      `title="${esc(entry.soundName || kind)}">` +
-      `<span class="badge-kind">${kind}</span>` +
-      `<span class="badge-sound">${esc(entry.soundName || kind)}</span></span>` +
-      warnBadge(entry)
-    );
-  }
+  const badge = (entry) => warnBadge(entry);
 
   function renderPatchRow(entry, state, opts = {}) {
     if (entry.invalid) {
@@ -151,7 +151,7 @@
         `<div class="lib-row lib-row-invalid" title="${esc(entry.error || 'Unreadable file')}">` +
         `<span class="patch-name">${esc(entry.name)}</span>` +
         `<span class="patch-sound">unreadable</span>` +
-        `<span class="badge badge-warn">⚠ Invalid</span><span class="badge-gap"></span>` +
+        `<span class="badge badge-warn">⚠ Invalid</span>` +
         `</div>`
       );
     }

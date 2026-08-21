@@ -624,17 +624,16 @@
         `<span class="patch-num">${index + 1}</span>` +
         `<span class="patch-name">${esc(patch.name)}</span>` +
         `<span class="patch-sound"></span>` +
-        // The pill names the instrument on hover; see badge() in
-        // library-view.js for why the sound column went away.
-        `<span class="badge ${patch.sampled ? 'badge-sampled' : 'badge-modeled'}" ` +
-        `title="${esc(patch.soundName)}">` +
-        `<span class="badge-kind">${patch.sampled ? 'Sample' : 'Model'}</span>` +
-        `<span class="badge-sound">${esc(patch.soundName)}</span></span>` +
+        // NO Model/Sample pill. Removed from both list views 2026-08-21 —
+        // engine type describes the patch that is loaded, and the detail panel
+        // says it there. On a row it was a fact about every row, repeated
+        // eight times per bank, taking width from the one badge that earns it.
+        //
         // Bank 1's write protection is a fact about the BANK — it was true of
         // all eight rows here and of no row in the other three banks, so as a
         // per-row badge it said nothing eight times over. The lock on the
         // Bank 1 tab says it once (Daniel, 2026-08-16).
-        (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : `<span class="badge-gap"></span>`) +
+        (missing ? `<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>` : '') +
         // No "borrowed name" badge. It marked the EXPECTED case — a record
         // named after the patch you put in that slot — and could not mark the
         // surprising one, where a panel edit makes the values stop matching

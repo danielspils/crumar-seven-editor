@@ -639,16 +639,15 @@
     }
     .lib-row-wrap:hover .patch-delete, .patch-delete:focus-visible { opacity: 1; }
     .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
-    /* The swap happens on the PILL itself, not on the row. Row-wide hover
-       flipped every badge you passed over on the way somewhere else, which
-       made the list twitch (Daniel, 2026-08-13). */
-    .badge-sound { display: none; white-space: nowrap; }
-    .badge:hover .badge-kind { display: none; }
-    .badge:hover .badge-sound { display: inline; }
+    /* .badge-modeled / .badge-sampled are the DETAIL PANEL's pill only. The
+       list rows lost theirs on 2026-08-21 — engine type describes the patch
+       that is loaded, and saying it on every row said it 32 times.
+       Gone with them: .badge-sound and the hover swap that showed the sound's
+       name in the pill's place, and .badge-gap, the empty spacer that reserved
+       the warning's width beside a pill there is no longer. */
     .badge-modeled { color: var(--modeled); border: 1px solid var(--modeled); }
     .badge-sampled { color: var(--sampled); border: 1px solid var(--sampled); }
     .badge-warn { color: #16130b; background: var(--warn); }
-    .badge-gap { width: 0; }
 
     /* TYPE SCALE below the panel — four tiers, nothing else:
          hero      17px/700  --text          detail sound name

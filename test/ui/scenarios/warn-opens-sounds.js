@@ -68,10 +68,13 @@
   // Clicking something that is NOT a warning must not open it. Without this the
   // three checks above would pass just as well against a handler that opened
   // the modal on every click anywhere.
-  host.innerHTML = '<span class="badge badge-modeled">Model</span>';
-  ui.click(host.firstElementChild, 'an ordinary badge');
+  // A plain span, not a Model/Sample pill — that pill no longer exists in any
+  // list view (removed 2026-08-21), and a negative case built from something
+  // the app never renders proves less each year it survives.
+  host.innerHTML = '<span class="not-a-warning">Ordinary</span>';
+  ui.click(host.firstElementChild, 'an ordinary element');
   await ui.sleep(500);
-  ui.check(!modal(), 'an ordinary badge opens nothing');
+  ui.check(!modal(), 'an ordinary element opens nothing');
 
   host.remove();
 })()
