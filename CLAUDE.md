@@ -597,6 +597,53 @@ DOM states: `arrow-ownership.js` closes the library, `arrow-ownership-open.js`
 leaves a backup run open behind it and reproduces Daniel's gesture from the
 release. The first passed green through the whole of the second bug.
 
+## CURRENT STATE MUST NOT STAND IN FOR RECORDED FACT (2026-08-21)
+
+A rule, not a note — it is the single root of every bug found in the sweep of
+2026-08-20/21, and of the user reports that started it.
+
+**The schema is not the instrument. Today's connection is not the connection a
+file was made on. When something cannot be known, record its ABSENCE rather
+than filling the gap with what happens to be in front of you.**
+
+Where it had already gone wrong, in order of how permanent the damage was:
+
+- **A copy rebuilt its provenance from the current connection.** Duplicating a
+  patch while disconnected replaced the originating instrument with the
+  schema's, producing a file whose own `soundList` lacked the sound the patch is
+  made of. Measured: a Venice Grand CFX patch became a copy that resolved its
+  own sound as `unavailable`.
+- **A patch made offline named a phantom instrument** — the schema's 24 sounds
+  and firmware `"1.37"` recorded as the unit it came from, when there was no
+  unit. On an owner with expansions it is flatly false; their Seven reports 27.
+- **A copy inherited the original's creation date**, so a patch made seconds ago
+  read "Created 40 days ago". The correct value was in the same file one level
+  up the whole time.
+- **"⚠ Not installed" offline** compared a patch's sound against the SCHEMA and
+  told a user his own installed expansion was missing (Rich Olivieri,
+  2026-08-20). `src/expansions.js` had already got this right — offline it
+  reports `status: 'unknown'` for every row and claims nothing — and **the
+  lesson did not travel** to `library-store.js`, `library-view.js` or
+  `renderer.js`, which are the modules that must now follow it.
+
+Two corollaries worth stating separately, because each was violated on its own:
+
+- **`source.soundList` answers "what did the instrument this was made on
+  have" — never "is this installed".** It is not a fallback for a missing
+  device: it describes a different instrument at a different time, and using it
+  to assert something about the unit in front of the user is the same error one
+  step removed. Do not rediscover this as a clever idea.
+- **A claim about hardware needs hardware.** "Installed", "missing", "not
+  installed" and "available" are all claims about an instrument. Offline the
+  app states what it knows about the FILE and says nothing about any
+  instrument — with ONE line per region explaining why, never a marker per row,
+  because the uncertainty is a property of the view and not of each patch.
+
+**The general tell: a fallback whose fallback value is "whatever is loaded right
+now".** `a || b` where `b` is current state is almost always this bug. It reads
+as robustness and behaves as fabrication — and when it is written to a file, no
+later code can tell it from a real reading.
+
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
 Fourth time this shape has cost something here, so it gets its own heading. A
