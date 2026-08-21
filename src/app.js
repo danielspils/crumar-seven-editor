@@ -86,6 +86,46 @@
   let banks = emptyBanks();
   let banksAsOf = null; // newest capture date across the mapped slots
 
+  // WHAT THE APP HAS ACTUALLY VERIFIED, slot by slot: "bank:preset" ->
+  // { soundName, at }. Filled from the 0x45 the app's OWN recall produces —
+  // never from a broadcast it did not ask for, because a 0x45 also fires when
+  // the player picks a sound from the carousel, and that changes the EDIT
+  // BUFFER rather than the slot. Recording one as slot truth would have the
+  // app claiming a preset changed when nothing was stored.
+  const verifiedSlots = new Map();
+  let verifiedAt = null;      // when the most recent slot was read
+  // The window in which a current-sound broadcast is understood to answer the
+  // recall we just sent. Short, and consumed on use.
+  let awaitingSlotRead = null;
+  const SLOT_READ_MS = 1500;
+
+  const expectSlotRead = (bank, preset) => {
+    awaitingSlotRead = { bank, preset, until: Date.now() + SLOT_READ_MS };
+  };
+  const recordSlotSound = (soundName) => {
+    const w = awaitingSlotRead;
+    awaitingSlotRead = null;
+    if (!w || Date.now() > w.until || !soundName) return false;
+    verifiedAt = new Date();
+    verifiedSlots.set(`${w.bank}:${w.preset}`, { soundName, at: verifiedAt });
+    return true;
+  };
+  // Disconnecting does NOT forget what was read: the timestamp says when it was
+  // true, and the connection dot says the cable is out. Forgetting would throw
+  // away the only thing the app actually knows about those slots.
+  const slotVerdict = (bank, preset) => {
+    const seen = verifiedSlots.get(`${bank}:${preset}`);
+    const slot = banks[bank] && banks[bank].patches[preset];
+    return SevenOtsFreshness.slotState({
+      backupSound: slot ? slot.soundName : null,
+      verifiedSound: seen ? seen.soundName : null,
+    });
+  };
+  const verifiedSound = (bank, preset) => {
+    const seen = verifiedSlots.get(`${bank}:${preset}`);
+    return seen ? seen.soundName : null;
+  };
+
   function rebuildBanks(entries) {
     banks = emptyBanks();
     banksAsOf = null;
@@ -804,7 +844,11 @@
     const row = listEl.querySelector(`.patch-row[data-index="${next}"]`);
     if (row) row.scrollIntoView({ block: 'nearest' });
     clearTimeout(recallTimer);
-    recallTimer = setTimeout(() => audition.recallOnDevice(next === null ? 0 : deviceSel.bank, next), RECALL_SETTLE_MS);
+    recallTimer = setTimeout(() => {
+      const b = next === null ? 0 : deviceSel.bank;
+      expectSlotRead(b, next);
+      audition.recallOnDevice(b, next);
+    }, RECALL_SETTLE_MS);
   }
 
   function moveLibrarySelection(dir) {
@@ -1361,7 +1405,8 @@
         lastTouched = 'device';
         resetCollapsed();
         renderAll();
-        audition.recallOnDevice(deviceSel.bank, deviceSel.preset);
+        expectSlotRead(deviceSel.bank, deviceSel.preset);
+    audition.recallOnDevice(deviceSel.bank, deviceSel.preset);
       }
     }
   });
@@ -1439,7 +1484,22 @@
             `value="${String(p.name).replace(/"/g, '&quot;')}">` +
             `</div>`
           : p
-          ? R.renderPatchRow(p, i, sel, undefined, bankIndex + 1)
+          // THE SLOT NO LONGER HOLDS WHAT THE BACKUP RECORDED, and the app
+          // learned it for free from the recall the click already sent. The
+          // BACKUP'S NAME COMES OFF THE ROW: the Seven stores no names, so
+          // there is no way to know what this slot is called now, and leaving
+          // the old one there would be a claim the app cannot support. The
+          // SOUND is known — it is what the broadcast carried — so it is shown
+          // where a row's sound already has a place.
+          ? (slotVerdict(bankIndex, i) === 'changed'
+            ? `<button class="patch-row is-changed${i === sel ? ' selected' : ''}" data-index="${i}" type="button" ` +
+              `title="Your backup recorded “${esc(p.name)}” here. This slot now holds a different ` +
+              `sound, so the app cannot know its name.">` +
+              `<span class="patch-num">${i + 1}</span>` +
+              `<span class="patch-name">Changed since backup</span>` +
+              `<span class="patch-sound">${esc(verifiedSound(bankIndex, i) || '')}</span>` +
+              `</button>`
+            : R.renderPatchRow(p, i, sel, undefined, bankIndex + 1))
           : `<button class="patch-row empty-slot${i === sel ? ' selected' : ''}" data-index="${i}" type="button">` +
             `<span class="patch-num">${i + 1}</span>` +
             `<span class="patch-name">Not backed up</span>` +
@@ -1785,15 +1845,31 @@
   // SevenLibraryView.ago counts CALENDAR days in local time and is the same
   // formatter every dated row in the library already uses, so the two regions
   // say age the same way.
+  // ONE DATE STYLE for both halves of this label, so a refreshed time and a
+  // backup date cannot drift into two formats.
+  const fmtDay = (d) => d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  // 12-hour, lowercase, no space: "2:32pm".
+  const fmtClock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    .replace(/\s?([AP])M/i, (m, p) => `${p.toLowerCase()}m`);
+
   function asOfText() {
     const d = banksAsOf ? new Date(banksAsOf) : null;
-    if (!d || isNaN(d)) return '';
-    const age = SevenLibraryView.ago(banksAsOf);
-    // Same day: the age IS the answer, and printing the date beside it makes
-    // somebody read "21 Aug" to work out that it means today.
-    if (age === 'today') return 'as of last backup · today';
-    const when = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
-    return `as of last backup · ${when}${age ? ` (${age})` : ''}`;
+    const age = banksAsOf ? SevenLibraryView.ago(banksAsOf) : '';
+    // Same day, nothing verified: the age IS the answer, and printing the date
+    // beside it makes somebody read "21 Aug" to work out that it means today.
+    if (d && !isNaN(d) && age === 'today' && !verifiedSlots.size) {
+      return 'as of last backup · today';
+    }
+    return SevenOtsFreshness.asOfLabel({
+      banksAsOf,
+      verified: verifiedSlots.size,
+      total: 32,
+      readAt: verifiedAt,
+      now: new Date(),
+      fmtDate: fmtDay,
+      fmtTime: fmtClock,
+      ago: (iso) => SevenLibraryView.ago(iso),
+    });
   }
 
   // THE DAY CHANGES WHILE THE APP IS OPEN.
@@ -1834,7 +1910,7 @@
     // and this header used to build it independently, which is two places for
     // one rule to drift.
     sevenHead.innerHTML =
-      `${chev}<span>On the Seven</span> <span class="asof">${banksAsOf ? esc(asOfText()) : 'not yet backed up'}</span>`;
+      `${chev}<span>On the Seven</span> <span class="asof">${esc(asOfText())}</span>`;
   }
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
@@ -2001,6 +2077,7 @@
     // instrument's slots, while a library patch is a file with no slot to
     // recall. A recall replaces the edit buffer, so unsaved live edits get a
     // say first.
+    expectSlotRead(deviceSel.bank, deviceSel.preset);
     audition.recallOnDevice(deviceSel.bank, deviceSel.preset);
   });
 
@@ -3653,6 +3730,15 @@
         // moved on — which showed the PREVIOUS patch's instrument in the
         // header, one step behind the list (Daniel, 2026-08-12, arrowing
         // through the library).
+        // ANSWERS THE APP'S OWN RECALL, if one is outstanding: this is the
+        // slot's real sound, read for free from the broadcast the recall
+        // produced. Recorded before the live-session logic below, which is
+        // about the edit buffer rather than about the slot.
+        const forSlot = soundList.find((x) => x.id === ev.soundId);
+        if (forSlot && recordSlotSound(forSlot.name)) {
+          renderBanks();
+          updateSevenHead();
+        }
         if (audition.isLive() && !audition.isBusy()) {
           const found = soundList.find((x) => x.id === ev.soundId);
           const patch = currentPatch();
