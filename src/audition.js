@@ -104,26 +104,52 @@
     // Losing the cable is not the same as walking away from a patch: you did
     // not choose it, so the edits stay and the bar keeps a way to save them.
     const stranded =
-      !isConnected() && liveEdit && liveEdit.dirty && liveEdit.file === target.file;
+      !isConnected() && liveEdit && driftNow() && liveEdit.file === target.file;
     if (stranded) {
       return bar(true, 'The Seven disconnected. These edits are still here — save them to keep them.', 'is-error');
     }
     if (!isConnected()) return bar(false, '');
 
     const mine = auditionNote && auditionNote.file === target.file;
-    const dirty = !!(live && liveEdit && liveEdit.dirty);
+    const dirty = !!(live && liveEdit && driftNow());
     // A note about what just happened (saved, copied) belongs on the quiet
     // state too — it is news, not an alarm.
     return bar(dirty, mine ? esc(auditionNote.text) : '', mine ? auditionNote.kind : '');
   }
+
+  // ---- Drift: is anything different from what was sent? --------------------
+  //
+  // Replaces `liveEdit.dirty`, which was set the moment a control was touched
+  // and never recomputed — so turning a knob up and back left the save button
+  // showing, offering to save an edit that no longer existed. A flag records
+  // that something happened; only a comparison says whether anything differs,
+  // and differing is what the button is for (src/drift.js, and the tests there
+  // pin the restore case specifically).
+  const driftNow = () => (liveEdit ? SevenDrift.hasDrift({
+    baseline: liveEdit.baseline,
+    live: liveEdit.params,
+    baselineSound: liveEdit.baselineSound,
+    liveSound: liveEdit.liveSoundName || liveEdit.baselineSound,
+  }) : false);
+
+  // Which keys actually differ — used to check the buffer survived a recall.
+  // This was `liveEdit.touched`, a set of everything the session had written;
+  // a comparison is strictly better, because a value written and then put back
+  // is not evidence of anything and only wasted one of the eight reads.
+  const driftedKeys = () => {
+    if (!liveEdit || !liveEdit.baseline) return [];
+    return Object.keys(liveEdit.params).filter(
+      (k) => Number(liveEdit.params[k]) !== Number(liveEdit.baseline[k])
+    );
+  };
 
   // Is there anything to save right now? The panel uses it to decide whether
   // the controls have just come alive and should say so.
   function saveIsActive() {
     const target = auditionTarget();
     if (!target) return false;
-    if (!isConnected()) return !!(liveEdit && liveEdit.dirty && liveEdit.file === target.file);
-    return !!(liveEdit && liveEdit.dirty);
+    if (!isConnected()) return !!(liveEdit && driftNow() && liveEdit.file === target.file);
+    return driftNow();
   }
 
   // The working copy of a patch that the instrument's edit buffer is known to
@@ -187,7 +213,7 @@
   function clearLive() {
     stopPanelPoll();
     if (!liveEdit) return;
-    if (!liveEdit.dirty) liveEdit = null;
+    if (!driftNow()) liveEdit = null;
     deps.renderDetail();
   }
 
@@ -218,8 +244,6 @@
           });
         }
         liveEdit.params[key] = r.value;
-        liveEdit.touched.add(key);
-        liveEdit.dirty = true;
         auditionNote = null;
       } else {
         auditionNote = { kind: 'is-error', text: r.error, file: liveEdit.file };
@@ -259,7 +283,6 @@
         // Follow the value either way — the panel is the truth about the
         // buffer. But only call it UNSAVED WORK if it was not the recall's own
         // burst describing what it just loaded.
-        if (!settling()) liveEdit.dirty = true;
         deps.renderDetail();
       }
     }, 80));
@@ -287,7 +310,7 @@
       }
       // A tab move is the PLAYER's edit, not ours — it makes the buffer differ
       // from the saved patch, so it counts as unsaved work like any other.
-      if (changed) { liveEdit.dirty = true; deps.renderDetail(); }
+      if (changed) deps.renderDetail();
     }, 1000);
   }
 
@@ -304,8 +327,8 @@
     // Prefer the parameters this session changed; with none yet, sample the
     // patch itself. Clearing without checking meant an unexplained Program
     // Change silently ended a session whose buffer was still perfectly intact.
-    const touched = [...(liveEdit.touched || [])];
-    const keys = (touched.length ? touched : Object.keys(liveEdit.params)).slice(0, 8);
+    const changed = driftedKeys();
+    const keys = (changed.length ? changed : Object.keys(liveEdit.params)).slice(0, 8);
     if (!keys.length) {
       liveEdit = null;
       deps.renderDetail();
@@ -323,7 +346,7 @@
       // a paragraph about the absence of a problem (Daniel, 2026-08-12).
       auditionNote = null;
     } else {
-      const stale = liveEdit.dirty;
+      const stale = driftNow();
       liveEdit = null;
       auditionNote = {
         kind: 'is-error',
@@ -591,7 +614,11 @@
     if (soundChanged) {
       await window.sevenAPI.library.saveSound(file, patchIndex, live.name, !!live.sampled);
     }
-    liveEdit.dirty = false;
+    // SAVED: the file now holds what is live, so the baseline moves to meet
+    // it and the drift goes away on its own. There is no flag to clear —
+    // clearing one was how a restored value stayed "dirty" in the first place.
+    liveEdit.baseline = { ...liveEdit.params };
+    if (live && live.name) liveEdit.baselineSound = live.name;
     // A modal, not a line of status text under the controls. Saving is the
     // one thing in this column with a consequence on disk, and a note that
     // appeared where the hint used to be read as another piece of furniture
@@ -709,8 +736,11 @@
       file: target.file,
       patchIndex: target.patchIndex,
       params: { ...(patch.params || {}) },
-      touched: new Set(),
-      dirty: false,
+      // The caller says the buffer already holds this, so this IS what was
+      // sent as far as the app can know. beginLive({ params }) overwrites both
+      // sides together when it has better information.
+      baseline: { ...(patch.params || {}) },
+      baselineSound: patch.soundName || null,
     };
     settlingUntil = Date.now() + SETTLE_MS;
     rememberWhereWeWere();
@@ -743,7 +773,7 @@
 
     async function preview(target) {
       if (!isConnected() || !target) return;
-      if (liveEdit && liveEdit.dirty && liveEdit.file !== target.file) {
+      if (liveEdit && driftNow() && liveEdit.file !== target.file) {
         toast('Save or discard your edits before previewing another patch');
         return;
       }
@@ -756,12 +786,17 @@
       try {
         const r = await window.sevenAPI.midi.audition(target.file, target.patchIndex);
         if (r && r.ok) {
+          // BOTH SIDES START AS WHAT WAS SENT — the file's values after
+          // clamping, reported by the sender. Seeding the live side from the
+          // raw file instead would leave an out-of-range patch differing from
+          // its own baseline before anybody touched a control (src/drift.js).
+          const sentValues = r.values || { ...(deps.getPatch() || {}).params };
           liveEdit = {
             file: target.file,
             patchIndex: target.patchIndex,
-            params: { ...(deps.getPatch() || {}).params },
-            touched: new Set(),
-            dirty: false,
+            params: { ...sentValues },
+            baseline: { ...sentValues },
+            baselineSound: r.soundName || (deps.getPatch() || {}).soundName || null,
           };
           rememberWhereWeWere();
           startPanelPoll();
@@ -792,10 +827,24 @@
         // keeping it needs the same three-second hold. The bar used to wait
         // for a parameter edit, so a player who had picked a different sound
         // and wanted to keep it was told nothing (Daniel, 2026-08-13).
-        if (ok && opts && opts.dirty) liveEdit.dirty = true;
+        //
+        // It no longer takes a `dirty` flag for this: the caller passes the
+        // sound it put in the buffer, and drift compares that with the sound
+        // the file describes. Same answer, derived instead of asserted — and
+        // it comes back on its own if the original sound is chosen again.
         // Values the caller has ALREADY put in the buffer — the working copy
-        // must agree with the instrument, not with the file.
-        if (ok && opts && opts.params) Object.assign(liveEdit.params, opts.params);
+        // must agree with the instrument, not with the file. The BASELINE moves
+        // with them: these values are what the instrument was given, so they
+        // are what drift is measured from. Moving only one side would report
+        // an edit nobody made.
+        if (ok && opts && opts.params) {
+          Object.assign(liveEdit.params, opts.params);
+          Object.assign(liveEdit.baseline, opts.params);
+        }
+        // The sound the buffer now holds. NOT the baseline — the baseline stays
+        // whatever the file describes, and these two differing is exactly what
+        // makes a sound change count as drift.
+        if (ok && opts && opts.soundName) liveEdit.liveSoundName = opts.soundName;
         if (ok) deps.renderDetail();
         return ok;
       },
@@ -828,7 +877,7 @@
       // whatever the user happens to have clicked on. Anything that recalls a
       // preset for its own reasons has to check this first — a recall replaces
       // the buffer, and only a dirty session has something to lose.
-      hasUnsavedEdit: () => !!(liveEdit && liveEdit.dirty),
+      hasUnsavedEdit: () => driftNow(),
       clearLive,
       renderBar: renderAuditionBar,
       workingParams: () => (liveEdit ? liveEdit.params : null),

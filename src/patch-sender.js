@@ -89,6 +89,11 @@ class PatchSender extends EventEmitter {
 
       const entries = this.params.filter((p) => patch.params && p.key in patch.params);
       const mismatches = [];
+      // WHAT WAS ACTUALLY WRITTEN, key by key — the file's values after
+      // clamping. Returned so the renderer can hold it as the baseline for
+      // drift: comparing live values against the raw file would report a
+      // clamped value as an edit the moment the patch loaded (src/drift.js).
+      const values = {};
       let sent = 0;
 
       for (const p of entries) {
@@ -115,6 +120,7 @@ class PatchSender extends EventEmitter {
         if (echoed.value !== wanted) {
           mismatches.push({ key: p.key, id: p.id, wanted, got: echoed.value });
         }
+        values[p.key] = wanted;
         sent++;
         this.emit('progress', { phase: 'param', sent, total: entries.length, key: p.key });
       }
@@ -125,6 +131,7 @@ class PatchSender extends EventEmitter {
         fuzzySound: resolved.fuzzy,
         sent,
         total: entries.length,
+        values,
         mismatches,
         cancelled: this.cancelled,
         elapsedMs: Date.now() - startedAt,

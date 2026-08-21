@@ -732,13 +732,15 @@
 
     carouselAt = null;
     liveSound = soundList.find((x) => x.name === name) || null;
-    // Dirty from the moment the instrument differs from what the slot stores —
-    // the save instructions belong here, not one parameter edit later.
+    // Drift from the moment the instrument differs from what the slot stores —
+    // the save instructions belong here, not one parameter edit later. The
+    // comparison is against the file's sound, so choosing the original one
+    // again clears it without anything having to remember that you did.
     const stored = (currentPatch() || {}).soundName;
     // The runner silences the effects chain with the sound; the working copy
     // has to follow, or the panel would show FX the instrument is no longer
     // running. It reports what it sent rather than us keeping a second list.
-    audition.beginLive({ dirty: name !== stored, params: step.params });
+    audition.beginLive({ soundName: name, params: step.params });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');
