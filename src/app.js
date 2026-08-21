@@ -1736,26 +1736,67 @@
   const sevenHead = document.getElementById('seven-head');
   // Shared by the expanded header and the collapsed strip, so the two can
   // never drift or depend on each other's render order.
+  // HOW OLD, not just when.
+  //
+  // This was a bare day and month — "as of last backup · 19 Aug" — with no
+  // year and nothing relative, so a backup from last August read exactly like
+  // yesterday's. The label's whole job is to make the reader doubt what is
+  // under it, and a date nobody can date does not do that.
+  //
+  // SevenLibraryView.ago counts CALENDAR days in local time and is the same
+  // formatter every dated row in the library already uses, so the two regions
+  // say age the same way.
   function asOfText() {
     const d = banksAsOf ? new Date(banksAsOf) : null;
     if (!d || isNaN(d)) return '';
-    return `as of last backup · ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
+    const age = SevenLibraryView.ago(banksAsOf);
+    // Same day: the age IS the answer, and printing the date beside it makes
+    // somebody read "21 Aug" to work out that it means today.
+    if (age === 'today') return 'as of last backup · today';
+    const when = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    return `as of last backup · ${when}${age ? ` (${age})` : ''}`;
   }
 
+  // THE DAY CHANGES WHILE THE APP IS OPEN.
+  //
+  // Both places that print the age render it — but they render on a LIBRARY
+  // REFRESH, and nothing refreshes the library because a clock ticked. Left
+  // open overnight the header went on saying "today" about yesterday's backup,
+  // which is the same class of wrong the age was added to fix: a label that
+  // stops tracking the thing it claims to describe.
+  //
+  // Two triggers, because neither is sufficient alone. The timer handles an app
+  // sitting open on a stage all night; the focus listener handles a laptop that
+  // was ASLEEP across midnight, where the timer may not have fired at all.
+  // Re-armed each time rather than set on an interval, so it lands on the day
+  // boundary instead of drifting.
+  function scheduleDayRollover() {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 30);
+    setTimeout(() => {
+      updateSevenHead();
+      updateBankStrip();
+      scheduleDayRollover();
+    }, Math.max(1000, midnight - now));
+  }
+  window.addEventListener('focus', () => {
+    updateSevenHead();
+    updateBankStrip();
+  });
+  scheduleDayRollover();
+
   function updateSevenHead() {
-    const fmt = (iso) => {
-      const d = new Date(iso);
-      return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
-    };
     // The chevron is part of the header, not decoration on the collapsed
     // strip: expanded, this header used to lose it and with it any sign that
     // the region closes at all, while "On this computer" kept its chevron in
     // both states (Daniel, 2026-08-13). Both regions now say the same thing
     // the same way.
     const chev = '<span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-    sevenHead.innerHTML = banksAsOf
-      ? `${chev}<span>On the Seven</span> <span class="asof">as of last backup · ${fmt(banksAsOf)}</span>`
-      : `${chev}<span>On the Seven</span> <span class="asof">not yet backed up</span>`;
+    // asOfText(), not a second copy of the same sentence: the collapsed strip
+    // and this header used to build it independently, which is two places for
+    // one rule to drift.
+    sevenHead.innerHTML =
+      `${chev}<span>On the Seven</span> <span class="asof">${banksAsOf ? esc(asOfText()) : 'not yet backed up'}</span>`;
   }
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber

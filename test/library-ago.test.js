@@ -21,8 +21,8 @@ test('the same calendar day is today, whatever the hour', () => {
 // "today" at breakfast, because the gap was under 24 hours.
 test('yesterday is a day ago even when fewer than 24 hours have passed', () => {
   const now = at(2026, 8, 14, 7, 10);
-  assert.equal(ago(stamp(2026, 8, 13, 12, 4), now), '1 day ago');
-  assert.equal(ago(stamp(2026, 8, 13, 23, 59), now), '1 day ago');
+  assert.equal(ago(stamp(2026, 8, 13, 12, 4), now), 'yesterday');
+  assert.equal(ago(stamp(2026, 8, 13, 23, 59), now), 'yesterday');
 });
 
 test('and the same slip does not shift the older ones', () => {
@@ -35,7 +35,7 @@ test('and the same slip does not shift the older ones', () => {
 test('a date-only string is read as that local day', () => {
   const now = at(2026, 8, 14, 7, 10);
   assert.equal(ago('2026-08-14', now), 'today');
-  assert.equal(ago('2026-08-13', now), '1 day ago');
+  assert.equal(ago('2026-08-13', now), 'yesterday');
 });
 
 test('the bigger units still round the way they did', () => {

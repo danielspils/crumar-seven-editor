@@ -74,7 +74,10 @@
     // change, and flooring that turns one of them into zero.
     const days = Math.round((midnight(now) - midnight(then)) / 86400000);
     if (days <= 0) return 'today';
-    if (days === 1) return '1 day ago';
+    // "yesterday", not "1 day ago" — nobody says one day ago, and this is the
+    // one count with an ordinary word for it (Daniel, 2026-08-21). In ago()
+    // rather than at a call site, so every dated row says it the same way.
+    if (days === 1) return 'yesterday';
     if (days < 14) return `${days} days ago`;
     if (days < 60) {
       const weeks = Math.round(days / 7);
@@ -892,7 +895,7 @@
             // and belongs to the Backups tab — but two tiles for the same slot
             // are two genuinely different patches (the run dedupes identical
             // ones), so they need something that tells them apart, and the age
-            // does it: "1 day ago" against "2 weeks ago"
+            // does it: "yesterday" against "2 weeks ago"
             // (Daniel, 2026-08-13).
             // "from today", "from 1 week ago" — the tile is a patch you are
             // choosing, and where it comes from is the useful half of that
