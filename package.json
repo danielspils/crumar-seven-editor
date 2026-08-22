@@ -14,12 +14,13 @@
     "probe": "node tools/probe.js",
     "probe:open-items": "node tools/probe.js open-items",
     "fixtures:roundtrip": "node fixtures/generate-roundtrip.js",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "npm run lint && node --test \"test/*.test.js\"",
     "test:ui": "node test/ui/run.js",
     "rebuild": "electron-rebuild -f -m . -o @julusian/midi",
     "dist:mac": "npm run rebuild && electron-builder --mac --universal",
     "dist:mac:unsigned": "npm run rebuild && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --universal -c.mac.notarize=false --publish never",
-    "dist:win": "npm run rebuild && electron-builder --win --x64"
+    "dist:win": "npm run rebuild && electron-builder --win --x64",
+    "lint": "eslint src test tools scripts fixtures"
   },
   "engines": {
     "node": ">=18"
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
     "electron": "^43.2.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5"
   }
 }

@@ -1126,41 +1126,62 @@ already verified, so this is app work, not reverse-engineering:
    manufacturer's editor lacks. Undo exists for library acts; the edit-buffer
    half is what's left.
 
-### RECOMMENDED, NOT DONE: adopt ESLint with `no-undef` (2026-08-22)
+### ESLint with `no-undef` runs on `npm test` (2026-08-22)
 
-**Four runtime errors in one day, all of one family**, all in renderer files
-with no unit coverage, all invisible to `node --check` (which parses but does
-not resolve) and to both suites:
+**Four undefined-reference bugs shipped in a single day**, all in renderer
+files with no unit coverage, all invisible to `node --check` (which parses but
+does not resolve) and to both suites:
 
 | what | how it failed |
 | ---- | ------------- |
 | `renderBanks()` | called, defined nowhere — killed the slot-read repaint AND the row re-render |
 | `sendToSeven` | callback never supplied, so the row control clicked into silence |
 | `answer` | read outside the block its `const` lives in — threw on every save from Patches |
-| `maybeOfferSendPc` | definition deleted by an unrelated commit — threw on every connect |
+| `maybeOfferSendPc` | definition deleted by an unrelated commit — threw on every connect, taking the write-gate banner with it |
 
-**Three were found by Daniel using the app. The fourth by a linter, in under a
-minute**, run once through `npx` with a throwaway config and `no-undef` as the
-only rule. That run produced six findings: five were browser/Node globals
-missing from the throwaway config, and one was real. The triage is that small.
+Three were found by Daniel clicking around. The fourth by a linter, in under a
+minute.
 
-**The pattern behind all four, which is the reason to automate rather than to
-be careful:** scripted edits verified by checking that the intended change
-happened rather than that nothing else did. `maybeOfferSendPc` was destroyed by
-a deletion that sliced a source range and took a passenger; the sweep it was
-removing was confirmed gone, and nothing confirmed what else went with it. A
-linter is the only thing in reach that checks the second question
-automatically.
+**The pattern behind all four, which is why this is a tool and not a habit:**
+scripted edits verified by checking that the intended change happened rather
+than that nothing else did. `maybeOfferSendPc` was destroyed by a deletion that
+sliced a source range and took a passenger; the sweep it was removing was
+confirmed gone, and nothing confirmed what else went with it. **A linter is the
+only thing in reach that checks the second question automatically.**
 
-Wire it into `npm test` so it runs every time, rather than when somebody thinks
-to ask. The cost is one dev dependency and a single triage session; the globals
-that made noise are enumerable once into a config. **Deliberately not installed
-on launch day** — a dependency plus a triage pass is not launch-morning work.
+```
+npm test   ->  npm run lint && node --test "test/*.test.js"
+```
 
-Until then, `test/source-wiring.test.js` carries hand-rolled guards for the two
-branches that have already broken: the slot read and the connect path. They are
-narrow by design and do not generalise — they check that functions a branch
-calls are defined, and one of the four failures was a variable.
+A violation FAILS the run, and the unit tests never start.
+
+**WHAT IT GUARANTEES:** a name that does not exist is caught before it ships —
+in `src/`, `test/`, `tools/`, `scripts/` and `fixtures/`.
+
+**WHAT IT DOES NOT:**
+
+- **A function that exists and is never CALLED.** That was the Notes strip — a
+  complete, working, tested capability with no consumer for ten days — and
+  `no-undef` is blind to it by construction. It will happen again. The check
+  for that is still manual and still one line:
+  `grep -c "sevenAPI\.<name>" src/*.js`.
+- **Anything about behaviour.** It resolves names; it does not know what they
+  do.
+- **Style.** Every other rule is off deliberately. A linter that reformats is a
+  linter people turn off, and nothing here should ever make somebody change
+  code that already works.
+
+**Globals are ENUMERATED, not suppressed** (`eslint.config.mjs`), by file
+group: browser for the renderer, Node for the main process, both for the UMD
+modules that are `<script>`-loaded and `require()`d — with the reason written
+beside them. A throwaway config for the one-off run produced five false
+positives (`self`, `CSS`, `AbortSignal`) purely by omission, and a tool that
+cries wolf is one people learn to skim.
+
+`test/source-wiring.test.js` still carries hand-rolled guards for the two
+branches that have already broken — the slot read and the connect path. They
+are narrower than the linter and catch one thing it cannot: that a specific
+consumer still exists.
 
 ### Smaller things still open
 
