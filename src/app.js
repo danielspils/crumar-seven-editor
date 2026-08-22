@@ -2239,6 +2239,10 @@
       // units (schema soundsNote).
       get sounds() { return soundList; },
       select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
+      // The row's own Send control. THE SAME PATH the context menu uses, so
+      // the edited-patch question is asked once, in one place — never a second
+      // implementation of send.
+      sendToSeven: (entry) => sendPatchToSlot(entry),
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
         if (!action) return;
