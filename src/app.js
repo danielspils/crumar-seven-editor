@@ -1899,6 +1899,15 @@
   // Two triggers, because neither is sufficient alone. The timer handles an app
   // sitting open on a stage all night; the focus listener handles a laptop that
   // was ASLEEP across midnight, where the timer may not have fired at all.
+  // EVERY PLACE THE FRESHNESS LINE APPEARS, repainted together.
+  //
+  // It appears twice: in the region header, and in the collapsed strip when the
+  // library is open. Repainting one and not the other leaves two places on
+  // screen making different claims about the same slots — which is what
+  // happened when a slot read called updateSevenHead() alone (2026-08-21).
+  //
+  // So every trigger goes through here rather than picking a renderer: the day
+  // rollover, the window focus listener, and a slot read.
   const refreshAgeLabels = () => {
     updateSevenHead();
     updateBankStrip();
@@ -3292,6 +3301,12 @@
       // is not optional: a bare "2.5GB" beside a sound count reads as capacity,
       // which is the misreading that got this display deleted once already
       // (c052079, and see src/storage-label.js).
+      // THESE ROWS ARE BUILT WHEN THE PANEL OPENS AND NEVER REPAINTED.
+      // That is safe only because storage is read ONCE, on connect
+      // (seven-midi.js _connect), so it cannot change while the panel is
+      // showing. If anything ever starts re-reading it mid-session, this row
+      // goes stale in front of the reader and needs repainting like the
+      // freshness line does (refreshAgeLabels).
       const free = SevenStorageLabel.storageLabel(deviceStorage);
       val.textContent = soundTable
         ? `${soundTable.sounds.length}${free ? ` \u00b7 ${free}` : ''}`
@@ -3756,8 +3771,18 @@
         // about the edit buffer rather than about the slot.
         const forSlot = soundList.find((x) => x.id === ev.soundId);
         if (forSlot && recordSlotSound(forSlot.name)) {
-          renderBanks();
-          updateSevenHead();
+          // renderList(), not a name for a function that never existed. This
+          // said renderBanks() from 4a49a4d until 2026-08-21: nothing by that
+          // name is defined anywhere, so the call threw a ReferenceError and
+          // took the rest of this branch with it — the rows never re-rendered
+          // and the header never repainted. Both suites stayed green, because
+          // app.js has no unit coverage and the scenario that would have seen
+          // it needs an instrument. It was caught by watching the real app
+          // with a Seven attached.
+          renderList();
+          // BOTH labels, not just the header's: with the library open the strip
+          // carries its own copy of this sentence.
+          refreshAgeLabels();
         }
         if (audition.isLive() && !audition.isBusy()) {
           const found = soundList.find((x) => x.id === ev.soundId);

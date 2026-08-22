@@ -94,3 +94,49 @@ test('the folder button is still wired to library.reveal', () => {
   assert.match(src, /libReveal\.addEventListener\('click',[\s\S]{0,120}?library\.reveal\(\)/,
     "#library-reveal's click listener still calls library.reveal()");
 });
+
+// ---- The freshness line, in both the places it appears ---------------------
+
+test('a slot read repaints BOTH freshness labels, not just the header', () => {
+  // The line appears in the region header and, with the library open, in the
+  // collapsed strip. Repainting one and not the other put two claims about the
+  // same slots on screen at once (2026-08-21). No UI scenario can catch it
+  // without an instrument — reading a slot needs a recall — and the failure is
+  // invisible unless the library happens to be open at the time.
+  const src = code(read('app.js'));
+  const block = /recordSlotSound\(forSlot\.name\)\)\s*\{([\s\S]*?)\}/.exec(src);
+  assert.ok(block, 'the slot-read branch is still there');
+  assert.match(block[1], /refreshAgeLabels\(\)/,
+    'it goes through refreshAgeLabels, which repaints both');
+  assert.doesNotMatch(block[1], /updateSevenHead\(\)/,
+    'and not the header renderer alone, which is how it drifted');
+});
+
+test('refreshAgeLabels really does repaint both', () => {
+  // Otherwise the test above pins a name rather than a behaviour.
+  const src = code(read('app.js'));
+  const fn = /const refreshAgeLabels = \(\) => \{([\s\S]*?)\};/.exec(src);
+  assert.ok(fn, 'refreshAgeLabels exists');
+  assert.match(fn[1], /updateSevenHead\(\)/);
+  assert.match(fn[1], /updateBankStrip\(\)/);
+});
+
+test('every function app.js calls in the slot-read path actually exists', () => {
+  // renderBanks() was called there for a day and defined nowhere. Node parses
+  // it happily — an undefined call is only a ReferenceError at RUNTIME — so
+  // both suites stayed green while the branch threw on every slot read, taking
+  // the repaint with it. app.js has no unit coverage and the scenario that
+  // would have caught it needs an instrument.
+  //
+  // Cheap guard, narrow on purpose: the names this one branch calls.
+  const src = code(read('app.js'));
+  const branch = /recordSlotSound\(forSlot\.name\)\)\s*\{([\s\S]*?)\n        \}/.exec(src);
+  assert.ok(branch, 'the slot-read branch is still there');
+  for (const [, name] of branch[1].matchAll(/(?:^|[^.\w])([a-zA-Z_$][\w$]*)\s*\(/g)) {
+    if (name === 'if' || name === 'return') continue;
+    const defined = new RegExp(
+      `(?:function\\s+${name}\\s*\\(|const\\s+${name}\\s*=|let\\s+${name}\\s*=)`
+    ).test(src);
+    assert.ok(defined, `app.js calls ${name}() in the slot-read path but never defines it`);
+  }
+});
