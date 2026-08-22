@@ -1446,6 +1446,16 @@
       transition: fill .26s ease;
     }
     .panel-mini .pm-idx { text-anchor: middle; }
+    /* BANK is a word where the presets have a numeral, so it needs to be
+       smaller to sit on the same baseline without crowding the lamps beside
+       it. The panel does the same thing — its BANK legend is set in the label
+       face, not the numeral face. */
+    .panel-mini .pm-bank .pm-idx { font-size: 8.5px; letter-spacing: .06em; }
+    /* The bank button carries no LED and never lights: on the instrument a
+       bank is always current, so the lamps indicate and the button does not
+       (assets/seven-panel.svg). It renders at the same weight as an
+       unselected preset cap. */
+    .panel-mini .pm-bank { opacity: .5; }
     .panel-mini .pm-on, .panel-mini .pm-active .pm-idx { fill: #f0efe8; }
     @media (prefers-reduced-motion: reduce) {
       .panel-mini .pm-btn, .panel-mini .pm-btn .pm-face,

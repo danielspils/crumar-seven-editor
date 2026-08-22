@@ -14,7 +14,15 @@
   const BTN_W = 44;
   const BTN_H = 74;
   const GAP = 10;
-  const LEFT = 66;   // room for the bank LED column
+  // Room for the BANK CONTROL AND its LED column, in that order — the order
+  // they sit in on the instrument. This was 66, enough for the lamps alone:
+  // the picture said WHICH bank was current and offered no way to change it,
+  // which was right for a transfer (the app moves the instrument itself with
+  // selectBank) and wrong for anything where the player chooses.
+  const LEFT = 131;
+  const BANK_X = 8;        // the bank button's bezel, hard against the left
+  const BANK_LED_X = 85;   // 33 units clear of the button, as on the panel
+  const BANK_NUM_X = 99;   // …and the numeral 14 further, as it already was
   const TOP = 54;    // room for the numbers, the bracket and the HOLD legend
 
   // bank: 1-4, preset: 1-8 — the slot the player must hold.
@@ -28,9 +36,9 @@
         const cy = TOP + 6 + i * 17;
         const lit = b === bank;
         return (
-          `<circle cx="20" cy="${cy}" r="4.2" fill="${lit ? '#e0a03a' : '#4a412a'}"` +
+          `<circle cx="${BANK_LED_X}" cy="${cy}" r="4.2" fill="${lit ? '#e0a03a' : '#4a412a'}"` +
           `${lit ? ' stroke="#f6d089" stroke-width="1"' : ''}/>` +
-          `<text class="pm-num${lit ? ' pm-on' : ''}" x="34" y="${cy + 4}">${b}</text>`
+          `<text class="pm-num${lit ? ' pm-on' : ''}" x="${BANK_NUM_X}" y="${cy + 4}">${b}</text>`
         );
       })
       .join('');
@@ -56,6 +64,25 @@
       );
     }).join('');
 
+    // THE BANK BUTTON. Same size as a preset cap, because on the instrument it
+    // IS one — 54x92 there, 44x74 here, like every cap beside it — and to the
+    // LEFT of the lamps, where the panel puts it. The whole value of this
+    // picture is that pressing what you see matches pressing what is in front
+    // of you, so nothing here is invented and nothing is moved.
+    //
+    // NO LED, and that is faithful rather than an omission: the panel's own
+    // bank button never lights. "A bank is always current, so there is no
+    // selection for the button itself to indicate — the bank LEDs carry that"
+    // (assets/seven-panel.svg). The lamps to its right are the indicator.
+    const bankBtn =
+      `<g class="pm-btn pm-bank" data-bank-btn>` +
+      `<text class="pm-idx" x="${BANK_X + BTN_W / 2}" y="${TOP - 10}">BANK</text>` +
+      `<rect class="pm-bezel" x="${BANK_X}" y="${TOP}" width="${BTN_W}" height="${BTN_H}" rx="3"/>` +
+      `<rect class="pm-face" x="${BANK_X + 3}" y="${TOP + 3}" ` +
+      `width="${BTN_W - 6}" height="${BTN_H - 6}"/>` +
+      `<path class="pm-cap" d="M${BANK_X + 3} ${TOP + 28}h${BTN_W - 6}v${BTN_H - 31}h${-(BTN_W - 6)}z"/>` +
+      `</g>`;
+
     // HOLD sits above the number with its bracket between them, the way the
     // panel labels CLAVI TABS — legend, rule, then the thing itself. It is
     // drawn over button 1 and TRANSLATED to the right one, so that stepping
@@ -73,8 +100,8 @@
       `<rect class="pm-bg" x="0" y="0" width="${width}" height="${height}" rx="6"/>` +
       // A hairline from the bank column to the buttons, as the panel runs one
       // between its bank LEDs and the preset row.
-      `<path class="pm-bracket pm-dim" d="M14 ${TOP - 4}h34"/>` +
-      banks + buttons + hold +
+      `<path class="pm-bracket pm-dim" d="M${BANK_LED_X - 6} ${TOP - 4}h34"/>` +
+      bankBtn + banks + buttons + hold +
       `</svg>`
     );
   }
