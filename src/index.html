@@ -69,7 +69,16 @@
       --text-dim: #8a8375;
       --accent: #b8362b;
       --amber: #8a5d00;
-      --action: #2c8b4f;
+      /* Darkened from #2c8b4f on 2026-08-21. Same hue; it simply was not dark
+         enough to be read on any light surface. Measured against WCAG AA
+         (4.5:1 for normal text), on the three surfaces it can land on:
+             as text   on --bg        3.60 -> 5.47
+                       on --bg-raised 3.92 -> 5.97
+                       on --bg-panel  3.16 -> 4.81
+             --action-ink on it       3.96 -> 6.03   (the filled button)
+         All four were failing, so this is not one link's problem. Dark mode's
+         #4fb96a already passes at 6.33-7.43 and is untouched. */
+      --action: #1f6b3d;
       --action-ink: #f4f7f5;
 
       --inst-chassis: #3f3f47;

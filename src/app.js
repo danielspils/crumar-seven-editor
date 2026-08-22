@@ -3253,6 +3253,12 @@
       how.append(document.createTextNode('To install an expansion, visit '));
       const a = document.createElement('a');
       a.href = '#';
+      // The app's own link treatment, not the browser's. Unclassed, this
+      // rendered in default link blue — rgb(0,0,238) on the dark panel's
+      // rgb(35,35,38), a measured 1.67:1 against the 4.5:1 that normal text
+      // needs, and unreadable on Daniel's screen (2026-08-21). Light mode
+      // passed at 6.95:1, which is how it survived: one theme was fine.
+      a.className = 'modal-link';
       a.textContent = 'crumar.it';
       a.addEventListener('click', (ev) => {
         ev.preventDefault();
