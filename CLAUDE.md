@@ -1126,6 +1126,42 @@ already verified, so this is app work, not reverse-engineering:
    manufacturer's editor lacks. Undo exists for library acts; the edit-buffer
    half is what's left.
 
+### RECOMMENDED, NOT DONE: adopt ESLint with `no-undef` (2026-08-22)
+
+**Four runtime errors in one day, all of one family**, all in renderer files
+with no unit coverage, all invisible to `node --check` (which parses but does
+not resolve) and to both suites:
+
+| what | how it failed |
+| ---- | ------------- |
+| `renderBanks()` | called, defined nowhere — killed the slot-read repaint AND the row re-render |
+| `sendToSeven` | callback never supplied, so the row control clicked into silence |
+| `answer` | read outside the block its `const` lives in — threw on every save from Patches |
+| `maybeOfferSendPc` | definition deleted by an unrelated commit — threw on every connect |
+
+**Three were found by Daniel using the app. The fourth by a linter, in under a
+minute**, run once through `npx` with a throwaway config and `no-undef` as the
+only rule. That run produced six findings: five were browser/Node globals
+missing from the throwaway config, and one was real. The triage is that small.
+
+**The pattern behind all four, which is the reason to automate rather than to
+be careful:** scripted edits verified by checking that the intended change
+happened rather than that nothing else did. `maybeOfferSendPc` was destroyed by
+a deletion that sliced a source range and took a passenger; the sweep it was
+removing was confirmed gone, and nothing confirmed what else went with it. A
+linter is the only thing in reach that checks the second question
+automatically.
+
+Wire it into `npm test` so it runs every time, rather than when somebody thinks
+to ask. The cost is one dev dependency and a single triage session; the globals
+that made noise are enumerable once into a config. **Deliberately not installed
+on launch day** — a dependency plus a triage pass is not launch-morning work.
+
+Until then, `test/source-wiring.test.js` carries hand-rolled guards for the two
+branches that have already broken: the slot read and the connect path. They are
+narrow by design and do not generalise — they check that functions a branch
+calls are defined, and one of the four failures was a variable.
+
 ### Smaller things still open
 
 Kept here because they otherwise live only in a chat that ends.

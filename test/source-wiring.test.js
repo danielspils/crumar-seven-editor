@@ -187,3 +187,41 @@ test('the branch reads an INTENT, so swapping the buttons cannot invert it', () 
   assert.match(src, /intent = answer === 'secondary' \? 'overwrite' : 'copy'/);
   assert.match(src, /if \(intent === 'copy'\)/);
 });
+
+// ---- The connect path -----------------------------------------------------
+
+test('the connect path offers the SEND PC prompt, and the function exists', () => {
+  // This is the test that was missing, and its absence is the whole story:
+  // send-pc-prompt.js had NINE passing unit tests covering the decision and
+  // the write, and the scenario covered the offline case. All of it stayed
+  // green while the only consumer was deleted, because every one of those
+  // tests supplies its own inputs. The unit was fine; nothing checked that
+  // anything used it.
+  //
+  // It was called on every connect and defined nowhere — a ReferenceError out
+  // of the 'connected' branch, which also skipped connBtn.disabled,
+  // backupBtn.hidden and the write-gate banner.
+  const src = code(read('app.js'));
+  assert.match(src, /maybeOfferSendPc\(s\)/,
+    'the status handler still offers the prompt on connect');
+  assert.match(src, /(?:async\s+)?function maybeOfferSendPc\s*\(/,
+    'and app.js still defines it');
+});
+
+test('every function the connect branch calls is defined in app.js', () => {
+  // The general form of the same failure, twice over: a scripted edit removed
+  // a range and took a passenger, and node --check parses an undefined call
+  // happily because it is a runtime error. Narrow on purpose — the names this
+  // one branch calls — and cheap enough to keep.
+  const src = code(read('app.js'));
+  const branch = /if \(s\.state === 'connected'\)[\s\S]*?\n      \} else if \(s\.state === 'connecting'\)/.exec(src);
+  assert.ok(branch, "the connected branch is still recognisable");
+  const known = new Set(['if', 'return', 'String', 'Number', 'Boolean', 'esc']);
+  for (const [, name] of branch[0].matchAll(/(?:^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/g)) {
+    if (known.has(name)) continue;
+    const defined = new RegExp(
+      `(?:(?:async\\s+)?function\\s+${name}\\s*\\(|const\\s+${name}\\s*=|let\\s+${name}\\s*=)`
+    ).test(src);
+    assert.ok(defined, `app.js calls ${name}() on connect but never defines it`);
+  }
+});
