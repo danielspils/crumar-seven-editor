@@ -70,6 +70,7 @@
   // rendered onto the modal's own background. Invisible in light mode, which
   // is how it was found. The drawing's colours are literal in both themes:
   // it is a photograph of a machine, not part of the interface's palette.
+  const themed = [];
   for (const theme of ['dark', 'light']) {
     document.documentElement.dataset.theme = theme;
     await ui.sleep(200);
@@ -84,13 +85,73 @@
         `${theme}: the heading sits ON the panel, not on the dialog behind it`);
     }
     ui.note(`${theme}: panel-bg ${getComputedStyle(bg).fill} · heading ${getComputedStyle(head).fill}`);
+
+    // THE BRACKETS ARE THE OPPOSITE CASE. They belong to the interface, not to
+    // the machine, so they must CHANGE with the theme where everything above
+    // them stays literal. A bracket that kept one colour would be a mark from
+    // the drawing that had wandered off it.
+    const rule = svg.querySelector('.mp-bracket');
+    const cap = svg.querySelector('[data-mp-cap="bank"]');
+    ui.note(`${theme}: bracket ${getComputedStyle(rule).stroke} · caption ${getComputedStyle(cap).fill}`);
+    themed.push(`${getComputedStyle(rule).stroke}|${getComputedStyle(cap).fill}`);
   }
+  ui.check(themed[0] !== themed[1],
+    `the brackets take the theme's own tokens, not the panel's (${themed.join('  vs  ')})`);
   document.documentElement.dataset.theme = 'dark';
   await ui.sleep(200);
 
   // The heading names what is being ASKED FOR, and follows the stage.
   ui.check(svg.querySelector('.mp-heading').textContent === 'SELECT BANK',
     'with nothing chosen it asks for a bank');
+  const headBank = svg.querySelector('.mp-heading').getBoundingClientRect().left;
+
+  // THE BRACKETS. Two rules under the panel, each captioned with what is
+  // chosen in the cluster above it, and each SPANNING that cluster — a caption
+  // centred under the wrong controls would point at the wrong thing.
+  const capOf = (which) => svg.querySelector(`[data-mp-cap="${which}"]`).textContent;
+
+  // NOTHING IS CUT OFF. The crop is a viewBox over a bigger drawing, so a
+  // height that is one number too small silently slices the bottom off the
+  // caps — which is exactly what shipped: the bezels end at y 148 in a crop
+  // that stopped at 142, and the bank's own "4" went with them (Daniel,
+  // 2026-08-22). Measured against the backdrop rather than eyeballed.
+  {
+    const panel = svg.querySelector('.panel-bg').getBoundingClientRect();
+    const lowest = [
+      ...svg.querySelectorAll('[data-mp-preset] .btn-bezel'),
+      svg.querySelector('#mp-btn-bank'),
+      ...svg.querySelectorAll('.lbl-bank-num'),
+    ].filter(Boolean).map((el) => el.getBoundingClientRect().bottom);
+    const worst = Math.max(...lowest);
+    ui.note(`lowest drawn edge ${worst.toFixed(1)} · panel bottom ${panel.bottom.toFixed(1)}`);
+    ui.check(worst <= panel.bottom,
+      `every cap and lamp numeral finishes INSIDE the panel (${worst.toFixed(1)} <= ${panel.bottom.toFixed(1)})`);
+  }
+  ui.check(capOf('bank') === 'Bank: —' && capOf('preset') === 'Preset: —',
+    `both brackets say nothing is chosen ("${capOf('bank')}" / "${capOf('preset')}")`);
+  for (const which of ['bank', 'preset']) {
+    const rule = svg.querySelectorAll('.mp-bracket')[which === 'bank' ? 0 : 1].getBoundingClientRect();
+    const cap = svg.querySelector(`[data-mp-cap="${which}"]`).getBoundingClientRect();
+    const panel = svg.querySelector('.panel-bg').getBoundingClientRect();
+    ui.note(`${which} bracket ${Math.round(rule.left)}–${Math.round(rule.right)} · caption centre ${Math.round(cap.left + cap.width / 2)}`);
+    ui.check(rule.top >= panel.bottom - 1,
+      `the ${which} bracket sits BELOW the panel, not on it`);
+    ui.check(cap.left + cap.width / 2 > rule.left && cap.left + cap.width / 2 < rule.right,
+      `and its caption is centred inside its own bracket`);
+    ui.check(cap.top >= rule.bottom - 1, `with the caption under the rule`);
+  }
+  {
+    const bankRule = svg.querySelectorAll('.mp-bracket')[0].getBoundingClientRect();
+    const presetRule = svg.querySelectorAll('.mp-bracket')[1].getBoundingClientRect();
+    const bankBtn = svg.querySelector('[data-mp-bank]').getBoundingClientRect();
+    const p1 = svg.querySelector('[data-mp-preset="1"] [data-mp-hit]').getBoundingClientRect();
+    const p8 = svg.querySelector('[data-mp-preset="8"] [data-mp-hit]').getBoundingClientRect();
+    ui.check(bankRule.left <= bankBtn.left + 1 && bankRule.right < p1.left,
+      'the bank bracket spans the bank control and stops short of preset 1');
+    ui.check(presetRule.left <= p1.left + 1 && presetRule.right >= p8.right - 1,
+      'the preset bracket spans presets 1 through 8');
+    ui.check(bankRule.right < presetRule.left, 'and the two do not touch');
+  }
 
   // ── STATE 1: nothing chosen ────────────────────────────────────────────
   ui.check(lampsOn().length === 0, `no bank lamp is lit before anything is chosen (${lampsOn()})`);
@@ -137,21 +198,36 @@
   // ── STATE 2: a bank chosen wakes the presets ───────────────────────────
   bank = 3; preset = null; paint(); await ui.sleep(150);
   ui.check(lampsOn().join('') === '3', `lamp 3 lit (${lampsOn()})`);
-  ui.check(ledsOn() === 0, 'no preset chosen yet');
+  // THE LEDS ARE THE OFFER. Eight lit lights are the eight things that can
+  // be picked — which is why choosing one puts them ALL out below.
+  ui.check(ledsOn() === 8, `all eight preset LEDs light — these are the choices (${ledsOn()})`);
   ui.check(getComputedStyle(svg.querySelector('[data-mp-preset="4"] [data-mp-hit]')).pointerEvents === 'auto',
     'ALL EIGHT presets are live now');
   ui.check(nextBtn.disabled, 'NEXT still dim with no preset');
   ui.check(svg.querySelector('.mp-heading').textContent === 'SELECT PRESET',
     'and the heading moves on to the preset');
+  // …and it MOVES, from over the bank control to over the preset row. Where
+  // the words are is half of what they say.
+  const headAt = () => svg.querySelector('.mp-heading').getBoundingClientRect();
+  const headPreset = headAt().left;
+  ui.check(headPreset > headBank + 40,
+    `the heading moved right, over the preset row (${Math.round(headBank)} → ${Math.round(headPreset)})`);
+  ui.check(capOf('bank') === 'Bank: 3', `the bank bracket is captioned "${capOf('bank')}"`);
+  ui.check(capOf('preset') === 'Preset: —', `and the preset bracket waits: "${capOf('preset')}"`);
   const s2 = size('state 2  ');
 
   // ── STATE 3: choosing a preset, by clicking it ─────────────────────────
   const hit7 = svg.querySelector('[data-mp-preset="7"] [data-mp-hit]');
   if (ui.click(hit7, 'preset 7')) { preset = 7; paint(); }
   await ui.sleep(180);
-  ui.check(ledsOn() === 1, `exactly one preset LED is lit (${ledsOn()})`);
+  // Every LED goes out: the offer is over, and the raised outlined CAP is
+  // what now says which one was taken.
+  ui.check(ledsOn() === 0, `the offer is withdrawn — all LEDs out (${ledsOn()})`);
   ui.check(svg.querySelector('[data-mp-preset="7"]').classList.contains('is-chosen'),
     'and it is the one that was clicked');
+  ui.check(svg.querySelector('[data-mp-preset="7"] .btn-face').classList.contains('on'),
+    'the cap carries the choice');
+  ui.check(capOf('preset') === 'Preset: 7', `the preset bracket follows: "${capOf('preset')}"`);
   ui.check(where.textContent === 'BANK 3 · PRESET 7', `the readout follows: "${where.textContent}"`);
   ui.check(!nextBtn.disabled, 'NEXT wakes up once both are chosen');
   const s3 = size('state 3  ');
@@ -166,7 +242,7 @@
   ui.check(svg.querySelector('[data-mp-preset="4"]').classList.contains('is-chosen')
     && !svg.querySelector('[data-mp-preset="7"]').classList.contains('is-chosen'),
     'choosing another extinguishes the first');
-  ui.check(ledsOn() === 1, `still exactly one LED (${ledsOn()})`);
+  ui.check(capOf('preset') === 'Preset: 4', `and so does the caption: "${capOf('preset')}"`);
 
   // ── ONE SIZE THROUGHOUT ────────────────────────────────────────────────
   const heights = new Set([s1.h, sBank1.h, s2.h, s3.h]);

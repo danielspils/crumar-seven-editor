@@ -1406,6 +1406,19 @@
       font-weight: bold; font-style: italic; font-size: 15px; letter-spacing: .08em;
     }
 
+    /* THE BRACKETS. These are the only marks here that belong to the INTERFACE
+       rather than to the machine — they sit outside the panel's backdrop and
+       point up at it — so they take the app's own face and the app's own
+       tokens, and they change with the theme while everything above them stays
+       literally the colour of a Crumar. --amber is the established token for
+       exactly this job; in the light theme it is the deep amber that passes AA
+       there, not the brighter orange of the drawing. */
+    .modal-panel .mp-bracket { fill: none; stroke: var(--amber); stroke-width: 2; }
+    .modal-panel .mp-cap {
+      fill: var(--text); font-family: 'Archivo', Helvetica, Arial, sans-serif;
+      font-weight: 700; font-size: 17px;
+    }
+
     /* WHAT IS LIVE, BY STAGE. Only the controls that can be pressed take a
        cursor and answer hover; the rest are a picture. */
     .modal-panel .btn-hit { pointer-events: none; cursor: default; }
@@ -1433,8 +1446,8 @@
     /* Bank chosen: all eight wake up — "pick one". */
     .modal-panel.is-preset [data-mp-preset],
     .modal-panel.is-chosen [data-mp-preset] { opacity: 1; }
-    /* Preset chosen: the others keep their caps but lose their lights, so the
-       one lit LED is unambiguous. .on is removed in JS; this is the face. */
+    /* Preset chosen: every LED goes out and the chosen CAP carries it, raised
+       and outlined. .on is removed in JS; this is the face. */
     .modal-panel.is-chosen [data-mp-preset]:not(.is-chosen) .btn-face { filter: none; }
     .modal-panel .is-chosen .btn-face { stroke: #f2f2f5; stroke-width: 1.6; }
 

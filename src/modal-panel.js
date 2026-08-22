@@ -48,8 +48,27 @@
   // The instrument has no such legend — this is the app asking a question, not
   // the panel saying something — so it lives in a strip of backdrop above the
   // drawing rather than on top of it.
-  const VIEW = { x: 678, y: -26, w: 645, h: 168 };
+  //
+  // AND IT REACHES BELOW THE ARTWORK for the two brackets — a rule under the
+  // bank cluster and another under the preset row, each captioned with what is
+  // chosen there. They are drawn INSIDE this SVG, in the panel's own
+  // coordinates, because their whole job is to line up with specific controls;
+  // a caption in HTML beneath the picture would go crooked the moment the
+  // drawing moved a bezel (Daniel's drawing, 2026-08-22).
+  const VIEW = { x: 678, y: -26, w: 645, h: 231 };
+  const PANEL_H = 184;              // the dark backdrop: y -26 → 158
   const PREFIX = 'mp-';
+
+  // WHERE EACH CLUSTER IS, in the drawing's coordinates. The bank control's
+  // bezel starts at x 686 and its lamp numerals end around 810; preset 1's
+  // bezel starts at 832 and preset 8's ends at 1313. Everything that has to
+  // point AT a cluster — the heading above, the bracket below — is positioned
+  // from these, so the two can never disagree about where a cluster is.
+  const CLUSTER = {
+    bank: { x1: 682, x2: 816, cx: 749 },
+    preset: { x1: 828, x2: 1317, cx: 1072.5 },
+  };
+  const BRACKET = { y: 172, tick: 10, caption: 200 };
 
   const section = (svg, id) => {
     const open = svg.indexOf(`<g id="${id}">`);
@@ -122,15 +141,27 @@
     // background. Invisible in light mode, which is how it was found (Daniel,
     // 2026-08-22). Same class, so it takes the same colour as the dashboard's.
     const bg = `<rect class="panel-bg" x="${VIEW.x}" y="${VIEW.y}" `
-      + `width="${VIEW.w}" height="${VIEW.h}" rx="6"/>`;
-    // The question the modal is asking, in the panel's own label face. Centred
-    // on the crop, in the strip above the artwork.
-    const heading = `<text class="mp-heading" x="${VIEW.x + VIEW.w / 2}" `
+      + `width="${VIEW.w}" height="${PANEL_H}" rx="6"/>`;
+    // The question the modal is asking, in the panel's own label face — and it
+    // sits OVER THE CLUSTER IT IS ASKING ABOUT rather than over the middle of
+    // the panel. Where the words are is half of what they say.
+    const heading = `<text class="mp-heading" x="${CLUSTER.bank.cx}" `
       + `y="${VIEW.y + 20}" text-anchor="middle">SELECT BANK</text>`;
+
+    // The brackets. A rule with a downward tick at each end, spanning exactly
+    // the controls it captions.
+    const rule = ({ x1, x2 }) => `<path class="mp-bracket" d="M${x1} ${BRACKET.y + BRACKET.tick} `
+      + `L${x1} ${BRACKET.y} L${x2} ${BRACKET.y} L${x2} ${BRACKET.y + BRACKET.tick}"/>`;
+    const caption = (which, text) => `<text class="mp-cap" data-mp-cap="${which}" `
+      + `x="${CLUSTER[which].cx}" y="${BRACKET.caption}" text-anchor="middle">${text}</text>`;
+    const brackets = '<g class="mp-brackets" aria-hidden="true">'
+      + rule(CLUSTER.bank) + caption('bank', 'Bank: —')
+      + rule(CLUSTER.preset) + caption('preset', 'Preset: —')
+      + '</g>';
 
     return `<svg class="modal-panel" viewBox="${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}" `
       + 'width="100%" role="group" aria-label="Bank and preset on the Seven">'
-      + prefixIds(style) + prefixIds(defs) + bg + heading + body
+      + prefixIds(style) + prefixIds(defs) + bg + heading + body + brackets
       + '</svg>';
   }
 
@@ -145,12 +176,28 @@
     for (const s of ['bank', 'preset', 'chosen', 'hold']) {
       svg.classList.toggle(`is-${s}`, s === stage);
     }
-    // The heading names what is being asked for RIGHT NOW. Once a bank is
-    // chosen the question is the preset, and it stays that way while the
-    // player changes their mind — the lamps say what is chosen, this says
-    // what to do.
+    // The heading names what is being asked for RIGHT NOW, and MOVES to sit
+    // over the cluster it is asking about. SELECT BANK appears once, over the
+    // bank control; the first press of that control replaces it with SELECT
+    // PRESET over the preset row, and that is what stays until NEXT is
+    // pressed — the lamps say what is chosen, this says what to do (Daniel's
+    // drawings, 2026-08-22).
+    const onBank = stage === 'bank';
     const h = svg.querySelector('.mp-heading');
-    if (h) h.textContent = stage === 'bank' ? 'SELECT BANK' : 'SELECT PRESET';
+    if (h) {
+      h.textContent = onBank ? 'SELECT BANK' : 'SELECT PRESET';
+      h.setAttribute('x', String(onBank ? CLUSTER.bank.cx : CLUSTER.preset.cx));
+    }
+
+    // THE LEDS ARE THE OFFER, NOT THE ANSWER. With a bank chosen and no preset
+    // yet, all eight light: those are the choices. Choose one and they all go
+    // out, because from then on the raised, outlined CAP is what says which —
+    // the same way the drawing shows a pressed button (Daniel's drawings).
+    for (let n = 1; n <= 8; n += 1) {
+      const g = svg.querySelector(`[data-mp-preset="${n}"]`);
+      const led = g && g.querySelector('.led');
+      if (led) led.classList.toggle('on', stage === 'preset');
+    }
   }
 
   // The lamps mirror the INSTRUMENT, including Bank 1. The player can put the
@@ -165,6 +212,17 @@
       if (led) led.classList.toggle('on', b === bank);
     }
     svg.dataset.bank = bank == null ? '' : String(bank);
+    caption(svg, 'bank', bank);
+  }
+
+  // The bracket caption under a cluster. It is written HERE, beside the lamps
+  // it describes, so the number under the bracket and the lit lamp cannot come
+  // apart — they are set by the same call.
+  function caption(svg, which, value) {
+    const el = svg.querySelector(`[data-mp-cap="${which}"]`);
+    if (!el) return;
+    const label = which === 'bank' ? 'Bank' : 'Preset';
+    el.textContent = `${label}: ${value == null ? '—' : value}`;
   }
 
   function setPreset(svg, preset) {
@@ -174,14 +232,14 @@
       if (!g) continue;
       const chosen = n === preset;
       g.classList.toggle('is-chosen', chosen);
-      const led = g.querySelector('.led');
-      // The LED is the instrument's own indicator, so it is what says which
-      // preset is chosen — every other light goes out.
-      if (led) led.classList.toggle('on', chosen);
+      // The CAP is what says which preset is chosen: raised and outlined, the
+      // way the drawing shows a pressed button. The LEDs are the offer and are
+      // set by setStage — see the note there.
       const face = g.querySelector('.btn-face');
       if (face) face.classList.toggle('on', chosen);
     }
     svg.dataset.preset = preset == null ? '' : String(preset);
+    caption(svg, 'preset', preset);
   }
 
   // Cycles 1 → 2 → 3 → 4 → 1, exactly as the instrument's own BANK button
