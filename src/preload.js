@@ -170,7 +170,6 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // Recall a slot on the instrument (bank/preset are 0-based).
     recall: (bank, preset) => ipcRenderer.invoke('midi:recall', { bank, preset }),
     globals: () => ipcRenderer.invoke('midi:globals'),
-    refreshStorage: () => ipcRenderer.invoke('midi:refreshStorage'),
     setGlobal: (index, value) => ipcRenderer.invoke('midi:setGlobal', { index, value }),
   },
   // Transfer: a setlist onto a bank. Nothing here can bypass the runner's

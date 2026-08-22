@@ -1175,19 +1175,6 @@
       padding: 7px 14px; cursor: pointer;
     }
     .seven-modal-second:hover { color: var(--text); border-color: var(--text-muted); }
-    /* Refresh ON THE SEVEN. Quiet until you go looking, like the other row
-       controls — it is not something anyone needs to see on every launch. */
-    #ots-refresh {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 20px; height: 20px; margin-left: 6px; padding: 0; vertical-align: -4px;
-      color: var(--text-dim); background: none; border: none; border-radius: 4px;
-      opacity: .55; cursor: pointer; transition: opacity .12s, color .12s;
-    }
-    #seven-head:hover #ots-refresh, #ots-refresh:focus-visible { opacity: 1; }
-    #ots-refresh:hover { color: var(--text); background: var(--shade-hard); }
-    #ots-refresh[disabled] { opacity: .35; cursor: default; }
-    #ots-refresh[disabled]:hover { color: var(--text-dim); background: none; }
-
     /* TWO ANSWERS AT EQUAL WEIGHT, for a question with no sensible default.
        The filled treatment says "this is the action"; where both choices are
        real — keep what you made, or play what the file says — leaning on one
