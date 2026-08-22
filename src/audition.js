@@ -655,18 +655,37 @@
     // cover donors, and the day it changes the donors lose their protection
     // silently. So the reason is written down where it applies.
     const isDonor = !!(entry.origin && entry.origin.bank === 1);
-    let answer = 'secondary'; // = save a copy
+    // WHAT TO DO, not which button was pressed. The two were the same thing
+    // until the safe option became the confirm, and reading the modal's raw
+    // answer at the branch below is how that swap would silently invert.
+    let intent = 'copy';
     if (!isBackup && !isDonor) {
-      answer = await SevenModal.confirm({
-        title: `Save “${esc(entry.name || 'this patch')}”`,
-        body: 'Overwrite this patch, or keep it and save your changes as a copy?',
-        confirmLabel: 'Overwrite patch',
-        secondaryLabel: 'Save a copy',
+      const target = entry.name || 'this patch';
+      const answer = await SevenModal.confirm({
+        title: `Save “${esc(target)}”`,
+        // NO CLAIM THAT ANYTHING WAS EDITED. This said "save your changes as a
+        // copy" — but a slot captured from the instrument has no changes, and
+        // the sentence narrated an edit that need never have happened. It says
+        // what each button does instead (Daniel, 2026-08-22).
+        body: `Write these values into “${target}”, or keep it and save them `
+          + 'as a separate patch.',
+        // THE SAFE PATH LEADS. Overwrite held both the focus and Return, so
+        // pressing Enter destroyed a patch — and destroying one is
+        // unrecoverable while making a second is not. Not the is-equal tone:
+        // where one choice is undoable and the other is not, the modal should
+        // lean, and it should lean to the one you can walk back from.
+        confirmLabel: 'Save as a separate patch',
+        // NAMED. Daniel met this dialog while standing in the Backups tab, saw
+        // "Overwrite patch", and could not tell whether a backup was about to
+        // be overwritten. It never could be — a record skips this dialog
+        // entirely — but nothing on screen said which patch was the target.
+        secondaryLabel: `Overwrite “${target}”`,
         cancelLabel: 'Cancel',
       });
       if (!answer) return;
+      intent = answer === 'secondary' ? 'overwrite' : 'copy';
     }
-    if (answer === 'secondary') {
+    if (intent === 'copy') {
       const copy = await window.sevenAPI.library.duplicate(file, patchIndex);
       if (!copy || !copy.file) {
         toast('Could not make a copy');

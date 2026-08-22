@@ -129,6 +129,38 @@
   ui.check(await answer === false, 'the X answers no, as it does everywhere');
   await ui.waitFor(gone, { timeout: 2000, what: 'the modal to close' });
 
+  // ── the overwrite dialog: focus and Return go to the SAFE option ────────
+  //
+  // The real one needs a live session and therefore an instrument. Its labels
+  // are pinned at the call site in test/source-wiring.test.js; what is checked
+  // here is the modal behaviour those labels inherit — that the confirm is what
+  // takes focus, and that Return picks it.
+  answer = SevenModal.confirm({
+    title: 'Save “Tine Piano”',
+    body: 'Write these values into “Tine Piano”, or keep it and save them as a separate patch.',
+    confirmLabel: 'Save as a separate patch',
+    secondaryLabel: 'Overwrite “Tine Piano”',
+    cancelLabel: 'Cancel',
+  });
+  await ui.waitFor(() => !!btn('.seven-modal-ok'), { timeout: 3000, what: 'the save dialog' });
+  const focused2 = document.activeElement;
+  ui.note(`focus: ${focused2 && focused2.className} = "${focused2 && focused2.textContent.trim()}"`);
+  ui.check(!!focused2 && focused2.classList.contains('seven-modal-ok'),
+    'focus is on the confirm');
+  ui.check(/separate patch/i.test(btn('.seven-modal-ok').textContent),
+    'and the confirm is the non-destructive option');
+  ui.check(/Overwrite/i.test(btn('.seven-modal-second').textContent)
+    && /Tine Piano/.test(btn('.seven-modal-second').textContent),
+    'while overwrite is secondary and names its target');
+
+  // RETURN MUST NOT OVERWRITE.
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const byReturn = await answer;
+  ui.note(`Return resolved: ${JSON.stringify(byReturn)}`);
+  ui.check(byReturn === true && byReturn !== 'secondary',
+    'Return chooses the separate patch, never the overwrite');
+  await ui.waitFor(gone, { timeout: 2000, what: 'the modal to close' });
+
   // ── neither appears unasked ─────────────────────────────────────────────
   //
   // The same router, with no optional labels: a stray button here would put

@@ -1124,6 +1124,87 @@ test('save-as-new refuses a name already taken', () => {
     'and case-folds, like every other name check');
 });
 
+// ---- One name rule, and what counts as taken ------------------------------
+//
+// A patch name is unique among PATCHES. Backup records and the instrument's
+// own 32 slots are outside that namespace — they are records of what the Seven
+// held, where repeated names are normal (three "DX Synth Piano" in one bank is
+// an ordinary thing to own). If those counted, nearly every name would read as
+// unavailable.
+//
+// Both doors enforce it through the SAME function: inline rename, and the
+// naming modal's live check (library:nameAvailable calls assertNameFree and
+// returns its message verbatim).
+
+test('rename and the naming modal refuse on the same sentence, from one place', () => {
+  const { store } = freshStore();
+  store.createPatchFromLive({ name: 'Wurly w/ overdrive', soundName: 'Tine Piano', params: {} });
+  const other = store.createPatchFromLive({ name: 'Something else', soundName: 'Tine Piano', params: {} });
+
+  let renameErr = null;
+  try { store.rename(other.file, 0, 'Wurly w/ overdrive'); } catch (e) { renameErr = e; }
+  let checkErr = null;
+  try { store.assertNameFree('Wurly w/ overdrive'); } catch (e) { checkErr = e; }
+
+  assert.ok(renameErr && checkErr, 'both refuse');
+  assert.strictEqual(renameErr.code, 'NAME_TAKEN');
+  assert.strictEqual(checkErr.code, 'NAME_TAKEN');
+  assert.strictEqual(renameErr.message, checkErr.message,
+    'and say the same thing — the modal shows the store\'s sentence, not a copy');
+  assert.match(checkErr.message, /already a patch called .Wurly w\/ overdrive./);
+});
+
+test('the message names the EXISTING patch, whatever case was typed', () => {
+  const { store } = freshStore();
+  store.createPatchFromLive({ name: 'Tine Piano', soundName: 'Tine Piano', params: {} });
+  try {
+    store.assertNameFree('tine piano');
+    assert.fail('should have refused');
+  } catch (e) {
+    assert.match(e.message, /“Tine Piano”/,
+      'quoting what you typed would read as the app being broken');
+  }
+});
+
+test('the prefill suggests "<name> 2" once a PATCH holds the bare name', () => {
+  const { store } = freshStore();
+  assert.strictEqual(store.nextPatchName('Tine Piano'), 'Tine Piano',
+    'free: the bare name');
+  store.createPatchFromLive({ name: 'Tine Piano', soundName: 'Tine Piano', params: {} });
+  assert.strictEqual(store.nextPatchName('Tine Piano'), 'Tine Piano 2');
+  store.createPatchFromLive({ name: 'Tine Piano 2', soundName: 'Tine Piano', params: {} });
+  assert.strictEqual(store.nextPatchName('Tine Piano'), 'Tine Piano 3');
+});
+
+test('A NAME HELD ONLY BY A BACKUP IS FREE — records are not the namespace', () => {
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  // A record of Bank 3 Preset 1, stored under the auto-generated slot name and
+  // DISPLAYED as "Tine Piano" once the prefix is stripped. Six of these exist
+  // in the real library, which is what made this look like a collision.
+  store.saveBackupPatch
+    ? null
+    : null;
+  const rec = {
+    name: 'Bank 3 Preset 1 — Tine Piano',
+    origin: { bank: 3, preset: 1, captured: '2026-08-19T10:00:00Z' },
+    sound: { name: 'Tine Piano', id: 0 },
+    params: {},
+  };
+  fs.writeFileSync(path.join(store.dir, 'rec-tine.sevenlib.json'),
+    JSON.stringify({
+      format: 'crumar-seven-library', formatVersion: 1,
+      created: '2026-08-19T10:00:00Z',
+      source: { app: 't', firmware: null, schema: 'seven-1.37.json', soundList: null },
+      patches: [rec],
+    }, null, 2));
+
+  assert.strictEqual(store.nextPatchName('Tine Piano'), 'Tine Piano',
+    'the record does not make the name taken');
+  assert.doesNotThrow(() => store.assertNameFree('Tine Piano'),
+    'and saving under it is allowed');
+});
+
 test('a new patch records the instrument it was made on, not the schema', () => {
   const { store } = freshStore();
 
