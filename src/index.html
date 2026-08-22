@@ -1327,6 +1327,17 @@
     /* What the instrument never told us, said quietly rather than dropped. */
     .seven-modal-body .tx-fine { font-size: 12px; color: var(--text-dim); }
     .seven-modal-body .tx-alarm { margin-top: 0; color: var(--accent); }
+    /* The picture answering a press. Amber rather than the alarm red: nothing
+       has gone wrong, somebody has simply reached for the drawing instead of
+       the instrument, and a red correction for a reasonable mistake reads as
+       telling them off. */
+    .seven-modal-body .tx-alarm-soft { color: var(--amber); }
+    /* TWO LINES, ALWAYS. This one line carries two different sentences — the
+       standing instruction and the correction — and it is directly under the
+       thing somebody has their finger on, so the dialog must not change height
+       as it swaps. Reserved rather than measured, because the wrap point
+       depends on the font that actually loaded. */
+    .seven-modal-body .tx-hold-line { min-height: 2.9em; }
     /* The backup summary reads as a little diagram — the count, an arrow, the
        destination — so it is centred and the arrow stands alone. */
     /* "32 presets → computer" is a from/to, exactly as a transfer is, so it
@@ -1447,6 +1458,14 @@
     /* WHAT IS LIVE, BY STAGE. Only the controls that can be pressed take a
        cursor and answer hover; the rest are a picture. */
     .modal-panel .btn-hit { pointer-events: none; cursor: default; }
+    /* AT THE HOLD, THE PICTURE ANSWERS — and it is the only stage where a
+       press is not a choice. Somebody reaching for the button they have just
+       been told to hold will reach for the one on screen, and a picture that
+       ignores them looks broken rather than inert. It takes the press and says
+       where the real button is. Not a pointer cursor: it is still not a
+       control, and it must not look like one. */
+    .modal-panel.is-hold [data-mp-hit],
+    .modal-panel.is-hold [data-mp-bank] { pointer-events: auto; cursor: default; }
     .modal-panel.is-bank [data-mp-bank],
     .modal-panel.is-row [data-mp-bank],
     .modal-panel.is-preset [data-mp-bank],

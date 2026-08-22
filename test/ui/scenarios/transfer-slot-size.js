@@ -28,7 +28,7 @@
     '<div class="tx-slot">' +
       '<div class="tx-face" data-face="hold">' +
         '<p class="tx-note">Hold for 3 seconds.</p>' +
-        '<p class="tx-note">Your Seven lights will run indicating the sound is saved.</p>' +
+        '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the sound is saved.</p>' +
       '</div>' +
       '<div class="tx-face is-off" data-face="skip">' +
         '<p class="tx-note tx-skip-line">Preset 5 already holds this patch.</p>' +
@@ -73,6 +73,31 @@
 
   ui.check(holdState.h === skipState.h,
     `SAME HEIGHT in both states (${holdState.h} vs ${skipState.h})`);
+
+  // AND THE SAME HEIGHT WHEN THE PICTURE ANSWERS A PRESS. That line carries
+  // two different sentences — the standing instruction and the correction for
+  // somebody holding the drawing — and it sits directly under the button they
+  // have their finger on. A dialog that resized under them would be worse than
+  // saying nothing.
+  face('hold');
+  await ui.sleep(200);
+  const line = m.body.querySelector('.tx-hold-line');
+  const before = Math.round(dialog.getBoundingClientRect().height);
+  const wasText = line.textContent;
+  // BOTH the sentence actually swapped in and a SHORT one. Today's correction
+  // happens to wrap to two lines like the instruction it replaces, so it alone
+  // proves nothing — remove the reserved height and it still passes. The short
+  // string is the real hazard the reservation exists for, and it is the one
+  // that makes this assertion able to fail (measured: it does).
+  for (const text of ['Hold the button on the Seven itself — this is a picture of it.', 'Hold it there.']) {
+    line.textContent = text;
+    await ui.sleep(250);
+    const during = Math.round(dialog.getBoundingClientRect().height);
+    ui.note(`line → "${text.slice(0, 24)}…"  height ${before} → ${during}`);
+    ui.check(before === during,
+      `the dialog does not move when the line changes (${before} vs ${during})`);
+  }
+  line.textContent = wasText;
   ui.check(holdState.w === skipState.w,
     `and the same width (${holdState.w} vs ${skipState.w})`);
   ui.check(holdState.top === skipState.top,

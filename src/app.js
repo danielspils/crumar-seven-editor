@@ -1286,7 +1286,9 @@
             // actually does at a store has not been captured, and the owner's
             // description is a sequence across the LEDs rather than one of them
             // flashing. Says enough to recognise it, claims nothing precise.
-            '<p class="tx-note">Your Seven lights will run indicating the sound is saved.</p>' +
+            // THIS LINE IS ALSO WHERE THE PICTURE ANSWERS A PRESS — see below.
+            '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the ' +
+            'sound is saved.</p>' +
           '</div>' +
           '<div class="tx-face is-off" data-face="skip">' +
             // DELIBERATELY THE SAME SENTENCE as the subtitle under the patch
@@ -1323,6 +1325,32 @@
     const skipLine = modal.body.querySelector('.tx-skip-line');
     // is-off hides a face WITHOUT removing it from the grid, so the slot keeps
     // the height of the taller one either way.
+    // PRESSING THE PICTURE. The dialog says "hold for 3 seconds" beside a
+    // drawing of the button to hold, so somebody will hold THAT one — and it
+    // did nothing whatever, which is the silent-control failure this app
+    // already has a rule against: reaching for it IS the request, so it
+    // answers every time (Daniel, 2026-08-22).
+    //
+    // The answer goes in the line that is already there rather than a new one,
+    // so the dialog cannot change size under someone whose finger is on the
+    // screen. "Hold for 3 seconds." stays above it the whole time: they are
+    // being told what to do and the correction must not replace the
+    // instruction.
+    const holdLine = modal.body.querySelector('.tx-hold-line');
+    const HOLD_LINE = holdLine ? holdLine.textContent : '';
+    let hintTimer = null;
+    if (panel && holdLine) {
+      panel.addEventListener('pointerdown', () => {
+        holdLine.textContent = 'Hold the button on the Seven itself — this is a picture of it.';
+        holdLine.classList.add('tx-alarm-soft');
+        if (hintTimer) clearTimeout(hintTimer);
+        hintTimer = setTimeout(() => {
+          holdLine.textContent = HOLD_LINE;
+          holdLine.classList.remove('tx-alarm-soft');
+        }, 4000);
+      });
+    }
+
     const showFace = (which) => {
       holdFace.classList.toggle('is-off', which !== 'hold');
       skipFace.classList.toggle('is-off', which !== 'skip');
@@ -1410,6 +1438,10 @@
         showStep(step.bank, step.preset, step.name);
       }
     } finally {
+      // A four-second timer outliving the dialog would write into nodes that
+      // are gone. Harmless, and exactly the kind of thing that stops being
+      // harmless the day somebody reuses the class name.
+      if (hintTimer) clearTimeout(hintTimer);
       modal.close();
     }
   }
