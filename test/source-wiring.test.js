@@ -241,6 +241,30 @@ test('the transfer walk builds ONE slot with both faces in it', () => {
   assert.match(src, /auto-advancing/, 'which says the walk is about to move on');
 });
 
+test('the hold screen shows the instrument\'s own drawing', () => {
+  // ONE PANEL NOW. The hold screen used to be src/panel-mini.js — a second
+  // SVG, built in JS, with its own coordinates — and that is how it spent
+  // eleven days with no BANK button: two hand-maintained copies and nothing
+  // that compared them.
+  //
+  // hold-panel.js measures the picture, but it builds the panel itself,
+  // because the real walk needs a connected instrument. So this is the half
+  // that says the WALK still uses it: without it, app.js could go back to a
+  // hand-built picture with the scenario green on its own markup — which is
+  // exactly the shape the Notes strip failed in.
+  const src = code(read('app.js'));
+  const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(walk, 'transferWalk is still recognisable');
+  assert.match(walk[0], /SevenModalPanel\.buildPanel/,
+    'the walk draws the panel from the dashboard artwork');
+  assert.match(walk[0], /brackets: false/,
+    'without the choosing brackets — nothing is being chosen at a hold');
+  assert.match(walk[0], /setStage\(panel, 'hold'\)/,
+    "and puts it at the hold stage, which is what shows the HOLD legend");
+  assert.doesNotMatch(src, /SevenPanelMini/,
+    'and the second drawing is gone from the app entirely');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

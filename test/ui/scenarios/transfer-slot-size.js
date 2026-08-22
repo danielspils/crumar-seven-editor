@@ -24,7 +24,7 @@
     '<p class="tx-step-name">Tine Piano</p>' +
     '<p class="tx-step-hear">(you can hear it now)</p>' +
     '<p class="tx-step-where">Bank 3 · Preset 5</p>' +
-    SevenPanelMini.render(3, 5) +
+    SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: false }) +
     '<div class="tx-slot">' +
       '<div class="tx-face" data-face="hold">' +
         '<p class="tx-note">Hold for 3 seconds.</p>' +
@@ -45,7 +45,12 @@
   const dialog = m.body.closest('.seven-modal');
   const hold = m.body.querySelector('[data-face="hold"]');
   const skip = m.body.querySelector('[data-face="skip"]');
-  const art = m.body.querySelector('svg.panel-mini');
+  const art = m.body.querySelector('svg.modal-panel');
+  if (art) {
+    SevenModalPanel.setBank(art, 3);
+    SevenModalPanel.setPreset(art, 5);
+    SevenModalPanel.setStage(art, 'hold');
+  }
   ui.check(!!dialog && !!hold && !!skip && !!art, 'the modal, both faces and the panel are there');
   if (!dialog) return;
 

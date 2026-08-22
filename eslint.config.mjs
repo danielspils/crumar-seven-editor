@@ -29,7 +29,7 @@
 const SEVEN = [
   'SevenAudition', 'SevenDayRollover', 'SevenDefaults', 'SevenDrift',
   'SevenExpansions', 'SevenKeyRange', 'SevenLibraryView', 'SevenModal', 'SevenModalPanel',
-  'SevenOtsFreshness', 'SevenPanelMini', 'SevenPicker', 'SevenRenderer',
+  'SevenOtsFreshness', 'SevenPicker', 'SevenRenderer',
   'SevenScrollFade', 'SevenSendChoice', 'SevenSendPcPrompt', 'SevenSoundArt',
   'SevenStorageLabel', 'SevenToast', 'SevenUndo',
 ];

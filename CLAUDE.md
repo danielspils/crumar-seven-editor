@@ -278,6 +278,17 @@ comments inside `<style>` must not contain angle brackets (markup parsing
 truncates the stylesheet), and class rules can't cross a `use`-element shadow
 boundary — knob state rides on custom properties and inline styles instead.
 
+**There is one panel drawing** (2026-08-22). `src/panel-mini.js` was a second
+SVG, built in JS with its own coordinates and its own flatter caps, and it
+spent eleven days missing the BANK button because nothing compared the two
+copies. Both the destination chooser and the transfer walk's hold screen now
+come out of `assets/seven-panel.svg` through `src/modal-panel.js`, cropped by
+viewBox and prefixed so 65 ids can live in the same document as the dashboard's.
+A control added to the instrument's drawing appears on every view of it without
+anyone remembering to. Its 100-line `playSave` — an animation of the store,
+with its own CSS — went with it, having never had a caller: the same
+zero-consumer shape as the Notes strip, found by the same one-line grep.
+
 **The patch file format is built and in use** (docs/FORMAT.md + src/format/,
 tested via `npm test`) — .sevenlib.json, one container for everything, params
 keyed by schema key, sound NAME authoritative, per-patch provenance, wfp
@@ -1186,6 +1197,17 @@ consumer still exists.
 ### Smaller things still open
 
 Kept here because they otherwise live only in a chat that ends.
+
+- **Two UI scenarios are flaky, and both fail the same way.**
+  `bank-tab-arrows.js` and `save-button-contexts.js` pass when run alone and
+  fail in a full `test:ui` run, each reporting *"a click at its centre lands
+  on `<fx-title>` / `<lib-count>`, not the control"*. Measured 2026-08-22:
+  3/3 alone on the current tree, 2/2 failing in the full suite — and each also
+  failed ALONE on an earlier commit, so it is not purely ordering. Both click
+  by COORDINATE in the bank region and land in another region entirely, so
+  either the region moves in some state, or two tests are asserting geometry
+  where they should be clicking an element. Until it is chased, a full-suite
+  run reads 21/2/9 and those two failures are known.
 
 - **Connect → open to the active patch.** Connecting leaves you on whatever
   was last selected rather than what the Seven is actually playing. A first

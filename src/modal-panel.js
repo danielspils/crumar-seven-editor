@@ -70,6 +70,12 @@
   };
   const BRACKET = { y: 172, tick: 10, caption: 200 };
 
+  // Preset n's centre line, from the drawing: preset 1's numeral sits at 859
+  // and each one after it is 61 further along. The HOLD legend is placed and
+  // moved with this, so it lands ON the button rather than near it.
+  const PRESET_PITCH = 61;
+  const PRESET_CX = (n) => 859 + (n - 1) * PRESET_PITCH;
+
   const section = (svg, id) => {
     const open = svg.indexOf(`<g id="${id}">`);
     if (open < 0) return '';
@@ -116,7 +122,7 @@
     .replace(/aria-label="Select preset (\d)[^"]*"/g, 'aria-label="Select preset $1"')
     .replace(/aria-label="Cycle preset bank"/, 'aria-label="Cycle bank"');
 
-  function buildPanel(fullSvg, { bank = null, preset = null } = {}) {
+  function buildPanel(fullSvg, { brackets = true } = {}) {
     if (typeof fullSvg !== 'string' || !fullSvg) return '';
     // The same strip preload does for the dashboard: the SVG's @font-face
     // points at a path relative to assets/, which resolves against src/ once
@@ -154,14 +160,31 @@
       + `L${x1} ${BRACKET.y} L${x2} ${BRACKET.y} L${x2} ${BRACKET.y + BRACKET.tick}"/>`;
     const caption = (which, text) => `<text class="mp-cap" data-mp-cap="${which}" `
       + `x="${CLUSTER[which].cx}" y="${BRACKET.caption}" text-anchor="middle">${text}</text>`;
-    const brackets = '<g class="mp-brackets" aria-hidden="true">'
+    // THE BRACKETS BELONG TO CHOOSING. They caption what has been picked so
+    // far, so a screen where nothing is being picked — the hold — leaves them
+    // out rather than showing two empty captions. Left out, the crop ends at
+    // the panel and the picture is shorter by exactly that strip.
+    const captions = !brackets ? '' : '<g class="mp-brackets" aria-hidden="true">'
       + rule(CLUSTER.bank) + caption('bank', 'Bank: —')
       + rule(CLUSTER.preset) + caption('preset', 'Preset: —')
       + '</g>';
 
-    return `<svg class="modal-panel" viewBox="${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}" `
+    // THE HOLD LEGEND, in the panel's own CLAVI TABS yellow and bracketed the
+    // way the panel brackets a legend: word, rule, then the thing itself. It
+    // is drawn over preset 1 and TRANSLATED to the one being held, so stepping
+    // through a bank SLIDES it along the row — the move the player's own hand
+    // is about to make, rather than a legend blinking out and back in
+    // somewhere else.
+    const hx = PRESET_CX(1);
+    const hold = '<g class="mp-hold" transform="translate(0,0)">'
+      + `<text class="mp-hold-word" x="${hx}" y="2" text-anchor="middle">HOLD</text>`
+      + `<path class="mp-hold-rule" d="M${hx - 22} 8 v6 h44 v-6"/>`
+      + '</g>';
+
+    const h = brackets ? VIEW.h : PANEL_H;
+    return `<svg class="modal-panel" viewBox="${VIEW.x} ${VIEW.y} ${VIEW.w} ${h}" `
       + 'width="100%" role="group" aria-label="Bank and preset on the Seven">'
-      + prefixIds(style) + prefixIds(defs) + bg + heading + body + brackets
+      + prefixIds(style) + prefixIds(defs) + bg + heading + body + hold + captions
       + '</svg>';
   }
 
@@ -182,6 +205,11 @@
     // PRESET over the preset row, and that is what stays until NEXT is
     // pressed — the lamps say what is chosen, this says what to do (Daniel's
     // drawings, 2026-08-22).
+    //
+    // AND IT GOES QUIET AT THE HOLD (CSS). Nothing is being selected there —
+    // the patch is already in the instrument and the only thing left is a
+    // physical press — so the HOLD legend over the button is the whole
+    // message, and a second instruction beside it would compete with it.
     const onBank = stage === 'bank';
     const h = svg.querySelector('.mp-heading');
     if (h) {
@@ -189,14 +217,30 @@
       h.setAttribute('x', String(onBank ? CLUSTER.bank.cx : CLUSTER.preset.cx));
     }
 
-    // THE LEDS ARE THE OFFER, NOT THE ANSWER. With a bank chosen and no preset
-    // yet, all eight light: those are the choices. Choose one and they all go
-    // out, because from then on the raised, outlined CAP is what says which —
-    // the same way the drawing shows a pressed button (Daniel's drawings).
+    paintLeds(svg);
+  }
+
+  // THE LEDS ARE THE OFFER, NOT THE ANSWER — and ONE function decides them.
+  //
+  //   choosing a preset  all eight light: those are the choices
+  //   one chosen         they all go out, and the raised, outlined CAP
+  //                      carries it, the way the drawing shows a press
+  //   holding            the one to hold lights AND BLINKS, because the
+  //                      player is looking at the instrument and the picture
+  //                      has to point rather than to record
+  //
+  // It reads the stage off the element's own classes and the preset off its
+  // dataset, so setStage and setPreset can be called in either order without
+  // one undoing the other. That hazard is not hypothetical: the LEDs were the
+  // one thing both functions wrote.
+  function paintLeds(svg) {
+    const chosen = svg.dataset.preset ? Number(svg.dataset.preset) : null;
+    const offering = svg.classList.contains('is-preset');
+    const holding = svg.classList.contains('is-hold');
     for (let n = 1; n <= 8; n += 1) {
       const g = svg.querySelector(`[data-mp-preset="${n}"]`);
       const led = g && g.querySelector('.led');
-      if (led) led.classList.toggle('on', stage === 'preset');
+      if (led) led.classList.toggle('on', offering || (holding && n === chosen));
     }
   }
 
@@ -240,6 +284,18 @@
     }
     svg.dataset.preset = preset == null ? '' : String(preset);
     caption(svg, 'preset', preset);
+    // The legend TRAVELS to the new button rather than being redrawn over it.
+    const hold = svg.querySelector('.mp-hold');
+    if (hold) {
+      hold.setAttribute('transform', `translate(${((preset || 1) - 1) * PRESET_PITCH},0)`);
+    }
+    // The picture is the instruction, so the instruction has to exist for
+    // anyone who cannot see it.
+    if (svg.classList.contains('is-hold') && svg.dataset.bank && preset) {
+      svg.setAttribute('aria-label',
+        `Hold preset ${preset} in bank ${svg.dataset.bank} on the Seven`);
+    }
+    paintLeds(svg);
   }
 
   // Cycles 1 → 2 → 3 → 4 → 1, exactly as the instrument's own BANK button
@@ -249,5 +305,5 @@
   // its action and says why — but it can be landed on.
   const nextBank = (bank) => (bank == null ? 2 : (bank % 4) + 1);
 
-  return { buildPanel, setStage, setBank, setPreset, nextBank, PREFIX, VIEW };
+  return { buildPanel, setStage, setBank, setPreset, nextBank, PREFIX, VIEW, PRESET_CX };
 });

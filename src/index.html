@@ -1413,6 +1413,31 @@
        literally the colour of a Crumar. --amber is the established token for
        exactly this job; in the light theme it is the deep amber that passes AA
        there, not the brighter orange of the drawing. */
+    /* THE HOLD LEGEND. It belongs to the MACHINE, not to the interface: the
+       panel's own CLAVI TABS yellow, in the panel's own label face, bracketed
+       the way the panel brackets a legend. So it is literal in both themes,
+       like everything else inside the backdrop. */
+    .modal-panel .mp-hold { opacity: 0; transition: opacity .2s ease, transform .3s cubic-bezier(.4, 0, .2, 1); }
+    .modal-panel.is-hold .mp-hold { opacity: 1; }
+    .modal-panel .mp-hold-word {
+      fill: #d9c24a; font-family: 'Archivo Narrow', 'Archivo', Helvetica, Arial, sans-serif;
+      font-size: 15px; font-weight: bold; font-style: italic; letter-spacing: .06em;
+    }
+    .modal-panel .mp-hold-rule { stroke: #d9c24a; stroke-width: 1.4; fill: none; }
+    /* Nothing is being chosen at the hold, so the question goes away and the
+       legend over the button is the whole message. */
+    .modal-panel.is-hold .mp-heading { visibility: hidden; }
+    /* The one lit LED BLINKS, the way a preset waiting to be stored asks for
+       attention on the instrument itself. Only at the hold: everywhere else
+       the panel is recording a choice, and a blink there would be asking for
+       something. */
+    .modal-panel.is-hold .is-chosen .led.on { animation: mp-blink 1.05s steps(1, end) infinite; }
+    @keyframes mp-blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: .25; } }
+    @media (prefers-reduced-motion: reduce) {
+      .modal-panel .mp-hold { transition: none; }
+      .modal-panel.is-hold .is-chosen .led.on { animation: none; }
+    }
+
     .modal-panel .mp-bracket { fill: none; stroke: var(--amber); stroke-width: 2; }
     .modal-panel .mp-cap {
       fill: var(--text); font-family: 'Archivo', Helvetica, Arial, sans-serif;
@@ -1445,10 +1470,12 @@
     .modal-panel.is-bank [data-mp-preset] { opacity: .45; }
     /* Bank chosen: all eight wake up — "pick one". */
     .modal-panel.is-preset [data-mp-preset],
+    .modal-panel.is-hold [data-mp-preset],
     .modal-panel.is-chosen [data-mp-preset] { opacity: 1; }
     /* Preset chosen: every LED goes out and the chosen CAP carries it, raised
        and outlined. .on is removed in JS; this is the face. */
-    .modal-panel.is-chosen [data-mp-preset]:not(.is-chosen) .btn-face { filter: none; }
+    .modal-panel.is-chosen [data-mp-preset]:not(.is-chosen) .btn-face,
+    .modal-panel.is-hold [data-mp-preset]:not(.is-chosen) .btn-face { filter: none; }
     .modal-panel .is-chosen .btn-face { stroke: #f2f2f5; stroke-width: 1.6; }
 
     /* The bank control is dark once a bank has been chosen: its job is done
@@ -1457,91 +1484,6 @@
     .modal-panel.is-bank [data-mp-bank] ~ .btn-face,
     .modal-panel.is-bank #mp-btn-bank { filter: brightness(1.5); }
 
-    /* The transfer's panel picture. Literal panel colours in both themes — it
-       is a photograph of a machine, not part of the interface's palette. */
-    .panel-mini { display: block; margin: 2px 0 4px; }
-    .panel-mini .pm-bg { fill: #141416; }
-    .panel-mini .pm-bezel { fill: #1a1a1c; }
-    .panel-mini .pm-face { fill: #232327; stroke: #4a4a52; stroke-width: 1; }
-    .panel-mini .pm-cap { fill: rgba(255, 255, 255, .045); }
-    .panel-mini .pm-led { fill: #5a2320; }
-    /* Which button to press is carried by the GROUP's class, so stepping to
-       the next one is a toggle on living nodes and every one of these can
-       cross-fade rather than cut. */
-    /* The button to press is visibly LIGHTER, not just outlined — against
-       seven identical dark caps a faint lift did not register as selected
-       (Daniel, 2026-08-13). The cap catches more light with it, the way a
-       pressed key does. */
-    .panel-mini .pm-active .pm-face { fill: #4e4e57; stroke: #b6b6c0; stroke-width: 1.4; }
-    .panel-mini .pm-active .pm-cap { fill: rgba(255, 255, 255, .12); }
-    /* The one lit LED blinks, the way a preset waiting to be stored asks for
-       attention on the instrument itself. */
-    .panel-mini .pm-active .pm-led { fill: #ff3b30; animation: pm-blink 1.05s steps(1, end) infinite; }
-    @keyframes pm-blink { 0%, 55% { fill: #ff3b30; } 56%, 100% { fill: #6d2a25; } }
-    /* Seven identical caps and one to press: the rest step back — but stay
-       readable. Too dim and you cannot see where the walk is heading, only
-       where it is. */
-    .panel-mini .pm-dim { opacity: .5; }
-    .panel-mini .pm-active { opacity: 1; }
-    /* The confirmation run: after the hold, the Seven's lights travel down the
-       row. ONLY the LEDs move — the buttons themselves stay exactly as they
-       are, because on the instrument nothing but the lights is doing anything
-       (Daniel, 2026-08-13). Lighting the whole group made the caps flicker as
-       though eight buttons were being pressed. Not the blinking .pm-active
-       LED either — this is the instrument answering, not asking. */
-    /* The run is as bright as the held light. It was not, and the reason was
-       not its colour: those buttons carry .pm-dim, whose opacity halves
-       EVERYTHING inside the group — a child cannot out-shine its parent's
-       opacity (Daniel, 2026-08-13).
-       So the group goes to full opacity for the run, and the face, cap and
-       number are held at the values they rendered at while dimmed. The button
-       looks untouched; only the light changes. */
-    .panel-mini .pm-run { opacity: 1; }
-    .panel-mini .pm-run .pm-face { fill: #1d1d21; stroke: #313136; }
-    .panel-mini .pm-run .pm-cap { fill: rgba(255, 255, 255, .022); }
-    .panel-mini .pm-run .pm-idx { fill: #494950; }
-    .panel-mini .pm-run .pm-led {
-      fill: #ffe9e6;
-      filter: drop-shadow(0 0 3px #ff3b30) drop-shadow(0 0 7px #ff3b30);
-    }
-    /* In the demonstration the held button's light is SOLID. The blink belongs
-       to the transfer walk, where the panel is asking for a press. */
-    .panel-mini.pm-demo .pm-active .pm-led { animation: none; fill: #ff3b30; }
-    .panel-mini .pm-btn .pm-led { transition: fill .12s ease; }
-    .panel-mini .pm-btn { transition: opacity .26s ease; }
-    .panel-mini .pm-btn .pm-face { transition: fill .26s ease, stroke .26s ease; }
-    /* The legend travels the row rather than being redrawn over the next
-       button — the same move the player's hand is about to make. */
-    .panel-mini .pm-hold-g { transition: transform .3s cubic-bezier(.4, 0, .2, 1); }
-    .panel-mini .pm-num, .panel-mini .pm-idx {
-      fill: #7a7a84; font-family: 'Archivo Narrow', Helvetica, Arial, sans-serif;
-      font-size: 12px; font-weight: 700; font-style: italic;
-      transition: fill .26s ease;
-    }
-    .panel-mini .pm-idx { text-anchor: middle; }
-    /* BANK is a word where the presets have a numeral, so it needs to be
-       smaller to sit on the same baseline without crowding the lamps beside
-       it. The panel does the same thing — its BANK legend is set in the label
-       face, not the numeral face. */
-    .panel-mini .pm-bank .pm-idx { font-size: 8.5px; letter-spacing: .06em; }
-    /* The bank button carries no LED and never lights: on the instrument a
-       bank is always current, so the lamps indicate and the button does not
-       (assets/seven-panel.svg). It renders at the same weight as an
-       unselected preset cap. */
-    .panel-mini .pm-bank { opacity: .5; }
-    .panel-mini .pm-on, .panel-mini .pm-active .pm-idx { fill: #f0efe8; }
-    @media (prefers-reduced-motion: reduce) {
-      .panel-mini .pm-btn, .panel-mini .pm-btn .pm-face,
-      .panel-mini .pm-hold-g, .panel-mini .pm-idx { transition: none; }
-      .panel-mini .pm-active .pm-led { animation: none; }
-    }
-    /* HOLD wears the panel's CLAVI TABS yellow, bracketed the same way. */
-    .panel-mini .pm-hold {
-      fill: #d9c24a; font-family: 'Archivo Narrow', Helvetica, Arial, sans-serif;
-      font-size: 14px; font-weight: 700; font-style: italic;
-      letter-spacing: .06em; text-anchor: middle;
-    }
-    .panel-mini .pm-bracket { stroke: #d9c24a; stroke-width: 1; fill: none; }
 
     /* Patch picker: a modal over the setlist, so the slots you're filling stay
        visible behind it. Tiles rather than rows — the point is seeing many
@@ -2803,7 +2745,6 @@
   </div>
   <script src="defaults.js"></script>
   <script src="renderer.js"></script>
-  <script src="panel-mini.js"></script>
     <script src="toast.js"></script>
     <script src="audition.js"></script>
     <script src="undo.js"></script>

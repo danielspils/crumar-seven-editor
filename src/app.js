@@ -1192,7 +1192,16 @@
         '<p class="tx-step-name"></p>' +
         '<p class="tx-step-hear">(you can hear it now)</p>' +
         '<p class="tx-step-where"></p>' +
-        SevenPanelMini.render(bank, firstSlot.slot + 1) +
+        // THE SAME DRAWING THE CHOOSER USES. This was a second panel —
+        // src/panel-mini.js, its own SVG built in JS, its own coordinates,
+        // its own flatter caps — and that is how it came to be missing the
+        // BANK button for eleven days: nothing compared the two, because
+        // there was nothing that could. The hold screen now shows the
+        // instrument's own artwork, at the `hold` stage.
+        //
+        // NO BOTTOM BRACKETS here: those caption what is being CHOSEN, and
+        // nothing is being chosen at a hold.
+        SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: false }) +
         // ONE SLOT, TWO FACES, and the slot is as tall as the taller of them.
         //
         // These used to be two paragraphs that were HIDDEN on a skipped preset,
@@ -1230,6 +1239,17 @@
       cancelLabel: 'Stop',
       tone: 'is-transfer',
     });
+    const panel = modal.body.querySelector('svg.modal-panel');
+    // Where the walk is pointing. setBank and setPreset are both called every
+    // time: a walk is one bank today, but the picture should not be the thing
+    // that assumes it.
+    const pointAt = (b, preset) => {
+      if (!panel) return;
+      SevenModalPanel.setBank(panel, b);
+      SevenModalPanel.setPreset(panel, preset);
+      SevenModalPanel.setStage(panel, 'hold');
+    };
+    pointAt(bank, firstSlot.slot + 1);
     const nameEl = modal.body.querySelector('.tx-step-name');
     const whereEl = modal.body.querySelector('.tx-step-where');
     const hearEl = modal.body.querySelector('.tx-step-hear');
@@ -1250,7 +1270,7 @@
     const showAlreadyThere = (step) => {
       nameEl.textContent = step.name || '';
       whereEl.textContent = `Bank ${step.bank} · Preset ${step.preset}`;
-      SevenPanelMini.setPreset(modal.body, step.preset);
+      pointAt(step.bank, step.preset);
       hearEl.textContent = step.instruction; // "Preset 6 already holds this patch."
       skipLine.textContent = step.instruction;
       showFace('skip');
@@ -1263,7 +1283,7 @@
     const showStep = (bank, preset, name) => {
       nameEl.textContent = name || '';
       whereEl.textContent = `Bank ${bank} · Preset ${preset}`;
-      SevenPanelMini.setPreset(modal.body, preset);
+      pointAt(bank, preset);
     };
 
     // The plan's version of the first step, on screen immediately; the runner's
