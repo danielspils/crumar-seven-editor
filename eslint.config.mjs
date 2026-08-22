@@ -136,7 +136,7 @@ export default [
   // require()d, so neither sees Node globals.
   {
     ...base,
-    files: ['test/ui/harness.js', 'test/ui/scenarios/*.js'],
+    files: ['test/ui/harness.js', 'test/ui/preview.js', 'test/ui/scenarios/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'script',
