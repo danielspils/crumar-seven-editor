@@ -15,6 +15,18 @@ const root = path.join(__dirname, '..');
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
 const readText = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
+// Every renderer callback for a decoded MIDI event. ONE ipcRenderer listener
+// dispatches to all of them, so registering and unregistering is a Set
+// operation rather than another listener on the channel.
+const midiListeners = new Set();
+ipcRenderer.on('midi-event', (_e, ev) => {
+  // A copy, so a callback that throws cannot stop the ones after it and a
+  // callback that unsubscribes during dispatch cannot mutate the live set.
+  for (const cb of [...midiListeners]) {
+    try { cb(ev); } catch (err) { console.error('[midi] listener threw:', err); }
+  }
+});
+
 contextBridge.exposeInMainWorld('sevenAPI', {
   // Static reference data (parameter map + panel artwork), not device state.
   getSchema: () => readJson('schema/seven-1.37.json'),
@@ -154,7 +166,22 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // Save the instrument's own description to a file the owner can attach to
     // an issue. Offered only when the write gate is closed — see param-compat.
     reportInstrument: () => ipcRenderer.invoke('midi:reportInstrument'),
-    onEvent: (cb) => ipcRenderer.on('midi-event', (_e, ev) => cb(ev)),
+    // ONE ipcRenderer LISTENER, EVER — the renderer's callbacks live in a Set
+    // beside it and onEvent returns the way to take one out again.
+    //
+    // It used to be a bare `ipcRenderer.on` per call with no unsubscribe, and
+    // the destination chooser registers one every time it opens. Two things
+    // followed, and the second was found by reproducing it on hardware: the
+    // listeners accumulated for the life of the session, and a Program Change
+    // NOBODY CAUSED silently replaced the player's chosen destination —
+    // measured 2026-08-22, BANK 3 · PRESET 5 became BANK 2 · PRESET 1 when the
+    // app recalled a slot and the instrument echoed it back.
+    //
+    // listenerCount is here so a test can assert the Set empties again. A leak
+    // is invisible by construction — nothing misbehaves until much later — so
+    // the only way it stops recurring is if something can count.
+    onEvent: (cb) => { midiListeners.add(cb); return () => midiListeners.delete(cb); },
+    listenerCount: () => midiListeners.size,
     // Two steps: the wording (which needs main-process knowledge of what the
     // panel has told us) and the run. The dialog itself is the app's own.
     backupPlan: () => ipcRenderer.invoke('backup:plan'),

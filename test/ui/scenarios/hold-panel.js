@@ -60,8 +60,22 @@
   //
   // The walk has already sent the patch and moved the instrument. A bank
   // control that answered a click here would move it somewhere else, mid-walk.
-  ui.check(getComputedStyle(bankBtn).pointerEvents === 'none',
-    'and nothing on it can be pressed — the choosing is over');
+  // IT TAKES A PRESS, and answers it. The dialog says "hold for 3 seconds"
+  // beside a drawing of the button to hold, so somebody will hold THAT one —
+  // and a picture that ignores them looks broken rather than inert. What it
+  // must not do is behave like a control: no pointer cursor, and pressing it
+  // changes nothing about the destination.
+  ui.check(getComputedStyle(bankBtn).pointerEvents === 'auto',
+    'the picture answers a press');
+  ui.check(getComputedStyle(bankBtn).cursor === 'default',
+    'without looking like a control');
+  const wasBank = svg.dataset.bank;
+  const wasPreset = svg.dataset.preset;
+  ui.click(svg.querySelector('[data-mp-preset="2"] [data-mp-hit]'), 'preset 2 on the picture');
+  ui.click(bankBtn, 'the bank control on the picture');
+  await ui.sleep(300);
+  ui.check(svg.dataset.bank === wasBank && svg.dataset.preset === wasPreset,
+    `and pressing it changes nothing (bank ${svg.dataset.bank}, preset ${svg.dataset.preset})`);
   ui.check(!svg.querySelector('.mp-brackets'),
     'no bottom brackets: they caption a choice, and nothing is being chosen');
   ui.check(getComputedStyle(svg.querySelector('.mp-heading')).visibility === 'hidden',

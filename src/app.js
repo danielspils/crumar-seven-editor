@@ -431,15 +431,29 @@
     // eventually goes to the instrument is unaffected (Daniel, 2026-08-22).
     const follow = (ev) => {
       if (!ev || ev.type !== 'program-change') return;
+      // NOT OURS. The instrument echoes every Program Change it receives, so
+      // an app-initiated recall arrives here looking exactly like a hand on
+      // the panel — and following one silently retargets a destination the
+      // player chose deliberately. Reproduced on hardware: BANK 3 · PRESET 5
+      // became BANK 2 · PRESET 1 with nobody near the instrument, because the
+      // app recalled a slot (2026-08-22).
+      if (ev.echo) return;
       bank = ev.bank;
       preset = ev.preset;
       paint();
     };
-    window.sevenAPI.midi.onEvent(follow);
+    const unfollow = window.sevenAPI.midi.onEvent(follow);
 
-    const ok = await m.action();
-    m.close();
-    return ok && bank && bank !== 1 && preset ? { bank, preset } : null;
+    try {
+      const ok = await m.action();
+      return ok && bank && bank !== 1 && preset ? { bank, preset } : null;
+    } finally {
+      // EVERY exit — chosen, cancelled, the X, Esc, or a throw. The listener
+      // used to be left registered forever, one per opening, because onEvent
+      // had no way to take one out.
+      unfollow();
+      m.close();
+    }
   }
 
   // WHICH BANK A WHOLE SETLIST GOES INTO, chosen on the panel — the same

@@ -574,11 +574,18 @@ class SevenMidi extends EventEmitter {
       // Note: during a backup run the device may echo the PCs we send; the
       // runner snapshots this BEFORE sending anything.
       this.lastPanelProgram = msg[1];
+      // Ours coming back, or a hand on the panel? Everything that follows the
+      // instrument needs to know, because only one of the two is a decision
+      // somebody made.
+      const mine = this._sentProgram;
+      const echo = !!mine && mine.program === msg[1] && (Date.now() - mine.at) < 1500;
+      if (echo) this._sentProgram = null;
       this.emit('event', {
         type: 'program-change',
         program: msg[1],
         bank: Math.floor(msg[1] / 8) + 1,
         preset: (msg[1] % 8) + 1,
+        echo,
       });
       // The PC closes the burst the 0x45 opened. The fingerprint is the sound
       // id and the CC bytes as they arrived — compared, never decoded: how a
@@ -917,7 +924,18 @@ class SevenMidi extends EventEmitter {
 
   // --- Program Change out (backup driver) -----------------------------------
 
+  // OUR OWN PROGRAM CHANGES COME BACK. With Send PC on, the instrument echoes
+  // every PC it receives, and the echo is byte-identical to a human pressing
+  // that preset. Anything downstream deciding "the player moved the panel"
+  // therefore has to be told which is which — see _onMessage, and the chooser
+  // that was silently retargeted by one of these (measured 2026-08-22).
+  //
+  // Matched on the PROGRAM and a short window, and cleared once claimed. If a
+  // player really does press the same preset the app just recalled inside that
+  // window, the only consequence is that a picture does not move to where it
+  // already is.
   sendProgramChange(program) {
+    this._sentProgram = { program: program & 0x7f, at: Date.now() };
     if (!this.output) throw new Error('not connected');
     this.output.sendMessage([0xc0, program & 0x7f]);
   }
