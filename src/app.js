@@ -1200,7 +1200,9 @@
         const ahead = nextTransferSlot(slots, step.slot);
         if (ahead) showStep(step.bank, ahead.slot + 1, ahead.name);
         modal.busy(true);
-        step = await window.sevenAPI.transfer.confirm();
+        // Which answer arrived is part of what gets recorded: the report
+        // distinguishes what the Seven showed us from what the player told us.
+        step = await window.sevenAPI.transfer.confirm(byInstrument);
         modal.busy(false);
         if (!step || step.type === 'transfer-done') return await transferDone(step, modal);
         // Reconcile with what the runner actually did — the plan is a guess

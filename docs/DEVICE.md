@@ -674,6 +674,41 @@ sound list is what varies between instruments.
 installed". This table answers "what exists". The difference is a
 ready-made Visibility feature.
 
+### Detecting a store: what works, and the three places it is blind
+
+The Seven does not ANNOUNCE a store. A three-second hold emits exactly what a
+tap emits — `0x45`, the 22 panel CCs, then the PC — with no marker and no
+timing difference (`captures/store-hold-2026-08-12-notes.md`).
+
+**But the burst CONTENTS give it away.** The broadcast following a store carries
+what was just WRITTEN; the one following a tap carries what the preset held
+before. The transfer runner recalls each destination on its way in, so it holds
+a "before" for free — and a burst on that slot whose fingerprint differs is the
+app watching the write land (`_watchForStore`).
+
+That is real evidence, and the walk advances on it: the renderer races the
+"Held it" button against the instrument's own event, and **the instrument
+usually wins**. The report records which, per slot — `confirmed` is every slot
+established either way, `verified` the subset the Seven showed us — so the note
+can say what is true instead of asserting the weaker basis flatly.
+
+**THREE BLIND SPOTS, established and not theoretical:**
+
+- **Send PC OFF: no detection at all.** The burst is closed by the Program
+  Change, so with the global off there is no fingerprint to compare. `_recall`
+  resolves `null`, `_watchForStore` returns immediately, and the button is the
+  only path.
+- **A difference in CC-LESS PARAMETERS ONLY: invisible.** The fingerprint is
+  the sound id plus the 22 panel CCs, and most modelled engine controls carry
+  no CC — so such a store produces a byte-identical burst. Found the hard way
+  on 2026-08-15: a real store the runner could not see.
+- **Storing what was already there: nothing changes, so nothing fires.** The
+  walk usually skips that case earlier anyway, by reading the slot back in
+  full (110 parameters) and finding it already holds the patch.
+
+In all three the outcome is the same and none is a failure: the player presses
+the button, and the report says the basis was their word.
+
 ### No version field for a sample set — an observation, nothing more
 
 The sound table (`0x42`) returns an **id and a name**. There is **no version

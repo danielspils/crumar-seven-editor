@@ -530,7 +530,8 @@ function registerTransferIpc() {
     getTransferRunner().startSlot(bank, preset, ref));
 
   ipcMain.handle('transfer:next', () => getTransferRunner().nextSlot());
-  ipcMain.handle('transfer:confirm', () => getTransferRunner().confirmSlot());
+  ipcMain.handle('transfer:confirm', (_e, args) =>
+    getTransferRunner().confirmSlot(!!(args && args.byInstrument)));
   ipcMain.handle('transfer:cancel', () => getTransferRunner().cancel());
 }
 

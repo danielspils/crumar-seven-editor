@@ -83,6 +83,43 @@ function chainKeys(schema) {
     .map((p) => p.key);
 }
 
+// WHAT THE REPORT MAY CLAIM about how a store was established.
+//
+// The Seven does not ANNOUNCE a store: a hold emits exactly what a tap emits
+// (captures/store-hold-2026-08-12-notes.md). But the burst that FOLLOWS one
+// carries what was just written, and the runner recalls each slot on its way
+// in — so a burst differing from that "before" is the app watching the write
+// land. That is real evidence, and saying the player's word was the basis when
+// it was not is the same failure as claiming more than we know.
+//
+// THREE BLIND SPOTS, established and worth stating wherever this note is read:
+//
+//   - SEND PC OFF: no detection at all. The burst is closed by the Program
+//     Change, so with the global off there is no fingerprint and the button is
+//     the only path. _recall resolves null and _watchForStore returns at once.
+//   - A DIFFERENCE IN CC-LESS PARAMETERS ONLY: invisible. The fingerprint is
+//     the sound id plus the 22 panel CCs, and most modelled engine controls
+//     have no CC — so such a store produces an identical burst and goes
+//     unseen. The walk falls back to the button.
+//   - STORING WHAT WAS ALREADY THERE: nothing changes, so nothing fires. The
+//     walk usually skips that case earlier anyway, via a full 110-parameter
+//     read-back.
+//
+// In all three the outcome is the same and it is not a failure: the player
+// presses the button, and the report says so honestly.
+function transferNote(confirmed, verified) {
+  if (!confirmed) return '';
+  if (verified >= confirmed) {
+    return 'The Seven showed each preset change as it was stored.';
+  }
+  if (!verified) {
+    return 'Presets are listed as stored because you confirmed the hold — '
+      + 'the Seven does not announce a store.';
+  }
+  return `The Seven showed ${verified} of these ${confirmed} being stored; `
+    + 'the rest are listed because you confirmed the hold.';
+}
+
 class TransferRunner extends EventEmitter {
   constructor({ midi, store, sender }) {
     super();
@@ -223,7 +260,8 @@ class TransferRunner extends EventEmitter {
       slots: plan.slots,
       index: -1,
       sent: [],      // slots loaded into the buffer
-      confirmed: [], // slots the player said they stored
+      confirmed: [], // slots established as stored, either way
+      verified: [],  // …and the subset the INSTRUMENT showed us
       skipped: [],   // slots that already held the patch, read back in full
     };
     return { ...plan, started: true };
@@ -295,7 +333,7 @@ class TransferRunner extends EventEmitter {
     this.priorProgram = null;
     this.state = {
       bank, setlistIndex: null, slots: plan.slots, index: -1,
-      sent: [], confirmed: [], skipped: [],
+      sent: [], confirmed: [], verified: [], skipped: [],
     };
     return { ...plan, started: true };
   }
@@ -387,9 +425,19 @@ class TransferRunner extends EventEmitter {
 
   // The player says the hold is done. We cannot verify it — no frame reports a
   // store — so this records what they told us and says so in the report.
-  confirmSlot() {
+  // WHO ESTABLISHED THE STORE, per slot.
+  //
+  // Two things can advance the walk and they are not equal evidence. The
+  // player pressing "Held it" is their word. The instrument's own burst
+  // differing from the "before" this runner captured on its way in is the
+  // app SEEING the write land (see _watchForStore). The renderer races them
+  // and knows which won, so it says so rather than the report guessing.
+  confirmSlot(byInstrument = false) {
     if (!this.running) throw new Error('No transfer is running');
-    if (this.state.index >= 0) this.state.confirmed.push(this.state.index);
+    if (this.state.index >= 0) {
+      this.state.confirmed.push(this.state.index);
+      if (byInstrument) this.state.verified.push(this.state.index);
+    }
     return this.nextSlot();
   }
 
@@ -513,7 +561,7 @@ class TransferRunner extends EventEmitter {
   finish(error) {
     this._unwatchStore();
     this._returnSendPc();
-    const st = this.state || { confirmed: [], sent: [], slots: [], bank: null };
+    const st = this.state || { confirmed: [], verified: [], sent: [], slots: [], bank: null };
     const report = {
       type: 'transfer-done',
       bank: st.bank,
@@ -542,9 +590,14 @@ class TransferRunner extends EventEmitter {
         });
       })(),
       setlistIndex: st.setlistIndex,
-      // Never claim more than we know. A confirmed slot is one the PLAYER said
-      // they stored; the instrument does not report stores.
-      note: 'Presets are listed as stored because you confirmed the hold — the Seven does not report stores.',
+      // Which of the confirmed slots the INSTRUMENT showed us, rather than the
+      // player telling us. A subset of `confirmed`, never more.
+      verified: (st.verified || []).map((i) => i + 1),
+      // SAY WHICH BASIS, because they are not the same claim. This used to
+      // assert the weaker one flatly — "because you confirmed the hold — the
+      // Seven does not report stores" — which was false whenever the burst
+      // comparison won the race, and that is the usual case with Send PC on.
+      note: transferNote((st.confirmed || []).length, (st.verified || []).length),
     };
     this.running = false;
     this.state = null;
@@ -670,4 +723,4 @@ class TransferRunner extends EventEmitter {
   }
 }
 
-module.exports = { TransferRunner, SLOTS_PER_BANK, BLOCKED_BANK };
+module.exports = { TransferRunner, transferNote, SLOTS_PER_BANK, BLOCKED_BANK };

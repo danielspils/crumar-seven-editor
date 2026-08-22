@@ -225,14 +225,34 @@ test('stopping partway reports what was stored and what was only loaded', async 
   assert.deepStrictEqual(done.loadedNotConfirmed, [2], 'loaded but never confirmed is said out loud');
 });
 
-test('the report never claims the instrument confirmed a store', async () => {
+test('a slot advanced by the BUTTON is recorded as the player\'s word', async () => {
   const { store, midi, sender, entries } = setup();
   const list = setlistWith(store, [entries[0].file]);
   const runner = new TransferRunner({ midi, store, sender });
   runner.start(list, 2);
   await runner.nextSlot();
-  const done = await runner.confirmSlot();
-  assert.match(done.note, /the Seven does not report stores/);
+  const done = await runner.confirmSlot();            // no flag: the button won
+  assert.deepStrictEqual(done.confirmed, [1]);
+  assert.deepStrictEqual(done.verified, [], 'the instrument showed us nothing');
+  assert.match(done.note, /you confirmed the hold/);
+  assert.match(done.note, /does not announce a store/);
+});
+
+test('a slot advanced by the INSTRUMENT is recorded as the Seven showing it', async () => {
+  // The burst comparison won the race: the runner captured a "before" on its
+  // way in and saw the burst after the hold differ. That is the app watching
+  // the write land, and the report must not describe it as the player's word.
+  const { store, midi, sender, entries } = setup();
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  const done = await runner.confirmSlot(true);
+  assert.deepStrictEqual(done.confirmed, [1]);
+  assert.deepStrictEqual(done.verified, [1], 'and it is a subset of confirmed');
+  assert.match(done.note, /The Seven showed/);
+  assert.doesNotMatch(done.note, /you confirmed/,
+    'the weaker basis is not claimed when the stronger one applies');
 });
 
 test('picking a bank moves the instrument to it, before anything is decided', async () => {
@@ -720,4 +740,42 @@ test('sending one preset does not record a bank against any setlist', async () =
   await runner.nextSlot();
   await runner.confirmSlot();
   assert.strictEqual(store.readSetlists()[list].bank, undefined);
+});
+
+// ---- What the report may claim about how a store was established -----------
+
+const { transferNote } = require('../src/transfer-runner.js');
+
+test('all slots seen by the instrument: the note says so, and claims no word', () => {
+  const note = transferNote(3, 3);
+  assert.match(note, /The Seven showed/);
+  assert.doesNotMatch(note, /you confirmed/,
+    'claiming the player\'s word was the basis is false when the app watched it land');
+});
+
+test('none seen: the note falls back to the player, and says the Seven is silent', () => {
+  const note = transferNote(3, 0);
+  assert.match(note, /you confirmed the hold/);
+  assert.match(note, /does not announce a store/);
+  assert.doesNotMatch(note, /The Seven showed/);
+});
+
+test('MIXED: both bases are named, with the count', () => {
+  // The case the old note could not express at all — it asserted the weaker
+  // basis flatly, for every slot, however each one was actually established.
+  const note = transferNote(4, 1);
+  assert.match(note, /showed 1 of these 4/);
+  assert.match(note, /you confirmed the hold/);
+});
+
+test('nothing stored: no note at all', () => {
+  assert.strictEqual(transferNote(0, 0), '');
+});
+
+test('verified can never exceed confirmed', () => {
+  // A slot the instrument showed us is also a slot that was confirmed — the
+  // renderer calls confirm() either way. If that ever inverted, the note would
+  // claim more than happened.
+  assert.match(transferNote(2, 5), /The Seven showed/,
+    'it degrades to the stronger claim rather than printing "5 of these 2"');
 });

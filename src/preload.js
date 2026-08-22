@@ -182,7 +182,8 @@ contextBridge.exposeInMainWorld('sevenAPI', {
       ipcRenderer.invoke('transfer:start', { setlistIndex, bank, confirmed }),
     startSlot: (bank, preset, ref) => ipcRenderer.invoke('transfer:startSlot', { bank, preset, ref }),
     next: () => ipcRenderer.invoke('transfer:next'),
-    confirm: () => ipcRenderer.invoke('transfer:confirm'),
+    // byInstrument: the Seven's own burst advanced the walk, not the button.
+    confirm: (byInstrument) => ipcRenderer.invoke('transfer:confirm', { byInstrument }),
     cancel: () => ipcRenderer.invoke('transfer:cancel'),
     cancelBackup: () => ipcRenderer.invoke('backup:cancel'),
   },
