@@ -70,6 +70,29 @@
   // rendered onto the modal's own background. Invisible in light mode, which
   // is how it was found. The drawing's colours are literal in both themes:
   // it is a photograph of a machine, not part of the interface's palette.
+  // WCAG, measured on what the elements RESOLVE to. Text is 4.5:1; a graphic
+  // line is 3:1, which is the threshold the brackets have to clear.
+  const lum = (c) => {
+    const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const rgb = (str) => (str.match(/\d+(\.\d+)?/g) || []).slice(0, 3).map(Number);
+  const ratio = (f, b) => {
+    const a = lum(rgb(f)); const c = lum(rgb(b));
+    return (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05);
+  };
+  // A transparent element sits on whatever is behind it, and that is what the
+  // eye compares against — the SVG paints no background of its own down here.
+  const bgOf = (el) => {
+    let n = el;
+    while (n && n !== document.documentElement) {
+      const c = getComputedStyle(n).backgroundColor;
+      if (c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) return c;
+      n = n.parentElement;
+    }
+    return getComputedStyle(document.body).backgroundColor;
+  };
+
   const themed = [];
   for (const theme of ['dark', 'light']) {
     document.documentElement.dataset.theme = theme;
@@ -92,8 +115,22 @@
     // the drawing that had wandered off it.
     const rule = svg.querySelector('.mp-bracket');
     const cap = svg.querySelector('[data-mp-cap="bank"]');
-    ui.note(`${theme}: bracket ${getComputedStyle(rule).stroke} · caption ${getComputedStyle(cap).fill}`);
+    const on = bgOf(cap);
+    const rBracket = ratio(getComputedStyle(rule).stroke, on);
+    const rCap = ratio(getComputedStyle(cap).fill, on);
+    ui.note(`${theme}: bracket ${getComputedStyle(rule).stroke} = ${rBracket.toFixed(2)}:1 · `
+      + `caption ${getComputedStyle(cap).fill} = ${rCap.toFixed(2)}:1  on ${on}`);
     themed.push(`${getComputedStyle(rule).stroke}|${getComputedStyle(cap).fill}`);
+
+    // THE COLOUR IS A DECISION, so it gets an assertion rather than a note.
+    // --amber is the app's own token and it clears the bar in both themes; the
+    // brighter orange of the drawing measures 1.82:1 on the light modal, which
+    // is why the token wins over matching the mockup exactly (Daniel:
+    // "use your colour — it should conform to our design guidelines").
+    ui.check(rBracket >= 3,
+      `${theme}: the bracket clears 3:1 for a graphic line (${rBracket.toFixed(2)}:1)`);
+    ui.check(rCap >= 4.5,
+      `${theme}: the caption clears 4.5:1 for text (${rCap.toFixed(2)}:1)`);
   }
   ui.check(themed[0] !== themed[1],
     `the brackets take the theme's own tokens, not the panel's (${themed.join('  vs  ')})`);
