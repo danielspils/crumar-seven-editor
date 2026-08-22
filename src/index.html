@@ -685,6 +685,9 @@
     .lib-row-wrap:hover .patch-send,
     .patch-send:focus-visible { opacity: 1; }
     .patch-send:hover { color: var(--text); border-color: var(--text-muted); }
+    /* Where a row also has a delete control, Send sits to its left rather than
+       under it — both are anchored to the row's right edge. */
+    .lib-row-wrap:has(.patch-delete) .patch-send { right: 32px; }
     .patch-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
     /* .badge-modeled / .badge-sampled are the DETAIL PANEL's pill only. The
        list rows lost theirs on 2026-08-21 — engine type describes the patch

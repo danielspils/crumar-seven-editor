@@ -255,14 +255,17 @@
       //
       // On a backup record it is the ONE thing you can do: the record is
       // read-only, so there is nothing else on this row.
-      (opts.readOnly
-        ? `<button type="button" class="patch-send" data-send-patch="${esc(entry.file)}" ` +
+      // ON EVERY ROW, not just a backup record's. This started on records only,
+      // because that was where it was first asked for — but sending a patch
+      // you own to the instrument is the more ordinary act of the two, and the
+      // Patches tab had no way to do it but the context menu (Daniel,
+      // 2026-08-22). A row that can be deleted can also be sent.
+      (`<button type="button" class="patch-send" data-send-patch="${esc(entry.file)}" ` +
           `data-pi="${entry.patchIndex}" title="Send “${esc(name)}” to a preset on the Seven">` +
           '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" ' +
           'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="M2.5 8h9"/><path d="M8 4.5 11.5 8 8 11.5"/></svg>' +
-          '<span class="patch-send-label">Send to Seven</span></button>'
-        : '') +
+          '<span class="patch-send-label">Send to Seven</span></button>') +
       (opts.readOnly ? '' :
       `<button type="button" class="patch-delete" data-patch-delete="${esc(entry.file)}" ` +
       `data-pi="${entry.patchIndex}" title="Delete “${esc(name)}”">` +
