@@ -225,3 +225,31 @@ test('every function the connect branch calls is defined in app.js', () => {
     assert.ok(defined, `app.js calls ${name}() on connect but never defines it`);
   }
 });
+
+// ---- The transfer modal's message slot ------------------------------------
+
+test('the transfer walk builds ONE slot with both faces in it', () => {
+  // transfer-slot-size.js measures the slot's behaviour, but it builds the
+  // body itself — the real walk needs a connected instrument. So this checks
+  // the app still builds the same shape. Without it, app.js could go back to
+  // two bare paragraphs and the scenario would stay green measuring its own
+  // markup.
+  const src = code(read('app.js'));
+  assert.match(src, /class="tx-slot"/, 'the slot is still there');
+  assert.match(src, /data-face="hold"/, 'with the hold face');
+  assert.match(src, /data-face="skip"/, 'and the skip face');
+  assert.match(src, /auto-advancing/, 'which says the walk is about to move on');
+});
+
+test('a face is hidden by CLASS, never by `hidden`', () => {
+  // `hidden` is display: none, which is what let the modal shrink and grow
+  // through a bank send. The slot only holds its height if the hidden face
+  // keeps its box.
+  const src = code(read('app.js'));
+  const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(walk, 'transferWalk is still recognisable');
+  assert.match(walk[0], /classList\.toggle\('is-off'/,
+    'faces are toggled with is-off');
+  assert.doesNotMatch(walk[0], /\.hidden = (?:true|false)/,
+    'and nothing in the walk hides a message by removing it from the layout');
+});

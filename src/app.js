@@ -1113,12 +1113,38 @@
         '<p class="tx-step-hear">(you can hear it now)</p>' +
         '<p class="tx-step-where"></p>' +
         SevenPanelMini.render(bank, firstSlot.slot + 1) +
-        '<p class="tx-note">Hold for 3 seconds.</p>' +
-        // "lights will run" rather than "the button blinks": what the panel
-        // actually does at a store has not been captured, and the owner's
-        // description is a sequence across the LEDs rather than one of them
-        // flashing. Says enough to recognise it, claims nothing precise.
-        '<p class="tx-note">Your Seven lights will run indicating the sound is saved.</p>',
+        // ONE SLOT, TWO FACES, and the slot is as tall as the taller of them.
+        //
+        // These used to be two paragraphs that were HIDDEN on a skipped preset,
+        // so the modal shrank and grew as the walk stepped through. Daniel ran
+        // a bank send where seven of eight already matched and could not follow
+        // what was happening — not because the app was silent, but because the
+        // box moved under the words and his eye could not hold onto them.
+        //
+        // Both faces sit in the same grid cell, so the row is the height of the
+        // taller one and neither state can collapse into it. Same principle as
+        // the instrument picture's slot: reserve the space, do not let the
+        // content drive the box.
+        '<div class="tx-slot">' +
+          '<div class="tx-face" data-face="hold">' +
+            '<p class="tx-note">Hold for 3 seconds.</p>' +
+            // "lights will run" rather than "the button blinks": what the panel
+            // actually does at a store has not been captured, and the owner's
+            // description is a sequence across the LEDs rather than one of them
+            // flashing. Says enough to recognise it, claims nothing precise.
+            '<p class="tx-note">Your Seven lights will run indicating the sound is saved.</p>' +
+          '</div>' +
+          '<div class="tx-face is-off" data-face="skip">' +
+            // DELIBERATELY THE SAME SENTENCE as the subtitle under the patch
+            // name. The player's eye is on the panel, not the header, and this
+            // is the line they will actually read (Daniel, 2026-08-22).
+            '<p class="tx-note tx-skip-line"></p>' +
+            // The part that was missing: that the dialog is about to move on by
+            // itself. Without it a modal advancing unasked reads as the app
+            // doing something unexplained.
+            '<p class="tx-note tx-aside">auto-advancing</p>' +
+          '</div>' +
+        '</div>',
       confirmLabel: 'Held it — next',
       denyLabel: 'Stop',
       cancelLabel: 'Stop',
@@ -1127,7 +1153,15 @@
     const nameEl = modal.body.querySelector('.tx-step-name');
     const whereEl = modal.body.querySelector('.tx-step-where');
     const hearEl = modal.body.querySelector('.tx-step-hear');
-    const noteEls = [...modal.body.querySelectorAll('.tx-note')];
+    const holdFace = modal.body.querySelector('.tx-face[data-face="hold"]');
+    const skipFace = modal.body.querySelector('.tx-face[data-face="skip"]');
+    const skipLine = modal.body.querySelector('.tx-skip-line');
+    // is-off hides a face WITHOUT removing it from the grid, so the slot keeps
+    // the height of the taller one either way.
+    const showFace = (which) => {
+      holdFace.classList.toggle('is-off', which !== 'hold');
+      skipFace.classList.toggle('is-off', which !== 'skip');
+    };
 
     // A slot the instrument already holds needs no hold — the runner read all
     // 110 parameters back and they match. Say so plainly and move on by
@@ -1138,11 +1172,12 @@
       whereEl.textContent = `Bank ${step.bank} · Preset ${step.preset}`;
       SevenPanelMini.setPreset(modal.body, step.preset);
       hearEl.textContent = step.instruction; // "Preset 6 already holds this patch."
-      for (const el of noteEls) el.hidden = true;
+      skipLine.textContent = step.instruction;
+      showFace('skip');
     };
     const showHoldAgain = () => {
       hearEl.textContent = '(you can hear it now)';
-      for (const el of noteEls) el.hidden = false;
+      showFace('hold');
     };
     // textContent, not markup: patch names come off disk and the device.
     const showStep = (bank, preset, name) => {

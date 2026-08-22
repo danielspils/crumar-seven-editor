@@ -1302,6 +1302,22 @@
       margin: 18px auto 0; max-width: 26em;
       font-size: 13px; line-height: 1.45; text-wrap: balance;
     }
+    /* THE MESSAGE SLOT under the panel: one box, two faces, and the box is as
+       tall as the taller face.
+       Both faces occupy the SAME grid cell, so the row's height is the max of
+       the two and the modal cannot change size as the walk steps between them.
+       Hiding one used to mean `hidden` — display: none — and the dialog shrank
+       and grew through a bank send, which is how a player watching seven
+       already-matching presets lost track of what it was telling him
+       (Daniel, 2026-08-22).
+       `visibility`, not `display`: the hidden face must keep its space. */
+    .seven-modal-body .tx-slot { display: grid; }
+    .seven-modal-body .tx-face { grid-area: 1 / 1; }
+    .seven-modal-body .tx-face.is-off { visibility: hidden; }
+    /* The first note in a face carries the slot's top margin; the face itself
+       adds none, so the two states start at exactly the same y. */
+    .seven-modal-body .tx-face > .tx-note:first-child { margin-top: 18px; }
+
     /* The aside sits under its sentence, not as a second statement. */
     .seven-modal-body .tx-note + .tx-note { margin-top: 5px; }
     .seven-modal-body .tx-aside { color: var(--text-dim); }
