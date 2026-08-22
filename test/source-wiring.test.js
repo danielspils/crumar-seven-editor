@@ -253,3 +253,42 @@ test('a face is hidden by CLASS, never by `hidden`', () => {
   assert.doesNotMatch(walk[0], /\.hidden = (?:true|false)/,
     'and nothing in the walk hides a message by removing it from the layout');
 });
+
+// ---- The destination chooser ----------------------------------------------
+
+test('the send flow chooses on the panel, not on generic buttons', () => {
+  // Three screens became one. The scenario drives the panel's real state
+  // functions and clicks its real hit rects, but it builds the modal body
+  // itself — reaching the real one needs a connected instrument — so this
+  // pins that the app still builds that shape.
+  const src = code(read('app.js'));
+  assert.match(src, /chooseDestination\(entry\)/, 'sendPatchToSlot uses the chooser');
+  assert.match(src, /SevenModalPanel\.buildPanel/, 'which draws the panel from the dashboard artwork');
+  // Scoped to the SINGLE-PATCH path. "Select which bank to send" still exists
+  // for the SETLIST send, which is a different flow and deliberately
+  // untouched — asserting against the whole file would have demanded a change
+  // nobody asked for.
+  const single = /async function sendPatchToSlot\(entry\)[\s\S]*?\n  \}/.exec(src);
+  assert.ok(single, 'sendPatchToSlot is still recognisable');
+  assert.doesNotMatch(single[0], /SevenModal\.choose/,
+    'the single-patch send no longer asks with generic buttons');
+});
+
+test('NEXT is gated on a real destination, Bank 1 excluded', () => {
+  // Advancing with half a destination should not be possible, and Bank 1 is
+  // not a destination at all — the button says so as well as the message.
+  const src = code(read('app.js'));
+  assert.match(src, /nextBtn\.disabled = !\(bank && bank !== 1 && preset\)/,
+    'the button is disabled unless a sendable bank AND a preset are chosen');
+  assert.match(src, /return ok && bank && bank !== 1 && preset \? \{ bank, preset \} : null/,
+    'and the same rule guards what the chooser returns');
+});
+
+test('the panel follows the instrument as well as the mouse', () => {
+  // With Send PC on, a bank or preset pressed on the Seven arrives as a
+  // slot-identified Program Change. The picture has to keep up, or it would
+  // disagree with the machine in front of the player.
+  const src = code(read('app.js'));
+  assert.match(src, /ev\.type !== 'program-change'/, 'it listens for panel presses');
+  assert.match(src, /midi\.onEvent\(follow\)/, 'and subscribes while the chooser is open');
+});

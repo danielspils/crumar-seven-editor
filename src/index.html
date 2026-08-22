@@ -1384,6 +1384,57 @@
     .seven-modal.is-warning .seven-modal-ok { background: var(--accent); border-color: var(--accent); }
     .seven-modal-ok:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
+    /* ── THE MODAL PANEL ────────────────────────────────────────────────
+       The bank-and-preset row cut from the dashboard's own drawing
+       (src/modal-panel.js). One drawing, two views — which is the fix for the
+       eleven days the small panel spent with no BANK button because nobody was
+       comparing two hand-maintained copies.
+       Everything here is about STATE. The shapes, the caps, the LEDs and the
+       colours all come from assets/seven-panel.svg and are not restated. */
+    .modal-panel { display: block; margin: 2px 0 4px; }
+    /* The panel is labelled TINES, REEDS, GRAND … which are BANK 1's factory
+       presets. In a modal choosing a destination in banks 2-4 they are wrong,
+       so the legends go and the numerals — already in the drawing — stay. */
+    .modal-panel .lbl-preset { display: none; }
+
+    /* WHAT IS LIVE, BY STAGE. Only the controls that can be pressed take a
+       cursor and answer hover; the rest are a picture. */
+    .modal-panel .btn-hit { pointer-events: none; cursor: default; }
+    .modal-panel.is-bank [data-mp-bank],
+    .modal-panel.is-preset [data-mp-bank],
+    .modal-panel.is-chosen [data-mp-bank],
+    .modal-panel.is-preset [data-mp-hit],
+    .modal-panel.is-chosen [data-mp-hit] { pointer-events: auto; cursor: pointer; }
+
+    /* HOVER LIGHTENS THE FACE — and stays live after a preset is chosen, on
+       the presets AND the bank control, because the player may change their
+       mind about either until they press NEXT. The lit lamp and the single lit
+       LED are what say what is currently chosen; nothing else needs to. */
+    .modal-panel [data-mp-hit]:hover ~ .btn-face,
+    .modal-panel g:hover > .btn-face { filter: brightness(1.35); }
+    .modal-panel [data-mp-bank]:hover ~ .btn-face { filter: brightness(1.35); }
+    @media (prefers-reduced-motion: reduce) {
+      .modal-panel .btn-face { transition: none; }
+    }
+
+    /* Before a bank is chosen the presets are a dark row: there is nothing to
+       pick from yet, and eight lit caps would invite a press that does
+       nothing. */
+    .modal-panel.is-bank [data-mp-preset] { opacity: .45; }
+    /* Bank chosen: all eight wake up — "pick one". */
+    .modal-panel.is-preset [data-mp-preset],
+    .modal-panel.is-chosen [data-mp-preset] { opacity: 1; }
+    /* Preset chosen: the others keep their caps but lose their lights, so the
+       one lit LED is unambiguous. .on is removed in JS; this is the face. */
+    .modal-panel.is-chosen [data-mp-preset]:not(.is-chosen) .btn-face { filter: none; }
+    .modal-panel .is-chosen .btn-face { stroke: #f2f2f5; stroke-width: 1.6; }
+
+    /* The bank control is dark once a bank has been chosen: its job is done
+       until the player wants to change it, and a lit face beside a lit lamp
+       says the same thing twice. */
+    .modal-panel.is-bank [data-mp-bank] ~ .btn-face,
+    .modal-panel.is-bank #mp-btn-bank { filter: brightness(1.5); }
+
     /* The transfer's panel picture. Literal panel colours in both themes — it
        is a photograph of a machine, not part of the interface's palette. */
     .panel-mini { display: block; margin: 2px 0 4px; }
@@ -2744,6 +2795,7 @@
     <script src="send-choice.js"></script>
     <script src="ots-freshness.js"></script>
     <script src="send-pc-prompt.js"></script>
+    <script src="modal-panel.js"></script>
     <script src="storage-label.js"></script>
     <script src="day-rollover.js"></script>
     <script src="library-view.js"></script>

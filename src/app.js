@@ -349,6 +349,99 @@
     });
   }
 
+  // Pick a bank and a preset ON A PICTURE OF THE PANEL, and resolve
+  // { bank, preset } — or null if the player closed it.
+  //
+  // THE LAMPS MIRROR THE INSTRUMENT, Bank 1 included. The player can put the
+  // Seven on any bank from its own front panel and this picture has to agree
+  // with what is in front of them; a lamp that refused to show Bank 1 would be
+  // lying about the machine. Bank 1 simply cannot be a DESTINATION — the
+  // message says why and NEXT stays dim.
+  async function chooseDestination(entry) {
+    const panelSvg = SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), {});
+    const m = SevenModal.open({
+      title: 'Send to Seven',
+      bodyHtml:
+        `<p class="tx-step-name">${esc(SevenLibraryView.displayName(entry))}</p>` +
+        // BANK 0 · PRESET 0 before anything is chosen: it reads as the
+        // instrument's own display would, and claims no destination
+        // (Daniel, 2026-08-22).
+        '<p class="tx-step-where mp-where">BANK 0 · PRESET 0</p>' +
+        panelSvg +
+        // One slot, two contents — the same shape as the transfer walk's, so
+        // the modal cannot change height as the message changes.
+        '<div class="tx-slot mp-slot">' +
+          '<div class="tx-face" data-face="pick">' +
+            '<p class="tx-note">Select the target bank and preset, then ‘next’ below</p>' +
+          '</div>' +
+          '<div class="tx-face is-off" data-face="bank1">' +
+            '<p class="tx-note">Bank 1 is reserved for factory presets</p>' +
+          '</div>' +
+        '</div>',
+      confirmLabel: 'Next …',
+      cancelLabel: 'Close',
+      tone: 'is-transfer',
+    });
+
+    const svg = m.body.querySelector('svg.modal-panel');
+    const where = m.body.querySelector('.mp-where');
+    const pickFace = m.body.querySelector('[data-face="pick"]');
+    const bank1Face = m.body.querySelector('[data-face="bank1"]');
+    const nextBtn = m.body.parentElement.querySelector('.seven-modal-ok');
+
+    let bank = null;
+    let preset = null;
+
+    const paint = () => {
+      SevenModalPanel.setBank(svg, bank);
+      SevenModalPanel.setPreset(svg, preset);
+      SevenModalPanel.setStage(svg, preset ? 'chosen' : (bank ? 'preset' : 'bank'));
+      where.textContent = `BANK ${bank || 0} · PRESET ${preset || 0}`;
+      const onFactory = bank === 1;
+      pickFace.classList.toggle('is-off', onFactory);
+      bank1Face.classList.toggle('is-off', !onFactory);
+      // DIM UNTIL THERE IS SOMEWHERE TO SEND. Half a destination is not a
+      // thing that should be possible to advance with, and Bank 1 is not a
+      // destination at all — so the button says so as well as the message.
+      if (nextBtn) nextBtn.disabled = !(bank && bank !== 1 && preset);
+    };
+    paint();
+
+    // The hit rects are the click targets: `button svg` in this app is
+    // pointer-events: none, so the drawing's own transparent .btn-hit rects —
+    // already sized to each bezel — are what receive the press.
+    svg.addEventListener('click', (e) => {
+      if (e.target.closest('[data-mp-bank]')) {
+        bank = SevenModalPanel.nextBank(bank);
+        // Changing bank keeps the preset: the player is retargeting, not
+        // starting over, and clearing it would punish a change of mind.
+        paint();
+        return;
+      }
+      const hit = e.target.closest('[data-mp-hit]');
+      if (!hit || !bank) return;         // no bank yet: the row is not live
+      const g = hit.closest('[data-mp-preset]');
+      if (g) { preset = Number(g.dataset.mpPreset); paint(); }
+    });
+
+    // FOLLOW THE INSTRUMENT. With Send PC on, pressing bank or preset on the
+    // Seven arrives as a slot-identified Program Change — so the player can
+    // choose on the hardware and the picture keeps up. It costs them the sound
+    // in the edit buffer, because a recall replaces it; the patch that
+    // eventually goes to the instrument is unaffected (Daniel, 2026-08-22).
+    const follow = (ev) => {
+      if (!ev || ev.type !== 'program-change') return;
+      bank = ev.bank;
+      preset = ev.preset;
+      paint();
+    };
+    window.sevenAPI.midi.onEvent(follow);
+
+    const ok = await m.action();
+    m.close();
+    return ok && bank && bank !== 1 && preset ? { bank, preset } : null;
+  }
+
   async function sendPatchToSlot(entry) {
     if (!isConnected()) return toast('Connect the Seven to send a patch to it');
     const choice = await confirmSendWhenEdited(entry);
@@ -357,31 +450,18 @@
     // before the walk moves the instrument, is also what keeps the recall from
     // reporting them as lost after the fact.
     audition.endSession();
-    // The same chooser the setlist send uses: all four banks, Bank 1 shown and
-    // unpickable. Two dialogs asking one question answered it two ways — one
-    // hid Bank 1, the other greyed it — and hiding it left the reader to work
-    // out whether it existed (Daniel, 2026-08-14).
-    const bank = await SevenModal.choose({
-      title: 'Send to Seven',
-      bodyHtml:
-        '<p>Select which bank to send</p>' +
-        `<p><em>${esc(entry.name)}</em></p>`,
-      choices: [
-        { value: 1, label: 'Bank 1', disabled: true },
-        { value: 2, label: 'Bank 2' },
-        { value: 3, label: 'Bank 3' },
-        { value: 4, label: 'Bank 4' },
-      ],
-      note: 'Bank 1 is for factory presets',
-      tone: 'is-choice',
-    });
-    if (!bank) return;
-    const preset = await SevenModal.choose({
-      title: `Bank ${bank} — which preset?`,
-      body: 'This preset is replaced, and only once you hold its button on the Seven.',
-      choices: Array.from({ length: 8 }, (_, i) => ({ value: i + 1, label: `Preset ${i + 1}` })),
-    });
-    if (!preset) return;
+    // ONE PANEL, FOUR STAGES. This was three screens: four generic bank
+    // buttons, then eight generic preset buttons, then — only at the end,
+    // after all the choosing was done — a picture of the instrument. The
+    // player chose with controls that looked nothing like the thing in front
+    // of them (Daniel, 2026-08-22).
+    //
+    // Now the panel IS the choosing surface. Drawn once from the dashboard's
+    // own artwork and never redrawn; what changes is which parts are live and
+    // which are lit.
+    const dest = await chooseDestination(entry);
+    if (!dest) return;
+    const { bank, preset } = dest;
 
     const started = await window.sevenAPI.transfer.startSlot(bank, preset, entry.file);
     if (!started || !started.started) {
