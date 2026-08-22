@@ -177,6 +177,26 @@
       `and its caption is centred inside its own bracket`);
     ui.check(cap.top >= rule.bottom - 1, `with the caption under the rule`);
   }
+  // WHICH WAY THEY POINT. A bracket embraces what it describes, and these
+  // describe the controls ABOVE them — so the rule runs along the BOTTOM and
+  // the ticks rise. Pointing the other way aims them at the caption, which is
+  // directly beneath and needs no pointing at (Daniel, 2026-08-22).
+  //
+  // Read off the path's own geometry rather than its text: a bounding box
+  // cannot tell a bracket from its mirror image, and both look identical in a
+  // screenshot until you notice which end is open.
+  {
+    const ys = (path) => (path.getAttribute('d').match(/-?\d+(\.\d+)?/g) || [])
+      .filter((_, i) => i % 2 === 1).map(Number);
+    for (const path of svg.querySelectorAll('.mp-bracket')) {
+      const y = ys(path);
+      // Four points: tick top, rule, rule, tick top. The rule is the pair that
+      // repeats, and it must be the LOWEST of them.
+      ui.check(Math.max(...y) === y[1] && y[1] === y[2],
+        `the rule runs along the bottom and the ticks rise (${y.join(',')})`);
+    }
+  }
+
   {
     const bankRule = svg.querySelectorAll('.mp-bracket')[0].getBoundingClientRect();
     const presetRule = svg.querySelectorAll('.mp-bracket')[1].getBoundingClientRect();

@@ -154,10 +154,15 @@
     const heading = `<text class="mp-heading" x="${CLUSTER.bank.cx}" `
       + `y="${VIEW.y + 20}" text-anchor="middle">SELECT BANK</text>`;
 
-    // The brackets. A rule with a downward tick at each end, spanning exactly
-    // the controls it captions.
-    const rule = ({ x1, x2 }) => `<path class="mp-bracket" d="M${x1} ${BRACKET.y + BRACKET.tick} `
-      + `L${x1} ${BRACKET.y} L${x2} ${BRACKET.y} L${x2} ${BRACKET.y + BRACKET.tick}"/>`;
+    // The brackets. A RULE ALONG THE BOTTOM WITH ITS TICKS RISING, so the
+    // bracket embraces the controls ABOVE it — which are what it is describing.
+    // Ticks the other way point at the caption, which needs no pointing at:
+    // it is directly beneath and it is the only thing there (Daniel,
+    // 2026-08-22). Same rule governs the HOLD bracket, pointing the other way
+    // for the same reason.
+    const rule = ({ x1, x2 }) => `<path class="mp-bracket" d="M${x1} ${BRACKET.y} `
+      + `L${x1} ${BRACKET.y + BRACKET.tick} L${x2} ${BRACKET.y + BRACKET.tick} `
+      + `L${x2} ${BRACKET.y}"/>`;
     const caption = (which, text) => `<text class="mp-cap" data-mp-cap="${which}" `
       + `x="${CLUSTER[which].cx}" y="${BRACKET.caption}" text-anchor="middle">${text}</text>`;
     // THE BRACKETS BELONG TO CHOOSING. They caption what has been picked so
@@ -178,7 +183,13 @@
     const hx = PRESET_CX(1);
     const hold = '<g class="mp-hold" transform="translate(0,0)">'
       + `<text class="mp-hold-word" x="${hx}" y="2" text-anchor="middle">HOLD</text>`
-      + `<path class="mp-hold-rule" d="M${hx - 22} 8 v6 h44 v-6"/>`
+      // TICKS DOWN here: this one describes the BUTTON BELOW it, not the word
+      // above. Word, rule, then the thing itself — the way the panel labels
+      // CLAVI TABS. Written in absolute coordinates like the brackets below,
+      // so both can be read the same way by anything checking which way they
+      // point; `v-6 h44 v6` draws the identical shape and cannot be.
+      + `<path class="mp-hold-rule" d="M${hx - 22} 14 L${hx - 22} 8 `
+      + `L${hx + 22} 8 L${hx + 22} 14"/>`
       + '</g>';
 
     const h = brackets ? VIEW.h : PANEL_H;

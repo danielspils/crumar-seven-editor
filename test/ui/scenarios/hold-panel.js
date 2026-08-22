@@ -86,6 +86,19 @@
   ui.check(word.getBoundingClientRect().bottom <= box('[data-mp-preset="5"] [data-mp-hit]').top,
     'and above the button rather than on it');
 
+  // AND ITS BRACKET POINTS DOWN, at the button — the opposite of the captions
+  // under the panel, which point up at the controls they describe. Both follow
+  // the same rule: a bracket embraces what it is about. Read off the path's own
+  // geometry, because a bounding box cannot tell a bracket from its mirror.
+  const hrule = svg.querySelector('.mp-hold-rule');
+  const hy = (hrule.getAttribute('d').match(/-?\d+(\.\d+)?/g) || [])
+    .filter((_, i) => i % 2 === 1).map(Number);
+  ui.note(`HOLD bracket ys ${hy.join(',')}`);
+  ui.check(Math.min(...hy) === hy[1] && hy[1] === hy[2],
+    `its rule runs along the top and the ticks drop toward the button (${hy.join(',')})`);
+  ui.check(hrule.getBoundingClientRect().top >= word.getBoundingClientRect().bottom - 2,
+    'and it sits between the word and the button, not above the word');
+
   // ── THE ONE LIT LED IS THE ONE TO HOLD ────────────────────────────────
   const lit = () => [...svg.querySelectorAll('[data-mp-preset]')]
     .filter((g) => g.querySelector('.led.on'))
