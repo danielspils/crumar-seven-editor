@@ -486,6 +486,29 @@
     @media (max-width: 720px) { .exp-cols { grid-template-columns: 1fr; gap: 0; } }
     /* A permanent sound: name and the instrument's own id, nothing else. */
     .exp-row.is-plain { grid-template-columns: 2.4em minmax(0, 1fr); }
+    /* CONTRAST, scoped to this modal. Every failing style in here — .exp-note,
+       .exp-sub, .exp-id, .exp-size, .exp-stamp, and .exp-name in light — draws
+       its colour from --text-dim or --text-muted, so the tokens are redefined
+       for the modal rather than each class being overridden one at a time.
+       Measured against WCAG AA (4.5:1 for 12-13px text), on --bg-panel:
+
+           dark    --text-dim   2.44 -> 5.21      --text-muted 4.64 -> 7.03
+           light   --text-dim   2.78 -> 4.90      --text-muted 4.40 -> 6.09
+
+       SCOPED ON PURPOSE. The tokens themselves fail app-wide, and raising them
+       globally would collapse the three-tier hierarchy — text / muted / dim —
+       because dim cannot reach 4.5:1 in dark without landing on top of muted's
+       present value. Rebalancing all three is the contrast audit's job, which
+       is deliberately post-launch (CLAUDE.md). This finishes the one surface
+       that was reported, and the audit should delete it when it does the rest.
+
+       The two tiers stay distinguishable within the modal: dim is still the
+       quieter of the two, by roughly the same distance as before. */
+    .seven-modal.is-expansions { --text-dim: #94949d; --text-muted: #adadb5; }
+    :root[data-theme="light"] .seven-modal.is-expansions {
+      --text-dim: #625c50; --text-muted: #544e44;
+    }
+
     .exp-id {
       text-align: left; font-size: 12px; color: var(--text-dim);
       font-variant-numeric: tabular-nums;
