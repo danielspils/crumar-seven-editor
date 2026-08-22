@@ -40,7 +40,15 @@
   // The crop, in the full panel's own coordinates. Bank bezel starts at x 686;
   // preset 8's bezel ends at 1313. The labels sit at y 30 and 48, the bezels
   // span 56-148. A little margin on each side.
-  const VIEW = { x: 678, y: 18, w: 645, h: 140 };
+  // The crop, in the full panel's own coordinates. Bank bezel starts at x 686;
+  // preset 8's bezel ends at 1313. The bezels span y 56-148 and the drawing's
+  // own labels sit at y 30 and 48.
+  //
+  // It reaches ABOVE the artwork (y -26) for one reason: the stage heading.
+  // The instrument has no such legend — this is the app asking a question, not
+  // the panel saying something — so it lives in a strip of backdrop above the
+  // drawing rather than on top of it.
+  const VIEW = { x: 678, y: -26, w: 645, h: 168 };
   const PREFIX = 'mp-';
 
   const section = (svg, id) => {
@@ -108,9 +116,21 @@
     const parts = prefixIds(dark(section(fullSvg, 'sec-bank') + section(fullSvg, 'sec-presets')));
     const body = relabel(tagHits(parts));
 
+    // THE PANEL'S OWN BACKDROP. `.panel-bg` is a single rect at the top of the
+    // full drawing, outside both sections — so cropping to the sections
+    // dropped it, and the panel's white legends ended up on the modal's own
+    // background. Invisible in light mode, which is how it was found (Daniel,
+    // 2026-08-22). Same class, so it takes the same colour as the dashboard's.
+    const bg = `<rect class="panel-bg" x="${VIEW.x}" y="${VIEW.y}" `
+      + `width="${VIEW.w}" height="${VIEW.h}" rx="6"/>`;
+    // The question the modal is asking, in the panel's own label face. Centred
+    // on the crop, in the strip above the artwork.
+    const heading = `<text class="mp-heading" x="${VIEW.x + VIEW.w / 2}" `
+      + `y="${VIEW.y + 20}" text-anchor="middle">SELECT BANK</text>`;
+
     return `<svg class="modal-panel" viewBox="${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}" `
       + 'width="100%" role="group" aria-label="Bank and preset on the Seven">'
-      + prefixIds(style) + prefixIds(defs) + body
+      + prefixIds(style) + prefixIds(defs) + bg + heading + body
       + '</svg>';
   }
 
@@ -125,6 +145,12 @@
     for (const s of ['bank', 'preset', 'chosen', 'hold']) {
       svg.classList.toggle(`is-${s}`, s === stage);
     }
+    // The heading names what is being asked for RIGHT NOW. Once a bank is
+    // chosen the question is the preset, and it stays that way while the
+    // player changes their mind — the lamps say what is chosen, this says
+    // what to do.
+    const h = svg.querySelector('.mp-heading');
+    if (h) h.textContent = stage === 'bank' ? 'SELECT BANK' : 'SELECT PRESET';
   }
 
   // The lamps mirror the INSTRUMENT, including Bank 1. The player can put the

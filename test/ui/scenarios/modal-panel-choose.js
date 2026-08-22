@@ -63,6 +63,35 @@
     return { h: Math.round(d.height), w: Math.round(d.width), top: Math.round(p.top) };
   };
 
+  // ── THE PANEL HAS ITS OWN BACKDROP, IN BOTH THEMES ─────────────────────
+  //
+  // .panel-bg is one rect at the top of the full drawing, outside both of the
+  // sections this crops — so it was dropped, and the panel's white legends
+  // rendered onto the modal's own background. Invisible in light mode, which
+  // is how it was found. The drawing's colours are literal in both themes:
+  // it is a photograph of a machine, not part of the interface's palette.
+  for (const theme of ['dark', 'light']) {
+    document.documentElement.dataset.theme = theme;
+    await ui.sleep(200);
+    const bg = svg.querySelector('.panel-bg');
+    const head = svg.querySelector('.mp-heading');
+    ui.check(!!bg, `${theme}: the panel keeps its backdrop`);
+    ui.check(!!head && head.getBoundingClientRect().height > 0, `${theme}: the heading is drawn`);
+    if (bg && head) {
+      const b = bg.getBoundingClientRect();
+      const h = head.getBoundingClientRect();
+      ui.check(h.top >= b.top - 1 && h.bottom <= b.bottom + 1,
+        `${theme}: the heading sits ON the panel, not on the dialog behind it`);
+    }
+    ui.note(`${theme}: panel-bg ${getComputedStyle(bg).fill} · heading ${getComputedStyle(head).fill}`);
+  }
+  document.documentElement.dataset.theme = 'dark';
+  await ui.sleep(200);
+
+  // The heading names what is being ASKED FOR, and follows the stage.
+  ui.check(svg.querySelector('.mp-heading').textContent === 'SELECT BANK',
+    'with nothing chosen it asks for a bank');
+
   // ── STATE 1: nothing chosen ────────────────────────────────────────────
   ui.check(lampsOn().length === 0, `no bank lamp is lit before anything is chosen (${lampsOn()})`);
   ui.check(ledsOn() === 0, `and no preset LED (${ledsOn()})`);
@@ -112,6 +141,8 @@
   ui.check(getComputedStyle(svg.querySelector('[data-mp-preset="4"] [data-mp-hit]')).pointerEvents === 'auto',
     'ALL EIGHT presets are live now');
   ui.check(nextBtn.disabled, 'NEXT still dim with no preset');
+  ui.check(svg.querySelector('.mp-heading').textContent === 'SELECT PRESET',
+    'and the heading moves on to the preset');
   const s2 = size('state 2  ');
 
   // ── STATE 3: choosing a preset, by clicking it ─────────────────────────
