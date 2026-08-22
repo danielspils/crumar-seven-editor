@@ -1245,16 +1245,11 @@
         ? `<p class="tx-note">Preset ${loose.join(', ')} was loaded but you did not confirm the ` +
           'hold, so it is still in the edit buffer rather than saved on the instrument.</p>'
         : '') +
-      // Only when a sampled sound was actually sent, and only on a transfer —
-      // a same-unit backup and restore cannot hit this. The sound table gives
-      // an id and a name and no version, so two instruments can hold different
-      // versions of one sample set with nothing to tell them apart. Stated
-      // once, after the fact; there is no signal to warn from
-      // (docs/DEVICE.md §11).
-      (report.sampledSent
-        ? '<p class="tx-note">Sampled sounds may differ slightly if this Seven has a ' +
-          'different version of the sample set.</p>'
-        : '');
+      // NOTHING ABOUT SAMPLE-SET VERSIONS. A line here once said sampled
+      // sounds "may differ slightly if this Seven has a different version of
+      // the sample set" — removed 2026-08-22 because nothing ever established
+      // that a version of a sample set exists (docs/DEVICE.md §11).
+      '';
     // report.note — "listed as stored because you confirmed the hold" — is
     // deliberately NOT shown. It was written when a hold could only be taken on
     // the player's word; now the walk mostly advances because the instrument

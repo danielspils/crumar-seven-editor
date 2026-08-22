@@ -674,34 +674,31 @@ sound list is what varies between instruments.
 installed". This table answers "what exists". The difference is a
 ready-made Visibility feature.
 
-### Known limitation: same name, different sample set — undetectable
+### No version field for a sample set — an observation, nothing more
 
-Two Sevens can report the **same sound name while holding different versions
-of that sample set**. The sound table (`0x42`) returns an id and a name; there
-is **no version field anywhere in the protocol** — not in the sound spec, not
-in the globals, not in the STRING space. Nothing distinguishes them.
+The sound table (`0x42`) returns an **id and a name**. There is **no version
+field anywhere in the protocol** — not in the sound spec, not in the globals,
+not in the STRING space. That is all this entry claims.
 
-A transferred patch resolves by name, sends correctly, and may sound
-different. There is no error, because nothing is wrong: the name matched, the
-sound loaded, the parameters applied.
+**What used to be here, and why it is gone (2026-08-22).** This section
+asserted that two Sevens can report the same sound name while holding different
+versions of that sample set, and the app said so to users in the transfer
+summary. The only evidence ever offered was the absence above — which
+establishes that the app COULD NOT DETECT a version difference, not that one
+can exist. **Absence of a version field is equally consistent with there being
+no versions at all.**
 
-**Scope, so this is not over-read:**
+Nothing in this repo grounded it: no capture, no manual note, no vendor page,
+no user report, and no code branching on a version. It entered in a single
+commit (`a2a12a1`, 2026-08-15) that introduced the claim, this section and the
+UI string together. Crumar publishes ten downloads supplying eleven sounds, one
+version each as far as anyone here has seen, and the owner has never heard of a
+set being re-issued.
 
-- **Modeled sounds (IDs 0–7) are unaffected.** They are pure DSP with no
-  samples in them.
-- **Same-unit backup and restore is unaffected.** One instrument, one set of
-  sample sets; nothing crosses.
-- **Only sampled sounds, only on a transfer to a DIFFERENT instrument.**
-- **The parameters still apply.** Every sampled sound shares the `pno_rom`
-  group (§4), so the eight sample-player values transfer and mean the same
-  thing regardless of which version of the set is installed.
-
-**The app must not try to detect this, warn per-patch, or guess at versions.**
-There is no signal to work from, and a warning built on nothing teaches people
-to ignore warnings. What it does instead: one line in the transfer completion
-summary, and only where a sampled sound was actually sent — "Sampled sounds
-may differ slightly if this Seven has a different version of the sample set."
-Stated once, after the fact, as context rather than as an alarm.
+**What would bring it back:** evidence that Crumar has re-issued a sample set
+under the same name — a vendor page, a README, a changelog, or two instruments
+demonstrably differing on one name. Then the claim is legitimate and belongs
+here **with that citation**. It does not come back from memory.
 
 ---
 

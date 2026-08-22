@@ -764,6 +764,46 @@ Two things that follow, both learned the hard way here:
   (it cannot be required — it pulls in Electron; same approach as
   `css-hazards.test.js`). Mutation-checked: delete the injection and it fails.
 
+## AN UNDETECTABLE RISK IS NOT A DEMONSTRATED ONE (2026-08-22)
+
+The third rule of this family, and the one that got furthest before anybody
+noticed — because it reached USERS rather than a file.
+
+The transfer summary told people: *"Sampled sounds may differ slightly if this
+Seven has a different version of the sample set."* It shipped in `a2a12a1`
+along with a `docs/DEVICE.md` section stating the same thing as an established
+device fact.
+
+The only evidence ever offered, in both places, was this: **there is no version
+field anywhere in the protocol** — not in the sound spec, not in the globals,
+not in the STRING space. That is a true and useful observation, and it
+establishes that the app **could not detect** a version difference. It says
+nothing about whether one can exist. **Absence of a version field is equally
+consistent with there being no versions at all.**
+
+Nothing else grounded it. No capture, no manual note, no vendor page, no user
+report, and nothing in the app ever branched on a version — the string was the
+only place the idea existed in running code. Crumar publishes ten downloads
+supplying eleven sounds, one version each, and the owner had never heard of a
+set being re-issued.
+
+**The sharpest part is that the commit knew better.** Its own message says:
+*"NO DETECTION, no per-patch warning, no version guessing — there is no signal
+to work from, and a warning built on nothing teaches people to ignore
+warnings."* It then shipped a sentence asserting the thing it had no signal
+for. **The discipline covered the mechanism and skipped the premise.**
+
+So: when you find you cannot detect something, you have learned about your
+own instruments, not about the world. Before writing the hedge, ask what
+establishes that the risk is real — and if the answer is "it would be
+undetectable if it were", there is nothing to hedge about. A hedge is a claim.
+It needs the same evidence any other claim needs.
+
+Its siblings: **CURRENT STATE MUST NOT STAND IN FOR RECORDED FACT** and **A
+RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE**. All three are the same
+failure — a confident statement nobody checked — and this one is the reminder
+that the check applies to prose as much as to code.
+
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
 Fourth time this shape has cost something here, so it gets its own heading. A

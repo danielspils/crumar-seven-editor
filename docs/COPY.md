@@ -131,7 +131,6 @@ bank choosers, both walk dialogs.
 - `Bank 3 already matched — nothing needed storing` — app.js:989, when every slot was already correct
 - `Preset 3, 4 already held their patches, so nothing was sent.` — app.js:996
 - `Preset 7 was loaded but you did not confirm the hold, so it is still in the edit buffer rather than saved on the instrument.` — app.js:1000 ⚑ needs a stop mid-walk
-- `Sampled sounds may differ slightly if this Seven has a different version of the sample set.` — app.js:1010, only when a sampled sound was actually sent
 - Report note, held back from the screen: `Presets are listed as stored because you confirmed the hold — the Seven does not report stores.` — transfer-runner.js:546
 
 ### Refusals ⚑
