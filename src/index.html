@@ -1448,6 +1448,7 @@
        cursor and answer hover; the rest are a picture. */
     .modal-panel .btn-hit { pointer-events: none; cursor: default; }
     .modal-panel.is-bank [data-mp-bank],
+    .modal-panel.is-row [data-mp-bank],
     .modal-panel.is-preset [data-mp-bank],
     .modal-panel.is-chosen [data-mp-bank],
     .modal-panel.is-preset [data-mp-hit],
@@ -1469,6 +1470,10 @@
        nothing. */
     .modal-panel.is-bank [data-mp-preset] { opacity: .45; }
     /* Bank chosen: all eight wake up — "pick one". */
+    /* A whole-bank send: all eight are the DESTINATION. They light like the
+       chooser's offer and, unlike it, none of them answers a click — the row
+       is being reported, not offered. */
+    .modal-panel.is-row [data-mp-preset],
     .modal-panel.is-preset [data-mp-preset],
     .modal-panel.is-hold [data-mp-preset],
     .modal-panel.is-chosen [data-mp-preset] { opacity: 1; }
@@ -1483,6 +1488,9 @@
        says the same thing twice. */
     .modal-panel.is-bank [data-mp-bank] ~ .btn-face,
     .modal-panel.is-bank #mp-btn-bank { filter: brightness(1.5); }
+    /* …and it stays lit through a whole-bank send, where it is the only
+       control there is. */
+    .modal-panel.is-row #mp-btn-bank { filter: brightness(1.5); }
 
 
     /* Patch picker: a modal over the setlist, so the slots you're filling stay

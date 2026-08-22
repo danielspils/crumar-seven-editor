@@ -122,6 +122,9 @@
     .replace(/aria-label="Select preset (\d)[^"]*"/g, 'aria-label="Select preset $1"')
     .replace(/aria-label="Cycle preset bank"/, 'aria-label="Cycle bank"');
 
+  // `brackets` is true for both, false for neither, or a list — ['bank'] for
+  // a whole-bank send, where the bank is the only thing being chosen and a
+  // second empty caption would be pointing at a question nobody asked.
   function buildPanel(fullSvg, { brackets = true } = {}) {
     if (typeof fullSvg !== 'string' || !fullSvg) return '';
     // The same strip preload does for the dashboard: the SVG's @font-face
@@ -169,9 +172,11 @@
     // far, so a screen where nothing is being picked — the hold — leaves them
     // out rather than showing two empty captions. Left out, the crop ends at
     // the panel and the picture is shorter by exactly that strip.
-    const captions = !brackets ? '' : '<g class="mp-brackets" aria-hidden="true">'
-      + rule(CLUSTER.bank) + caption('bank', 'Bank: —')
-      + rule(CLUSTER.preset) + caption('preset', 'Preset: —')
+    const want = brackets === true ? ['bank', 'preset']
+      : (Array.isArray(brackets) ? brackets : []);
+    const captions = !want.length ? '' : '<g class="mp-brackets" aria-hidden="true">'
+      + want.map((w) => rule(CLUSTER[w])
+        + caption(w, `${w === 'bank' ? 'Bank' : 'Preset'}: —`)).join('')
       + '</g>';
 
     // THE HOLD LEGEND, in the panel's own CLAVI TABS yellow and bracketed the
@@ -192,7 +197,7 @@
       + `L${hx + 22} 8 L${hx + 22} 14"/>`
       + '</g>';
 
-    const h = brackets ? VIEW.h : PANEL_H;
+    const h = want.length ? VIEW.h : PANEL_H;
     return `<svg class="modal-panel" viewBox="${VIEW.x} ${VIEW.y} ${VIEW.w} ${h}" `
       + 'width="100%" role="group" aria-label="Bank and preset on the Seven">'
       + prefixIds(style) + prefixIds(defs) + bg + heading + body + hold + captions
@@ -204,10 +209,12 @@
   // Applied to a LIVE panel rather than re-rendered, so a change of bank or
   // preset cannot lose focus or restart an animation mid-choice.
 
-  // 'bank' | 'preset' | 'chosen' | 'hold' — see the modal that drives it.
+  // 'bank' | 'row' | 'preset' | 'chosen' | 'hold' — see the modal that drives
+  // it. `row` is the whole-bank send: bank still to choose, all eight presets
+  // lit as the destination and none of them pickable.
   function setStage(svg, stage) {
     if (!svg) return;
-    for (const s of ['bank', 'preset', 'chosen', 'hold']) {
+    for (const s of ['bank', 'row', 'preset', 'chosen', 'hold']) {
       svg.classList.toggle(`is-${s}`, s === stage);
     }
     // The heading names what is being asked for RIGHT NOW, and MOVES to sit
@@ -221,7 +228,11 @@
     // the patch is already in the instrument and the only thing left is a
     // physical press — so the HOLD legend over the button is the whole
     // message, and a second instruction beside it would compete with it.
-    const onBank = stage === 'bank';
+    //
+    // `row` NEVER LEAVES THE BANK. A whole-bank send has one question and it
+    // is answered by the bank control; the eight presets below are the
+    // destination, not a choice, so the heading stays where the choosing is.
+    const onBank = stage === 'bank' || stage === 'row';
     const h = svg.querySelector('.mp-heading');
     if (h) {
       h.textContent = onBank ? 'SELECT BANK' : 'SELECT PRESET';
@@ -246,7 +257,10 @@
   // one thing both functions wrote.
   function paintLeds(svg) {
     const chosen = svg.dataset.preset ? Number(svg.dataset.preset) : null;
-    const offering = svg.classList.contains('is-preset');
+    // `row` lights all eight for a different reason than `preset` does — they
+    // are what is about to be WRITTEN rather than what can be picked — and the
+    // difference is carried by which of them answer a click, not by the light.
+    const offering = svg.classList.contains('is-preset') || svg.classList.contains('is-row');
     const holding = svg.classList.contains('is-hold');
     for (let n = 1; n <= 8; n += 1) {
       const g = svg.querySelector(`[data-mp-preset="${n}"]`);

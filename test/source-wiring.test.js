@@ -308,6 +308,23 @@ test('NEXT is gated on a real destination, Bank 1 excluded', () => {
     'and the same rule guards what the chooser returns');
 });
 
+test('a whole-bank send chooses on the panel too', () => {
+  // The last generic chooser in the send path. bank-chooser.js measures the
+  // panel, but it builds the modal itself — sendSetlist refuses without a
+  // connected Seven — so this is the half that says the APP still uses it.
+  const src = code(read('app.js'));
+  const fn = /async function chooseBank\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'chooseBank exists');
+  assert.match(fn[0], /SevenModalPanel\.buildPanel/, 'it draws the panel from the artwork');
+  assert.match(fn[0], /brackets: \['bank'\]/, 'with only the bank bracket — one question is asked');
+  assert.match(fn[0], /setStage\(svg, bank \? 'row' : 'bank'\)/,
+    'and the row stage once a bank is chosen');
+  assert.match(src, /const bank = await chooseBank\(name\)/,
+    'and sendSetlist uses it');
+  assert.doesNotMatch(src, /SevenModal\.choose\({\s*\n\s*title: 'Send to Seven'/,
+    'the four generic bank buttons are gone from the send path');
+});
+
 test('the panel follows the instrument as well as the mouse', () => {
   // With Send PC on, a bank or preset pressed on the Seven arrives as a
   // slot-identified Program Change. The picture has to keep up, or it would

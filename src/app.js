@@ -442,6 +442,71 @@
     return ok && bank && bank !== 1 && preset ? { bank, preset } : null;
   }
 
+  // WHICH BANK A WHOLE SETLIST GOES INTO, chosen on the panel — the same
+  // picture, the same drawing, the same bank control as everything else.
+  //
+  // It was four green buttons labelled Bank 1-4. They worked, and they asked
+  // the question in a vocabulary the player was not looking at: the thing in
+  // front of them has ONE bank button that cycles, and a column of lamps that
+  // says where it is. So this is the single-patch chooser with its second
+  // question removed.
+  //
+  // THE EIGHT PRESETS ARE LIT AND NONE OF THEM IS PICKABLE. They are the
+  // destination — every one of them is about to be written — which is a
+  // report, not an offer, and the difference is carried by what answers a
+  // click rather than by the light.
+  //
+  // Bank 1 lights when the control passes through it, because the instrument
+  // can be there, and cannot be sent to. Same rule and same reason as the
+  // single-patch flow.
+  async function chooseBank(name) {
+    const m = SevenModal.open({
+      title: 'Send to Seven',
+      bodyHtml:
+        // The setlist being sent, named ABOVE the panel: the question is asked
+        // by the panel now, and this says what it is about (Daniel,
+        // 2026-08-14, order preserved).
+        `<p class="tx-step-name"><em>${esc(name)}</em></p>` +
+        SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: ['bank'] }) +
+        '<div class="tx-slot mp-slot">' +
+          '<div class="tx-face" data-face="pick">' +
+            '<p class="tx-note">Select which bank to send, then \u2018next\u2019 below</p>' +
+          '</div>' +
+          '<div class="tx-face is-off" data-face="bank1">' +
+            '<p class="tx-note">Bank 1 is for factory presets</p>' +
+          '</div>' +
+        '</div>',
+      confirmLabel: 'Next \u2026',
+      cancelLabel: 'Close',
+      tone: 'is-transfer',
+    });
+
+    const svg = m.body.querySelector('svg.modal-panel');
+    const pickFace = m.body.querySelector('[data-face="pick"]');
+    const bank1Face = m.body.querySelector('[data-face="bank1"]');
+    const nextBtn = m.body.parentElement.querySelector('.seven-modal-ok');
+
+    let bank = null;
+    const paint = () => {
+      SevenModalPanel.setBank(svg, bank);
+      SevenModalPanel.setStage(svg, bank ? 'row' : 'bank');
+      pickFace.classList.toggle('is-off', bank === 1);
+      bank1Face.classList.toggle('is-off', bank !== 1);
+      if (nextBtn) nextBtn.disabled = !(bank && bank !== 1);
+    };
+    paint();
+
+    svg.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-mp-bank]')) return;
+      bank = SevenModalPanel.nextBank(bank);
+      paint();
+    });
+
+    const ok = await m.action();
+    m.close();
+    return ok && bank && bank !== 1 ? bank : null;
+  }
+
   async function sendPatchToSlot(entry) {
     if (!isConnected()) return toast('Connect the Seven to send a patch to it');
     const choice = await confirmSendWhenEdited(entry);
@@ -2694,26 +2759,7 @@
           toast('Connect the Seven to send a setlist to it');
           return;
         }
-        const bank = await SevenModal.choose({
-          title: 'Send to Seven',
-          // The setlist being sent, named under the question rather than
-          // inside it: the heading asks one short thing and the line below
-          // says what it is about (Daniel, 2026-08-14).
-          bodyHtml:
-            '<p>Select which bank to send</p>' +
-            `<p><em>${esc(name)}</em></p>`,
-          // Bank 1 is shown and unpickable. Leaving it out raised the question
-          // of whether it existed; greyed, the answer is on screen with the
-          // reason underneath.
-          choices: [
-            { value: 1, label: 'Bank 1', disabled: true },
-            { value: 2, label: 'Bank 2' },
-            { value: 3, label: 'Bank 3' },
-            { value: 4, label: 'Bank 4' },
-          ],
-          note: 'Bank 1 is for factory presets',
-          tone: 'is-choice',
-        });
+        const bank = await chooseBank(name);
         if (!bank) return;
 
         // Move the Seven to that bank now, while the decision is still open.
