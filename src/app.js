@@ -2804,8 +2804,6 @@
             `<p class="tx-count">${plan.willWrite} preset${plan.willWrite === 1 ? '' : 's'}</p>` +
             '<p class="tx-arrow" aria-hidden="true">↓</p>' +
             `<p class="tx-to">Crumar Seven’s Bank ${bank}</p>` +
-            '<p class="tx-note">You will manually transfer each sound, replacing the current ' +
-            'sounds.</p>' +
             '<p class="tx-note tx-aside">(Backup your current bank tones before they say ' +
             'ciao!)</p>' +
             // Only when we are about to touch a setting that is theirs. Said

@@ -245,11 +245,19 @@
   // THE LEDS ARE THE OFFER, NOT THE ANSWER — and ONE function decides them.
   //
   //   choosing a preset  all eight light: those are the choices
-  //   one chosen         they all go out, and the raised, outlined CAP
-  //                      carries it, the way the drawing shows a press
-  //   holding            the one to hold lights AND BLINKS, because the
-  //                      player is looking at the instrument and the picture
-  //                      has to point rather than to record
+  //   one chosen         they collapse to ONE — the offer becomes the answer
+  //   holding            that one also BLINKS, because the player is looking
+  //                      at the instrument and the picture has to point
+  //                      rather than to record
+  //
+  // A CHOSEN PRESET'S LED IS LIT, and that is the drawing's own contract, not
+  // a preference: "Selected = the button's two tones swap (face goes
+  // near-black, inset goes lighter) and the LED lights. The hardware's preset
+  // buttons are plain black plastic with an LED — the face never illuminates"
+  // (assets/seven-panel.svg). It shipped for a day with the chosen LED DARK,
+  // because I read a mockup as saying the cap alone carries the choice and did
+  // not check it against the stylesheet that defines what `on` means. The dark
+  // cap was right and the dark LED was half a selection (Daniel, 2026-08-22).
   //
   // It reads the stage off the element's own classes and the preset off its
   // dataset, so setStage and setPreset can be called in either order without
@@ -261,11 +269,10 @@
     // are what is about to be WRITTEN rather than what can be picked — and the
     // difference is carried by which of them answer a click, not by the light.
     const offering = svg.classList.contains('is-preset') || svg.classList.contains('is-row');
-    const holding = svg.classList.contains('is-hold');
     for (let n = 1; n <= 8; n += 1) {
       const g = svg.querySelector(`[data-mp-preset="${n}"]`);
       const led = g && g.querySelector('.led');
-      if (led) led.classList.toggle('on', offering || (holding && n === chosen));
+      if (led) led.classList.toggle('on', offering || n === chosen);
     }
   }
 

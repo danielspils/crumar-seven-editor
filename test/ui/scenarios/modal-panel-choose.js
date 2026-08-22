@@ -277,9 +277,14 @@
   const hit7 = svg.querySelector('[data-mp-preset="7"] [data-mp-hit]');
   if (ui.click(hit7, 'preset 7')) { preset = 7; paint(); }
   await ui.sleep(180);
-  // Every LED goes out: the offer is over, and the raised outlined CAP is
-  // what now says which one was taken.
-  ui.check(ledsOn() === 0, `the offer is withdrawn — all LEDs out (${ledsOn()})`);
+  // The eight collapse to ONE. The offer becomes the answer, and the answer is
+  // an LED, because that is what `on` means in the drawing: "Selected = the
+  // button's two tones swap … and the LED lights" (assets/seven-panel.svg).
+  // This asserted 0 for a day and was wrong — a dark LED on a chosen preset is
+  // half a selection (Daniel, 2026-08-22).
+  ui.check(ledsOn() === 1, `the offer collapses to one lit LED (${ledsOn()})`);
+  ui.check(!!svg.querySelector('[data-mp-preset="7"] .led.on'),
+    'and it is on the preset that was chosen');
   ui.check(svg.querySelector('[data-mp-preset="7"]').classList.contains('is-chosen'),
     'and it is the one that was clicked');
   ui.check(svg.querySelector('[data-mp-preset="7"] .btn-face').classList.contains('on'),
@@ -300,6 +305,8 @@
     && !svg.querySelector('[data-mp-preset="7"]').classList.contains('is-chosen'),
     'choosing another extinguishes the first');
   ui.check(capOf('preset') === 'Preset: 4', `and so does the caption: "${capOf('preset')}"`);
+  ui.check(ledsOn() === 1 && !!svg.querySelector('[data-mp-preset="4"] .led.on'),
+    `the light moves with the choice (${ledsOn()} lit)`);
 
   // ── ONE SIZE THROUGHOUT ────────────────────────────────────────────────
   const heights = new Set([s1.h, sBank1.h, s2.h, s3.h]);
