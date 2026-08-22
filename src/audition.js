@@ -751,16 +751,23 @@
       ? `${esc(shownName.slice(0, copySuffix.index))} <span class="bk-suffix">${esc(copySuffix[1])}</span>`
       : esc(shownName);
     const saved = SevenModal.open({
-      title: 'Sound saved to computer!',
+      // NAMES THE TAB THE PLAYER CAN GO TO. "Sound saved to computer" said
+      // where the bytes went; "Patches" is a place they can actually open, and
+      // the link below goes there. Used here and nowhere else — no other save
+      // path shares this heading, so no other state is made wrong by it.
+      title: 'Saved to Patches',
       bodyHtml:
         `<p class="bk-sum">${nameHtml}</p>` +
-        // No line explaining that a backup record was left alone. It said
-        // "Saved as a new patch — the backup record is unchanged", which the
-        // name above it now shows on its own: the dialog names a patch called
-        // "… copy", so nothing was overwritten (Daniel, 2026-08-14).
-        (!isBackup && answer === 'secondary'
-          ? '<p class="bk-time">Saved as a copy.</p>'
-          : '') +
+        // NO "Saved as a copy." line. The name directly above it already ends
+        // in "copy", so the sentence restated what the reader had just read
+        // (Daniel, 2026-08-22) — the same reason the "backup record is
+        // unchanged" line went on 2026-08-14.
+        //
+        // It also referenced `answer`, which stopped existing when the
+        // overwrite dialog started mapping its result to an `intent`: the
+        // const is block-scoped to the branch that asks, and this line is
+        // outside it. That was a ReferenceError on every successful save from
+        // the Patches tab, shipped in 07d2b44 and live for minutes.
         '<button type="button" class="modal-link" data-goto-patch>Go to your new patch</button>',
       confirmLabel: 'Done',
       cancelLabel: 'Close',
