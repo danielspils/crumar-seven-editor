@@ -2009,7 +2009,38 @@
        shared box and not a nudge per engine: the box is what sits too far
        right, and the differences between drawings are the drawings' own
        (Daniel, 2026-08-13). */
+    /* A SLOT OF FIXED PROPORTION, not a box the picture decides.
+       The drawings differ wildly in shape — a stacked combo organ against a
+       full grand — and with `height: auto` the intrinsic height drove the
+       layout, so the parameter list rode up under a short one and collided
+       with the save button. Measured at width 128, across all nineteen:
+
+           combo.png            512x192   ->  48.0px   <- shortest
+           clavi.png            512x342   ->  85.5px
+           tine.png             503x512   -> 130.3px
+           bechstein_piano.png  363x512   -> 180.5px   <- tallest
+
+       A 132.5px spread, all of it landing on whatever sits below.
+
+       The slot is sized to the TALLEST, as a RATIO rather than a pixel height:
+       363/512 is bechstein's own aspect, so the slot is exactly tall enough
+       for it and scales with the panel instead of overflowing when the column
+       narrows. If a taller drawing is ever added, this ratio is what changes —
+       the slot is wrong then, not the image.
+
+       Shorter drawings CENTRE inside it, aspect intact: max-width and
+       max-height with object-fit: contain, so nothing is stretched and nothing
+       is cropped. */
     .engine-art { float: right; width: 128px; margin: 0 20px 6px 14px; }
+    /* NOT the carousel, which already fixed this its own way on 2026-08-12: a
+       128px box with each instrument fitted inside it, so the panel stops
+       rising and falling as different proportions take the middle. This is the
+       PLAIN variant — the one a library patch gets, where there is no picker —
+       and it still sized itself to whatever picture it held. */
+    .engine-art:not(.engine-carousel) {
+      aspect-ratio: 363 / 512;
+      display: flex; align-items: center; justify-content: center;
+    }
     /* Under the wheel, appearing only when the middle is a candidate. */
     .car-select {
       /* Tucked against the foot of the instrument, not floating below the box:
@@ -2224,9 +2255,21 @@
       button.engine-art, .engine-art-cta { transition: none; }
       button.engine-art:hover { transform: none; }
     }
+    /* The drawing fills the slot's WIDTH but may not exceed its height —
+       whichever limit it meets first is the one that stops it, which is what
+       keeps a tall drawing inside the slot and a short one at its natural
+       size, centred, rather than either being stretched to fit. */
+    .engine-art:not(.engine-carousel) .sound-art.is-drawing {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; max-height: 100%;
+    }
     .engine-art .sound-art.is-drawing { display: block; width: 100%; }
     .engine-art .sound-art.is-drawing img,
     .engine-art .sound-art.is-drawing svg { display: block; width: 100%; height: auto; }
+    .engine-art:not(.engine-carousel) .sound-art.is-drawing img,
+    .engine-art:not(.engine-carousel) .sound-art.is-drawing svg {
+      max-height: 100%; width: 100%; height: auto; object-fit: contain;
+    }
     /* The line-art fallback is a 48x32 mark, not a picture — it keeps its own
        size and the family tint rather than being blown up to fill the space. */
     .engine-art > svg.sound-art { width: 92px; height: auto; color: var(--text-dim); }
