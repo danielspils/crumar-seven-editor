@@ -322,6 +322,36 @@ test('the naming modal names where the patch goes', () => {
   assert.doesNotMatch(app, /titleHtml/, 'no titleHtml option exists to pass markup through');
 });
 
+test('every path that writes a new patch says so the same way', () => {
+  // Two save paths behaved differently for no decided reason: saving an edited
+  // BACKUP RECORD showed a dialog, "Save as new patch" showed a toast. The
+  // history is unambiguous — the dialog landed 2026-08-14 with a rationale,
+  // and saveLiveAsNewPatch was written a week later in 3333776, a long careful
+  // commit that says nothing at all about what happens after a save succeeds.
+  // Never deliberate. Found by Daniel using it.
+  const src = code(read('audition.js'));
+  for (const name of ['saveLiveAsNewPatch', 'saveLiveToLibrary']) {
+    const fn = new RegExp(`async function ${name}\\(([\\s\\S]*?)\\n  \\}`).exec(src);
+    assert.ok(fn, `${name} is still recognisable`);
+    assert.match(fn[0], /announceSaved\(/, `${name} announces the save`);
+  }
+
+  // IT ARRIVES BEFORE IT SPEAKS. The reveal has to happen before the dialog
+  // opens, or the player dismisses it and finds they went nowhere — which is
+  // the ordering the deleted link existed to work around.
+  const announce = /function announceSaved\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(announce, 'announceSaved is still recognisable');
+  const revealAt = announce[0].indexOf('revealPatch');
+  const openAt = announce[0].indexOf('SevenModal.open');
+  assert.ok(revealAt > -1 && openAt > -1 && revealAt < openAt,
+    'it reveals the patch BEFORE opening the dialog');
+
+  // And the link is gone from the app, not merely unused: it pointed at where
+  // the player now already is.
+  assert.doesNotMatch(src, /data-goto-patch/, 'no "go to your new patch" link survives');
+  assert.doesNotMatch(code(read('app.js')), /data-goto-patch/, 'and none in app.js');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

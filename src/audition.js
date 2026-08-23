@@ -572,6 +572,68 @@
 
   // SAVE AS NEW: the buffer, as its own patch in Patches.
   //
+  // WHAT A SUCCESSFUL SAVE SAYS, for every path that writes a new patch.
+  //
+  // There were two, and they behaved differently for no decided reason. Saving
+  // an edited BACKUP RECORD showed this dialog; "Save as new patch" showed a
+  // toast and nothing else. The history is unambiguous: the dialog arrived on
+  // 2026-08-14 with a rationale in its commit, and saveLiveAsNewPatch was
+  // written a week later in 3333776 — a long, careful commit about labels,
+  // live values, provenance and IPC shapes that says NOTHING about what
+  // happens after a save succeeds. It shipped with a toast because that was
+  // the quick thing, and the asymmetry has been there since its first line.
+  // Never deliberate; found by Daniel using it (2026-08-23).
+  //
+  // IT TAKES YOU THERE FIRST, then confirms. Landing on the new patch is the
+  // better half of what the old path did, so it happens BEFORE the dialog
+  // opens — which also disposes of the ordering hazard the link was written
+  // around ("arriving somewhere you cannot see is not arriving"). The arrival
+  // is already made and is still there when the dialog closes.
+  //
+  // SO THE LINK IS GONE. "Go to your new patch" pointed at where the player
+  // now already is.
+  //
+  // Not awaited, deliberately: the caller carries on — pushing its undo entry,
+  // returning to the send flow — while the dialog sits there to be dismissed.
+  function announceSaved(file, patchIndex, fallback) {
+    if (deps.revealPatch) deps.revealPatch(file, patchIndex);
+    // Name the patch that now EXISTS, not the one that was open. Saving a
+    // backup record's edit writes a new file, and the dialog used to announce
+    // the record's own name — "Bank 1 Preset 4 — Clavi Piano" — for a patch
+    // actually called "Clavi Piano copy" (Daniel, 2026-08-14). The slot prefix
+    // is stripped by the library's own displayName, so the dialog and the row
+    // it lands on agree.
+    const entry = deps.getEntries().find(
+      (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
+    );
+    const view = typeof window !== 'undefined' ? window.SevenLibraryView : null;
+    const shownName =
+      (view && view.displayName && entry ? view.displayName(entry) : '')
+      || (entry && entry.name) || fallback || 'This patch';
+    // "Clavi Piano copy": the instrument leads, and the suffix the app added
+    // is quieter than the name you would say out loud.
+    const copySuffix = /\s(copy(?:\s*\d+)?)$/i.exec(shownName);
+    const nameHtml = copySuffix
+      ? `${esc(shownName.slice(0, copySuffix.index))} <span class="bk-suffix">${esc(copySuffix[1])}</span>`
+      : esc(shownName);
+    const saved = SevenModal.open({
+      // NAMES THE TAB THE PLAYER CAN GO TO. "Sound saved to computer" said
+      // where the bytes went; "Patches" is a place they can actually open.
+      title: 'Saved to Patches',
+      // NO "Saved as a copy." line under the name. The name directly above it
+      // already ends in "copy", so the sentence restated what the reader had
+      // just read (Daniel, 2026-08-22) — the same reason the "backup record is
+      // unchanged" line went on 2026-08-14. Recorded here because the block
+      // that recorded it was the one this helper replaced.
+      bodyHtml: `<p class="bk-sum">${nameHtml}</p>`,
+      confirmLabel: 'Done',
+      cancelLabel: 'Close',
+      tone: 'is-announce',
+    });
+    // Done, Escape, the corner X and the backdrop all just dismiss it.
+    saved.action().then(() => saved.close());
+  }
+
   // What is saved is WHAT IS LIVE, not the contents of whatever file is open.
   // That is the whole reason the control exists — you were playing a backup
   // record, or a bank slot with no file behind it at all, and the thing worth
@@ -626,8 +688,11 @@
     // The live session, if there is one, does NOT follow the new patch: you
     // were playing a record or a slot and you still are. The new patch is a
     // copy of this moment, not a change of what is open.
-    toast(`Saved to Patches: ${chosen}`);
-    if (made && made.file && deps.revealPatch) deps.revealPatch(made.file, made.patchIndex || 0);
+    //
+    // The toast this replaces said the same words and then took itself away.
+    // The other save path had a dialog; this one is the same act and now says
+    // so the same way.
+    if (made && made.file) announceSaved(made.file, made.patchIndex || 0, chosen);
     return true;
   }
 
@@ -732,66 +797,15 @@
     // rather than an answer (Daniel, 2026-08-13). Notes stay for PROBLEMS —
     // a lost cable, a refused write — which is what that line is for.
     auditionNote = null;
-    // Opened rather than confirmed, because the dialog now carries a way OUT
-    // of itself: the file it just wrote may be one the user has never seen —
-    // a backup record's edit becomes a new patch — so it offers to go there.
-    // The library has to be refreshed BEFORE the link can work: the row it
+    // The library has to be refreshed BEFORE the arrival can work: the row it
     // scrolls to does not exist until the list has been re-read.
     await deps.refreshLibrary();
-    // Name the patch that now EXISTS, not the one that was open. Saving a
-    // backup record's edit writes a new file, and the dialog was announcing
-    // the record's own name — "Bank 1 Preset 4 — Clavi Piano" — for a patch
-    // actually called "Clavi Piano copy" (Daniel, 2026-08-14). The slot prefix
-    // is stripped by the library's own displayName, so the dialog and the row
-    // it sends you to agree.
-    const savedEntry = deps.getEntries().find(
-      (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
-    );
-    const view = typeof window !== 'undefined' ? window.SevenLibraryView : null;
-    const shownName =
-      (view && view.displayName ? view.displayName(savedEntry || entry) : '') ||
-      (savedEntry || entry).name || 'This patch';
-    // "Clavi Piano copy": the instrument leads, and the suffix the app added
-    // is quieter than the name you would say out loud.
-    const copySuffix = /\s(copy(?:\s*\d+)?)$/i.exec(shownName);
-    const nameHtml = copySuffix
-      ? `${esc(shownName.slice(0, copySuffix.index))} <span class="bk-suffix">${esc(copySuffix[1])}</span>`
-      : esc(shownName);
-    const saved = SevenModal.open({
-      // NAMES THE TAB THE PLAYER CAN GO TO. "Sound saved to computer" said
-      // where the bytes went; "Patches" is a place they can actually open, and
-      // the link below goes there. Used here and nowhere else — no other save
-      // path shares this heading, so no other state is made wrong by it.
-      title: 'Saved to Patches',
-      bodyHtml:
-        `<p class="bk-sum">${nameHtml}</p>` +
-        // NO "Saved as a copy." line. The name directly above it already ends
-        // in "copy", so the sentence restated what the reader had just read
-        // (Daniel, 2026-08-22) — the same reason the "backup record is
-        // unchanged" line went on 2026-08-14.
-        //
-        // It also referenced `answer`, which stopped existing when the
-        // overwrite dialog started mapping its result to an `intent`: the
-        // const is block-scoped to the branch that asks, and this line is
-        // outside it. That was a ReferenceError on every successful save from
-        // the Patches tab, shipped in 07d2b44 and live for minutes.
-        '<button type="button" class="modal-link" data-goto-patch>Go to your new patch</button>',
-      confirmLabel: 'Done',
-      cancelLabel: 'Close',
-      tone: 'is-announce',
-    });
-    const goto = saved.body.querySelector('[data-goto-patch]');
-    if (goto && deps.revealPatch) {
-      goto.addEventListener('click', () => {
-        // Close first: the list scrolls and the detail panel re-renders
-        // behind the dialog, and arriving somewhere you cannot see is not
-        // arriving.
-        saved.close();
-        deps.revealPatch(file, patchIndex);
-      });
-    }
-    // Done, Escape, the corner X and the backdrop all just dismiss it.
-    saved.action().then(() => saved.close());
+    // Same dialog as every other path that writes a new patch, and it takes
+    // you there first — see announceSaved. This one used to offer a LINK
+    // instead of arriving, which is why the ordering comment there mentions
+    // it.
+    announceSaved(file, patchIndex, (entry && entry.name) || '');
+
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
       // Undo puts the sound back too, or undoing a save would leave the file
