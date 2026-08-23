@@ -121,11 +121,17 @@ function transferNote(confirmed, verified) {
 }
 
 class TransferRunner extends EventEmitter {
-  constructor({ midi, store, sender }) {
+  constructor({ midi, store, sender, log = null, now = null }) {
     super();
     this.midi = midi;
     this.store = store;
     this.sender = sender;
+    // WHY A SLOT WAS SKIPPED, OR WASN'T. Injected rather than reached for, so
+    // the runner stays free of the filesystem and a test can read what it
+    // wrote. main.js points it at a file in userData; unset, nothing is
+    // recorded and nothing breaks (src/slot-check-log.js).
+    this.log = log;
+    this.now = now;
     this.running = false;
     this.cancelled = false;
     this.state = null;
@@ -379,7 +385,7 @@ class TransferRunner extends EventEmitter {
       // read is short, or the patch carries fewer keys than the instrument has
       // parameters, this falls through to a normal hold — never to a
       // fingerprint comparison, which is the thing being fixed.
-      const already = await this._slotAlreadyHolds(patch, slot.soundName);
+      const already = await this._slotAlreadyHolds(patch, slot.soundName, i);
       if (already) {
         st.index = i;
         st.skipped.push(i);
@@ -735,20 +741,48 @@ class TransferRunner extends EventEmitter {
   //                                    quietly narrowed to whatever the table
   //                                    did report, so a slot could be declared
   //                                    a match on a handful of parameters)
-  async _slotAlreadyHolds(patch, soundName) {
+  async _slotAlreadyHolds(patch, soundName, slotIndex = null) {
     const table = this.midi.paramTable;
     const ids = table ? table.params.map((p) => p.id) : null;
-    if (!ids || !ids.length) return false; // no table read: no full comparison
-
     const wanted = (patch && patch.params) || {};
     const wantedKeys = Object.keys(wanted);
-    if (!wantedKeys.length) return false;
+
+    // WHAT THIS CHECK SAW, written down at the time — see slot-check-log.js.
+    // The 2026-08-23 failure needed the sound check AND the parameter check to
+    // have failed, and afterwards neither fact was recoverable.
+    const record = {
+      at: this._now(),
+      bank: this.state ? this.state.bank : null,
+      preset: slotIndex === null ? null : slotIndex + 1,
+      soundId: this._currentSoundId === undefined ? null : this._currentSoundId,
+      soundName: null,
+      lookup: 'unresolved',
+      wants: soundName || null,
+      tableSize: ids ? ids.length : null,
+      patchSize: wantedKeys.length,
+      compared: 0,
+      verdict: 'cannot-confirm',
+      reason: null,
+      detail: null,
+    };
+    const done = (verdict, reason, detail) => {
+      record.verdict = verdict;
+      record.reason = reason || null;
+      record.detail = detail || null;
+      if (this.log) this.log(record);
+      return verdict === 'already-held';
+    };
+
+    if (!ids || !ids.length) return done('cannot-confirm', 'no-param-table');
+    if (!wantedKeys.length) return done('cannot-confirm', 'patch-has-no-params');
     // THE COMPARISON MUST COVER EVERY PARAMETER THE PATCH CARRIES. This used
     // to ask only that the patch was not SHORTER than the table, which guards
     // against a partial patch and not at all against a partial TABLE: fewer
     // ids simply meant fewer comparisons, and a slot could be called a match
     // on the strength of the few that were checked.
-    if (ids.length < wantedKeys.length) return false;
+    if (ids.length < wantedKeys.length) {
+      return done('cannot-confirm', 'table-shorter-than-patch');
+    }
 
     // THE SOUND MUST RESOLVE. `_currentSoundId` is a remembered broadcast, not
     // a read — if it is unset, stale beyond the table, or the table is missing,
@@ -756,8 +790,12 @@ class TransferRunner extends EventEmitter {
     // fail. A check that can vanish is not a check.
     const current = this.midi.soundTable
       && this.midi.soundTable.sounds.find((x) => x.id === this._currentSoundId);
-    if (!current || !soundName) return false;
-    if (current.name !== soundName) return false;
+    if (current) { record.lookup = 'ok'; record.soundName = current.name; }
+    if (!current) return done('cannot-confirm', 'sound-unresolved');
+    if (!soundName) return done('cannot-confirm', 'patch-names-no-sound');
+    if (current.name !== soundName) {
+      return done('differs', 'sound', `held ${current.name}`);
+    }
 
     // Every wanted key has to be SEEN and matched, not merely not-contradicted.
     const seen = new Set();
@@ -766,16 +804,31 @@ class TransferRunner extends EventEmitter {
       for (let attempt = 0; attempt < 3; attempt++) {
         try { r = await this.midi.readParamValue(id); break; } catch { /* retry */ }
       }
-      if (!r || typeof r.key !== 'string') return false;
+      if (!r) return done('cannot-confirm', 'unreadable-param', `id ${id}`);
+      if (typeof r.key !== 'string') return done('cannot-confirm', 'reply-has-no-key', `id ${id}`);
       if (wanted[r.key] === undefined) continue;   // the table has it, the patch does not
       const held = Number(r.value);
       const want = Number(wanted[r.key]);
-      if (!Number.isFinite(held) || !Number.isFinite(want)) return false;
-      if (held !== want) return false;
+      if (!Number.isFinite(held) || !Number.isFinite(want)) {
+        return done('cannot-confirm', 'non-numeric-value', r.key);
+      }
+      record.compared += 1;
+      if (held !== want) {
+        return done('differs', 'param', `${r.key} held ${held} want ${want}`);
+      }
       seen.add(r.key);
     }
     // A key the patch carries that no read covered is a key nobody checked.
-    return seen.size === wantedKeys.length;
+    if (seen.size !== wantedKeys.length) {
+      return done('cannot-confirm', 'patch-keys-not-covered', `${seen.size}/${wantedKeys.length}`);
+    }
+    return done('already-held');
+  }
+
+  // Injected so tests can hold the clock still; Date is otherwise the only
+  // thing in this file that cannot be replayed.
+  _now() {
+    return (this.now ? this.now() : new Date()).toISOString().replace(/\.\d+Z$/, 'Z');
   }
 
   _patchFor(file) {

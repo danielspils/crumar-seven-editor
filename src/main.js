@@ -484,11 +484,20 @@ function registerEditIpc() {
 let transferRunner = null;
 function getTransferRunner() {
   if (!transferRunner) {
+    const slotCheckLog = require('./slot-check-log.js');
     const { TransferRunner } = require('./transfer-runner');
     transferRunner = new TransferRunner({
       midi: getMidi(),
       store: getStore(),
       sender: getPatchSender(),
+      // WHY A SLOT WAS SKIPPED, OR WASN'T — one line each, in userData, capped
+      // and always on. A restore that reports success and writes nothing left
+      // no trace at all on 2026-08-23 and cost a day to investigate from the
+      // outside (src/slot-check-log.js).
+      log: (record) => {
+        const file = path.join(app.getPath('userData'), 'slot-checks.log');
+        slotCheckLog.append(fs, file, slotCheckLog.line(record));
+      },
     });
     transferRunner.on('event', (ev) => {
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send('midi-event', ev);

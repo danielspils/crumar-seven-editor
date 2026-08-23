@@ -698,6 +698,67 @@ function alreadyHeld(midi, store, sender, entries) {
   return runner.nextSlot().then((step) => !!step.alreadyThere);
 }
 
+test('the runner records WHY, for every slot it checks', async () => {
+  // The half a log module cannot test: that the runner fills it in, with the
+  // things that were unrecoverable after the 2026-08-23 failure — the sound it
+  // used, whether the lookup resolved, the size the DEVICE reported for its
+  // parameter table, and how many were actually compared.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  const lines = [];
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender, log: (r) => lines.push(r) });
+  runner.start(list, 2);
+  await runner.nextSlot();
+
+  assert.strictEqual(lines.length, 1, 'one line per slot checked');
+  const r = lines[0];
+  assert.strictEqual(r.bank, 2);
+  assert.strictEqual(r.preset, 1);
+  assert.strictEqual(r.verdict, 'already-held');
+  assert.strictEqual(r.lookup, 'ok');
+  assert.strictEqual(r.soundName, 'Tine Piano');
+  assert.strictEqual(r.tableSize, schema.parameters.length, "the DEVICE's table size");
+  assert.strictEqual(r.compared, Object.keys(patch.params).length, 'and how many it checked');
+  assert.ok(r.at && /^\d{4}-\d{2}-\d{2}T/.test(r.at), 'stamped when it happened');
+});
+
+test('a refusal records which input refused', async () => {
+  // A verdict with no reason is exactly what cost the day: the app said
+  // "already matched" and nothing anywhere said on what basis.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  midi.paramTable = { count: 6, params: midi.paramTable.params.slice(0, 6) };
+  const lines = [];
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender, log: (r) => lines.push(r) });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  assert.strictEqual(lines[0].verdict, 'cannot-confirm');
+  assert.strictEqual(lines[0].reason, 'table-shorter-than-patch');
+  assert.strictEqual(lines[0].tableSize, 6);
+  assert.strictEqual(lines[0].patchSize, Object.keys(patch.params).length);
+});
+
+test('a slot that DIFFERS names the parameter it stopped on', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const changed = { ...patch.params };
+  const key = Object.keys(changed)[7];
+  changed[key] = Number(changed[key]) === 1 ? 2 : 1;
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: changed });
+  const lines = [];
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender, log: (r) => lines.push(r) });
+  runner.start(list, 2);
+  await runner.nextSlot();
+  assert.strictEqual(lines[0].verdict, 'differs');
+  assert.strictEqual(lines[0].reason, 'param');
+  assert.match(lines[0].detail, new RegExp(`^${key} held `));
+});
+
 test('the control: an untouched match still reports already-held', async () => {
   const { store, sender, entries } = setup();
   const patch = readPatchFile(store, entries[0].file);
