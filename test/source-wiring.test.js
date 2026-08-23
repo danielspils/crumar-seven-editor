@@ -352,6 +352,27 @@ test('every path that writes a new patch says so the same way', () => {
   assert.doesNotMatch(code(read('app.js')), /data-goto-patch/, 'and none in app.js');
 });
 
+test('the summary knows which flow it is ending', () => {
+  // transfer-summary.test.js proves the WORDING. This proves the runner still
+  // hands it the two facts it decides on, and that app.js still asks it rather
+  // than building the body inline again.
+  const runner = code(read('transfer-runner.js'));
+  const finish = /\n  finish\(error\) \{([\s\S]*?)\n  \}/.exec(runner);
+  assert.ok(finish, 'finish() is still recognisable');
+  assert.match(finish[0], /setlistIndex: st\.setlistIndex/,
+    'the report carries which flow it was');
+  assert.match(finish[0], /const single = st\.setlistIndex === null/,
+    'and decides it on the runner\'s own field, never on a count');
+  assert.match(finish[0], /name: single &&/, 'the single send names its patch');
+  assert.match(finish[0], /preset: single &&/, 'and its preset');
+
+  const app = code(read('app.js'));
+  assert.match(app, /SevenTransferSummary\.body\(report\)/, 'app.js asks the module');
+  assert.match(app, /SevenTransferSummary\.title\(report\)/, 'for both halves');
+  assert.doesNotMatch(app, /preset\$\{report\.total === 1/,
+    'and does not still build the body itself');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

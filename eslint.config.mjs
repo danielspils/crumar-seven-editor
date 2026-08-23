@@ -31,7 +31,7 @@ const SEVEN = [
   'SevenExpansions', 'SevenKeyRange', 'SevenLibraryView', 'SevenModal', 'SevenModalPanel',
   'SevenOtsFreshness', 'SevenPicker', 'SevenRenderer',
   'SevenScrollFade', 'SevenSendChoice', 'SevenSendPcPrompt', 'SevenSoundArt',
-  'SevenStorageLabel', 'SevenToast', 'SevenUndo',
+  'SevenStorageLabel', 'SevenToast', 'SevenTransferSummary', 'SevenUndo',
 ];
 
 const BROWSER = [
@@ -111,7 +111,7 @@ export default [
     files: [
       'src/day-rollover.js', 'src/drift.js', 'src/expansions.js', 'src/modal-panel.js',
       'src/ots-freshness.js', 'src/send-choice.js', 'src/send-pc-prompt.js',
-      'src/storage-label.js', 'src/library-view.js', 'src/renderer.js',
+      'src/storage-label.js', 'src/transfer-summary.js', 'src/library-view.js', 'src/renderer.js',
       'src/defaults.js', 'src/sound-art.js',
     ],
     languageOptions: {

@@ -1517,38 +1517,12 @@
   async function transferDone(report, modal) {
     transferRunning = false;
     if (!report) return;
-    const stored = report.confirmed.length;
-    const loose = report.loadedNotConfirmed;
-    const already = (report.alreadyThere || []).length;
-    // Every slot the run meant to write already held its patch: nothing was
-    // sent, nothing was held, and the instrument is correct.
-    const nothingNeeded = !report.error && !report.cancelled
-      && stored === 0 && already > 0 && already === report.total;
-    const bodyHtml =
-      (report.error ? `<p class="tx-note tx-alarm">${esc(report.error)}</p>` : '') +
-      // A run where every slot already held its patch stored nothing, and
-      // "0 of 8 presets stored" reads as failure when the truth is that the
-      // bank was already right (Daniel, 2026-08-16).
-      (nothingNeeded
-        ? `<p class="tx-step-name">Bank ${report.bank} already matched — nothing needed storing</p>`
-        : `<p class="tx-step-name">${stored} of ${report.total} ` +
-          `preset${report.total === 1 ? '' : 's'} stored</p>` +
-          `<p class="tx-step-where">Bank ${report.bank}</p>`) +
-      // Slots that needed nothing are reported separately from slots the
-      // player stored. Both are "done"; only one was work.
-      (already && !nothingNeeded
-        ? `<p class="tx-note">Preset ${report.alreadyThere.join(', ')} already held ` +
-          `${report.alreadyThere.length === 1 ? 'its patch' : 'their patches'}, so nothing was sent.</p>`
-        : '') +
-      (loose.length
-        ? `<p class="tx-note">Preset ${loose.join(', ')} was loaded but you did not confirm the ` +
-          'hold, so it is still in the edit buffer rather than saved on the instrument.</p>'
-        : '') +
-      // NOTHING ABOUT SAMPLE-SET VERSIONS. A line here once said sampled
-      // sounds "may differ slightly if this Seven has a different version of
-      // the sample set" — removed 2026-08-22 because nothing ever established
-      // that a version of a sample set exists (docs/DEVICE.md §11).
-      '';
+    // The summary itself is in src/transfer-summary.js, pure and string-out,
+    // because two of its three shapes cannot be produced by hand: a run where
+    // every slot already held its patch, and a ONE-SLOT SETLIST, which has to
+    // read as a bank send rather than a single one. Reaching either from the
+    // UI means writing to somebody's instrument.
+    const bodyHtml = SevenTransferSummary.body(report);
     // report.note — "listed as stored because you confirmed the hold" — is
     // deliberately NOT shown. It was written when a hold could only be taken on
     // the player's word; now the walk mostly advances because the instrument
@@ -1557,7 +1531,7 @@
     // costs more to explain than it is worth on screen. It stays on the report
     // object for anything that wants the fine print.
     // One name for the action, so its ending carries the same word.
-    const title = report.error || report.cancelled ? 'Send stopped' : 'Sent to Seven';
+    const title = SevenTransferSummary.title(report);
     const tone = report.error ? 'is-warning is-transfer' : 'is-transfer';
 
     if (modal) {

@@ -562,9 +562,22 @@ class TransferRunner extends EventEmitter {
     this._unwatchStore();
     this._returnSendPc();
     const st = this.state || { confirmed: [], verified: [], sent: [], slots: [], bank: null };
+    // WHICH FLOW THIS WAS. startSlot sets setlistIndex to null, start sets the
+    // setlist's own index — so the summary can tell a single-patch send from a
+    // bank send without inferring it from a count, which would be wrong for a
+    // setlist that happens to hold one patch. A run that never started carries
+    // neither, and `undefined` means unknown rather than single.
+    const writable = (st.slots || []).filter((x) => x.action === 'send' || x.action === 'send-sound');
+    const single = st.setlistIndex === null;
     const report = {
       type: 'transfer-done',
       bank: st.bank,
+      setlistIndex: st.setlistIndex,
+      // The patch and the preset a SINGLE send was aimed at — known whatever
+      // happened to it, because it is the plan's own slot rather than a result.
+      // A bank send has neither: eight names is a list, not a headline.
+      name: single && writable.length === 1 ? writable[0].name : null,
+      preset: single && writable.length === 1 ? writable[0].slot + 1 : null,
       error: error || null,
       cancelled: this.cancelled,
       confirmed: st.confirmed.map((i) => i + 1),
