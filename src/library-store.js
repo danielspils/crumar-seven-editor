@@ -671,7 +671,18 @@ class LibraryStore {
           nameFrom: p.nameFrom || null,
           soundName,
           sampled: sound ? sound.sampled : true,
-          missing: !sound,
+          // "IS THIS SOUND INSTALLED" IS A QUESTION ABOUT AN INSTRUMENT, and
+          // with nothing connected there is no instrument to ask. It used to
+          // answer from the schema — this build's own list — and told Rich
+          // Olivieri that an expansion he owns was not installed, because the
+          // schema predates it (2026-08-20).
+          //
+          // null is UNKNOWN, and it is not the same as false: false would claim
+          // the sound is present. Nothing downstream may render a badge from
+          // null; the library says once, at region level, that it cannot see an
+          // instrument, because the uncertainty belongs to the whole view and
+          // not to each patch.
+          missing: this.deviceSounds ? !this.deviceSounds.get(soundName) : null,
           origin,
           params: p.params || {},
           warnings: parsed.report.warnings.length,
@@ -681,6 +692,10 @@ class LibraryStore {
     return {
       dir: this.dir,
       patches: entries,
+      // WHETHER "installed" COULD BE ANSWERED AT ALL. One explicit fact rather
+      // than each consumer inferring it from a null, so the view says the same
+      // thing the entries mean.
+      soundsKnown: !!this.deviceSounds,
       setlists: this.readSetlists(),
       // Empty means nobody has dragged a patch yet, so the list sorts itself.
       patchOrder: this.readPatchOrder(),

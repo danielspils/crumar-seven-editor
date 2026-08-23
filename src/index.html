@@ -832,6 +832,13 @@
     #library-body .lib-bar { flex: none; }
     #library-body .lib-list { flex: 0 1 auto; min-height: 0; }
     .lib-count { flex: 1; color: var(--text-muted); font-size: 12px; }
+    /* Said once for the region, above the list and outside its scroller, so it
+       cannot slide away from the rows it explains. Quiet: it is a statement
+       about what the app cannot see, not a warning about a patch. */
+    .lib-unknown-sounds {
+      margin: 0 0 6px; padding: 0 2px;
+      color: var(--text-muted); font-size: 12px;
+    }
     /* A control of its own inside a clickable header row. It carried NO style
        at all until now, so it drew the platform's native button chrome — a
        light slab that ignored the theme and looked wrong in the dark one. And

@@ -918,32 +918,57 @@ test('a new setlist records when it was created, and keeps it', async () => {
 
 // --- whose sound list decides "missing" ------------------------------------
 
-test('a patch is missing when the INSTRUMENT lacks its sound, not when the schema does', () => {
+test('a patch is missing when the INSTRUMENT lacks its sound — and UNKNOWN with none', () => {
+  // THIS TEST USED TO ASSERT THE BUG. It required `missing === true` offline,
+  // commented "unknown to this build while nothing is attached" — an intention
+  // written down as an expectation, which then defended the behaviour it
+  // described. Rich Olivieri was told an expansion he owns was not installed,
+  // and this is what a correcting change would have had to argue with
+  // (Daniel, 2026-08-20: invert it in the same commit as the code).
   const { store } = freshStore();
   store.seedDemoLibrary();   // this test needs library content
   const file = store.createPatchFromSound('Tine Piano', { factoryDefaults: { sounds: {} } }).file;
   // A sound this build has never heard of — an expansion the schema predates.
   store.savePatchSound(file, 0, 'Nord Lead Expansion', true);
 
-  // Offline: the schema is all there is, and it does not know that sound.
+  // NOTHING CONNECTED: there is no instrument to ask, so there is no answer.
+  // null, not true — and not false either, which would claim it IS installed.
   const offline = entries(store).find((p) => p.file === file);
-  assert.strictEqual(offline.missing, true, 'unknown to this build while nothing is attached');
+  assert.strictEqual(offline.missing, null,
+    'no instrument, no claim about one — not "missing" because this build has not heard of it');
+  assert.strictEqual(store.list().soundsKnown, false,
+    'and the list says once, for the whole region, that it could not be answered');
 
   // An instrument that HAS it: not missing any more.
   store.setDeviceSounds({ sounds: [{ id: 0, name: 'Nord Lead Expansion', sampled: true }] });
   const attached = entries(store).find((p) => p.file === file);
   assert.strictEqual(attached.missing, false, 'the instrument has it, so it is not missing');
   assert.strictEqual(attached.sampled, true, 'and the instrument says it is sampled');
+  assert.strictEqual(store.list().soundsKnown, true);
 
   // An instrument that LACKS a sound the schema knows: missing, though the
   // schema alone would have said otherwise.
   const tine = entries(store).find((p) => p.soundName === 'Tine Piano');
   assert.strictEqual(tine.missing, true, 'this unit does not have Tine Piano');
 
-  // Unplugged: back to the schema.
+  // UNPLUGGED AGAIN: not back to the schema — back to not knowing. The device's
+  // table describes an instrument that is no longer there, and the schema
+  // describes no instrument at all.
   store.setDeviceSounds(null);
   const after = entries(store).find((p) => p.soundName === 'Tine Piano');
-  assert.strictEqual(after.missing, false, 'the schema knows Tine Piano');
+  assert.strictEqual(after.missing, null, 'unplugging forgets the answer rather than inventing one');
+});
+
+test('the schema still resolves sounds — it just cannot say what is installed', () => {
+  // The fix is narrow on purpose. The schema is a legitimate source for what a
+  // sound IS; it was only ever wrong as an answer to "does this instrument
+  // have it". Nothing here should have changed.
+  const { store } = freshStore();
+  store.seedDemoLibrary();
+  const tine = entries(store).find((p) => p.soundName === 'Tine Piano');
+  assert.strictEqual(tine.soundName, 'Tine Piano', 'the sound is still named');
+  assert.strictEqual(tine.missing, null, 'but installed-or-not is unanswered');
+  assert.strictEqual(typeof tine.sampled, 'boolean', 'and modeled/sampled still resolves');
 });
 
 // ---- Provenance is a RECORD, not a snapshot of right now -------------------

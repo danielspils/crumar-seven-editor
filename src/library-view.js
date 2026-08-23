@@ -139,7 +139,13 @@
   // this patch BEFORE they send it, which is worth a row's width. When it has
   // nothing to say it renders nothing at all — the old empty .badge-gap spacer
   // went with the pill it was spacing.
-  const warnBadge = (entry) => (entry.missing
+  // STRICTLY true. `missing` is null when nothing is connected — unknown, not
+  // absent — and a badge built from a falsy check would go on claiming a sound
+  // was missing on the strength of this build's own list. That is the bug
+  // itself (Rich Olivieri, 2026-08-20): the app told him an expansion he owns
+  // was not installed, with no instrument in front of it. The library says so
+  // ONCE, at region level, instead of marking every row.
+  const warnBadge = (entry) => (entry.missing === true
     ? '<span class="badge badge-warn" title="Sound not installed on this instrument">⚠ Not installed</span>'
     : '');
 
@@ -1078,7 +1084,10 @@
     //
     // (!) stays: a sound this instrument does not have is not a classification
     // but a problem with the row it is on.
-    const soundTag = (entry) => (entry.missing
+    // STRICTLY true, for the same reason as the row badge above: null is
+    // unknown, and a (!) on a slot is the same claim about an instrument the
+    // app cannot see.
+    const soundTag = (entry) => (entry.missing === true
       ? ' <span class="sound-tag is-warn" title="Sound not installed on this instrument" aria-label="Sound not installed">(!)</span>'
       : '');
 
@@ -1238,6 +1247,20 @@
       // pushed onto a third row of its own (measured).
 
       `</div>` +
+      // ONE LINE, ONCE, FOR THE WHOLE REGION — never a marker per row.
+      //
+      // With no instrument connected the app cannot know which sounds are
+      // installed, and it used to answer from its own built-in list: Rich
+      // Olivieri was told an expansion he owns was not installed, on a build
+      // that predates it (2026-08-20). The uncertainty is a property of the
+      // VIEW, not of each patch, so it is said here and nowhere else.
+      //
+      // OUTSIDE .lib-list on purpose: inside it, the line scrolls away and the
+      // rows it explains outlive it (Daniel asked whether the header survives
+      // scrolling, 2026-08-21).
+      (data.soundsKnown === false && data.patches && data.patches.length
+        ? '<p class="lib-unknown-sounds">Connect your Seven to see which sounds are installed</p>'
+        : '') +
       `<div class="lib-list">${listHtml}</div>`
     );
   }
