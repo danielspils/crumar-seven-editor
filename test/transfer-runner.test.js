@@ -458,6 +458,52 @@ test('a single slot is written through the same walk, with the same rules', asyn
   assert.strictEqual(done.total, 1, 'the seven untouched presets are not counted');
 });
 
+// DANIEL'S HYPOTHESIS, PINNED. After Bank 3 presets 2-8 were found holding
+// something he never wrote, the natural suspicion was that the single-patch
+// send is a bank send with its logic inverted — writing every slot BUT the
+// target. This is that question asked directly of the plan and of the walk,
+// with the exact arguments he used (Bank 3, preset 1), because a suspicion
+// about which slots get written should be answerable without an instrument.
+test('a single send touches the target slot and NOTHING else', async () => {
+  const { store, midi, sender, sent, entries } = setup();
+  const runner = new TransferRunner({ midi, store, sender });
+  const started = runner.startSlot(3, 1, entries[0].file);
+  assert.strictEqual(started.started, true);
+
+  // THE PLAN. Eight entries, because the walk reports a preset from its
+  // position — and exactly one of them is a write.
+  assert.strictEqual(started.slots.length, 8);
+  const writes = started.slots
+    .map((s, i) => ({ i, action: s.action }))
+    .filter((s) => s.action === 'send' || s.action === 'send-sound');
+  assert.deepStrictEqual(writes, [{ i: 0, action: 'send' }],
+    'preset 1 is the only slot the plan writes');
+  assert.deepStrictEqual(
+    started.slots.filter((_, i) => i !== 0).map((s) => s.action),
+    Array(7).fill('skip'),
+    'and the other seven are left alone — not the other way round'
+  );
+  assert.strictEqual(started.willWrite, 1);
+
+  // THE WALK. One recall, one send, and the recall is the target's own
+  // program: (3-1)*8 + 0 = 16.
+  const step = await runner.nextSlot();
+  assert.strictEqual(step.preset, 1);
+  assert.strictEqual(step.bank, 3);
+  assert.deepStrictEqual(midi.recalled, [16],
+    'the instrument is moved to Bank 3 preset 1 and nowhere else');
+  assert.strictEqual(sent.length, 1, 'exactly one patch is sent');
+
+  // AND IT ENDS THERE. nextSlot again must finish rather than walk on into the
+  // seven it skipped.
+  const done = await runner.confirmSlot();
+  assert.strictEqual(done.type, 'transfer-done');
+  assert.deepStrictEqual(done.confirmed, [1]);
+  assert.strictEqual(done.total, 1);
+  assert.deepStrictEqual(midi.recalled, [16], 'still only the one recall');
+  assert.strictEqual(sent.length, 1, 'and still only the one send');
+});
+
 test('a single slot refuses Bank 1, a bad preset, and a sound this unit lacks', () => {
   const { store, midi, sender, entries } = setup({ sounds: ['Tine Piano'] }); // no Clavi
   const runner = new TransferRunner({ midi, store, sender });
