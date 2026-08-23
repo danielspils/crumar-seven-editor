@@ -14,9 +14,17 @@
     await ui.sleep(120);
   };
 
+  // THE BANK REGION HAS TO BE ON SCREEN, and whether it is was decided by
+  // whichever scenario ran last: the tray's open state is persisted in
+  // localStorage, and the runner shares userData between scenarios. Open, the
+  // region is a collapsed strip with no tabs in it. This scenario failed for
+  // two days behind arrow-ownership-open.js, which leaves it open on purpose.
+  await ui.closeLibrary();
+
   // Start from a known tab by clicking it, which is also the path the arrows
-  // have to agree with.
-  ui.click(ui.$('.bank-tab[data-bank="0"]'), 'Bank 1 tab');
+  // have to agree with. waitClickable rather than $, so an unreachable tab
+  // says it waited rather than reporting whatever was under the coordinates.
+  ui.click(await ui.waitClickable('.bank-tab[data-bank="0"]', 'Bank 1 tab'), 'Bank 1 tab');
   await ui.sleep(150);
   ui.check(activeBank() === 0, 'clicking Bank 1 selects it');
 

@@ -137,6 +137,49 @@
   document.documentElement.dataset.theme = 'dark';
   await ui.sleep(200);
 
+  // ── THE KEYBOARD HAS SOMEWHERE TO START ────────────────────────────────
+  //
+  // The dialog focuses its action button on open and the gating then disables
+  // it, so focus evaporated: activeElement was EMPTY, measured. A keyboard
+  // user got nothing at all. It now starts on the bank control — the thing
+  // that has to be pressed first — and Space cycles it, which is real
+  // operation rather than a consolation (Daniel, 2026-08-22).
+  //
+  // Driven here the way the app drives it, because the scenario builds its own
+  // modal; that the CHOOSERS call it is pinned in test/source-wiring.test.js.
+  MP.bindKeys(svg);
+  MP.focusControl(svg);
+  await ui.sleep(150);
+  const focused = document.activeElement;
+  ui.note(`focus starts on: <${focused && focused.tagName}> ${focused && focused.getAttribute('aria-label')}`);
+  ui.check(!!focused && focused.hasAttribute('data-mp-bank'),
+    'focus starts on the bank control, not on nothing');
+  // NOT ASSERTED HERE: that the ring is PAINTED. The rule is :focus-visible,
+  // which Chromium withholds after synthetic mouse input — so the assertion
+  // passed alone and failed inside a full run, which makes it a measurement of
+  // the run rather than of the app. What is assertable is that the rect is in
+  // the tab order at all, which is the thing that had to be added: an SVG rect
+  // is not a button and is not focusable without it.
+  ui.check(focused.tabIndex === 0, `the bank control is in the tab order (${focused.tabIndex})`);
+
+  // SPACE MAKES A CLICK — which is the whole of what the panel does, and the
+  // reason it is the whole: the chooser already handles clicks on this rect,
+  // so the keyboard reaches the same code rather than a second copy of it.
+  // This scenario drives the state functions by hand, so it listens for the
+  // click rather than watching the lamps.
+  let clicks = 0;
+  const countClicks = (e) => { if (e.target.closest('[data-mp-bank]')) clicks += 1; };
+  svg.addEventListener('click', countClicks);
+  focused.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  await ui.sleep(200);
+  ui.note(`space on the bank control produced ${clicks} click(s)`);
+  ui.check(clicks === 1, `SPACE presses it, exactly once (${clicks})`);
+  // And a key that is not Space does not.
+  focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+  await ui.sleep(150);
+  ui.check(clicks === 1, `an ordinary key presses nothing (${clicks})`);
+  svg.removeEventListener('click', countClicks);
+
   // The heading names what is being ASKED FOR, and follows the stage.
   ui.check(svg.querySelector('.mp-heading').textContent === 'SELECT BANK',
     'with nothing chosen it asks for a bank');

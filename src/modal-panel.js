@@ -112,7 +112,7 @@
   // only labels them, so a click handler never has to know panel geometry.
   const tagHits = (markup) => markup
     .replace(/<rect class="btn-hit" data-hit="bank"([^>]*)\/>/,
-      '<rect class="btn-hit" data-mp-bank$1/>')
+      '<rect class="btn-hit" data-mp-bank tabindex="0"$1/>')
     .replace(/<g id="mp-preset-(\d)">/g, '<g id="mp-preset-$1" data-mp-preset="$1">')
     .replace(/(<rect class="btn-hit")( x="\d+" y="56")/g, '$1 data-mp-hit$2');
 
@@ -232,6 +232,15 @@
     // `row` NEVER LEAVES THE BANK. A whole-bank send has one question and it
     // is answered by the bank control; the eight presets below are the
     // destination, not a choice, so the heading stays where the choosing is.
+    // FOCUSABLE ONLY WHILE IT IS A CONTROL. At the hold the panel takes a
+    // press in order to say "not this one, the real one" — that is an answer,
+    // not an action, and it has no business in the tab order.
+    const bankHit = svg.querySelector('[data-mp-bank]');
+    if (bankHit) {
+      if (stage === 'hold') bankHit.removeAttribute('tabindex');
+      else bankHit.setAttribute('tabindex', '0');
+    }
+
     const onBank = stage === 'bank' || stage === 'row';
     const h = svg.querySelector('.mp-heading');
     if (h) {
@@ -337,5 +346,37 @@
   // its action and says why — but it can be landed on.
   const nextBank = (bank) => (bank == null ? 2 : (bank % 4) + 1);
 
-  return { buildPanel, setStage, setBank, setPreset, nextBank, PREFIX, VIEW, PRESET_CX };
+  // THE KEYBOARD. A dialog that opens with focus on a disabled button leaves
+  // a keyboard user with nothing at all — which is what both choosers did,
+  // measured as an empty activeElement — so focus starts on the bank control,
+  // the thing that has to be pressed first (Daniel, 2026-08-22).
+  //
+  // SPACE, not Enter. Enter belongs to the dialog and already means "confirm";
+  // the modal takes it on the document in the CAPTURE phase, so it never
+  // reaches here anyway. Space is what a focused button answers.
+  //
+  // An SVG rect is not a <button>: focus needs tabindex and Space produces no
+  // click of its own, so this makes one — which means the choosers' existing
+  // click handling covers the keyboard with no second copy of the logic.
+  function focusControl(svg) {
+    const el = svg && svg.querySelector('[data-mp-bank]');
+    if (el) el.focus();
+    return !!el;
+  }
+
+  function bindKeys(svg) {
+    if (!svg) return;
+    svg.addEventListener('keydown', (e) => {
+      if (e.key !== ' ' && e.key !== 'Spacebar') return;
+      const hit = e.target.closest && e.target.closest('[data-mp-bank], [data-mp-hit]');
+      if (!hit) return;
+      e.preventDefault();          // or the page scrolls under the dialog
+      hit.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  }
+
+  return {
+    buildPanel, setStage, setBank, setPreset, nextBank, focusControl, bindKeys,
+    PREFIX, VIEW, PRESET_CX,
+  };
 });

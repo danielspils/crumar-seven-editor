@@ -325,6 +325,28 @@ test('a whole-bank send chooses on the panel too', () => {
     'the four generic bank buttons are gone from the send path');
 });
 
+test('both choosers give the keyboard somewhere to start', () => {
+  // Measured before this existed: activeElement was EMPTY when either chooser
+  // opened. The modal focuses its action button and the gating then disables
+  // it, so focus evaporated and a keyboard user had nothing at all.
+  //
+  // The panel scenario asserts what focusControl and bindKeys DO. This asserts
+  // that the two dialogs call them — which is the half a scenario building its
+  // own modal can never see.
+  const src = code(read('app.js'));
+  for (const [name, re] of [
+    ['chooseDestination', /async function chooseDestination\(([\s\S]*?)\n  \}/],
+    ['chooseBank', /async function chooseBank\(([\s\S]*?)\n  \}/],
+  ]) {
+    const fn = re.exec(src);
+    assert.ok(fn, `${name} is still recognisable`);
+    assert.match(fn[0], /SevenModalPanel\.focusControl\(svg\)/,
+      `${name} puts focus on the bank control`);
+    assert.match(fn[0], /SevenModalPanel\.bindKeys\(svg\)/,
+      `${name} makes Space press it`);
+  }
+});
+
 test('the panel follows the instrument as well as the mouse', () => {
   // With Send PC on, a bank or preset pressed on the Seven arrives as a
   // slot-identified Program Change. The picture has to keep up, or it would

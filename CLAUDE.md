@@ -1198,16 +1198,37 @@ consumer still exists.
 
 Kept here because they otherwise live only in a chat that ends.
 
-- **Two UI scenarios are flaky, and both fail the same way.**
-  `bank-tab-arrows.js` and `save-button-contexts.js` pass when run alone and
-  fail in a full `test:ui` run, each reporting *"a click at its centre lands
-  on `<fx-title>` / `<lib-count>`, not the control"*. Measured 2026-08-22:
-  3/3 alone on the current tree, 2/2 failing in the full suite — and each also
-  failed ALONE on an earlier commit, so it is not purely ordering. Both click
-  by COORDINATE in the bank region and land in another region entirely, so
-  either the region moves in some state, or two tests are asserting geometry
-  where they should be clicking an element. Until it is chased, a full-suite
-  run reads 21/2/9 and those two failures are known.
+- **UI STATE LEAKS BETWEEN SCENARIOS, and it cost two days of calling two
+  tests "flaky"** (settled 2026-08-22). The runner copies a fresh LIBRARY per
+  scenario. It does NOT reset userData — and whether the library tray is open
+  is persisted in `localStorage` (`LIB_OPEN_KEY`), which lives there. So a
+  scenario that leaves the tray open hands it to every scenario after it, and
+  to every run after that.
+
+  With the tray open, "On the Seven" is a collapsed strip: its bank tabs and
+  slot rows are genuinely not on screen. `bank-tab-arrows.js` and
+  `save-button-contexts.js` both click one, and both failed inside a full run
+  while passing alone.
+
+  **Proven both directions rather than argued:** run `arrow-ownership-open.js`
+  — which leaves the tray open on purpose — and `bank-tab-arrows.js` fails;
+  run `arrow-ownership.js`, which closes it, and the same scenario passes.
+  Both now call `ui.closeLibrary()` first and both pass under the adversarial
+  ordering.
+
+  **Two wrong answers were given first, and both were shaped like an answer.**
+  "Flaky" is a description standing where a cause belongs, and it survived
+  because the failures were real, repeatable and inconvenient. Then "a
+  first-layout race" — plausible, since a full run makes paint slower — which
+  a measurement killed in one step: the element was still unreachable after
+  **8000ms**, and no layout takes eight seconds.
+
+  The general rule is the one `@env` already encodes: **a scenario's starting
+  state must be CHOSEN, not inherited.** `@env` covers the environment;
+  nothing covers persisted UI state, so a scenario that depends on it arranges
+  it itself. The remaining hazard is that this is per-scenario discipline — a
+  runner that reset userData between scenarios would make it structural, and
+  that is worth doing before the next state gets persisted.
 
 - **Connect → open to the active patch.** Connecting leaves you on whatever
   was last selected rather than what the Seven is actually playing. A first

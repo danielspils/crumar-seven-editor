@@ -442,6 +442,12 @@
       preset = ev.preset;
       paint();
     };
+    // The dialog focuses its action button on open and paint() then disables
+    // it, which left a keyboard user with focus on nothing at all. Focus goes
+    // to the thing that has to be pressed first instead.
+    SevenModalPanel.bindKeys(svg);
+    SevenModalPanel.focusControl(svg);
+
     const unfollow = window.sevenAPI.midi.onEvent(follow);
 
     try {
@@ -515,6 +521,10 @@
       bank = SevenModalPanel.nextBank(bank);
       paint();
     });
+    // Same reason as the single-patch chooser: NEXT starts dim, so the dialog's
+    // own focus lands on a disabled button and evaporates.
+    SevenModalPanel.bindKeys(svg);
+    SevenModalPanel.focusControl(svg);
 
     const ok = await m.action();
     m.close();

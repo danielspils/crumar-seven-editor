@@ -24,7 +24,11 @@
   const mode = () => (btn() ? btn().dataset.saveMode : null);
 
   // ── ON THE SEVEN ────────────────────────────────────────────────────────
-  const row = await ui.waitEl('#patch-list .patch-row', 'a slot in ON THE SEVEN');
+  // Same precondition as bank-tab-arrows.js, same reason: with the library
+  // tray open — which is persisted state a previous scenario may have left —
+  // "On the Seven" is a collapsed strip and its slot rows are not on screen.
+  await ui.closeLibrary();
+  const row = await ui.waitClickable('#patch-list .patch-row', 'a slot in ON THE SEVEN');
   ui.click(row, 'a slot on the instrument');
   await ui.sleep(600);
   ui.check(!!btn(), 'ON THE SEVEN offers a save control');

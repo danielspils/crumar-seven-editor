@@ -44,6 +44,32 @@ window.ui = (() => {
     return true;
   }
 
+  // PRESENT IS NOT PLACED. waitEl resolves the moment an element EXISTS, and a
+  // click at its centre a millisecond later can land on something from another
+  // region entirely — the app is still doing first layout and the rect has not
+  // settled where it will end up.
+  //
+  // That is not hypothetical and it is not the app: bank-tab-arrows.js and
+  // save-button-contexts.js both clicked early and both failed inside a full
+  // suite run while passing alone, because a full run makes first paint slower.
+  // Diagnosed 2026-08-22 after being called "flaky" for two days, which is a
+  // description and not a cause.
+  //
+  // So this waits for the element to be REACHABLE — its own centre hit-tests to
+  // it — and then hands it back. A control that is genuinely covered stays
+  // covered, and the wait ends in the same loud failure as before.
+  async function waitClickable(selector, what = 'control', { timeout = 8000 } = {}) {
+    let el = null;
+    const ok = await waitFor(() => {
+      el = typeof selector === 'string' ? $(selector) : selector;
+      if (!el) return false;
+      const hit = hitTarget(el);
+      return !!hit && (hit === el || el.contains(hit) || hit.contains(el));
+    }, { timeout, what: `${what} to be reachable` });
+    if (!ok) check(false, `${what}: never became reachable in ${timeout}ms`);
+    return ok ? el : null;
+  }
+
   async function waitFor(predicate, { timeout = 15000, step = 150, what = 'condition' } = {}) {
     const started = Date.now();
     while (Date.now() - started < timeout) {
@@ -87,6 +113,30 @@ window.ui = (() => {
   // persisted view state. A scenario that clicks the header blindly toggles
   // whatever the last one left behind, which is how two scenarios that each
   // passed alone failed together. Ensure the state; never toggle it.
+  // THE TRAY STATE SURVIVES THE SCENARIO THAT SET IT. Whether the library is
+  // open is persisted in localStorage, which lives in the app's userData — and
+  // the runner copies a fresh LIBRARY per scenario but shares userData. So a
+  // scenario that leaves the tray open hands it to every scenario after it,
+  // and to every run after that.
+  //
+  // With it open, "On the Seven" is a collapsed strip: its bank tabs and slot
+  // rows are genuinely not on screen, and a scenario that clicks one waits
+  // forever. PROVEN BOTH WAYS, 2026-08-22: run arrow-ownership-open.js (which
+  // deliberately leaves it open) and bank-tab-arrows.js fails; run
+  // arrow-ownership.js (which closes it) and the same scenario passes.
+  //
+  // Any scenario working in the bank region calls this first. It is a
+  // precondition a scenario CAN control, so it arranges it rather than
+  // inheriting whatever the last one left.
+  async function closeLibrary() {
+    if (document.querySelector('#library.lib-open')) {
+      document.getElementById('library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+    await waitFor(() => !document.querySelector('#library.lib-open'),
+      { timeout: 5000, what: 'the library tray to close' });
+    await sleep(300);   // the tray slides; the bank region arrives after it
+  }
+
   async function openLibrary() {
     if (!document.querySelector('#library.lib-open')) {
       document.getElementById('library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -168,8 +218,9 @@ window.ui = (() => {
 
   return {
     env,
-    sleep, check, note, click, hitTarget, waitFor, waitEl, $, $$, connected, live,
-    requireDevice, selectBankPreset, enterAudition, openLibrary, waitForHuman,
+    sleep, check, note, click, hitTarget, waitFor, waitEl, waitClickable, $, $$, connected, live,
+    requireDevice, selectBankPreset, enterAudition, openLibrary, closeLibrary,
+    waitForHuman,
     result: () => ({ failures, notes }),
   };
 })();

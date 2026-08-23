@@ -42,7 +42,13 @@
   ui.check(lamps() === '', `nothing is lit before anything is chosen (${lamps() || 'none'})`);
   ui.check(cap() === 'Bank: —', `and the bracket says so ("${cap()}")`);
   ui.check(next.disabled, 'the action is dim with nowhere to send');
-  ui.note(`focus starts on: ${document.activeElement && document.activeElement.className}`);
+  // THE KEYBOARD, in the real dialog rather than a built one. It used to land
+  // on nothing: the modal focuses its action button and the gating disables it
+  // a moment later.
+  const focused = document.activeElement;
+  ui.note(`focus starts on: <${focused && focused.tagName}> ${focused && focused.getAttribute('aria-label')}`);
+  ui.check(!!focused && focused.hasAttribute && focused.hasAttribute('data-mp-bank'),
+    'focus starts on the bank control — the thing that has to be pressed first');
 
   // ── CYCLE TO BANK 1: shown, landable, not a destination ────────────────
   //
