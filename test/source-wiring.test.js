@@ -295,6 +295,33 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
     'and so is the correction, exclamation mark and all');
 });
 
+test('the naming modal names where the patch goes', () => {
+  // name-modal-copy.js measures the dialog but builds it itself. This is the
+  // half that says the CALLER asks for that heading and that button — and that
+  // the emphasis is a WORD rather than markup, which is the property that
+  // keeps a patch name from becoming a tag.
+  const src = code(read('audition.js'));
+  const fn = /async function saveLiveAsNewPatch\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'saveLiveAsNewPatch is still recognisable');
+  const joined = fn[0].replace(/'\s*\+\s*'/g, '');
+  assert.match(joined, /title: 'Save to Patches tab'/, 'the heading names the tab');
+  assert.match(joined, /em: 'Patches'/, 'and emphasises the word, not a span of HTML');
+  assert.match(joined, /confirmLabel: 'Save as new patch'/, 'the button carries the action');
+
+  // The other caller of the same helper writes to the same place, so no path
+  // is left saying something different. Checked rather than assumed: it was
+  // the one thing that could have made one heading right and another wrong.
+  const app = code(read('app.js'));
+  assert.match(app, /title: 'Name this patch'/,
+    'generateFromInstrument keeps its own heading');
+  assert.match(app, /library\.generateFromSound\(/,
+    'and writes through generateFromSound, which also makes a library patch');
+
+  // askForName must not grow an HTML door. The modal escapes its title on
+  // purpose — patch names go through there elsewhere.
+  assert.doesNotMatch(app, /titleHtml/, 'no titleHtml option exists to pass markup through');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

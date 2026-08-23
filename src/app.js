@@ -2013,7 +2013,13 @@
 
   // `except` is the patch being renamed, so renaming something to the name it
   // already has is not a clash. Absent for the paths that MAKE a patch.
-  async function askForName({ title, suggested, confirmLabel, except = null }) {
+  // `em` is ONE WORD OF THE TITLE TO EMPHASISE, not markup. The modal escapes
+  // its title on purpose — patch names go through there elsewhere ("Save
+  // “Tine Piano”") and a titleHtml option would be a way for a filename to
+  // become markup. So the caller names the word and this splits the title
+  // around it, escaping all three pieces. Nothing that arrives as data can
+  // become a tag, whatever the caller passes.
+  async function askForName({ title, suggested, confirmLabel, em = '', except = null }) {
     const m = SevenModal.open({
       title,
       bodyHtml: `<input class="name-input" type="text" spellcheck="false" value="${esc(suggested)}">`
@@ -2021,6 +2027,15 @@
       confirmLabel,
       cancelLabel: 'Cancel',
     });
+    const titleEl = m.body.parentElement.querySelector('.seven-modal-title');
+    if (em && titleEl) {
+      const at = title.indexOf(em);
+      if (at >= 0) {
+        titleEl.innerHTML = esc(title.slice(0, at))
+          + `<strong>${esc(em)}</strong>`
+          + esc(title.slice(at + em.length));
+      }
+    }
     const field = m.body.querySelector('.name-input');
     const note = m.body.querySelector('.name-taken');
     const okBtn = m.body.parentElement.querySelector('.seven-modal-ok');

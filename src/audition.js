@@ -594,8 +594,15 @@
     const base = String(patch.name || soundName || 'Patch')
       .replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
     const suggested = await window.sevenAPI.library.nextPatchName(base);
+    // THE HEADING NAMES WHERE IT GOES and the button carries the action.
+    // "Save as new patch" over a bare "Save" described the thing without
+    // saying where it landed, and this modal is reached from several places
+    // where that matters — a backup record, a bank slot with no file behind
+    // it, and the send flow's "Save edits to new patch". All three end up in
+    // the same place, so the heading can say so (Daniel, 2026-08-23).
     const chosen = await deps.askForName({
-      title: 'Save as new patch', suggested, confirmLabel: 'Save',
+      title: 'Save to Patches tab', em: 'Patches', suggested,
+      confirmLabel: 'Save as new patch',
     });
     // FALSE, not undefined: a caller that offered this as one of two choices
     // needs to tell "they cancelled the name" from "it saved", so it can put

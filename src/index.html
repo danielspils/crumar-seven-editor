@@ -1183,6 +1183,11 @@
     }
     .seven-modal.is-warning { border-top-color: var(--accent); }
     .seven-modal-title { font-size: 15px; font-weight: 700; line-height: 1.35; }
+    /* A title is already 700, so emphasis inside one cannot be weight. --amber
+       is what the ACTIVE TAB LABEL wears, which is the point: the heading names
+       a tab the player can go and click, and the word looks like the thing it
+       names. */
+    .seven-modal-title strong { color: var(--amber); }
     .seven-modal-body { margin-top: 10px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
     .seven-modal-body p { margin: 0 0 9px; }
     .seven-modal-body p:last-child { margin-bottom: 0; }
