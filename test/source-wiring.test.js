@@ -289,8 +289,8 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
   // the joins come out before matching — otherwise this pins the line WRAPS
   // rather than the sentence, and rewrapping would break it.
   const joined = walk[0].replace(/'\s*\+\s*'/g, '');
-  assert.match(joined, /Hold the button on the Seven itself — this is a picture of it\./,
-    'the standing line is his');
+  assert.match(joined, /Your Seven lights will run indicating the sound is saved\./,
+    'the standing line is his, and says what the instrument does');
   assert.match(joined, /Hold the button on the Seven itself \(not this fake button!\)/,
     'and so is the correction, exclamation mark and all');
 });

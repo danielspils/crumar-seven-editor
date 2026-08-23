@@ -1311,13 +1311,18 @@
         '<div class="tx-slot">' +
           '<div class="tx-face" data-face="hold">' +
             '<p class="tx-note">Hold for 3 seconds.</p>' +
-            // THE LINE THAT ANSWERS A MISTAKEN PRESS. It says where the real
-            // button is BEFORE anybody reaches for the wrong one, and says it
-            // again more pointedly if they do — see the click handler below.
-            // Daniel's copy, both states, unsmoothed: the parenthetical and
-            // the exclamation mark are the voice (2026-08-22).
-            '<p class="tx-note tx-hold-line">Hold the button on the Seven itself — this ' +
-            'is a picture of it.</p>' +
+            // "lights will run" rather than "the button blinks": what the panel
+            // actually does at a store has not been captured, and the owner's
+            // description is a sequence across the LEDs rather than one of them
+            // flashing. Says enough to recognise it, claims nothing precise.
+            //
+            // THIS IS ALSO THE LINE THAT SWAPS when somebody presses the
+            // picture — see the click handler below. It is the standing state;
+            // the correction is the exception, and it goes back to this at the
+            // next preset. Briefly it was replaced outright, which cost this
+            // sentence for a commit (Daniel, 2026-08-23).
+            '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the ' +
+            'sound is saved.</p>' +
           '</div>' +
           '<div class="tx-face is-off" data-face="skip">' +
             // DELIBERATELY THE SAME SENTENCE as the subtitle under the patch

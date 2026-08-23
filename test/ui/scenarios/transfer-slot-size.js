@@ -28,7 +28,7 @@
     '<div class="tx-slot">' +
       '<div class="tx-face" data-face="hold">' +
         '<p class="tx-note">Hold for 3 seconds.</p>' +
-        '<p class="tx-note tx-hold-line">Hold the button on the Seven itself — this is a picture of it.</p>' +
+        '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the sound is saved.</p>' +
       '</div>' +
       '<div class="tx-face is-off" data-face="skip">' +
         '<p class="tx-note tx-skip-line">Preset 5 already holds this patch.</p>' +
@@ -121,7 +121,7 @@
   await ui.sleep(150);
   const holdText = hold.textContent.replace(/\s+/g, ' ').trim();
   ui.note(`hold face: "${holdText}"`);
-  ui.check(/Hold for 3 seconds/.test(holdText) && /a picture of it/.test(holdText),
+  ui.check(/Hold for 3 seconds/.test(holdText) && /lights will run/.test(holdText),
     'a preset that needs a hold shows the instructions in the same slot');
 
   m.close();

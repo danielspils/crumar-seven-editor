@@ -18,7 +18,7 @@
 // pieces and the same handler shape. That the WALK wires it is pinned from
 // source in test/source-wiring.test.js — the two halves together.
 (async () => {
-  const DEFAULT_LINE = 'Hold the button on the Seven itself — this is a picture of it.';
+  const DEFAULT_LINE = 'Your Seven lights will run indicating the sound is saved.';
   const MISTAKE_LINE = 'Hold the button on the Seven itself (not this fake button!)';
   const BLINK_MS = 3 * 520;
 
