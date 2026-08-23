@@ -1332,6 +1332,21 @@
        the instrument, and a red correction for a reasonable mistake reads as
        telling them off. */
     .seven-modal-body .tx-alarm-soft { color: var(--amber); }
+    /* THREE BLINKS, THEN REST. 260ms on, 260ms off; app.js's BLINK_MS is
+       3 * 520 and has to agree with this.
+       TWO MECHANISMS STOP IT, DELIBERATELY REDUNDANT: the iteration count
+       here, and the timer in app.js that takes the class off. Measured, the
+       TIMER is what wins — setting this to `infinite` does not make the blink
+       run on, because the class is gone by then. That is worth writing down
+       rather than leaving as a claim: neither half can be mutation-proven
+       while the other is in place, and the count is the one that would still
+       hold if a timer were ever lost. */
+    @keyframes tx-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .15; } }
+    .seven-modal-body .tx-blink { animation: tx-blink 520ms steps(1, end) 3; }
+    @media (prefers-reduced-motion: reduce) {
+      /* The words still change; only the flashing goes. */
+      .seven-modal-body .tx-blink { animation: none; }
+    }
     /* TWO LINES, ALWAYS. This one line carries two different sentences — the
        standing instruction and the correction — and it is directly under the
        thing somebody has their finger on, so the dialog must not change height
@@ -1472,8 +1487,11 @@
        ignores them looks broken rather than inert. It takes the press and says
        where the real button is. Not a pointer cursor: it is still not a
        control, and it must not look like one. */
-    .modal-panel.is-hold [data-mp-hit],
-    .modal-panel.is-hold [data-mp-bank] { pointer-events: auto; cursor: default; }
+    /* Only the PRESETS. They are the buttons somebody was told to hold, so
+       they are the ones a mistaken press lands on. The bank control has no
+       part in a hold and stays inert rather than taking a press it has no
+       answer for. */
+    .modal-panel.is-hold [data-mp-hit] { pointer-events: auto; cursor: default; }
     .modal-panel.is-bank [data-mp-bank],
     .modal-panel.is-row [data-mp-bank],
     .modal-panel.is-preset [data-mp-bank],

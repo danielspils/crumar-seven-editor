@@ -60,19 +60,27 @@
   //
   // The walk has already sent the patch and moved the instrument. A bank
   // control that answered a click here would move it somewhere else, mid-walk.
-  // IT TAKES A PRESS, and answers it. The dialog says "hold for 3 seconds"
-  // beside a drawing of the button to hold, so somebody will hold THAT one —
-  // and a picture that ignores them looks broken rather than inert. What it
-  // must not do is behave like a control: no pointer cursor, and pressing it
-  // changes nothing about the destination.
-  ui.check(getComputedStyle(bankBtn).pointerEvents === 'auto',
-    'the picture answers a press');
-  ui.check(getComputedStyle(bankBtn).cursor === 'default',
+  // THE PRESETS TAKE A PRESS; THE BANK CONTROL DOES NOT.
+  //
+  // The dialog says "hold for 3 seconds" beside a drawing of the button to
+  // hold, so somebody will hold THAT one — and a picture that ignores them
+  // looks broken rather than inert. So the presets answer (hold-fake-button.js
+  // covers what they say).
+  //
+  // The bank control has no part in a hold, so it stays genuinely inert rather
+  // than accepting a press it has no answer for. That is the distinction:
+  // answering is for the button somebody was told to press.
+  const presetHit = svg.querySelector('[data-mp-preset="2"] [data-mp-hit]');
+  ui.check(getComputedStyle(presetHit).pointerEvents === 'auto',
+    'a preset on the picture answers a press');
+  ui.check(getComputedStyle(presetHit).cursor === 'default',
     'without looking like a control');
+  ui.check(getComputedStyle(bankBtn).pointerEvents === 'none',
+    'and the bank control is inert — it has no part in a hold');
+
   const wasBank = svg.dataset.bank;
   const wasPreset = svg.dataset.preset;
-  ui.click(svg.querySelector('[data-mp-preset="2"] [data-mp-hit]'), 'preset 2 on the picture');
-  ui.click(bankBtn, 'the bank control on the picture');
+  presetHit.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await ui.sleep(300);
   ui.check(svg.dataset.bank === wasBank && svg.dataset.preset === wasPreset,
     `and pressing it changes nothing (bank ${svg.dataset.bank}, preset ${svg.dataset.preset})`);

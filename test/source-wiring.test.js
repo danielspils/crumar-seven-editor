@@ -265,6 +265,36 @@ test('the hold screen shows the instrument\'s own drawing', () => {
     'and the second drawing is gone from the app entirely');
 });
 
+test('the hold screen answers a mistaken press, on a CLICK', () => {
+  // hold-fake-button.js measures the behaviour but installs the handler
+  // itself — the real walk needs a connected Seven — so this is the half that
+  // says the WALK installs it, and installs it on the right event.
+  //
+  // The event matters as much as the answer. A mouse crosses that panel
+  // constantly; on hover the line would change for people who did nothing,
+  // which reads as a fault rather than a hint.
+  const src = code(read('app.js'));
+  const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(walk, 'transferWalk is still recognisable');
+  assert.match(walk[0], /panel\.addEventListener\('click'/,
+    'the panel answers a click');
+  assert.doesNotMatch(walk[0], /panel\.addEventListener\('(?:mouseover|mouseenter|pointerover|pointerenter)'/,
+    'and never a hover');
+  assert.match(walk[0], /closest\('\[data-mp-preset\]'\)/,
+    'only a press on a PRESET — the button they were told to hold');
+  // Daniel's copy, both states, unsmoothed: the parenthetical and the
+  // exclamation mark are the voice. Pinned so a later tidy-up cannot quietly
+  // reword them.
+  // Long copy is split across adjacent string literals to fit the line, so
+  // the joins come out before matching — otherwise this pins the line WRAPS
+  // rather than the sentence, and rewrapping would break it.
+  const joined = walk[0].replace(/'\s*\+\s*'/g, '');
+  assert.match(joined, /Hold the button on the Seven itself — this is a picture of it\./,
+    'the standing line is his');
+  assert.match(joined, /Hold the button on the Seven itself \(not this fake button!\)/,
+    'and so is the correction, exclamation mark and all');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

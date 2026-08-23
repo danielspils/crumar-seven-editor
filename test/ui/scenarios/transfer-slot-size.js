@@ -28,7 +28,7 @@
     '<div class="tx-slot">' +
       '<div class="tx-face" data-face="hold">' +
         '<p class="tx-note">Hold for 3 seconds.</p>' +
-        '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the sound is saved.</p>' +
+        '<p class="tx-note tx-hold-line">Hold the button on the Seven itself — this is a picture of it.</p>' +
       '</div>' +
       '<div class="tx-face is-off" data-face="skip">' +
         '<p class="tx-note tx-skip-line">Preset 5 already holds this patch.</p>' +
@@ -89,7 +89,7 @@
   // proves nothing — remove the reserved height and it still passes. The short
   // string is the real hazard the reservation exists for, and it is the one
   // that makes this assertion able to fail (measured: it does).
-  for (const text of ['Hold the button on the Seven itself — this is a picture of it.', 'Hold it there.']) {
+  for (const text of ['Hold the button on the Seven itself (not this fake button!)', 'Hold it there.']) {
     line.textContent = text;
     await ui.sleep(250);
     const during = Math.round(dialog.getBoundingClientRect().height);
@@ -121,7 +121,7 @@
   await ui.sleep(150);
   const holdText = hold.textContent.replace(/\s+/g, ' ').trim();
   ui.note(`hold face: "${holdText}"`);
-  ui.check(/Hold for 3 seconds/.test(holdText) && /lights will run/.test(holdText),
+  ui.check(/Hold for 3 seconds/.test(holdText) && /a picture of it/.test(holdText),
     'a preset that needs a hold shows the instructions in the same slot');
 
   m.close();

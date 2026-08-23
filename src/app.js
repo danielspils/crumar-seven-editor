@@ -1269,6 +1269,11 @@
   // left a second of nothing happening between "Send to Bank 3" and the walk
   // appearing. Now the walk appears at once, showing the button you are about
   // to hold, with its actions inert until the patch is actually there.
+  // Three blinks at 260ms on / 260ms off, then rest — long enough to catch the
+  // eye across a stage and short enough that it is plainly over. Kept beside
+  // the CSS that has to agree with it.
+  const BLINK_MS = 3 * 520;
+
   async function transferWalk(slots, bank) {
     const firstSlot = nextTransferSlot(slots, -1);
     if (!firstSlot) return transferDone(await window.sevenAPI.transfer.next());
@@ -1306,13 +1311,13 @@
         '<div class="tx-slot">' +
           '<div class="tx-face" data-face="hold">' +
             '<p class="tx-note">Hold for 3 seconds.</p>' +
-            // "lights will run" rather than "the button blinks": what the panel
-            // actually does at a store has not been captured, and the owner's
-            // description is a sequence across the LEDs rather than one of them
-            // flashing. Says enough to recognise it, claims nothing precise.
-            // THIS LINE IS ALSO WHERE THE PICTURE ANSWERS A PRESS — see below.
-            '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the ' +
-            'sound is saved.</p>' +
+            // THE LINE THAT ANSWERS A MISTAKEN PRESS. It says where the real
+            // button is BEFORE anybody reaches for the wrong one, and says it
+            // again more pointedly if they do — see the click handler below.
+            // Daniel's copy, both states, unsmoothed: the parenthetical and
+            // the exclamation mark are the voice (2026-08-22).
+            '<p class="tx-note tx-hold-line">Hold the button on the Seven itself — this ' +
+            'is a picture of it.</p>' +
           '</div>' +
           '<div class="tx-face is-off" data-face="skip">' +
             // DELIBERATELY THE SAME SENTENCE as the subtitle under the patch
@@ -1360,18 +1365,46 @@
     // screen. "Hold for 3 seconds." stays above it the whole time: they are
     // being told what to do and the correction must not replace the
     // instruction.
+    //
+    // A CLICK, NOT A HOVER. A mouse crosses this panel constantly and usually
+    // means nothing; a line that changed every time the cursor passed would
+    // read as a fault rather than a hint (Daniel, 2026-08-22). And only on a
+    // PRESET — that is the button they were told to hold.
+    //
+    // THE CORRECTION STANDS once it has been made. What ends is the BLINK:
+    // three of them, then rest. A hint that ends is a hint; one that never
+    // stops is an error state. Click again and it blinks again, because the
+    // second press means the first answer was not read.
     const holdLine = modal.body.querySelector('.tx-hold-line');
     const HOLD_LINE = holdLine ? holdLine.textContent : '';
+    const MISTAKE_LINE = 'Hold the button on the Seven itself (not this fake button!)';
     let hintTimer = null;
+    const resetHoldLine = () => {
+      if (!holdLine) return;
+      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+      holdLine.textContent = HOLD_LINE;
+      holdLine.classList.remove('tx-alarm-soft', 'tx-blink');
+    };
     if (panel && holdLine) {
-      panel.addEventListener('pointerdown', () => {
-        holdLine.textContent = 'Hold the button on the Seven itself — this is a picture of it.';
+      panel.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-mp-preset]')) return;
+        holdLine.textContent = MISTAKE_LINE;
         holdLine.classList.add('tx-alarm-soft');
+        // Restarting a finite animation: class off, reflow, class on. Removing
+        // it and adding it back in one tick can coalesce into no change at
+        // all, leaving a second press with nothing to show for it.
+        // NOT PROVEN NECESSARY HERE — deleting the reflow left the scenario
+        // green, because the surrounding style reads flush anyway — so it is
+        // kept as a guarantee rather than as a fix, and this comment says
+        // which it is.
+        holdLine.classList.remove('tx-blink');
+        void holdLine.offsetWidth;
+        holdLine.classList.add('tx-blink');
         if (hintTimer) clearTimeout(hintTimer);
         hintTimer = setTimeout(() => {
-          holdLine.textContent = HOLD_LINE;
-          holdLine.classList.remove('tx-alarm-soft');
-        }, 4000);
+          holdLine.classList.remove('tx-blink');
+          hintTimer = null;
+        }, BLINK_MS);
       });
     }
 
@@ -1401,6 +1434,9 @@
       nameEl.textContent = name || '';
       whereEl.textContent = `Bank ${bank} · Preset ${preset}`;
       pointAt(bank, preset);
+      // A new preset is a new instruction: the correction belongs to the press
+      // that earned it, not to the rest of the walk.
+      resetHoldLine();
     };
 
     // The plan's version of the first step, on screen immediately; the runner's
