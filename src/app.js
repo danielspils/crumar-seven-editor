@@ -4172,7 +4172,31 @@
     autoConnectTick();
     setInterval(autoConnectTick, 3000);
 
+    // WHETHER THE INSTRUMENT IS THERE CHANGES WHAT THE LIBRARY CAN SAY.
+    //
+    // "Is this sound installed" is answered from the connected unit's own
+    // table, which the STORE learns in the main process on this same event —
+    // and nothing re-listed the library when it did. So the view went on
+    // holding the list it fetched at startup: connected, with the "Connect
+    // your Seven to see which sounds are installed" line still up and not one
+    // patch flagged as needing a sound the unit lacks (found in a screenshot
+    // an hour after 1.5.1 shipped, 2026-08-23).
+    //
+    // ON THE TRANSITION, not on every status event. Status arrives repeatedly
+    // — the auto-connect tick runs every 3s — and one library.list() is 6.6ms
+    // against 54 files, which is exactly the cost the focus handler above
+    // refuses to spend on a label.
+    //
+    // BOTH DIRECTIONS. Disconnecting has to re-list too, or the badges go
+    // stale the other way: rows claiming an instrument that is no longer
+    // there.
+    let wasConnected = null;
     window.sevenAPI.midi.onEvent((ev) => {
+      if (ev.type === 'status') {
+        const live = ev.state === 'connected';
+        if (wasConnected !== null && live !== wasConnected) refreshLibrary();
+        wasConnected = live;
+      }
       if (ev.type === 'status') showStatus(ev, ev.error);
       else if (ev.type === 'connect-progress') {
         // Only while connecting — a stale progress line must never sit on top

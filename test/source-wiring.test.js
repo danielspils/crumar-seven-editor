@@ -373,6 +373,27 @@ test('the summary knows which flow it is ending', () => {
     'and does not still build the body itself');
 });
 
+test('connecting and disconnecting re-list the library', () => {
+  // "Is this sound installed" is answered from the connected unit's table,
+  // which the STORE learns in the main process — and for an hour after 1.5.1
+  // shipped nothing re-listed the library when it did. The app sat connected
+  // with "Connect your Seven to see which sounds are installed" still on
+  // screen and not one patch flagged (2026-08-23, found in a screenshot).
+  //
+  // The scenario half is offline-only: offline-no-badge.js pins what the list
+  // says with nothing attached, and the connected half needs an instrument.
+  // This is what says the transition is wired at all.
+  const src = code(read('app.js'));
+  const handler = /window\.sevenAPI\.midi\.onEvent\(\(ev\) => \{([\s\S]*?)\n    \}\);/.exec(src);
+  assert.ok(handler, 'the status listener is still recognisable');
+  assert.match(handler[0], /refreshLibrary\(\)/, 'a status change re-lists the library');
+  // ON THE TRANSITION. Status arrives every 3s from the auto-connect tick, and
+  // one library.list() is 6.6ms against 54 files — the cost the focus handler
+  // in this same file explicitly refuses to spend on a label.
+  assert.match(handler[0], /live !== wasConnected/,
+    'only when connectedness actually changed, not on every status event');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face
