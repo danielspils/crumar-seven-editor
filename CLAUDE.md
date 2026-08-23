@@ -951,6 +951,26 @@ checks you stop running.
 Retimed with any real change to the suite. A number with a date beats a claim,
 either way round.
 
+### Test cadence for the rest of the 1.5.0 release (2026-08-23)
+
+Running the full UI suite after every small change was costing more than it
+caught. Daniel's amendment:
+
+- **Every commit, no exceptions:** `npm test` (unit + lint — seconds, not
+  optional), plus **the UI scenarios that cover what was touched**.
+- **Before changing any user-facing string:** grep the whole repo for it
+  first. If a scenario asserts it, that scenario is part of what was touched
+  and runs with the rest.
+- **Once, at the end of the batch, before the RC is built:** the full UI
+  suite, **with the Seven plugged in**. That run is the proof; everything
+  before it is a filter.
+- **If a targeted run goes red for an unexpected reason, stop treating the
+  change as small and run the full suite.** The cadence is an efficiency, not
+  a licence to assume scope.
+
+The rest of the working agreement stands: one item, one commit, pushed, read
+the whole diff before committing, report and stop.
+
 **Only `npm test` runs by itself.** Its glob is `test/*.test.js`, which never
 descends into `test/ui/` — so no scenario is in the default suite or in CI,
 and a scenario is a guard only while somebody remembers to type the second
