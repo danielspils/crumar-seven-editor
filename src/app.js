@@ -1864,6 +1864,96 @@
     updateKnobRings();
     dressParamSelects(detailEl);
     resumeSampledArrival();
+    // LAST, because it decorates what was just painted. Every path that
+    // repaints the panel goes through here, so nothing has to remember to
+    // re-apply it.
+    updatePanelReach();
+  }
+
+  // IS THE PANEL DESCRIBING SOMETHING THAT IS ON SCREEN?
+  //
+  // The detail panel can describe a patch that is not in the list you are
+  // looking at — selected in Patches, then the Backups tab, and the right side
+  // still describes it (Daniel, 2026-08-23).
+  //
+  // ONE RULE, ASKED OF THE DOM: is the row for the thing being described
+  // rendered right now. Not a list of triggers. Tabs, bank tabs, search,
+  // clearing search, selecting a search result and switching back are all the
+  // same question, and none of them appears in this code — which is the point.
+  // The same lesson as the arrow keys: a remembered flag cannot answer "where
+  // am I now", because nothing that happens on screen updates it.
+  //
+  // Two containers, because the two regions identify their rows differently —
+  // the library by file, the bank list by position. That is one lookup
+  // expressed twice, not two rules: both ask "is this row here".
+  function selectionOnScreen() {
+    const target = currentTarget();
+    if (!target) return true;          // nothing described, nothing to dim
+    // BOOLEAN, not the entry. `lastTouched === 'library' && libSelected` is the
+    // selected patch when it is set, and comparing an object against a boolean
+    // below is always unequal — so everything read as "its list is not the one
+    // showing" and nothing ever dimmed.
+    const fromLibrary = lastTouched === 'library' && !!libSelected;
+    // THE TWO REGIONS TRADE PLACES: opening the Library collapses "On the
+    // Seven" to a strip and closing it hands the space back, so exactly one of
+    // the two lists is on screen at any moment. Read from the app's own state
+    // rather than measured, because the swap is ANIMATED — a box measured
+    // during the slide answers for a layout that is on its way out.
+    //
+    // IF THE LIST THIS SELECTION CAME FROM IS NOT THE ONE SHOWING, nothing
+    // dims. Hiding a whole region is not "you are looking at a different
+    // list", and dimming there would put the panel's controls out of reach
+    // whenever a tray moved — a behaviour change, where this is a visual cue
+    // (Daniel, 2026-08-23: "not a behaviour change").
+    if (fromLibrary !== libRoot.classList.contains('lib-open')) return true;
+    // Now the only question left, and it is the one the whole thing is about:
+    // is the row for what is being described actually rendered. Tabs, bank
+    // tabs, search and clearing search all answer it by themselves — a row
+    // that is filtered out, on another tab or on another bank is simply not
+    // there. None of those cases appears here, which is the point.
+    if (fromLibrary) {
+      return !!document.querySelector(
+        `#library .lib-list [data-file="${CSS.escape(target.file)}"][data-pi="${libSelected.patchIndex || 0}"]`
+      );
+    }
+    return !!deviceSel && deviceSel.bank === bankIndex
+      && !!listEl.querySelector(`.patch-row[data-index="${deviceSel.preset}"]`);
+  }
+
+  let reachWasOut = false;
+  function updatePanelReach() {
+    const cols = detailEl.querySelector('.detail-cols');
+    if (!cols) { reachWasOut = false; return; }
+    const out = !selectionOnScreen();
+    cols.classList.toggle('out-of-view', out);
+    const existing = cols.querySelector('.panel-reach');
+    if (!out) {
+      if (existing) existing.remove();
+      reachWasOut = false;
+      return;
+    }
+    if (!existing) {
+      const el = document.createElement('div');
+      el.className = 'panel-reach';
+      // Daniel's copy, and the arrow points at the list it is asking you to
+      // use. aria-hidden on the arrow: it is the sentence that says this, and
+      // a screen reader announcing "left arrow" adds nothing.
+      el.innerHTML =
+        '<svg class="reach-arrow" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" '
+        + 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        + 'stroke-linejoin="round"><path d="M20 12H5"/><path d="M11 6 5 12l6 6"/></svg>'
+        + '<div><p class="reach-lead">select patch</p>'
+        + '<p class="reach-sub">to refresh sound engine &amp; effects chain</p></div>';
+      cols.appendChild(el);
+    }
+    // The nudge plays on ENTERING this state and not on the re-renders that
+    // happen while it is showing — the panel repaints on every live value from
+    // the instrument, and an animation restarted by each of those would never
+    // stop.
+    const el = cols.querySelector('.panel-reach');
+    if (!reachWasOut) el.classList.add('is-new');
+    else el.classList.remove('is-new');
+    reachWasOut = true;
   }
 
   // Enum rows keep their <select> and gain a picker in front of it.
@@ -2587,6 +2677,10 @@
       // the edited-patch question is asked once, in one place — never a second
       // implementation of send.
       sendToSeven: (entry) => sendPatchToSlot(entry),
+      // The list moved. Whether the detail panel is describing something still
+      // on screen is decided by looking, so this is all it takes to cover
+      // tabs, search, clearing search and switching back.
+      rendered: () => updatePanelReach(),
       async contextMenu(entry) {
         const action = await window.sevenAPI.library.contextMenu();
         if (!action) return;
@@ -3192,6 +3286,11 @@
     });
     updateBankStrip();
     localStorage.setItem(LIB_OPEN_KEY, open ? '1' : '0');
+    // THE THIRD PLACE THE SCREEN CHANGES. The two trays trade places without
+    // re-rendering either list, so nothing else here would re-ask whether the
+    // panel is describing something visible — and the answer changes, because
+    // one whole region has just been given away.
+    updatePanelReach();
     // Never open below the fold.
     if (open && opts.scroll !== false) libSection.scrollIntoView({ block: 'nearest' });
   }

@@ -2042,6 +2042,51 @@
     .detail-cols {
       display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 24px; align-items: start;
+      /* For the overlay below. Absolutely positioned, so it takes no grid
+         cell and the two columns are laid out exactly as before. */
+      position: relative;
+    }
+
+    /* ── THE PANEL IS DESCRIBING SOMETHING YOU CANNOT SEE ────────────────
+       The detail panel can describe a patch that is not in the list on
+       screen: selected in Patches, then the Backups tab, and the right side
+       still describes it. This says "this isn't what you're looking at" and
+       nothing else — the patch stays in the Seven's buffer, stays audible,
+       and the columns keep REPORTING what is live. Dimmed does not mean
+       frozen; it means you cannot drive it from here. */
+    .detail-cols.out-of-view > .col { opacity: .3; }
+    /* The overlay is the barrier, not this — but a control that is visibly
+       out of reach should not also take focus by keyboard. */
+    .detail-cols.out-of-view > .col { pointer-events: none; }
+    .panel-reach {
+      position: absolute; inset: 0; z-index: 3;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      /* IT CATCHES CLICKS. The columns beneath are pointer-events: none, so
+         without this a press would fall through to whatever is behind them —
+         and a control clickable through a "select patch" message is worse
+         than no message at all. */
+      pointer-events: auto; cursor: default;
+      text-align: left;
+    }
+    .panel-reach .reach-arrow { flex: none; color: var(--amber); }
+    .panel-reach .reach-lead {
+      margin: 0; font-size: 15px; font-weight: 700; color: var(--text);
+    }
+    .panel-reach .reach-sub {
+      margin: 2px 0 0; font-size: 13px; color: var(--text-muted); max-width: 22em;
+    }
+    /* A FEW NUDGES, THEN REST. Three at 600ms, toward the list it is pointing
+       at — the same rule as the hold screen's blink: a hint that ends is a
+       hint, one that never stops reads as an error state. It replays only on
+       ENTERING this state, never on the re-renders that happen while it is
+       showing. */
+    @keyframes reach-nudge {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(-7px); }
+    }
+    .panel-reach.is-new .reach-arrow { animation: reach-nudge 600ms ease-in-out 3; }
+    @media (prefers-reduced-motion: reduce) {
+      .panel-reach.is-new .reach-arrow { animation: none; }
     }
     .col-title {
       font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;

@@ -1328,6 +1328,15 @@
       // FOLDER total on every tab, so "36 patch files" sat over a list of one
       // (Daniel, 2026-08-14).
       if (on.counts) on.counts(visibleCount(), data.patches.filter((e) => !e.invalid).length);
+      // WHAT IS NOW ON SCREEN CHANGED. The detail panel dims when the patch it
+      // describes is not in the list, and the list is what just moved — a tab,
+      // a run opened, a setlist. Announced here rather than by each of this
+      // function's twenty-odd callers (Daniel, 2026-08-23).
+      //
+      // THERE IS A SECOND PAINT PATH and it announces for itself — see the
+      // search branch in the input listener. Two, not one, because a search
+      // cannot go through render() without stealing focus from the field.
+      if (on.rendered) on.rendered();
       if (state.revealFile) {
         const row = el.querySelector(`[data-file="${CSS.escape(state.revealFile)}"]`);
         state.revealFile = null;
@@ -1859,6 +1868,12 @@
         state.search = e.target.value;
         const list = el.querySelector('.lib-list');
         if (list) list.innerHTML = renderList(data, state, on.sounds);
+        // THE SECOND PAINT PATH, and it cannot be folded into render(): that
+        // rebuilds the whole view, which would take focus out of the field
+        // being typed in. So the announcement is made here too — searching
+        // changes what is on screen exactly as much as switching tabs does,
+        // and the detail panel dims on that answer.
+        if (on.rendered) on.rendered();
       }
     });
 
