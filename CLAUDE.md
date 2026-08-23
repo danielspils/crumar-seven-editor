@@ -815,6 +815,93 @@ RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE**. All three are the same
 failure — a confident statement nobody checked — and this one is the reminder
 that the check applies to prose as much as to code.
 
+## A CAUSE THAT WAS NEVER ESTABLISHED, ONLY MADE IMPOSSIBLE (2026-08-23)
+
+A bank restore reported **"Bank 3 already matched — nothing needed storing"**
+for eight slots, wrote nothing, and said it had succeeded. Seven of the eight
+held a DIFFERENT SOUND and differed in 17 to 37 of 110 parameters. The app's
+own list said so in the same window.
+
+**The cause was never found.** What follows is what was ruled out, what was
+closed, and what is still open — recorded this way on purpose, because the
+tempting thing is to file it under whichever plausible story is nearest.
+
+**It is session-dependent.** On a fresh app, the restore, a single send to a
+chosen preset, and the row Send button all behaved perfectly — confirmed on
+hardware. The failure came from a long session with many runs in it. *"Restart
+the app first"* is not a fix and is not documented as one.
+
+**Disproven, with measurements, and not to be re-checked:**
+
+- the single send is not planned as an inverted bank walk (`startSlot(3, 1)`
+  plans one write at index 0 and seven skips — pinned by a test)
+- the modal cannot name one setlist and send another (the index is a STORE
+  index; `list()` hands the view the raw `readSetlists()` array)
+- the row Send button uses the row, not the selection
+- **a read answered by the echo of an earlier write.** This was my own
+  hypothesis and it was wrong: three auditions, 330 buffer writes, then a
+  re-read of the same slot came back identical to the baseline, with ZERO
+  surplus `PARAM_VALUE` frames. Instrumented and measured, not argued.
+
+**Two paths WERE found that could produce a wrong "already held", and both are
+closed** — but neither was demonstrated to have fired:
+
+1. **the `0x45` never arriving.** `_currentSoundId` is a remembered broadcast,
+   and when the lookup failed the sound check SILENTLY VANISHED rather than
+   failing, leaving a parameters-only comparison.
+2. **a short parameter table.** The guard asked only that the PATCH was not
+   shorter than the table, which protects against a partial patch and not at
+   all against a partial table — so fewer ids quietly meant fewer comparisons,
+   and a slot could be called a match on six parameters.
+
+Those are the pair the failure needs: one takes out the sound check, the other
+takes out the parameter check, and the observed failure required both.
+
+**What replaced them is a rule rather than a patch: SKIPPING REQUIRES POSITIVE
+EVIDENCE.** Every input on that path must now PROVE a match; every way of
+failing to establish one means "cannot confirm", and cannot confirm means
+hold. Saying "already held" wrongly skips a preset somebody asked to be
+written; saying "not held" wrongly costs a three-second hold that changes
+nothing. The two mistakes are nowhere near each other in cost.
+
+**And it now leaves a trace.** `src/slot-check-log.js` writes one line per slot
+to `slot-checks.log` in userData — the sound id and whether the lookup
+resolved, the table size the DEVICE reported beside the patch's own, how many
+parameters were compared, the verdict, and which input refused. Not one of
+those facts was recoverable after the fact, and any one of them would have
+ended the search in a minute. Capped, always on: a debug mode somebody has to
+enable is off on the day it matters.
+
+**STILL OPEN, and not explained by any of the above: how "Bank 1 setlist
+(2026-08-13)" came to be in Bank 3**, preset for preset and in order. Daniel
+did not send it. Both closed paths only cause slots to be SKIPPED — neither
+writes anything. An unexplained write to somebody's instrument stays an open
+question rather than being filed under the nearest story.
+
+## A FIXTURE THAT CANNOT EXPRESS THE THING UNDER TEST (2026-08-23)
+
+Second instance, so it gets a name: **a test is only as honest as the fake it
+runs against.**
+
+`fakeMidi` hardcoded `soundId: 0` in its recall burst. `fakeWithSlot` had
+always accepted a `burstSoundId` parameter and it did NOTHING — so no test
+could reach the runner's sound comparison at all, and two tests written
+specifically to check it passed while asserting nothing.
+
+The first instance is still open and has been for a week:
+`FakeSeven.readParamValue` returns 64 for every id regardless of a parameter's
+max, so backup's hash and dedupe tests cannot tell parameters apart.
+
+Both have the same shape: the fixture is incapable of producing the state the
+test claims to check, so the test passes for a reason that has nothing to do
+with the code. Coverage cannot see it. Mutation testing catches it only if the
+mutation happens to be in the part the fixture can express.
+
+**When writing a test against a fake, ask what the fake would have to DO for
+this test to fail.** If the answer is "nothing it can do", the test is
+scenery. The cheap check: set the fixture's input to something absurd and
+confirm the test fails.
+
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
 Fourth time this shape has cost something here, so it gets its own heading. A
@@ -885,7 +972,9 @@ In Daniel's order, items 3 and 4 of five:
   actual password and assert it cannot survive, then fix the fake so it returns
   what a device returns rather than the redacted string.
 - **The fixture ignores each parameter's max** (returns 64 for everything), so
-  hash and dedupe tests cannot distinguish parameters.
+  hash and dedupe tests cannot distinguish parameters. See "A FIXTURE THAT
+  CANNOT EXPRESS THE THING UNDER TEST" — this is the first of two instances,
+  and the second one hid a real defect for a day.
 - **Hardware, when the Seven is next plugged in**: the mismatch gate has still
   never met a real mismatched unit (`SEVEN_FORCE_MISMATCH` needs a device,
   since it synthesises the verdict during connect), and unplugging mid-transfer
