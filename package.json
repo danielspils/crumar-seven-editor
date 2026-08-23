@@ -1,6 +1,6 @@
 {
   "name": "crumar-seven-editor",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "Cross-platform desktop editor for the Crumar Seven physical-modeling stage piano (reverse-engineered USB-MIDI SysEx).",
   "license": "MIT",
