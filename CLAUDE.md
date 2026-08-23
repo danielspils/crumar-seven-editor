@@ -689,9 +689,13 @@ Where it had already gone wrong, in order of how permanent the damage was:
 - **"⚠ Not installed" offline** compared a patch's sound against the SCHEMA and
   told a user his own installed expansion was missing (Rich Olivieri,
   2026-08-20). `src/expansions.js` had already got this right — offline it
-  reports `status: 'unknown'` for every row and claims nothing — and **the
-  lesson did not travel** to `library-store.js`, `library-view.js` or
-  `renderer.js`, which are the modules that must now follow it.
+  reports `status: 'unknown'` for every row and claims nothing — and the lesson
+  did not travel to `library-store.js`, `library-view.js` or `renderer.js`.
+  **FIXED IN 1.5.1** (2026-08-23), not in 1.4.0 and not in 1.5.0: `missing` is
+  now `null` when nothing is connected — unknown, and deliberately not `false`,
+  which would claim the sound IS present — the badge and the setlist `(!)` both
+  require strictly `true`, and the library says once at region level why it
+  cannot answer. Covered by `test/ui/scenarios/offline-no-badge.js`.
 
 Two corollaries worth stating separately, because each was violated on its own:
 
@@ -902,6 +906,46 @@ this test to fail.** If the answer is "nothing it can do", the test is
 scenery. The cheap check: set the fixture's input to something absurd and
 confirm the test fails.
 
+## A RULE IN THIS FILE IS NOT A RECORD THAT IT WAS DONE (2026-08-23)
+
+The fourth member of the family above, and the first one where the thing that
+went wrong was **reading this file**.
+
+The entry immediately above ends "…which are the modules that must now follow
+it". That is an INTENTION. It was read as a record of a completed fix, and the
+claim "with your Seven disconnected, patches are no longer wrongly flagged"
+went into the **published 1.5.0 release notes** — for a fix that was not in
+1.5.0. It had to be cut from the release body afterwards and shipped as 1.5.1.
+
+What had actually shipped was everything AROUND the fix, which is what made it
+convincing: `SEVEN_NO_DEVICE` so the offline state could be tested at all, the
+Model/Sample pill removal, and this rule. The infrastructure and the intention,
+written up thoroughly, with the fix itself missing from the middle.
+
+**The tell was available and not looked at.** `test/library-store.test.js` still
+asserted `offline.missing === true`, commented "unknown to this build while
+nothing is attached" — the bug, written down as an expectation. A fix cannot
+land while the test that contradicts it is green, so a surviving test of the old
+behaviour is proof the fix did NOT land.
+
+So, before repeating a claim from this file:
+
+- **A rule says what should be true, not what is.** Sections here are written in
+  the imperative — "must", "never", "now follows" — because they are rules. None
+  of that is evidence that any code obeys them.
+- **Check the code, or the test, before repeating it to a user.** One grep.
+  `git log -S` on the behaviour, or read the assertion that would have to have
+  changed.
+- **And it applies hardest to release notes**, which are the one place a wrong
+  claim reaches somebody who cannot check it. The user this one named is the
+  person who reported the bug.
+
+Its siblings: **CURRENT STATE MUST NOT STAND IN FOR RECORDED FACT**, **A
+RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE**, and **AN UNDETECTABLE RISK
+IS NOT A DEMONSTRATED ONE**. All four are a confident statement nobody checked.
+This one is the reminder that this file is a source like any other, and gets
+checked like any other.
+
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
 Fourth time this shape has cost something here, so it gets its own heading. A
@@ -920,11 +964,12 @@ The instances, in order of what they cost:
   hide, inside the test written to catch it.
 - `arrow-ownership.js` closed the library before pressing anything, and so
   tested the one path that worked.
-- `test/library-store.test.js:924` asserts `missing === true` while nothing is
+- `test/library-store.test.js:924` asserted `missing === true` while nothing was
   attached, commented "unknown to this build while nothing is attached" — the
-  offline "⚠ Not installed" bug stated as an intention. **Open as of
-  2026-08-20**: the code and the test have to change together, or the test
-  fights the fix.
+  offline "⚠ Not installed" bug stated as an intention. **CLOSED 2026-08-23**,
+  inverted in the same commit as the code, as it had to be. It was also the
+  evidence that the fix had never landed: it was still green three days and two
+  releases later, which is only possible if nothing had contradicted it.
 
 When writing a test, say which of two things it pins: **behaviour somebody
 decided on**, or **behaviour that happens to be there now**. The second kind
@@ -1371,6 +1416,32 @@ Kept here because they otherwise live only in a chat that ends.
   dismissed rather than over it, or that a cancelled run never reaches it.
   Those are three call sites in `src/app.js` and the rule they encode is the
   one most easily lost in a refactor (docs/DONATIONS.md).
+- **Arrow-key navigation does not work on Windows** (Daniel, 2026-08-23, on the
+  1.5.0 RC). Not a regression — 1.4.0 is the same. DIAGNOSED, NOT CONFIRMED:
+  ownership is `document.activeElement.closest('#library, #bank-region')`, and
+  Chromium follows the macOS convention that clicking a `<button>` does not
+  focus it. Library rows ARE buttons, so on Windows focus lands on the row, and
+  `render()` replaces `el.innerHTML` on the next refresh — destroying it and
+  dropping focus to `<body>`, at which point the arrows go to the OTHER region.
+  Not dropped: handed over. Settle it with the capture-phase probe recorded in
+  the session, which distinguishes "the handler never fires" from "the gate
+  declined" — those are different bugs and the fixes are nowhere near each
+  other.
+
+- **THE UI SUITE HAS NEVER RUN ON WINDOWS, not once.** CI runs `npm test` on
+  ubuntu and no job anywhere runs `test:ui`. Every scenario this project trusts
+  has been proven on exactly one platform, which is how the arrow bug above
+  reached a release candidate. Worth fixing independently of that bug: the
+  runner spawns `npx electron .` and has no macOS dependency of its own.
+
+- **Whether the app's own parameter writes can persist into a SLOT** rather
+  than living in the edit buffer. Untested, and it is the only known mechanism
+  that could write eight presets without eight physical holds — the standing
+  candidate for how "Bank 1 setlist (2026-08-13)" came to be in Bank 3. The
+  test is designed and safe (baseline a slot, audition into the buffer without
+  touching the panel, recall away and back, re-read) and needs an expendable
+  slot and Daniel's go-ahead.
+
 - **Connect an unverified expansion row to the unrecognised sounds below it —
   in COPY, not by matching.** When an entry has `sounds: null` the owner sees
   the same sample set twice: once as "Unverified", once as
