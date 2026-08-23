@@ -42,11 +42,17 @@ function fakeMidi({ sounds, connected, deaf = false, sendPc = 1 }) {
   // the whole basis of hold detection.
   midi.slotContents = new Map();
   midi.burst = (program) => {
-    midi.emit('event', { type: 'current-sound', soundId: 0 });
+    // THE SOUND IT WAS TOLD TO BROADCAST. This was hardcoded to 0, so
+    // `burstSoundId` — a parameter fakeWithSlot has always accepted — did
+    // nothing, and no test could reach the runner's sound comparison at all.
+    // Same shape as FakeSeven answering 64 for every parameter: a fixture that
+    // cannot express the thing under test (2026-08-23).
+    const soundId = midi.burstSoundId === undefined ? 0 : midi.burstSoundId;
+    midi.emit('event', { type: 'current-sound', soundId });
     midi.emit('event', {
       type: 'recall-burst',
       program,
-      soundId: 0,
+      soundId,
       fingerprint: midi.slotContents.get(program) || `slot-${program}`,
     });
   };
@@ -671,6 +677,119 @@ function fakeWithSlot({ sounds, params, soundId = 0 }) {
 }
 
 const fullParams = (v) => Object.fromEntries(schema.parameters.map((p) => [p.key, v]));
+
+// SKIPPING REQUIRES POSITIVE EVIDENCE — every way of failing to establish a
+// match must mean "hold", never "already held".
+//
+// Daniel's restore reported "Bank 3 already matched — nothing needed storing"
+// for eight slots, seven holding a different SOUND and differing in 17 to 37
+// of 110 parameters. It has not been reproduced and the cause is still
+// unknown. These do not encode a cause: they encode that no cause can produce
+// that answer, which is the only guarantee worth having while the mechanism is
+// open.
+//
+// Each case is the same slot that genuinely DOES match, with one input
+// degraded — so a test that passes for the wrong reason is impossible: remove
+// the degradation and it reports already-held.
+function alreadyHeld(midi, store, sender, entries) {
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  return runner.nextSlot().then((step) => !!step.alreadyThere);
+}
+
+test('the control: an untouched match still reports already-held', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), true);
+});
+
+test('a SHORT parameter table cannot confirm a match', async () => {
+  // The old guard only asked that the patch was not shorter than the table.
+  // A table reporting six parameters therefore compared six and skipped the
+  // slot on the strength of them.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  midi.paramTable = { count: 6, params: midi.paramTable.params.slice(0, 6) };
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), false,
+    'six of 110 parameters is not evidence that a slot holds a patch');
+});
+
+test('an unresolvable SOUND cannot confirm a match', async () => {
+  // _currentSoundId is a remembered broadcast. If the 0x45 never arrived, or
+  // the id is not in the table, there is no sound to compare — and the check
+  // used to disappear rather than fail.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  midi.burstSoundId = 99;   // an id no table has
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), false,
+    'a sound the app cannot identify is not a sound it may assume matches');
+});
+
+test('a MISSING sound table cannot confirm a match', async () => {
+  // Taken away after the run starts: preflight legitimately refuses without a
+  // table, so this isolates the COMPARISON rather than the plan.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  midi.soundTable = null;
+  const step = await runner.nextSlot();
+  assert.strictEqual(!!step.alreadyThere, false);
+});
+
+test('an UNREADABLE parameter cannot confirm a match', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  // ONE ID, EVERY ATTEMPT. Counting calls instead would be answered by the
+  // runner's own retries — attempts two and three would succeed and the slot
+  // would be skipped anyway, which is a test that cannot fail.
+  const honest = midi.readParamValue;
+  const dead = midi.paramTable.params[40].id;
+  midi.readParamValue = async (id) => {
+    if (id === dead) throw new Error('timeout waiting for 0x23');
+    return honest(id);
+  };
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), false,
+    'one parameter nobody could read is one parameter nobody checked');
+});
+
+test('a NON-NUMERIC value cannot confirm a match', async () => {
+  // An unparseable reply used to be safe only by accident: NaN !== anything.
+  // It is now refused on purpose, and the difference matters the day a reply
+  // parses to something that is not a number but IS equal.
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  const honest = midi.readParamValue;
+  let n = 0;
+  midi.readParamValue = async (id) => {
+    n += 1;
+    const r = await honest(id);
+    return n === 40 ? { ...r, value: undefined } : r;
+  };
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), false);
+});
+
+test('a reply with no KEY cannot confirm a match', async () => {
+  const { store, sender, entries } = setup();
+  const patch = readPatchFile(store, entries[0].file);
+  const midi = fakeWithSlot({ sounds: ['Tine Piano', 'Clavi Piano'], params: patch.params });
+  const honest = midi.readParamValue;
+  let n = 0;
+  midi.readParamValue = async (id) => {
+    n += 1;
+    const r = await honest(id);
+    return n === 40 ? { ...r, key: undefined } : r;
+  };
+  assert.strictEqual(await alreadyHeld(midi, store, sender, entries), false);
+});
 
 test('a slot already holding the patch takes no hold, and says so', async () => {
   const { store, midi: _m, sender, entries } = setup();

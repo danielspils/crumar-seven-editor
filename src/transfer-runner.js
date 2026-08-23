@@ -703,28 +703,79 @@ class TransferRunner extends EventEmitter {
   // all. Anything less returns false and the walk proceeds normally: a slot
   // wrongly skipped is a preset the player believes was transferred and was
   // not, which is worse than an unnecessary three-second hold.
+  // SKIPPING IS THE DANGEROUS ANSWER, SO IT REQUIRES POSITIVE EVIDENCE.
+  //
+  // This decides whether a slot may be left alone. Saying "already held" when
+  // it is not skips a preset the player asked to be written — a restore that
+  // reports success and writes nothing, which is the worst failure a backup
+  // tool has. Saying "not held" when it is costs a three-second hold that
+  // changes nothing. The two mistakes are not close in cost, so every input
+  // here must PROVE a match; nothing may be assumed into one.
+  //
+  // Daniel hit the bad direction on 2026-08-23: a bank restore reported "Bank
+  // 3 already matched — nothing needed storing" for eight slots, seven of them
+  // holding a different SOUND and differing in 17 to 37 of 110 parameters, in
+  // a long session. It has not been reproduced, and the mechanism is still
+  // unknown — so this is not written as a fix for a known cause. It is written
+  // so that no unknown cause can produce that answer: every way of failing to
+  // establish a match now means "cannot confirm", and cannot confirm means
+  // hold.
+  //
+  // What each failure mode concludes, traced 2026-08-23:
+  //
+  //   read times out (3 attempts)   -> cannot confirm
+  //   read resolves with nothing    -> cannot confirm
+  //   read returns an unknown key   -> cannot confirm
+  //   read returns a non-number     -> cannot confirm  (was: NaN !== x, safe
+  //                                    by accident rather than on purpose)
+  //   the 0x45 never arrives        -> cannot confirm  (was: the sound check
+  //                                    SILENTLY VANISHED and the comparison
+  //                                    ran on parameters alone)
+  //   the device's table is SHORT   -> cannot confirm  (was: the comparison
+  //                                    quietly narrowed to whatever the table
+  //                                    did report, so a slot could be declared
+  //                                    a match on a handful of parameters)
   async _slotAlreadyHolds(patch, soundName) {
     const table = this.midi.paramTable;
     const ids = table ? table.params.map((p) => p.id) : null;
     if (!ids || !ids.length) return false; // no table read: no full comparison
-    const wanted = (patch && patch.params) || {};
-    if (Object.keys(wanted).length < ids.length) return false; // partial patch
 
-    // The sound first: it is one read and it rules out most slots.
+    const wanted = (patch && patch.params) || {};
+    const wantedKeys = Object.keys(wanted);
+    if (!wantedKeys.length) return false;
+    // THE COMPARISON MUST COVER EVERY PARAMETER THE PATCH CARRIES. This used
+    // to ask only that the patch was not SHORTER than the table, which guards
+    // against a partial patch and not at all against a partial TABLE: fewer
+    // ids simply meant fewer comparisons, and a slot could be called a match
+    // on the strength of the few that were checked.
+    if (ids.length < wantedKeys.length) return false;
+
+    // THE SOUND MUST RESOLVE. `_currentSoundId` is a remembered broadcast, not
+    // a read — if it is unset, stale beyond the table, or the table is missing,
+    // there is no sound to compare and the check used to disappear rather than
+    // fail. A check that can vanish is not a check.
     const current = this.midi.soundTable
       && this.midi.soundTable.sounds.find((x) => x.id === this._currentSoundId);
-    if (current && soundName && current.name !== soundName) return false;
+    if (!current || !soundName) return false;
+    if (current.name !== soundName) return false;
 
+    // Every wanted key has to be SEEN and matched, not merely not-contradicted.
+    const seen = new Set();
     for (const id of ids) {
       let r = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try { r = await this.midi.readParamValue(id); break; } catch { /* retry */ }
       }
-      if (!r) return false; // an unreadable slot is not a slot we can skip
-      if (wanted[r.key] === undefined) return false; // not covered: no claim
-      if (Number(wanted[r.key]) !== Number(r.value)) return false;
+      if (!r || typeof r.key !== 'string') return false;
+      if (wanted[r.key] === undefined) continue;   // the table has it, the patch does not
+      const held = Number(r.value);
+      const want = Number(wanted[r.key]);
+      if (!Number.isFinite(held) || !Number.isFinite(want)) return false;
+      if (held !== want) return false;
+      seen.add(r.key);
     }
-    return true;
+    // A key the patch carries that no read covered is a key nobody checked.
+    return seen.size === wantedKeys.length;
   }
 
   _patchFor(file) {
