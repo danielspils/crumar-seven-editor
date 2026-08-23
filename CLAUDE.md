@@ -1416,6 +1416,16 @@ Kept here because they otherwise live only in a chat that ends.
   dismissed rather than over it, or that a cancelled run never reaches it.
   Those are three call sites in `src/app.js` and the rule they encode is the
   one most easily lost in a refactor (docs/DONATIONS.md).
+- **The dim overlay's text sits on top of the parameter rows.** Caught in a
+  screenshot for the 1.5.1 Notes post (2026-08-23), so it is what the feature
+  looks like in the shipped build. `.panel-reach` centres itself over the whole
+  two-column block, and on a tall panel that lands "select patch / to refresh
+  sound engine & effects chain" across the parameter list with the arrow beside
+  the Type dropdown — the dimmed content reads through the text and the line is
+  hard to make out. Two candidate fixes, both small: a scrim behind the text so
+  it has its own ground, or anchor it near the TOP of the columns instead of the
+  vertical centre. Queued for 1.5.2 (Daniel).
+
 - **Arrow-key navigation does not work on Windows** (Daniel, 2026-08-23, on the
   1.5.0 RC). Not a regression — 1.4.0 is the same. DIAGNOSED, NOT CONFIRMED:
   ownership is `document.activeElement.closest('#library, #bank-region')`, and
