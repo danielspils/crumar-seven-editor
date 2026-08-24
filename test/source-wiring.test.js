@@ -394,6 +394,38 @@ test('connecting and disconnecting re-list the library', () => {
     'only when connectedness actually changed, not on every status event');
 });
 
+test('the daily ping sends only what main states, and never blocks a launch', () => {
+  // telemetry.test.js proves the RULES. This proves the wiring, and three
+  // properties that a unit test on a pure module cannot see.
+  const src = code(read('main.js'));
+  const fn = /async function sendDailyPing\(([\s\S]*?)\n\}/.exec(src);
+  assert.ok(fn, 'sendDailyPing is still recognisable');
+
+  // MAIN STATES THE WHOLE PAYLOAD. Nothing from a renderer, nothing from a
+  // file, nothing that could carry an identifier.
+  assert.match(fn[0], /JSON\.stringify\(\{ platform, version \}\)/,
+    'the body is platform and version, and nothing else');
+  assert.match(fn[0], /app\.getVersion\(\)/, 'the version comes from the app itself');
+
+  // THE DAY IS CONSUMED ONLY BY A PING THAT LEFT. recordPing has to sit after
+  // the await and inside the try — an app that is offline every morning would
+  // otherwise never check in at all.
+  const tryBlock = /try \{([\s\S]*?)\} catch/.exec(fn[0]);
+  assert.ok(tryBlock && /recordPing/.test(tryBlock[1]),
+    'recordPing is inside the try, after the send');
+  assert.doesNotMatch(/\} catch \{([\s\S]*?)\}/.exec(fn[0])[1], /recordPing/,
+    'and never in the catch');
+
+  // IT CANNOT SIT IN FRONT OF THE APP. Deferred, not awaited at startup.
+  assert.match(src, /setTimeout\(\(\) => \{ sendDailyPing\(\); \}/,
+    'the launch does not wait for a counter');
+  assert.doesNotMatch(src, /await sendDailyPing/, 'and never awaits it');
+
+  // THE OPT-OUT IS REACHABLE. A switch nobody can find is not a choice.
+  assert.match(src, /label: 'Send anonymous daily ping'/, 'the menu carries the opt-out');
+  assert.match(src, /type: 'checkbox'/, 'as a checkbox that shows its state');
+});
+
 test('a face is hidden by CLASS, never by `hidden`', () => {
   // `hidden` is display: none, which is what let the modal shrink and grow
   // through a bank send. The slot only holds its height if the hidden face

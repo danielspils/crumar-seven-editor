@@ -88,6 +88,7 @@ export default [
       'src/backup-runner.js', 'src/transfer-runner.js', 'src/patch-sender.js',
       'src/ipc-result.js', 'src/notes-feed.js', 'src/notes-seen.js',
       'src/instrument-report.js', 'src/param-compat.js', 'src/globals-cleanup.js',
+      'src/telemetry.js',
       'src/demo-cleanup.js', 'src/donations.js', 'src/mailto.js',
       'src/setlist-text.js', 'src/format/*.js',
       'tools/**/*.js', 'scripts/**/*.js', 'fixtures/**/*.js',

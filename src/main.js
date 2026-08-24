@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { LibraryStore, writeAtomic } = require('./library-store');
 const { Donations } = require('./donations');
+const { Telemetry } = require('./telemetry');
 const demoCleanup = require('./demo-cleanup');
 const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
@@ -633,6 +634,59 @@ function getDonations() {
   return donations;
 }
 
+// ── The daily check-in ──────────────────────────────────────────────────
+//
+// How many installs are actually running, and on which version — the one
+// question a website cannot answer. It is answered by counting, not by
+// identifying: each install checks in at most once a calendar day, so a day's
+// ping count IS the active-install count. No identifier is sent and none is
+// derived (relay/worker.js on the site repo says the same from the other end).
+//
+// MAIN STATES THE WHOLE PAYLOAD. Version and platform both come from here, so
+// nothing in the renderer can influence what is sent. src/telemetry.js decides
+// WHETHER; this sends.
+const PING_URL = 'https://ping.thissevengoestoeleven.com/ping';
+const PING_TIMEOUT_MS = 5000;
+let telemetry = null;
+function getTelemetry() {
+  if (!telemetry) telemetry = new Telemetry(app.getPath('userData'));
+  return telemetry;
+}
+
+// Fire-and-forget, and it must stay that way: a person's piano editor does not
+// care that an analytics endpoint was down. Every failure — offline, blocked,
+// endpoint missing, DNS refused — is the same silent nothing, and the day is
+// NOT consumed, so tomorrow it tries again.
+async function sendDailyPing() {
+  const t = getTelemetry();
+  const version = app.getVersion();
+  const decision = t.decide(version);
+  if (!decision.ping) {
+    console.log(`[ping] not today: ${decision.reason}`);
+    return;
+  }
+  const platform = process.platform === 'win32' ? 'win'
+    : process.platform === 'darwin' ? 'mac' : null;
+  if (!platform) return;   // unsupported platform → never ping
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
+  try {
+    await fetch(PING_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ platform, version }),
+      signal: ctrl.signal,
+    });
+    // Recorded only because it left. A failure that consumed the day would
+    // mean an app that is offline every morning never checks in at all.
+    t.recordPing(decision.day);
+  } catch {
+    /* offline, blocked, endpoint down — all fine, all silent */
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function registerDonationIpc() {
   // Which showing this trigger earns, or 0. The renderer asks only after an
   // operation has COMPLETED and its summary has been dismissed — a cancelled
@@ -807,6 +861,24 @@ function buildMenu(win) {
           click: () => shell.openExternal(
             'https://github.com/danielspils/crumar-seven-editor/issues/new'
           ),
+        },
+        { type: 'separator' },
+        // THE OPT-OUT LIVES HERE because this app has no Settings screen to
+        // put it in, and a switch nobody can find is not a choice. Checked by
+        // default, one click to turn off, and what it sends is one line away
+        // in the item under it.
+        {
+          label: 'Send anonymous daily ping',
+          type: 'checkbox',
+          checked: getTelemetry().enabled(),
+          click: (item) => {
+            getTelemetry().setEnabled(item.checked);
+            console.log(`[ping] ${item.checked ? 'on' : 'off'} by menu`);
+          },
+        },
+        {
+          label: 'What the ping sends…',
+          click: () => shell.openExternal('https://thissevengoestoeleven.com/privacy/'),
         },
       ],
     },
@@ -1057,6 +1129,11 @@ app.whenReady().then(async () => {
   registerTransferIpc();
   registerNotesIpc();
   registerDonationIpc();
+  // AFTER the window is on its way, and never in front of it. Ten seconds
+  // because nothing depends on the answer: the launch has no reason to wait
+  // for a counter, and a slow endpoint should not be able to sit inside the
+  // first thing a person sees.
+  setTimeout(() => { sendDailyPing(); }, 10_000);
   forwardMidiEvents();
   createWindow();
   app.on('activate', () => {
