@@ -41,11 +41,34 @@ const dayOf = (ms) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+// A DEVELOPMENT BUILD MUST NOT PING THE REAL RELAY. Found the day the ping
+// went in: the metrics page read "Versions running: 2" and the second one was
+// 1.5.3 — a version nobody had, because `npm start` and the UI suite launch the
+// same app against the same endpoint, and any scenario alive past ten seconds
+// checks in. Daniel's own development was inflating Daniel's own figures, and
+// the version breakdown — the half the release note promises — was naming
+// builds that had never shipped.
+//
+// It reports the reason rather than returning a quiet false, so a genuinely
+// missing ping in production can never be mistaken for this.
+const DEV_OVERRIDE = 'SEVEN_PING_DEV';
+
 class Telemetry {
   // `now` is injectable so the once-a-day rule can be tested without waiting.
-  constructor(dir, { now = () => Date.now() } = {}) {
+  //
+  // `packaged` DEFAULTS TO TRUE on purpose. The two ways to get it wrong are
+  // not equal: a caller that forgets the option pings from dev — visible, one
+  // stray row, fixable. Defaulting the other way means a forgotten option
+  // silently stops telemetry in the shipped app, which looks exactly like
+  // nobody using it. The default is the recoverable mistake, and a
+  // source-wiring test asserts main.js really passes `app.isPackaged` — the
+  // APP_TAG lesson: when the default and the injection agree in dev, only a
+  // test that reads the wiring can tell they are still connected.
+  constructor(dir, { now = () => Date.now(), packaged = true, env = process.env } = {}) {
     this.file = path.join(dir, 'telemetry.json');
     this.now = now;
+    this.packaged = packaged;
+    this.env = env;
   }
 
   read() {
@@ -93,6 +116,12 @@ class Telemetry {
   decide(version) {
     const state = this.read();
     if (!state.enabled) return { ping: false, reason: 'opted out' };
+    // SEVEN_PING_DEV=1 is the deliberate way to exercise the real endpoint from
+    // a dev build. It must be chosen, never inherited by accident — which is
+    // why the check is on an explicit value rather than mere presence.
+    if (!this.packaged && this.env[DEV_OVERRIDE] !== '1') {
+      return { ping: false, reason: `development build (set ${DEV_OVERRIDE}=1 to ping anyway)` };
+    }
     if (!VERSION_RE.test(String(version || ''))) {
       return { ping: false, reason: `version does not look like one: ${version}` };
     }
@@ -108,4 +137,4 @@ class Telemetry {
   }
 }
 
-module.exports = { Telemetry, dayOf, VERSION_RE };
+module.exports = { Telemetry, dayOf, VERSION_RE, DEV_OVERRIDE };

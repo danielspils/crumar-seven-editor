@@ -115,3 +115,51 @@ test('dayOf is local, so the day boundary is the user\'s midnight', () => {
   const nextMorning = new Date(2026, 7, 25, 0, 1, 0);
   assert.strictEqual(dayOf(nextMorning.getTime()), '2026-08-25');
 });
+
+// ── A development build must not check in to the production relay ──────
+//
+// These exist because it already happened: a stray 1.5.3 reached the live
+// relay from `npm start` and the UI suite, and the metrics page reported a
+// version nobody had. The count was wrong in the one direction that matters —
+// upward, in the author's favour, from the author's own machine.
+
+test('a dev build does not ping, and says so rather than going quiet', () => {
+  const { t } = fresh({ now: at('2026-08-25T09:00:00'), packaged: false, env: {} });
+  const d = t.decide('1.5.3');
+  assert.strictEqual(d.ping, false);
+  assert.match(d.reason, /development build/,
+    'a quiet false here would be indistinguishable from a broken ping in production');
+});
+
+test('a dev build that declines does NOT consume the day', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seven-telemetry-'));
+  const dev = new Telemetry(dir, { now: at('2026-08-25T09:00:00'), packaged: false, env: {} });
+  assert.strictEqual(dev.decide('1.5.3').ping, false);
+  // Same folder, same day, packaged this time: the shipped app must still
+  // check in. A dev run that wrote lastPing would silence the real one.
+  const shipped = new Telemetry(dir, { now: at('2026-08-25T09:00:00'), packaged: true, env: {} });
+  assert.strictEqual(shipped.decide('1.5.3').ping, true);
+});
+
+test('SEVEN_PING_DEV=1 is the deliberate way through, and only that value', () => {
+  const mk = (env) => fresh({ now: at('2026-08-25T09:00:00'), packaged: false, env }).t;
+  assert.strictEqual(mk({ SEVEN_PING_DEV: '1' }).decide('1.5.3').ping, true);
+  // Presence is not consent: a stray empty or truthy-looking value must not
+  // open the real endpoint.
+  for (const v of ['', '0', 'true', 'yes']) {
+    assert.strictEqual(mk({ SEVEN_PING_DEV: v }).decide('1.5.3').ping, false, `SEVEN_PING_DEV=${v}`);
+  }
+});
+
+test('OPTING OUT still wins over the dev override', () => {
+  const { t } = fresh({ now: at('2026-08-25T09:00:00'), packaged: false, env: { SEVEN_PING_DEV: '1' } });
+  t.setEnabled(false);
+  assert.strictEqual(t.decide('1.5.3').ping, false);
+  assert.match(t.decide('1.5.3').reason, /opted out/,
+    'a debugging flag must never override a person saying no');
+});
+
+test('a PACKAGED build is unaffected by the flag being absent', () => {
+  const { t } = fresh({ now: at('2026-08-25T09:00:00'), packaged: true, env: {} });
+  assert.strictEqual(t.decide('1.5.3').ping, true);
+});

@@ -421,6 +421,15 @@ test('the daily ping sends only what main states, and never blocks a launch', ()
     'the launch does not wait for a counter');
   assert.doesNotMatch(src, /await sendDailyPing/, 'and never awaits it');
 
+  // THE DEV GATE IS WIRED TO THE REAL THING. `packaged` defaults to true in
+  // telemetry.js so a forgotten option can never silence the shipped app — but
+  // that default also means a dev run and a correctly-wired one look identical
+  // from inside the module. Only reading main.js can tell they are connected.
+  // Delete the option and this fails; the unit tests do not (checked).
+  assert.match(src, /new Telemetry\(app\.getPath\('userData'\), \{ packaged: app\.isPackaged \}\)/,
+    'main passes the real app.isPackaged, not a literal — a dev build must not '
+    + 'check in to the production relay');
+
   // THE OPT-OUT IS REACHABLE. A switch nobody can find is not a choice.
   assert.match(src, /label: 'Send anonymous daily ping'/, 'the menu carries the opt-out');
   assert.match(src, /type: 'checkbox'/, 'as a checkbox that shows its state');

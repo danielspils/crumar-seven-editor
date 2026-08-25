@@ -649,7 +649,9 @@ const PING_URL = 'https://ping.thissevengoestoeleven.com/ping';
 const PING_TIMEOUT_MS = 5000;
 let telemetry = null;
 function getTelemetry() {
-  if (!telemetry) telemetry = new Telemetry(app.getPath('userData'));
+  // `packaged` is the real thing, not a literal: a dev run must not check in
+  // to the production relay (see the note in telemetry.js).
+  if (!telemetry) telemetry = new Telemetry(app.getPath('userData'), { packaged: app.isPackaged });
   return telemetry;
 }
 
