@@ -946,6 +946,69 @@ IS NOT A DEMONSTRATED ONE**. All four are a confident statement nobody checked.
 This one is the reminder that this file is a source like any other, and gets
 checked like any other.
 
+## THE APP MEASURES ITSELF, SO DEVELOPMENT MUST NOT COUNT (2026-08-25)
+
+The daily ping shipped with `src/telemetry.js` deciding and `main.js` sending
+(`PING_URL`, deferred 10s after `whenReady`). Within hours of the relay going
+up, thissevengoestoeleven.com/metrics reported **"Versions running: 2"** and
+the second one was **1.5.3 — a version nobody had**.
+
+`npm start` and every UI scenario launch the same app against the same
+production endpoint, and any scenario alive past ten seconds checks in. So
+development was inflating the figures, and the VERSION BREAKDOWN — the half
+the release note promises the user — was naming builds that had never shipped.
+
+**Wrong in the one direction that discredits a number: upward, in the author's
+favour, from the author's own machine.** A metric that counts its own author's
+testing is not a metric, and nobody outside can tell by looking.
+
+The gate lives in `telemetry.js` with the rest of the decision, so it is
+testable without an endpoint, and it **reports its reason** — a quiet false
+would be indistinguishable from a broken ping, which is the shape this project
+keeps getting caught by.
+
+**`packaged` DEFAULTS TO TRUE, deliberately, and the asymmetry is the whole
+argument.** A caller that forgets the option pings from a dev build: visible,
+one stray row, fixable. Defaulting the other way means a forgotten option
+silently stops telemetry in the SHIPPED app — which looks exactly like nobody
+using it, and nothing would ever say otherwise. **When a default has to be
+wrong sometimes, make it wrong in the direction that announces itself.**
+
+That default is also why a unit test cannot prove the wiring: in dev, the
+default and a correct injection agree. `test/source-wiring.test.js` reads
+`main.js` and asserts it passes the real `app.isPackaged`. **Mutation-checked:
+delete the option and all 15 unit tests still pass while the wiring test alone
+fails.** Identical in shape to the APP_TAG lesson, applied before it cost
+anything this time.
+
+`SEVEN_PING_DEV=1` is the deliberate way to reach the real endpoint, and only
+that exact value — **presence is not consent**, so a stray empty or
+truthy-looking value stays shut. Two properties easy to break later: a dev run
+that declines does NOT consume the day (so the shipped app on the same machine
+still checks in), and **opting out beats the override** — a debugging flag must
+never overrule a person saying no.
+
+**The general rule, and it is not only about telemetry:** anything the app
+reports about the world will be produced by the test suite too, because the
+suite runs the app. Before shipping a counter, a log upload, a crash report or
+an email, ask what the suite does to it.
+
+## The exit code was fine; the pipe was not (2026-08-25)
+
+Recorded because it produced a confident wrong claim about this repo, not
+because the code needed changing.
+
+`npm run test:ui | tail -40` reports **the exit status of `tail`**, which is
+always 0. Two runs were read that way — one that refused to start and one with
+three failures — and both looked like a runner that exits 0 on failure. It
+does not: `run.js` exits **1** on any failure and **2** when it refuses to
+start because the app is holding the instrument. Verified unpiped.
+
+**A pipeline's status belongs to its last command.** Redirect to a file and
+read `$?`, or the shell will quietly answer a different question than the one
+asked — and "the test runner has a false-green bug" is a much more interesting
+answer than "I piped it", which is exactly why it was believed.
+
 ## A test that asserts the buggy behaviour DEFENDS it (2026-08-20)
 
 Fourth time this shape has cost something here, so it gets its own heading. A
