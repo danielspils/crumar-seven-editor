@@ -476,7 +476,21 @@
         // Guarded: renderer.js is loaded in Node by the unit tests, where
         // there is no window and no art module.
         (soundArt()
-          ? (view && view.canPickSound
+          // CONNECTED, OR IT IS A PICTURE. The wheel changes what the instrument
+          // is playing, so with nothing plugged in it can do exactly one thing:
+          // say "Connect the Seven". A control whose only outcome is a refusal
+          // is a dead end dressed as an offer.
+          //
+          // AND OFFLINE IT WOULD BE WRONG, not merely inert. soundList falls
+          // back to schema.sounds when no unit is attached — this BUILD's 24,
+          // not the player's instrument — so it would offer sounds their Seven
+          // does not have and hide ones it does. A claim about hardware needs
+          // hardware; that rule applies to a control as much as to a badge.
+          //
+          // THE CONDITION IS CONNECTEDNESS, never sounds.length. The schema
+          // fallback is exactly what made an offline app look like a populated
+          // device, which is how the plain variant quietly lost its subject.
+          ? (view && view.canPickSound && view.connected
             // THE SAME CONTROL FOR A LIBRARY PATCH AS FOR A PRESET. It was not
             // always: from 2026-08-12 a library patch got a flat picture and a
             // tooltip instead, and the comment that stood here gave two

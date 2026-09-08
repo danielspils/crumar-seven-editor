@@ -96,6 +96,27 @@ overwrites the raw hex** — decoded views live *alongside* the raw bytes, never
 place of them. If a decode is later found wrong, the raw bytes are still there to
 re-decode. Preserve the raw, always.
 
+### 7. A test must never write to the real library
+
+**If a check needs real user data to be meaningful, the check is wrong, not
+the rule.**
+
+`test/ui/run.js` copies the library to a scratch directory and passes
+`SEVEN_LIBRARY_DIR`, so scenarios have always been isolated. `SEVEN_UI_TEST=…
+npm start` did not — and on 2026-09-08 a diagnostic run that way renamed the
+sound in Daniel's real `nada-clav.sevenlib.json`. It was caught and put back,
+but only because that probe happened to print what it had done. A quieter one
+would have left a silently edited file, which is exactly the damage the
+carousel was removed from the library view for in the first place.
+
+**The hole was that isolation lived in the RUNNER while the hazard lived in
+the FLAG.** `SEVEN_UI_TEST` now refuses to start without `SEVEN_LIBRARY_DIR`
+and says how to get one, so the mistake cannot be made by accident rather than
+being something to remember.
+
+A script that can drive the app can save patches; there is no version of that
+which is safe against real data. Take a copy and point at it.
+
 ### 6. This app stores no credentials, of any kind, from any source
 
 Not "redact `wfp`". **The class, not the field name.** A password, a key, a

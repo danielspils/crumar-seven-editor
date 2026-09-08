@@ -993,6 +993,30 @@ function createWindow() {
   // exits. Used for release/website screenshots — the app renders itself at
   // native resolution, which the OS screenshot tools can't do without
   // screen-recording permission.
+  // A TEST MUST NEVER WRITE TO THE REAL LIBRARY.
+  //
+  // test/ui/run.js copies the library to a scratch dir and passes
+  // SEVEN_LIBRARY_DIR, so scenarios are isolated. `SEVEN_UI_TEST=… npm start`
+  // does NOT — and on 2026-09-08 a probe run that way renamed a sound in
+  // Daniel's real nada-clav.sevenlib.json. It was caught and put back, but
+  // only because the probe happened to print what it had done.
+  //
+  // The hole was that isolation lived in the RUNNER while the hazard lived in
+  // the flag. So the flag now refuses: a script that can drive the app can
+  // save patches, and there is no version of that which is safe against real
+  // data. If a probe is only meaningful against the real library, the probe is
+  // wrong — take a copy and point at it.
+  if (process.env.SEVEN_UI_TEST && !process.env.SEVEN_LIBRARY_DIR) {
+    console.error(
+      'REFUSED: SEVEN_UI_TEST with no SEVEN_LIBRARY_DIR would run against the '
+      + 'REAL library, and a driving script can write to it.\n'
+      + 'Use `npm run test:ui <name>`, which copies the library first, or set '
+      + 'SEVEN_LIBRARY_DIR to a scratch directory.'
+    );
+    app.exit(2);
+    return;
+  }
+
   if (process.env.SEVEN_SHOT) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {

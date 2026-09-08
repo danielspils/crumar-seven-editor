@@ -945,7 +945,6 @@
     // able to do and a terrible thing to do by accident — five of Daniel's
     // backup records were silently renamed by what he thought was auditioning
     // (2026-08-12). A file is edited by asking to edit it, not by listening.
-    if (!isConnected()) return toast('Connect the Seven to try another instrument');
     // Bank 1 is allowed here. It cannot be SAVED to, but trying a sound stores
     // nothing — the slot is recalled and a sound is loaded into the edit
     // buffer, which the next recall replaces. Refusing the picker there meant
@@ -961,7 +960,6 @@
     // Nothing else on this path reads deviceSel — checked, not assumed — and
     // the live session resolves its own target through currentTarget(), which
     // prefers the LIBRARY selection and only falls back to the bank slot.
-    if (!isConnected()) return toast('Connect the Seven to try another instrument');
 
     // AUDITIONING CLAIMS NO DESTINATION. This used to run the sound through
     // TransferRunner.startSlot, which recalls the target slot first — and a
@@ -1811,6 +1809,7 @@
           // FILE says, not what the instrument holds. No connection needed:
           // this is editing a patch on disk.
           canPickSound: { file: libSelected.file, patchIndex: libSelected.patchIndex || 0 },
+          connected: isConnected(),
           sounds: soundList,
           carouselAt,
         }
@@ -1828,6 +1827,7 @@
             // things against. What Bank 1 cannot do is KEEP the result, and the
             // save controls say so rather than the picker refusing to open.
             canPickSound: { bank: deviceSel.bank + 1, preset: deviceSel.preset + 1 },
+            connected: isConnected(),
             sounds: soundList,
             carouselAt,
           }
