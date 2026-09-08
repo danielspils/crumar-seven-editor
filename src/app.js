@@ -954,38 +954,27 @@
     // (Daniel, 2026-08-13).
     if (!deviceSel) return toast('Choose a preset to try an instrument on it');
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
-    const bank = deviceSel.bank + 1;
-    const preset = deviceSel.preset + 1;
 
-    // No walk and no dialog: choosing an instrument drops you into audition
-    // mode with it playing. The hold-the-button modal belongs to a TRANSFER,
-    // where the app is stepping you through eight presets and needs to know
-    // when each one is done. Here you are trying a sound on one preset, and
-    // the audition bar already says how to keep it.
+    // AUDITIONING CLAIMS NO DESTINATION. This used to run the sound through
+    // TransferRunner.startSlot, which recalls the target slot first — and a
+    // recall replaces the edit buffer, taking the player's effects with it.
+    // The recall is right for a transfer and wrong here: browsing sounds is
+    // not choosing a slot, and if you want to keep what you are hearing,
+    // Send to Seven has a destination flow that recalls properly.
     //
-    // The runner still does the moving, for one reason: it recalls the target
-    // slot before it loads anything. A three-second hold stores to whatever
-    // button you press in whatever bank the panel is on, so without that
-    // recall the hold could land in a different bank entirely. Started and
-    // immediately closed — the walk's UI never appears.
-    // Snapshot the effects the player is running BEFORE the swap. The
-    // instrument keeps them (0x46 does not touch the effects section), so this
-    // is what the panel must go on showing.
+    // Snapshot the effects the player is running first. The instrument keeps
+    // them across 0x46 (measured), so this is what the panel must go on
+    // showing.
     const keptChain = audition.liveParams();
-    const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${name}`);
-    if (!started || !started.started) {
+    const sent = await window.sevenAPI.midi.auditionSound(name);
+    if (!sent || !sent.ok) {
       return SevenModal.confirm({
-        title: 'Cannot send that sound',
-        body: (started && started.error) ||
-          (started && started.blocked && started.blocked[0] && started.blocked[0].reason) ||
-          'That sound could not be sent to this preset.',
+        title: 'Cannot try that sound',
+        body: (sent && sent.error) || 'That sound could not be loaded.',
         confirmLabel: 'OK',
         tone: 'is-warning',
       });
     }
-    const step = await window.sevenAPI.transfer.next(); // recalls the slot, then loads
-    await window.sevenAPI.transfer.cancel();            // nothing stored, nothing claimed
-    if (!step || step.type === 'transfer-done') return toast('That sound could not be sent');
 
     carouselAt = null;
     liveSound = soundList.find((x) => x.name === name) || null;
@@ -993,7 +982,6 @@
     // the save instructions belong here, not one parameter edit later. The
     // comparison is against the file's sound, so choosing the original one
     // again clears it without anything having to remember that you did.
-    const stored = (currentPatch() || {}).soundName;
     // THE EFFECTS SURVIVE THE SWAP, and the working copy has to say so.
     //
     // The runner now sends the sound alone, so the instrument keeps whatever
@@ -1006,13 +994,9 @@
     // app's own belief about the buffer from a moment ago, and nothing has
     // been sent that could have changed them.
     //
-    // `step.params` is still merged after: it is empty for this path today,
-    // and if the runner ever has something to report about what it sent, that
-    // is more recent than our snapshot and should win.
-    audition.beginLive({
-      soundName: name,
-      params: { ...(keptChain || {}), ...(step.params || {}) },
-    });
+    // Nothing but the sound was sent, so the effects the player had are still
+    // the effects the instrument is running.
+    audition.beginLive({ soundName: name, params: { ...(keptChain || {}) } });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');

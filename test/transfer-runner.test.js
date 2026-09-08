@@ -1014,3 +1014,31 @@ test('verified can never exceed confirmed', () => {
   assert.match(transferNote(2, 5), /The Seven showed/,
     'it degrades to the stronger claim rather than printing "5 of these 2"');
 });
+
+// ── THE TRANSFER PATH STILL RECALLS ────────────────────────────────────
+//
+// This is the thing that must NOT have broken. Auditioning a sound left the
+// runner on 2026-09-08 and took its recall with it, so the guard against that
+// change reaching the walk is this test rather than anyone's memory.
+//
+// A three-second hold stores to whatever button the player presses in whatever
+// bank the panel is on. The walk recalls the destination first so the hold
+// lands where the app says it will. Nothing about auditioning may weaken it.
+test('the WALK still recalls the destination before it loads anything', async () => {
+  const { store, midi, sender, sent, entries } = setup();
+  const order = [];
+  const realRecall = midi.sendProgramChange && midi.sendProgramChange.bind(midi);
+  midi.sendProgramChange = (n) => { order.push(`recall:${n}`); return realRecall && realRecall(n); };
+  const realSend = sender.send.bind(sender);
+  sender.send = async (patch) => { order.push('send'); return realSend(patch); };
+
+  const list = setlistWith(store, [entries[0].file]);
+  const runner = new TransferRunner({ midi, store, sender });
+  runner.start(list, 2);
+  await runner.nextSlot();
+
+  assert.ok(order.length >= 2, `something was recalled and sent (${order.join(', ')})`);
+  assert.match(order[0], /^recall:/, 'the recall comes FIRST — a load before it would be thrown away');
+  assert.strictEqual(order[1], 'send', 'and the patch goes out after it');
+  assert.strictEqual(sent.length, 1, 'one patch sent');
+});

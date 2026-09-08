@@ -374,6 +374,47 @@ function getPatchSender() {
 // so. The patch is read from disk here rather than accepted from the renderer:
 // the file on disk is the single source of truth for what gets sent.
 function registerAuditionIpc() {
+  // AUDITIONING A SOUND CLAIMS NO DESTINATION.
+  //
+  // This is 0x46 and nothing else. It exists because the carousel used to go
+  // through TransferRunner.startSlot, which recalls the target slot before it
+  // loads anything — and a recall replaces the whole edit buffer, so the
+  // player's effects went with it. Measured on the wire 2026-09-08: 0x46 alone
+  // leaves fx1 identical, a recall alone replaces it. The recall was the
+  // cause, and _chainFor was a second reset on top of it.
+  //
+  // That recall is CORRECT for a transfer — a three-second hold stores to
+  // whatever button you press in whatever bank the panel is on, so the walk
+  // recalls first to make sure the hold lands where it should. It is the right
+  // answer to a question this feature stopped asking on 2026-08-12, when
+  // picking an instrument was redefined from "change what a preset holds" to
+  // "AUDITION it; it never rewrites a file". The purpose changed and the
+  // plumbing did not.
+  //
+  // Pre-positioning during an audition is the app guessing at an intent the
+  // player has not expressed: somebody browsing sounds has not chosen a slot.
+  // If they want to keep what they are hearing, Send to Seven has a
+  // destination, a recall and a hold screen, and all three already work.
+  //
+  // DELIBERATELY NOT INHERITED, on this path only: hold detection and the
+  // Send PC borrow. Both exist to notice a STORE, and nothing here stores.
+  // This is not a feature routing around the rules — the rules it leaves were
+  // written for a different feature.
+  //
+  // Still enforced, because patch-sender does it and not the runner: the sound
+  // is resolved by NAME against the connected unit's own table, and a unit
+  // that lacks it is refused rather than guessed at.
+  ipcMain.handle('audition:sound', async (_e, { name }) => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    try {
+      const result = await getPatchSender().send({ sound: { name }, params: {} });
+      return { ok: true, name, ...result };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
   ipcMain.handle('audition:send', async (_e, { file, patchIndex }) => {
     const midi = getMidi();
     if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
