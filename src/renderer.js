@@ -477,14 +477,28 @@
         // there is no window and no art module.
         (soundArt()
           ? (view && view.canPickSound
-            ? (view.canPickSound.file
-              // A library patch. Its picture is not a control: choosing an
-              // instrument means HEARING it, which needs a preset on the Seven
-              // to hear it on. Editing the file's sound is a deliberate act
-              // elsewhere, not a side effect of browsing.
-              ? `<div class="engine-art" title="Select a preset in Bank 2, 3 or 4 to try another instrument">` +
-                `${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`
-              : soundCarousel(patch, view))
+            // THE SAME CONTROL FOR A LIBRARY PATCH AS FOR A PRESET. It was not
+            // always: from 2026-08-12 a library patch got a flat picture and a
+            // tooltip instead, and the comment that stood here gave two
+            // reasons. Both are now dead, and neither is dead by accident —
+            // each was killed by the fix that made it unnecessary.
+            //
+            // "Editing the file's sound is a deliberate act elsewhere, not a
+            // side effect of browsing." That protected something real: choosing
+            // an instrument used to write the new name straight to disk, and
+            // five of Daniel's patches were silently renamed by what he thought
+            // was listening (0264132). THE PROTECTION NOW LIVES IN THE CONTROL
+            // ITSELF — chosenFromCarousel only auditions and contains no write
+            // at all — which is a better place for it than a view that declines
+            // to offer the control. It is pinned by a test in the library view,
+            // where the renames happened, and not only on the audition path.
+            //
+            // "Choosing an instrument means HEARING it, which needs a preset on
+            // the Seven to hear it on." True while picking a sound routed
+            // through the transfer walk and needed a destination slot. It does
+            // not now: auditioning sends 0x46 to the edit buffer and claims no
+            // destination, so there is nothing a library patch lacks.
+            ? soundCarousel(patch, view)
             // Not a control here, and the tooltip says so rather than leaving
             // the picture looking inert for no reason.
             : `<div class="engine-art"${view && view.noPickReason ? ` title="${esc(view.noPickReason)}"` : ''}>` +

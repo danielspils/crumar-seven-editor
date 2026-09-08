@@ -63,8 +63,10 @@ Both files were derived from **live device interrogation on FW 1.37** — a
 stronger source than inference from captures, because the instrument describes
 itself. They are the authority on the protocol and the parameter map.
 
-`captures/` stays for future recordings but is **legitimately empty and is no
-longer a precondition** for a protocol fact.
+`captures/` holds real recordings — 16 `.jsonl` captures and 9 notes files as
+of 2026-09-08 — but is **no longer a precondition** for a protocol fact, since
+the device describes itself. (It was empty when this rule was written, and that
+parenthetical outlived the fact.)
 
 The spirit of the rule is unchanged: **anything not demonstrated by the device
 is marked `UNKNOWN` and never guessed.** "Probably", "likely by analogy", and

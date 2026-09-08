@@ -560,3 +560,36 @@ test('auditioning a sound claims no destination', () => {
   assert.match(h[0], /params: \{\}/, '0x46 and nothing else');
   assert.doesNotMatch(h[0], /recall|ProgramChange/, 'and no recall on this path');
 });
+
+// ── THE GUARD THE LIBRARY VIEW EARNED ─────────────────────────────────
+//
+// On 2026-08-12 the carousel sat in front of library patches and choosing an
+// instrument wrote the new name straight to disk. Five of Daniel's files were
+// silently renamed by what he thought was listening: tine-piano-443,
+// reed-piano, cp70, funk-clav and rhodes.
+//
+// The control was taken out of the library view for three weeks. It is back
+// (2026-09-08), so the guarantee that made it safe to bring back has to be
+// asserted where the damage happened rather than inherited from the audition
+// path. THE CONTROL ITSELF MUST NOT BE ABLE TO WRITE.
+//
+// This is the always-on half: it needs no instrument, so it runs in CI on
+// every commit. The gesture, and the file's bytes before and after, are
+// covered by test/ui/scenarios/carousel-never-writes.js.
+test('choosing an instrument from the carousel cannot write to a file', () => {
+  const app = code(read('app.js'));
+  const fn = /async function chosenFromCarousel\(([\s\S]*?)\n  \}/.exec(app);
+  assert.ok(fn, 'chosenFromCarousel is still recognisable');
+
+  // No write of any shape. saveSound is the one that did the renaming, and the
+  // others are named too so a future edit cannot reach disk by a different
+  // door and still pass.
+  for (const forbidden of ['saveSound', 'saveParams', 'rename', 'duplicate', 'generateFromSound']) {
+    assert.doesNotMatch(fn[0], new RegExp(`library\\.${forbidden}\\b`),
+      `it must not call library.${forbidden} — browsing sounds may not edit files`);
+  }
+  // And nothing on the library surface at all, which is the general form of
+  // the same rule: this control auditions, and auditioning touches no file.
+  assert.doesNotMatch(fn[0], /sevenAPI\.library\./,
+    'the carousel reaches no library write surface whatsoever');
+});
