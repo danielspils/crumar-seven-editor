@@ -968,6 +968,10 @@
     // button you press in whatever bank the panel is on, so without that
     // recall the hold could land in a different bank entirely. Started and
     // immediately closed — the walk's UI never appears.
+    // Snapshot the effects the player is running BEFORE the swap. The
+    // instrument keeps them (0x46 does not touch the effects section), so this
+    // is what the panel must go on showing.
+    const keptChain = audition.liveParams();
     const started = await window.sevenAPI.transfer.startSlot(bank, preset, `sound:${name}`);
     if (!started || !started.started) {
       return SevenModal.confirm({
@@ -990,10 +994,25 @@
     // comparison is against the file's sound, so choosing the original one
     // again clears it without anything having to remember that you did.
     const stored = (currentPatch() || {}).soundName;
-    // The runner silences the effects chain with the sound; the working copy
-    // has to follow, or the panel would show FX the instrument is no longer
-    // running. It reports what it sent rather than us keeping a second list.
-    audition.beginLive({ soundName: name, params: step.params });
+    // THE EFFECTS SURVIVE THE SWAP, and the working copy has to say so.
+    //
+    // The runner now sends the sound alone, so the instrument keeps whatever
+    // chain it was already running. But beginLive() rebuilds the working copy
+    // from the PATCH FILE, which would put the file's effects on screen while
+    // the instrument plays the player's — the panel lying about the thing it
+    // is there to show.
+    //
+    // So the values the player had are carried across explicitly. They are the
+    // app's own belief about the buffer from a moment ago, and nothing has
+    // been sent that could have changed them.
+    //
+    // `step.params` is still merged after: it is empty for this path today,
+    // and if the runner ever has something to report about what it sent, that
+    // is more recent than our snapshot and should win.
+    audition.beginLive({
+      soundName: name,
+      params: { ...(keptChain || {}), ...(step.params || {}) },
+    });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');

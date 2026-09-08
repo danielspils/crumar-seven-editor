@@ -195,15 +195,24 @@ test('empty slots are stepped over, leaving those presets alone', async () => {
 // picker's Instruments tab, and the carousel. A setlist no longer holds one
 // (assigning an instrument writes a patch), so this drives startSlot directly,
 // which is the path that survives (Daniel, 2026-08-14).
-test('a bare sound sends the sound and silences the effects chain', async () => {
+// TRYING AN INSTRUMENT KEEPS THE EFFECTS YOU HAVE (2026-09-08). This inverts
+// what this test asserted for three weeks, and the reversal is deliberate:
+// the player is swapping the piano under a sound they are building and wants
+// their reverb and wha to survive it.
+//
+// It is safe because the SEVEN keeps them. Measured on the wire: fx1 sw/md/dp
+// read back identical either side of a 0x46. So sending nothing is not
+// hoping — it is leaving alone something the instrument does not disturb.
+//
+// The old behaviour is not gone; it moved. A SETLIST slot holding a bare
+// sound still gets the factory chain, and the test below drives that.
+test('trying an instrument sends the sound ALONE and keeps the effects', async () => {
   const { store, midi, sender, sent } = setup();
   const runner = new TransferRunner({ midi, store, sender });
   runner.startSlot(2, 1, 'sound:Clavi Piano');
   await runner.nextSlot();
-  assert.deepStrictEqual(sent[0], {
-    sound: { name: 'Clavi Piano' },
-    params: { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 },
-  });
+  assert.deepStrictEqual(sent[0], { sound: { name: 'Clavi Piano' }, params: {} },
+    'no parameters at all — 0x46 and nothing else');
 });
 
 // The master volume is NOT one of them. veq_vol is the output level, and
@@ -525,10 +534,7 @@ test('a single slot can be a bare sound', async () => {
   const runner = new TransferRunner({ midi, store, sender });
   runner.startSlot(2, 1, 'sound:Clavi Piano');
   await runner.nextSlot();
-  assert.deepStrictEqual(sent[0], {
-    sound: { name: 'Clavi Piano' },
-    params: { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 },
-  });
+  assert.deepStrictEqual(sent[0], { sound: { name: 'Clavi Piano' }, params: {} });
 });
 
 // The step reports what it sent, so the panel can show the buffer as it now
@@ -538,7 +544,9 @@ test('a bare-sound step reports the parameters it sent', async () => {
   const runner = new TransferRunner({ midi, store, sender });
   runner.startSlot(2, 1, 'sound:Clavi Piano');
   const step = await runner.nextSlot();
-  assert.deepStrictEqual(step.params, { fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0 });
+  // It reports what it sent, and it sent nothing — the effects on the
+  // instrument are the player's, not ours, so we have nothing to claim.
+  assert.deepStrictEqual(step.params, {});
 });
 
 test('refuses without a connection', () => {
@@ -572,12 +580,11 @@ test('a modeled sound brings its Bank 1 factory effects', async () => {
     ],
   };
   const runner = new TransferRunner({ midi, store, sender });
-  runner.startSlot(2, 1, 'sound:Clavi Piano');
-  await runner.nextSlot();
-  assert.strictEqual(sent[0].params.rev_sw, 1, 'the factory reverb comes with it');
-  assert.strictEqual(sent[0].params.rev_lv, 40, 'at the factory level');
-  assert.strictEqual(sent[0].params.fx1_sw, 0, 'and FX1 is explicitly off');
-  assert.ok(!('veq_vol' in sent[0].params), 'the master volume is never sent');
+  const chain = runner._chainFor('Clavi Piano');
+  assert.strictEqual(chain.rev_sw, 1, 'the factory reverb comes with it');
+  assert.strictEqual(chain.rev_lv, 40, 'at the factory level');
+  assert.strictEqual(chain.fx1_sw, 0, 'and FX1 is explicitly off');
+  assert.ok(!('veq_vol' in chain), 'the master volume is never sent');
 });
 
 // With no Bank 1 backup to read, the chain goes off. A dry instrument is a
@@ -586,9 +593,11 @@ test('a modeled sound with no factory backup falls back to a silent chain', asyn
   const { store, midi, sender, sent } = setup();
   store.list = () => ({ dir: '/tmp', setlists: [], patches: [] });
   const runner = new TransferRunner({ midi, store, sender });
-  runner.startSlot(2, 1, 'sound:Clavi Piano');
-  await runner.nextSlot();
-  assert.deepStrictEqual(sent[0].params, {
+  // Drives _chainFor directly: its only remaining CALLER is the setlist walk
+  // (the carousel keeps the player's effects now), and the helper here cannot
+  // build a setlist slot holding a bare sound — so going through a caller
+  // would test the helper rather than the rule.
+  assert.deepStrictEqual(runner._chainFor('Clavi Piano'), {
     fx1_sw: 0, fx2_sw: 0, amp_sw: 0, rev_sw: 0, pad_sw: 0,
   });
 });
