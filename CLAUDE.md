@@ -905,6 +905,45 @@ did not send it. Both closed paths only cause slots to be SKIPPED — neither
 writes anything. An unexplained write to somebody's instrument stays an open
 question rather than being filed under the nearest story.
 
+## THE INSTRUMENT WENT SILENT UNDER HEAVY READ TRAFFIC (2026-09-08)
+
+OBSERVED, NOT DIAGNOSED, and recorded that way on purpose.
+
+During the buffer-persistence test the Seven stopped making sound. Every
+parameter still read correctly over SysEx — `veq_vol` 81, the expression pedal
+on FX 2 Rate rather than Volume, all 110 values identical to the record taken
+before the test. So it was not a parameter state, and nothing the app had
+written explained it. A power cycle restored the audio.
+
+WHAT PRECEDED IT, in order: a 32-slot full read (~3,600 round trips), a
+power cycle, a 110-parameter read, then an 8-slot Bank 3 sweep (8 Program
+Changes and ~880 reads) inside a couple of minutes. The silence was noticed
+after that.
+
+WHAT IS NOT ESTABLISHED: that the traffic caused it. The sequence is
+suggestive and it is one occurrence. It was not reproduced, and no attempt was
+made to reproduce it — the instrument is Daniel's and the session had a
+different purpose.
+
+WHY IT MATTERS ANYWAY: a backup run is ~3,600 round trips, which is the same
+order as what preceded this. If heavy reads can leave the instrument silent
+until power-cycled, a user could meet it after a backup and reasonably blame
+the app for breaking their piano. Nobody has reported it.
+
+ITS SIBLING is the sweep that was observed stopping at slot 12 with the
+instrument attached and was never diagnosed, because the feature was being
+removed anyway. Two unexplained instrument states under sustained MIDI
+traffic, a fortnight apart, both cleared without understanding them.
+
+**It does not undermine the readings it happened during.** Parameter reads are
+SysEx and answered correctly throughout; audio output is a different
+subsystem. The buffer-persistence result stands on values that were read,
+echoed and compared, not on anything heard.
+
+If it happens again, the thing to capture BEFORE power-cycling is whether the
+device still answers `0x70` STRING 4 and whether a fresh recall restores audio
+without a power cycle. Both are one command and neither survives a reboot.
+
 ## A FIXTURE THAT CANNOT EXPRESS THE THING UNDER TEST (2026-08-23)
 
 Second instance, so it gets a name: **a test is only as honest as the fake it
