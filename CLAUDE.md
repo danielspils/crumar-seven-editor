@@ -1606,13 +1606,37 @@ Kept here because they otherwise live only in a chat that ends.
   reached a release candidate. Worth fixing independently of that bug: the
   runner spawns `npx electron .` and has no macOS dependency of its own.
 
-- **Whether the app's own parameter writes can persist into a SLOT** rather
-  than living in the edit buffer. Untested, and it is the only known mechanism
-  that could write eight presets without eight physical holds — the standing
-  candidate for how "Bank 1 setlist (2026-08-13)" came to be in Bank 3. The
-  test is designed and safe (baseline a slot, audition into the buffer without
-  touching the panel, recall away and back, re-read) and needs an expendable
-  slot and Daniel's go-ahead.
+- ~~**Whether the app's own parameter writes can persist into a SLOT**~~
+  **ELIMINATED (2026-09-08), on hardware, twice.** This was the last known
+  mechanism that could write eight presets without eight physical holds, and
+  the standing candidate for how "Bank 1 setlist (2026-08-13)" came to be in
+  Bank 3.
+
+  Method: all 32 slots read to a file first and verified by reading it back
+  (110 params each, 0 unread) — a backup nobody has read is not a backup. Then
+  on Bank 3 preset 8, with Daniel at the panel: a different sound by `0x46`
+  and three parameters at extremes, NO store hold, then leave the slot by hand
+  and return, then a full power cycle.
+
+  RUN 1 sent Tine Piano with rho_atk=1, rev_lv=127, fx1_dp=2.
+  RUN 2 sent Combo Piano with rho_atk=119, rev_lv=3, fx1_dp=126 — deliberately
+  the opposite extremes, so "it reverted" could not be an artifact of the
+  values chosen.
+
+  Every write was ECHOED by the instrument at the time, so all of them reached
+  the edit buffer; Daniel heard the Combo Piano playing. Not one survived
+  leaving the slot. Zero of 110 parameters differed from the baseline at either
+  reading, in either run, and a re-read of all eight Bank 3 slots found nothing
+  altered anywhere in the bank. A power cycle changed nothing further.
+
+  **So the edit buffer does not leak into storage, and a three-second hold is
+  genuinely required.** Nothing was restored afterwards because nothing had
+  changed.
+
+  **BANK 3 REMAINS UNEXPLAINED.** This closes a mechanism, not the question,
+  and no second theory was reached for to fill the gap. What is now firmer is
+  the shape of what is left: whatever wrote those eight presets, it was not the
+  app's parameter writes persisting.
 
 - **Connect an unverified expansion row to the unrecognised sounds below it —
   in COPY, not by matching.** When an entry has `sounds: null` the owner sees
