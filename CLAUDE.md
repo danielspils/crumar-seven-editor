@@ -915,9 +915,9 @@ always accepted a `burstSoundId` parameter and it did NOTHING — so no test
 could reach the runner's sound comparison at all, and two tests written
 specifically to check it passed while asserting nothing.
 
-The first instance is still open and has been for a week:
-`FakeSeven.readParamValue` returns 64 for every id regardless of a parameter's
-max, so backup's hash and dedupe tests cannot tell parameters apart.
+The first instance is CLOSED (2026-09-08): `FakeSeven.readParamValue` returned
+64 for every id regardless of a parameter's max, and is now
+`(p.id * 7) % (p.max + 1)` — distinct per parameter, inside each one's range.
 
 Both have the same shape: the fixture is incapable of producing the state the
 test claims to check, so the test passes for a reason that has nothing to do
@@ -1042,9 +1042,11 @@ evidence they are wrong.
 
 The instances, in order of what they cost:
 
-- `wfp` redaction: the fake instrument returns `wfp: '[wfp redacted]'` itself,
-  so the test asserts a string the fixture hard-codes. Rule 6's primary defence
-  can be deleted with the suite green. **Still open.**
+- `wfp` redaction: the fake instrument returned `wfp: '[wfp redacted]'` itself,
+  so the test asserted a string the fixture hard-coded, and Rule 6's primary
+  defence could be deleted with the suite green. **CLOSED** — the fake now
+  hands over a real password and the parser has to do the work. Mutation-proved
+  2026-09-08: four tests fail without the redaction.
 - `test/ui/scenarios/notes-strip.js` skipped on `{ ok: false }`, so a 404 would
   have gone green — rebuilding the exact property that let the original bug
   hide, inside the test written to catch it.
@@ -1099,23 +1101,32 @@ better evidence than any sampling of five values by hand.
 
 In Daniel's order, items 3 and 4 of five:
 
-- **`wfp` has no real test.** Test `parseGlobals` against a payload carrying an
-  actual password and assert it cannot survive, then fix the fake so it returns
-  what a device returns rather than the redacted string.
-- **The fixture ignores each parameter's max** (returns 64 for everything), so
-  hash and dedupe tests cannot distinguish parameters. See "A FIXTURE THAT
-  CANNOT EXPRESS THE THING UNDER TEST" — this is the first of two instances,
-  and the second one hid a real defect for a day.
+- ~~**`wfp` has no real test.**~~ **CLOSED.** `test/seven-midi-globals.test.js`
+  drives the real `parseGlobals` against replies carrying an actual password,
+  and `backup-runner.test.js`'s fake now returns `wfp=hunter2-correct-horse`
+  rather than the redacted string it used to hand back. MUTATION-PROVED
+  2026-09-08: change `out.wfp = WFP_REDACTED` to `out.wfp = val` and FOUR tests
+  fail, including "a real password does not survive parseGlobals", "a password
+  containing an = is still gone" and "wfp appearing twice leaves nothing
+  behind".
+- ~~**The fixture ignores each parameter's max**~~ **CLOSED.** `deviceValue` is
+  `(p.id * 7) % (p.max + 1)` — a different value per parameter, inside each
+  one's range, with the fixtures derived from the same function so the two
+  cannot drift apart.
 - **Hardware, when the Seven is next plugged in**: the mismatch gate has still
   never met a real mismatched unit (`SEVEN_FORCE_MISMATCH` needs a device,
   since it synthesises the verdict during connect), and unplugging mid-transfer
   and mid-connect is unexercised. Mid-backup IS exercised and is graceful:
   completed slots kept, the run labelled "failed", nothing corrupted.
-- **Test-layer gap**, ranked by cost: `seven-midi.js` (894 lines, param table
-  only), `main.js` (877, none), `app.js` (3348, a few UI scenarios),
-  `audition.js` (877, none), `modal.js`, `preload.js`, `undo.js`. The pattern:
-  the further from a pure function, the less coverage — and every bug found by
-  hand this week was in that half.
+- **Test-layer gap**, ranked by cost and RE-MEASURED 2026-09-08 (the previous
+  figures were from mid-August and every one had drifted — 3348 for app.js
+  against 4309 today): `app.js` (4309 lines, a handful of UI scenarios),
+  `main.js` (1234, no unit tests; some wiring asserted as text by
+  source-wiring.test.js), `audition.js` (1044, none), `seven-midi.js` (947,
+  param table only), `modal.js`, `preload.js`, `undo.js`. The pattern holds:
+  the further from a pure function, the less coverage — and the bugs found by
+  hand are in that half. A count is a measurement and has a date; re-take it
+  before using it to decide work.
 
 ## THIS THREAD IS NOT THE ONLY WRITER (2026-09-08)
 
@@ -1337,15 +1348,12 @@ record that count each release. The three misses are what a coverage
 percentage would never have shown:
 
 - `wfp` redaction in the 0x33 parser could be deleted with the suite green,
-  because the fake instrument returns `wfp: '[wfp redacted]'` ITSELF. The test
-  named "the globals snapshot is written with wfp already redacted" asserts a
-  string the fixture hard-codes. **Still open** — Rule 6's primary defence has
-  no test.
+  because the fake instrument returned `wfp: '[wfp redacted]'` ITSELF.
+  **CLOSED** — re-run 2026-09-08 and it now fails four tests.
 - The row-level "⚠ Not installed" badge could be deleted with the suite green.
   Fixed and covered.
-- `FakeSeven.readParamValue` returns 64 for every id regardless of a
-  parameter's max, so backup's hash and dedupe tests cannot tell parameters
-  apart. **Still open.**
+- `FakeSeven.readParamValue` returned 64 for every id regardless of a
+  parameter's max. **CLOSED** — it is `(p.id * 7) % (p.max + 1)` now.
 
 Run one with: break a behaviour, `npm test`, restore. A test that passes with
 the thing under test removed is testing nothing.
