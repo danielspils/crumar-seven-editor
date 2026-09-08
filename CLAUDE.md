@@ -1094,6 +1094,35 @@ In Daniel's order, items 3 and 4 of five:
   the further from a pure function, the less coverage — and every bug found by
   hand this week was in that half.
 
+## THIS THREAD IS NOT THE ONLY WRITER (2026-09-08)
+
+Both repos are worked on by more than one Claude session. On 2026-09-08 the
+local site checkout was **8 commits behind**, and three of those were
+substantive work from a session on 3–4 September that this thread knew nothing
+about. The relay had also been purged by that session — so a task list here
+that said "purge the dev pings" was describing work already done.
+
+**PULL BEFORE YOU JUDGE STATE, and never report local state as current state.**
+A stale checkout does not look stale; it looks like the truth. Everything in
+this file, every "still open" item and every count, is a claim about a
+repository that somebody else may have moved since.
+
+Two tells worth knowing:
+
+- **`git log --format=%an` will not identify the other session.** Every commit
+  here is authored `Daniel Spils`, because a Claude session commits as him. The
+  distinguishing mark is the `Co-Authored-By: Claude` trailer plus the DATE —
+  and a gap in this thread's own dates is the real signal.
+- **A bot commit is not another writer.** Of those 8 commits, 5 were
+  `github-actions[bot]` doing the daily metrics refresh. Counting those as
+  human work overstates the problem; the question is always which commits carry
+  a decision.
+
+The cost when it goes wrong is not a conflict — git catches those. It is
+DUPLICATED OR CONTRADICTORY WORK: two sessions each purging half a KV store, or
+one re-fixing what the other fixed with different reasoning, leaving two
+explanations in the history for one change.
+
 ## The website (this-seven-goes-to-eleven)
 
 Download buttons resolve the newest release's actual .dmg/.exe at runtime
