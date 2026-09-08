@@ -944,6 +944,10 @@
     return {
       preview,
       isLive,
+      // The working copy, for a caller that is about to do something the
+      // instrument will survive and needs to keep the app's belief in step.
+      // Returns a COPY: nothing outside may mutate the live state.
+      liveParams: () => (liveEdit ? { ...liveEdit.params } : null),
       // Enter the live session for whatever is selected, without the modal or
       // the send — for a caller that has ALREADY put the right thing in the
       // edit buffer and knows it. The one rule this must not break is the one

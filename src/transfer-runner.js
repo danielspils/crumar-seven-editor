@@ -310,6 +310,18 @@ class TransferRunner extends EventEmitter {
       slot.soundName = String(ref).slice('sound:'.length);
       slot.name = slot.soundName;
       slot.action = known.has(slot.soundName) ? 'send-sound' : 'blocked';
+      // TRYING AN INSTRUMENT KEEPS THE EFFECTS YOU HAVE. This is the carousel:
+      // one slot, no walk, nothing stored. The player is swapping the piano
+      // under a sound they are building and expects their reverb and wha to
+      // survive it — and the SEVEN keeps them (measured on the wire
+      // 2026-09-08: fx1 sw/md/dp identical either side of a 0x46), so the only
+      // thing that was replacing them was us.
+      //
+      // The SETLIST WALK is deliberately not this. There, a bare-sound slot is
+      // being installed as a preset and arriving under the last patch's
+      // distortion would read as the sound not having changed — see the note
+      // at the top of this file, which is dated and reasoned and stays.
+      slot.keepEffects = true;
     } else {
       const entry = this.store.list().patches.find((e) => e.file === ref && !e.invalid);
       if (!entry) {
@@ -354,7 +366,10 @@ class TransferRunner extends EventEmitter {
       if (slot.action !== 'send' && slot.action !== 'send-sound') continue;
       st.index = i;
       const patch = slot.action === 'send-sound'
-        ? { sound: { name: slot.soundName }, params: this._chainFor(slot.soundName) }
+        // No params at all is the sound-only send: 0x46 and nothing else, so
+        // whatever the edit buffer is already running stays running.
+        ? { sound: { name: slot.soundName },
+            params: slot.keepEffects ? {} : this._chainFor(slot.soundName) }
         : this._patchFor(slot.ref);
       // Move the instrument to the slot FIRST — a recall replaces the edit
       // buffer, so doing it after the load would throw the load away.

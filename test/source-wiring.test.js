@@ -529,3 +529,27 @@ test('the panel follows the instrument as well as the mouse', () => {
   assert.match(src, /ev\.type !== 'program-change'/, 'it listens for panel presses');
   assert.match(src, /midi\.onEvent\(follow\)/, 'and subscribes while the chooser is open');
 });
+
+test('auditioning a sound claims no destination', () => {
+  // The carousel used to run a sound through TransferRunner.startSlot, whose
+  // recall replaced the edit buffer and took the player's effects with it.
+  // These pin the shape rather than the wording: the carousel must reach the
+  // destination-free path, and must NOT reach the walk.
+  const app = code(read('app.js'));
+  const fn = /async function chosenFromCarousel\(([\s\S]*?)\n  \}/.exec(app);
+  assert.ok(fn, 'chosenFromCarousel is still recognisable');
+  assert.match(fn[0], /auditionSound\(name\)/,
+    'it sends a bare sound with no destination');
+  assert.doesNotMatch(fn[0], /transfer\.startSlot/,
+    'and never through the transfer walk, whose recall is for a STORE');
+  assert.doesNotMatch(fn[0], /transfer\.(next|cancel)\(/,
+    'nor its stepping, which exists to notice a hold');
+
+  // The handler sends the sound ALONE. A params object here would be a second
+  // reset on top of the one that was removed.
+  const main = code(read('main.js'));
+  const h = /ipcMain\.handle\('audition:sound'([\s\S]*?)\n  \}\);/.exec(main);
+  assert.ok(h, 'the audition:sound handler exists');
+  assert.match(h[0], /params: \{\}/, '0x46 and nothing else');
+  assert.doesNotMatch(h[0], /recall|ProgramChange/, 'and no recall on this path');
+});
