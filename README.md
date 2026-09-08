@@ -1,7 +1,5 @@
 # This Seven Goes to Eleven
 
-<!-- Daniel's opening paragraph goes here. -->
-
 A desktop editor and backup tool for the **Crumar Seven**, a physical-modelling
 stage piano. It backs up all 32 presets to files on your computer, sends them
 to a different Seven, and gives the instrument's parameters a screen you can
