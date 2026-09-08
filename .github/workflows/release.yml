@@ -61,7 +61,34 @@ jobs:
   mac:
     name: macOS (universal, signed + notarized)
     needs: verify
-    runs-on: macos-latest
+    # ── TEMPORARY PIN. Remove it, do not inherit it. ──────────────────────
+    #
+    # WHAT BROKE: electron-builder imports the Developer ID cert into a temp
+    # keychain and then runs `security set-key-partition-list`. On the newer
+    # image that call fails with "SecKeychainUnlock: The user name or
+    # passphrase you entered is not correct" — which reads as a bad secret and
+    # is not one.
+    #
+    # WHY IT IS NOT THE SECRETS: CSC_LINK and CSC_KEY_PASSWORD were last
+    # updated 2026-08-17, BEFORE the v1.5.2 build that signed and notarized
+    # successfully on 2026-08-23. Same workflow, same secrets, same label.
+    #
+    # WHICH IMAGE INTRODUCED IT — the only thing that changed:
+    #     v1.5.2  2026-08-23  success   macos-26-arm64  20260728.0273.1
+    #     v1.5.3  2026-09-08  failure   macos-26-arm64  20260831.0337.3
+    # `macos-latest` rolled to the 08-31 build and the keychain import stopped
+    # working. electron-builder was already at its newest (26.15.3), so there
+    # was no upgrade to take.
+    #
+    # WHAT LETS THE PIN COME OFF: put `macos-latest` back and run the release
+    # workflow on a throwaway tag. If the macOS job signs and notarizes, the
+    # image is fixed and this comment goes with the pin. Check when
+    # electron-builder next releases, or when the runner image moves again.
+    #
+    # A PIN NOBODY REMEMBERS is how a project ends up building on an image
+    # three years old, so it is recorded here rather than only in the commit
+    # that made it.
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
