@@ -1135,7 +1135,19 @@ app.whenReady().then(async () => {
   // because nothing depends on the answer: the launch has no reason to wait
   // for a counter, and a slow endpoint should not be able to sit inside the
   // first thing a person sees.
-  setTimeout(() => { sendDailyPing(); }, 10_000);
+  // .catch IS NOT DECORATION. Three statements in sendDailyPing sit outside
+  // its own try — getTelemetry, app.getVersion, decide — so the promise this
+  // returns can reject, nothing awaits it, and there is no unhandledRejection
+  // handler in this process. Under Node's default that is fatal, which would
+  // make a usage counter capable of stopping the app opening: exactly what the
+  // comment above sendDailyPing says must never happen.
+  //
+  // It LOGS. A silent swallow is the shape this project keeps getting caught
+  // by — the failure happens and nothing says so — and the whole point of
+  // `decide` returning a reason was to make a missing ping explicable.
+  setTimeout(() => {
+    sendDailyPing().catch((err) => console.log(`[ping] failed: ${err && err.message}`));
+  }, 10_000);
   forwardMidiEvents();
   createWindow();
   app.on('activate', () => {

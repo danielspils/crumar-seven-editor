@@ -417,8 +417,12 @@ test('the daily ping sends only what main states, and never blocks a launch', ()
     'and never in the catch');
 
   // IT CANNOT SIT IN FRONT OF THE APP. Deferred, not awaited at startup.
-  assert.match(src, /setTimeout\(\(\) => \{ sendDailyPing\(\); \}/,
-    'the launch does not wait for a counter');
+  assert.match(src, /setTimeout\(\s*\(\) => \{\s*sendDailyPing\(\)\.catch\(/,
+    'the launch does not wait for a counter, and the promise cannot reject unhandled');
+  // The catch must SAY something. A bare `.catch(() => {})` would satisfy the
+  // line above while rebuilding the silent-failure shape it exists to prevent.
+  assert.match(src, /sendDailyPing\(\)\.catch\(\(err\) => console\.log\(/,
+    'and it logs the reason rather than swallowing it');
   assert.doesNotMatch(src, /await sendDailyPing/, 'and never awaits it');
 
   // THE DEV GATE IS WIRED TO THE REAL THING. `packaged` defaults to true in
