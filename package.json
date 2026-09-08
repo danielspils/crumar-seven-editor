@@ -14,7 +14,7 @@
     "probe": "node tools/probe.js",
     "probe:open-items": "node tools/probe.js open-items",
     "fixtures:roundtrip": "node fixtures/generate-roundtrip.js",
-    "test": "npm run lint && node --test \"test/*.test.js\"",
+    "test": "npm run lint && node --test --test-timeout=30000 \"test/*.test.js\"",
     "test:ui": "node test/ui/run.js",
     "rebuild": "electron-rebuild -f -m . -o @julusian/midi",
     "dist:mac": "npm run rebuild && electron-builder --mac --universal",

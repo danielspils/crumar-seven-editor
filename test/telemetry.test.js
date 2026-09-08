@@ -104,9 +104,26 @@ test('an unreadable file means never pinged, never opted out — and never throw
 });
 
 test('an unwritable directory cannot stop the app', () => {
-  const t = new Telemetry('/proc/definitely-not-writable', { now: at('2026-08-24T09:00:00') });
+  // A PATH UNDER A FILE, not a magic OS location. This used to point at
+  // /proc/definitely-not-writable, which does not exist on macOS — so it
+  // failed instantly here and was never exercised on Linux, where /proc is a
+  // live procfs. The first CI run that reached this file HUNG for ten minutes
+  // and took two other test files down with it, twice, and reported only
+  // "cancelled".
+  //
+  // Nesting under a regular file gives ENOTDIR on every platform, immediately,
+  // with no permission semantics to differ and no root caveat (chmod is
+  // ignored for root, so a chmod-based version would pass vacuously in any
+  // container that runs as root). The property under test is "the directory
+  // cannot be made or written", and this establishes exactly that.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seven-telemetry-'));
+  const blocker = path.join(dir, 'not-a-directory');
+  fs.writeFileSync(blocker, 'x');
+  const t = new Telemetry(path.join(blocker, 'nested'), { now: at('2026-08-24T09:00:00') });
   assert.doesNotThrow(() => t.setEnabled(false));
   assert.doesNotThrow(() => t.recordPing('2026-08-24'));
+  // And it really is unusable — otherwise this asserts nothing.
+  assert.throws(() => fs.mkdirSync(path.join(blocker, 'nested'), { recursive: true }));
 });
 
 test('dayOf is local, so the day boundary is the user\'s midnight', () => {
