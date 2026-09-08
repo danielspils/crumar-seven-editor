@@ -952,8 +952,16 @@
     // the factory presets, the eight sounds a player is most likely to want to
     // hear, were the only ones you could not try anything on
     // (Daniel, 2026-08-13).
-    if (!deviceSel) return toast('Choose a preset to try an instrument on it');
-    if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
+    // NO PRESET NEEDED. This gate asked for a DESTINATION, and auditioning no
+    // longer has one: the sound goes to the edit buffer, nothing is recalled
+    // and nothing is stored. It was the last piece of the old model, and while
+    // it stood, trying an instrument from Patches or Backups told you to go
+    // and select a preset for a send that goes nowhere near one.
+    //
+    // Nothing else on this path reads deviceSel — checked, not assumed — and
+    // the live session resolves its own target through currentTarget(), which
+    // prefers the LIBRARY selection and only falls back to the bank slot.
+    if (!isConnected()) return toast('Connect the Seven to try another instrument');
 
     // AUDITIONING CLAIMS NO DESTINATION. This used to run the sound through
     // TransferRunner.startSlot, which recalls the target slot first — and a

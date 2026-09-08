@@ -544,6 +544,13 @@ test('auditioning a sound claims no destination', () => {
     'and never through the transfer walk, whose recall is for a STORE');
   assert.doesNotMatch(fn[0], /transfer\.(next|cancel)\(/,
     'nor its stepping, which exists to notice a hold');
+  // AND IT ASKS FOR NO DESTINATION. The gate below required a bank slot for a
+  // send that no longer goes near one, which made the carousel unusable from
+  // Patches and Backups. Nothing else on that path reads deviceSel.
+  assert.doesNotMatch(fn[0], /deviceSel/,
+    'auditioning needs no preset selected — it has no destination to need one');
+  assert.doesNotMatch(app, /Choose a preset to try an instrument on it/,
+    'and the toast that said otherwise is gone');
 
   // The handler sends the sound ALONE. A params object here would be a second
   // reset on top of the one that was removed.
