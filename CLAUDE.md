@@ -920,10 +920,17 @@ power cycle, a 110-parameter read, then an 8-slot Bank 3 sweep (8 Program
 Changes and ~880 reads) inside a couple of minutes. The silence was noticed
 after that.
 
-WHAT IS NOT ESTABLISHED: that the traffic caused it. The sequence is
-suggestive and it is one occurrence. It was not reproduced, and no attempt was
-made to reproduce it — the instrument is Daniel's and the session had a
-different purpose.
+WHAT IS NOT ESTABLISHED: that the traffic caused it. AND A SECOND RUN THE SAME
+DAY FAILED TO REPRODUCE IT — the whole test was repeated on the same slot with
+comparable traffic (a fresh 110-parameter baseline, a sound change, three
+parameter writes, a hand recall and another 110-parameter read) and the
+instrument stayed audible throughout. So "heavy reads silence the Seven" is not
+merely unproven, it is contradicted by the one attempt at repetition.
+
+That makes it a single unexplained occurrence with something else in it, and
+the honest description is that we do not know what. Do not carry it forward as
+a property of read traffic; the next person meeting it should start from
+scratch rather than from this paragraph's suspicion.
 
 WHY IT MATTERS ANYWAY: a backup run is ~3,600 round trips, which is the same
 order as what preceded this. If heavy reads can leave the instrument silent
