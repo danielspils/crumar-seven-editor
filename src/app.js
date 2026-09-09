@@ -1714,6 +1714,36 @@
       const btn = panelStrip.querySelector(`#preset-${p} .btn`);
       if (btn) btn.classList.toggle('on', p - 1 === sel);
     }
+    updateFxLeds();
+  }
+
+  // THE FX MODE LEDS FOLLOW THE PATCH. The panel drawing has carried
+  // led-fx1-0..3 and led-fx2-0..3 since the first Electron shell on
+  // 2026-07-31, and until now nothing in src/ ever referenced them — the
+  // artwork was there and the wiring never was. Selecting Delay in FX2 lit
+  // nothing, because there was no code to light it.
+  //
+  // The mapping is the DEVICE'S OWN enum labels, not an assumption:
+  //   fx1_md 0..3  Mono Tremolo, Stereo Panner, LFO Wha-Wha, Pedal Wha-Wha
+  //   fx2_md 0..3  Chorus, Phaser, Flanger, Delay
+  // which is the panel's TREM / PAN / A-WHA / P-WHA and
+  // CHORUS / PHASER / FLANGER / DELAY, index for index.
+  //
+  // OFF DARKENS THEM ALL. The switch and the mode are one binding: an unlit
+  // row says the effect is not running, which is what the hardware shows, and
+  // a mode LED glowing under a switched-off effect would be the panel
+  // claiming something the instrument is not doing.
+  //
+  // It lives INSIDE updatePanelLeds rather than beside it, so every path that
+  // repaints the panel gets it without anyone remembering to add a fourth
+  // call — the same reasoning as the comment on dressParamSelects.
+  function updateFxLeds() {
+    const patch = shownPatch();
+    for (const fx of [1, 2]) {
+      const on = !!patch && patch.params[`fx${fx}_sw`] === 1;
+      const mode = patch ? patch.params[`fx${fx}_md`] : null;
+      for (let i = 0; i < 4; i++) setLed(`led-fx${fx}-${i}`, on && mode === i);
+    }
   }
 
   // ---- Library list ---------------------------------------------------------
@@ -2180,7 +2210,7 @@
     // The panel strip goes with it. A live edit re-renders the detail, and the
     // strip was left showing the value before the change — the knobs are part
     // of the same picture of the instrument, not decoration beside it.
-    renderDetail: () => { renderDetail(); updateKnobLit(); updateClaviGroup(); },
+    renderDetail: () => { renderDetail(); updateKnobLit(); updateClaviGroup(); updateFxLeds(); },
     refreshLibrary: () => refreshLibrary(),
     getEntries: () => libEntries,
     // Which slot the Seven is on, so a session can put it back when it ends.
