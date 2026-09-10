@@ -13,7 +13,13 @@
 //   fx1_md 0..3  Mono Tremolo / Stereo Panner / LFO Wha-Wha / Pedal Wha-Wha
 //   fx2_md 0..3  Chorus / Phaser / Flanger / Delay
 (async () => {
-  if (!(await ui.requireDevice())) return;
+  // The skip has to SAY it is a skip. A bare `return` here left the failure
+  // requireDevice had already recorded standing, so an unplugged desk reported
+  // "1 failed — timed out waiting for the Seven to connect" for a precondition
+  // this scenario cannot control. That is the mirror of the notes-strip sin:
+  // one shape cries wolf, the other stays silent, and both end with somebody
+  // not reading the result.
+  if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
   const litFor = (fx) => ui.$$(`[id^="led-fx${fx}-"]`)
     .filter((el) => el.classList.contains('on'))

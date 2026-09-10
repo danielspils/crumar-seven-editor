@@ -15,6 +15,26 @@
 (function (global) {
   const OPEN = new Set(); // every picker currently showing its list
 
+  // THE SAME CHEVRON THE SECTION HEADERS DRAW, and for the same reason they
+  // stopped using a character. This started as textContent '⌄' (U+2304), whose
+  // ink position and weight are whatever the font that happens to own the
+  // glyph decides — no UI text font has it, so each platform falls through to
+  // a different one. On Windows it landed small, thin and below the midline of
+  // the value beside it (Daniel's QA on 1.5.4, FX1 and FX2 Mode); on macOS the
+  // fallback happened to sit acceptably, which is why it shipped.
+  //
+  // `.fx-chevron` had ALREADY been through this — its own rule says "a font
+  // glyph's ink sat below centre regardless of box alignment" — and the answer
+  // there was geometry instead of type. This is that answer applied to the one
+  // place that kept the character. Geometry renders identically everywhere; a
+  // glyph is a negotiation with the font stack.
+  //
+  // `currentColor`, so the chevron is the colour of the text it belongs to —
+  // which is what makes the header ones read as part of their heading.
+  const CARET_SVG = '<svg viewBox="0 0 14 9" width="11" height="7" aria-hidden="true">'
+    + '<path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function closeAll(except) {
     for (const p of [...OPEN]) if (p !== except) p.close();
   }
@@ -68,7 +88,7 @@
     const caret = document.createElement('span');
     caret.className = 'picker-caret';
     caret.setAttribute('aria-hidden', 'true');
-    caret.textContent = '⌄'; // the app's own caret, not the OS chevron
+    caret.innerHTML = CARET_SVG; // geometry, not a font glyph — see CARET_SVG
     btn.append(text, caret);
 
     let list = null;

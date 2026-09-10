@@ -593,3 +593,43 @@ test('choosing an instrument from the carousel cannot write to a file', () => {
   assert.doesNotMatch(fn[0], /sevenAPI\.library\./,
     'the carousel reaches no library write surface whatsoever');
 });
+
+// ---- The dropdown caret is a shape, not a character ------------------------
+//
+// WHY THIS IS A SOURCE TEST. The bug is a rendering difference between
+// platforms, and this repo's UI suite has never run on Windows — not once. So
+// the only suite that could observe the fault cannot be run on the machine
+// where the fault appears, and the scenario that measures alignment
+// (test/ui/scenarios/picker-caret.js) passed on macOS with the bug in place,
+// because the fallback glyph happened to land close enough here.
+//
+// What is checkable anywhere is the PROPERTY that made it platform-dependent:
+// the caret's ink came from a font. '⌄' is U+2304, which no UI text font
+// carries, so every platform falls through to a different one and inherits its
+// metrics. `.fx-chevron` had already been fixed this way — its rule still says
+// "a font glyph's ink sat below centre regardless of box alignment" — and the
+// picker kept the character.
+//
+// This is the automatic half and runs in CI on every commit. The scenario is
+// the on-request half; say which is which when reporting coverage.
+test('the picker caret is drawn, not typed', () => {
+  const src = read('picker.js');
+  const caret = /caret\.(textContent|innerHTML|append|appendChild)[\s\S]{0,120}/.exec(src);
+  assert.ok(caret, 'the caret still gets its content in a recognisable way');
+  assert.match(caret[0], /innerHTML\s*=\s*CARET_SVG/,
+    'the caret is filled with the SVG constant');
+
+  const svg = /const CARET_SVG =([\s\S]*?);\n/.exec(src);
+  assert.ok(svg, 'CARET_SVG is still defined');
+  assert.match(svg[0], /<svg[\s\S]*viewBox="0 0 14 9"/,
+    'it is the app-wide chevron geometry, same viewBox as .fx-chevron');
+  assert.match(svg[0], /stroke="currentColor"/,
+    'and it inherits its colour rather than baking one in');
+
+  // THE MUTATION THIS EXISTS TO CATCH: putting a character back. Any of them —
+  // the original U+2304, or the commoner substitutes somebody would reach for.
+  for (const glyph of ['\u2304', '\u25BE', '\u25BC', '\u02C5', '\u2228', 'v']) {
+    assert.doesNotMatch(src, new RegExp(`caret\\.textContent\\s*=\\s*['"\`]${glyph}`),
+      `the caret must not be the character ${JSON.stringify(glyph)} — a font decides where its ink sits`);
+  }
+});

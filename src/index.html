@@ -370,7 +370,13 @@
     .picker:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
     .picker:disabled { opacity: .5; cursor: default; }
     .picker-text { white-space: nowrap; }
-    .picker-caret { color: var(--text-dim); font-size: 13px; line-height: 0; }
+    /* Flex-centred box around the geometric chevron, exactly as .fx-chevron
+       does it — the caret sits on the midline of the value beside it because
+       the box centres a known shape, not because a font's ink happened to land
+       there. No colour of its own: it inherits the button's, so the chevron is
+       the colour of the text it belongs to. */
+    .picker-caret { flex: none; display: flex; align-items: center; justify-content: center; }
+    .picker-caret svg { display: block; }
     /* Fixed, not absolute: the trays this opens in scroll and clip, and a
        dropdown's whole job is to leave its container. */
     .picker-list {
