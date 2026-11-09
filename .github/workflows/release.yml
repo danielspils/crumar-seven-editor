@@ -126,6 +126,11 @@ jobs:
             dist/*.blockmap
             dist/latest-mac.yml
           if-no-files-found: error
+          # These are a HAND-OFF to the publish job minutes later, not an
+          # archive. The default 90 days filled the account's Actions storage
+          # and started billing (~$4/month across repos, Nov 2026). What ships
+          # lives on GitHub Releases, which does not count against this quota.
+          retention-days: 7
 
   win:
     name: Windows (NSIS x64, Azure-signed)
@@ -170,6 +175,8 @@ jobs:
             dist/*.blockmap
             dist/latest.yml
           if-no-files-found: error
+          # Same hand-off, same reason. See the mac job above.
+          retention-days: 7
 
   publish:
     name: Publish the release
