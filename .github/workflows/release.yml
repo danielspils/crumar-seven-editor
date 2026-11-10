@@ -35,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           # 22, not 20: `node --test "test/*.test.js"` needs Node's own glob
           # expansion, which arrived in 21. Under 20 the quoted pattern reaches
@@ -91,8 +91,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           # 22, not 20: `node --test "test/*.test.js"` needs Node's own glob
           # expansion, which arrived in 21. Under 20 the quoted pattern reaches
@@ -117,7 +117,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --mac --universal --publish never
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: mac
           path: |
@@ -140,8 +140,8 @@ jobs:
     # uninstaller pieces and the installer itself.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           # 22, not 20: `node --test "test/*.test.js"` needs Node's own glob
           # expansion, which arrived in 21. Under 20 the quoted pattern reaches
@@ -167,7 +167,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --x64 --publish never
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: win
           path: |
@@ -185,12 +185,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # NOT "assets": that is a real directory in this repo (fonts, instrument
       # art, the panel SVG). Downloading into it merged the two, and the upload
       # step then shipped all of it — v1.0.0 went public carrying 24 stray
       # files that had to be deleted by hand.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: release-assets
       - name: Everything an updater needs, before anything is public
