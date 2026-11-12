@@ -71,6 +71,7 @@ const OP = {
 // does is how you find out what the reset code is.
 const ACTION_STORAGE = [0x0a, 0x03];
 
+const GLB_CHANNEL = 0;  // "Channel" — 0-15 are Ch. 1-16, 16 is TX OFF
 const GLB_SEND_PC = 3; // pinned by a captured editor write (30 03 01, ack 31 03)
 
 // The nine globals are addressed 1:1 by index (verified sweep), and every
@@ -553,7 +554,35 @@ class SevenMidi extends EventEmitter {
     }
   }
 
+  // THE INSTRUMENT IS NOT ALWAYS ON CHANNEL 1, and until 2026-11-12 this file
+  // assumed it was. Daniel's Seven now sits on Ch. 15 so the JUNO-X can switch
+  // its preset per scene without colliding with the X's own part 1 (Ch. 1) or
+  // its control channel (Ch. 16). On the old code every Program Change went
+  // out as 0xC0 and the instrument ignored all of them, which took recall,
+  // backup and transfer down together — backup is gated on the 0x45 broadcast
+  // that a recall produces, so no recall meant no backup.
+  //
+  // glb[0] is read at connect. 0-15 are Ch. 1-16.
+  //
+  // glb[0] === 16 is TX OFF and is NOT a 17th channel. One hardware
+  // observation on 2026-11-12: with TX OFF the Seven stopped SENDING but still
+  // RECEIVED Program Changes on channel 1. That is one reading, not a rule —
+  // what it receives on beyond that is UNKNOWN. Channel 1 is the fallback here
+  // because it is the only behaviour anyone has seen, not because it is
+  // documented.
+  _deviceChannel() {
+    const raw = this.globals && this.globals.glb ? this.globals.glb[GLB_CHANNEL] : null;
+    if (typeof raw !== 'number' || raw < 0 || raw > 15) return 0;
+    return raw;
+  }
+
   _handleNonSysex(msg) {
+    // Channel messages carry the channel in the low nibble. Everything the
+    // instrument sends — notes, the CC burst, the Program Change that closes
+    // it — moves together when the global Channel changes, so all three are
+    // matched against the device's channel rather than against 0.
+    const channel = msg[0] & 0x0f;
+    if (channel !== this._deviceChannel()) return;
     const status = msg[0] & 0xf0;
     // Note-on is OFF by default. The app has no use for it and a played chord
     // would push a dozen events per second through the IPC that carries recall
@@ -937,11 +966,11 @@ class SevenMidi extends EventEmitter {
   sendProgramChange(program) {
     this._sentProgram = { program: program & 0x7f, at: Date.now() };
     if (!this.output) throw new Error('not connected');
-    this.output.sendMessage([0xc0, program & 0x7f]);
+    this.output.sendMessage([0xc0 | this._deviceChannel(), program & 0x7f]);
   }
 }
 
 module.exports = {
-  SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_SEND_PC, PINNED_GLOBALS,
+  SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_CHANNEL, GLB_SEND_PC, PINNED_GLOBALS,
   GLB_FIELDS,
 };

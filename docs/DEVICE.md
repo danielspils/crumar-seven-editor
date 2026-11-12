@@ -399,7 +399,7 @@ one field at a time while a passive watcher sampled the array
 
 | glb | Setting | Values | Notes |
 |---|---|---|---|
-| 0 | Channel | 1–16 or OFF | OFF disables MIDI send/receive except in local-off |
+| 0 | Channel | 1–16 or TX OFF | The app sends and listens on this channel. `glb[0]` is 0-based: 0–15 are Ch. 1–16, 16 is TX OFF |
 | 1 | Alt. Channel | 1–16 | Send only, local-off mode only |
 | 2 | Send CC | Yes / No | Emit CC when a control moves |
 | 3 | Send PC | Yes / No | Emit PC on preset recall |
@@ -459,10 +459,25 @@ for exactly this reason.
   116 rather than leaving the knob's position alone (`docs/protocol.md`, open
   item 7). A unit set to Global would answer a backup differently on `veq_vol`,
   so a backup is only comparable across units when this setting matches.
-- **Channel OFF would break the app entirely.** It disables send AND receive
-  except local-off sending, so a unit set that way would ignore the
-  PC-driven recalls the backup runner depends on. Untested here — no capture
-  exists of a unit in that state.
+- **TX OFF stops sending. It does not stop receiving.** Measured on hardware
+  2026-11-12, correcting what this section said before: with Channel set to
+  TX OFF the Seven stopped sending its keys, but still RECEIVED Program
+  Changes on channel 1 from a JUNO-X and switched presets. The earlier claim
+  that it "would break the app entirely" was written from the manual, not from
+  a unit, and is wrong about receive.
+
+  What it receives on beyond that one observation is **UNKNOWN**. The app falls
+  back to channel 1 under TX OFF because that is the only behaviour anyone has
+  seen — not because it is documented. Do not read the fallback as a finding.
+
+  Alt. Channel (`glb[1]`) still sends in local-off mode, as documented.
+
+- **The app follows `glb[0]` for both directions.** Program Changes go out on
+  `0xC0 | glb[0]` and incoming channel messages are matched against the same
+  channel. Before 2026-11-12 both were hardcoded to channel 1, which was
+  invisible until Daniel moved his Seven to Ch. 15 — then recall, backup and
+  transfer all failed at once, because backup is gated on the 0x45 broadcast a
+  recall produces.
 
 ### Memory Protect is a transfer blocker
 
