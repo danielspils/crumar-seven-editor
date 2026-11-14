@@ -99,6 +99,38 @@ active segment, a focus ring, a field being edited. It was doing double duty as
 the action colour, which is why the audition buttons read as louder than
 anything else on screen (Daniel, 2026-08-11: "pretty out there").
 
+**Full chroma for marks, damped for text.** The source these colours are
+borrowed from is 3mm LEDs and printed legends a few millimetres tall. At word
+scale the same hue is many times the ink, so a value that is right for a mark is
+wrong for a sentence. A MARK keeps the panel's own value — the 3px selected-row
+edge, a 2px tab underline, a lit LED — because those are the size an LED
+actually is. Anything set as WORDS takes a damped variant, and the damped hues
+are tuned to one brightness so that none of them jumps out of a row of the
+others.
+
+Without it a list design read as neon rather than as an instrument — Daniel,
+2026-11-14: "These light colors are a bit wild and neon-y." The palette was not
+at fault. Three of these hues were being set on whole words at 12px bold at
+once, which is three LEDs' worth of colour enlarged a hundredfold.
+
+The palette defines exactly one damped chroma variant today, `--warn`; every
+other damped tone in it is neutral (`--text-muted`, `--text-dim`). A hue that
+needs to appear as words therefore needs its damped variant added in both
+palettes before it can, which `test/css-hazards.test.js` already enforces.
+
+Two collisions it exposed, both now fixed, and both against rules this file
+already states:
+
+- **Amber was doing warning duty as well as locating.** The "Not installed"
+  badge was amber — a claim about a problem, wearing the colour that means
+  "where you are". It uses `--warn` (`#d9a13b` / `#7d5a10`), which the palette
+  had all along. This is a second collision on the same colour as the action
+  one above, which is the argument for keeping the one-meaning rule literally.
+- **The active tab stated its selection twice**, as an amber underline AND
+  amber text. Underline already means selection in the vocabulary above, so the
+  colour was restating what the shape had said. The word is plain now, and the
+  underline carries it alone.
+
 ### Both palettes, always
 
 Every variable is defined in BOTH `:root` (dark) and `:root[data-theme="light"]`,
@@ -115,6 +147,42 @@ to be written in — safe only where each theme supplies its own.
 The panel strip and its controls (the Clavinet-style tabs, the knobs, the
 pressed caps) keep their physical colours in both themes. They are a picture of
 a machine that does not change colour when the room lights do.
+
+### The one exception: the logo is a lit sign
+
+**A picture of a machine holds its colours; a lit sign does not.** The rule
+above is about rendering an object under different room lights. A sign that
+emits is a different object: in the dark you see the emission, in daylight you
+see the material it is made of. So the Seven's logo script — alone among the
+things borrowed from the hardware — may take a different value per theme, and
+should.
+
+- **Dark:** the panel green, glowing — a halo in its own hue.
+- **Light:** forest `#1f6b3d`, with a soft same-hue spill. More SATURATED than
+  the ground rather than brighter, because a lit sign in daylight spills its own
+  colour onto the surface instead of haloing white.
+
+The first version lit it in dark mode only and stated "chosen" with flat ink in
+light, on the grounds that a neon halo on paper is a lie. The halo is the lie;
+being lit is not. Daniel pushed back (2026-11-14) and that is the correction —
+a sign that is on reads as on under any light, or the thing it is imitating is
+not a sign.
+
+The colour was picked from six candidates all sourced from the panel drawing
+(the LOCAL OFF chip's magenta, the LED red, the panel's teal, the unlit ochre
+legend, plain ink), so it is borrowed like everything else here.
+
+**Watch:** forest is also `--action` in light, both descended from the
+DEPTH/RATE legend, so the shared hue is honest rather than a coincidence — and a
+31px script in a corner is not confusable with a 12px label in a foot. If a
+third thing wants this green, split them then.
+
+**And it is allowed exactly once.** The logo lights because it IS the machine;
+it states "selected" in the instrument's own language instead of the app's. A
+second element that starts glowing takes the meaning away from this one.
+
+*(The mock at `out/lists-design.html` still shows the earlier ink-only light
+mode — it predates the correction above.)*
 
 ## Parameter rendering taxonomy
 
