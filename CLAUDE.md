@@ -1812,14 +1812,69 @@ Kept here because they otherwise live only in a chat that ends.
 Audition mode is gone as a concept, not renamed. A patch is live the moment it
 is selected, because selecting it loads it — so the controls are always live
 and there is no state to explain. What replaced the mode is one rule about
-consequences: **navigating away discards.** No prompt, no rescue, and the
-library file is left exactly as it was; in exchange the instrument goes back to
-playing whatever is on screen. The only visible state is a dot and a Save
-button once something has actually changed.
+consequences: **navigating away discards.** The library file is left exactly as
+it was; in exchange the instrument goes back to playing whatever is on screen.
+The only visible state is a dot and a Save button once something has actually
+changed.
 
 Daniel lived with it and confirmed it (2026-08-12). Two softenings were
-deliberately deferred and stay deferred until they bite: a warning before
-discarding, and a "Load sound" button for library patches.
+deliberately deferred "until they bite": a warning before discarding, and a
+"Load sound" button for library patches.
 
-**Storing is always a physical three-second panel hold** — no store opcode
-exists. The UI says so plainly rather than pretending to work around it.
+### The warning bit, and is no longer deferred (14 Nov 2026)
+
+Daniel lost two patches on 13 Nov 2026 the same way twice: he edited a slot,
+went looking for a way to save it, and the hunting itself was the navigation
+that threw the work away. "I forget that I can't save a slot that I've been
+editing to that same slot."
+
+So **navigating away from a CHANGED patch now asks** — `audition.confirmLeave()`,
+called before any selection state moves, from both doors (the library row and
+the bank slot). Discarding is still available and still discards; it is now a
+named button rather than a side effect of a click somewhere else.
+
+**The 2026-08-12 reasoning is not overturned, it is honoured.** The toll that
+decision refused to pay was on BROWSING, and browsing still costs nothing: with
+nothing changed, `confirmLeave` answers true without drawing anything.
+`test/ui/scenarios/switch-patch-guard.js` pins both halves, in that order.
+
+### Storing, and what it is no longer the only way to do
+
+**Storing to a preset is always a physical three-second panel hold** — no store
+opcode exists, and the UI says so plainly rather than pretending to work around
+it.
+
+**But the hold is no longer the only way to KEEP a sound.** Save reads the whole
+edit buffer off the instrument and writes that to a file, which can be sent back
+any time — so the hold keeps a sound *in that preset on the instrument*, which is
+a different and optional thing. UI copy must not present it as the only way to
+keep work (`out/save-what-you-hear.md` §4). The sentence that did —
+"Nothing is kept until you hold the button on the Seven" — was false in the
+direction that loses work: it told the player the computer was not an option.
+
+### WYHIWYG: a save asks the instrument (14 Nov 2026)
+
+Daniel: "What I'm hearing is what I want to save .. so it shouldn't matter if
+it's partly programmed in the app and partly on the Seven."
+
+Save used to write the app's own copy of the patch. That copy is a **belief** —
+the values the app sent, plus whatever panel moves it managed to follow — and a
+belief is not what is sounding. A save now reads the full edit buffer off the
+instrument (`src/param-read.js` → `readBuffer`) and writes **that**. Measured
+cost: see "How long the suites take" above for the method; it is ~1.3s, which is
+why it happens after the player has chosen, never while a dialog is opening and
+never on the way out of a patch.
+
+Two rules, both mutation-proven in `test/save-plan.test.js`:
+
+- **What is written is what was read**, never the app's copy, whenever there is
+  an instrument to ask.
+- **A read that did not finish writes nothing.** Not a shorter patch, not a
+  blend of fresh and stale values. Daniel moves the one USB cable between this
+  app and his JUNO-X rig, so losing the instrument mid-read is ordinary — and a
+  file holding sixty read values and fifty remembered ones is worse than no
+  file, because nothing afterwards can tell it from a real one.
+
+With nothing connected the save writes what the app has, which is fine and is
+**said on screen**. The same words meaning two different things depending on a
+cable is the shape of bug this project keeps finding.

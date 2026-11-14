@@ -546,9 +546,89 @@
     }
   }
 
+  // ---- The three-second hold, told once ------------------------------------
+  //
+  // The app cannot write a preset. There is no store opcode; the player holds
+  // a panel button for three seconds and the instrument does it. So anywhere
+  // the app wants a slot written, all it can do is ASK and show how — which
+  // the transfer walk has done since August, and which the save flow now needs
+  // for exactly the same act.
+  //
+  // It lives here rather than being written a second time next to the save
+  // modal. Two copies of an instruction drift, and the one that drifts is
+  // always the one the player is reading (out/save-what-you-hear.md §3: "Do
+  // not write a second one").
+  //
+  // Three blinks at 260ms on / 260ms off, then rest — long enough to catch the
+  // eye across a stage, short enough that it is plainly over. Kept beside the
+  // CSS that has to agree with it.
+  const HOLD_BLINK_MS = 3 * 520;
+  const HOLD_LINE = 'Your Seven lights will run indicating the sound is saved.';
+  // "lights will run" rather than "the button blinks": what the panel actually
+  // does at a store has not been captured, and the owner's description is a
+  // sequence across the LEDs rather than one of them flashing. Says enough to
+  // recognise it, claims nothing precise.
+  const HOLD_MISTAKE_LINE = 'Hold the button on the Seven itself (not this fake button!)';
+
+  const holdFaceHtml = () =>
+    '<p class="tx-note">Hold for 3 seconds.</p>' +
+    `<p class="tx-note tx-hold-line">${HOLD_LINE}</p>`;
+
+  // PRESSING THE PICTURE. The dialog says "hold for 3 seconds" beside a drawing
+  // of the button to hold, so somebody will hold THAT one — and it did nothing
+  // whatever, which is the silent-control failure this app has a rule against:
+  // reaching for it IS the request, so it answers every time (Daniel,
+  // 2026-08-22).
+  //
+  // The answer goes in the line that is already there rather than a new one, so
+  // the dialog cannot change size under someone whose finger is on the screen.
+  // "Hold for 3 seconds." stays above it the whole time: they are being told
+  // what to do and the correction must not replace the instruction.
+  //
+  // A CLICK, NOT A HOVER. A mouse crosses this panel constantly and usually
+  // means nothing; a line that changed every time the cursor passed would read
+  // as a fault rather than a hint. And only on a PRESET — that is the button
+  // they were told to hold.
+  //
+  // THE CORRECTION STANDS once it has been made. What ends is the BLINK: three
+  // of them, then rest. A hint that ends is a hint; one that never stops is an
+  // error state. Click again and it blinks again, because the second press
+  // means the first answer was not read.
+  function wireHoldHint(panel, holdLine) {
+    if (!panel || !holdLine) return () => {};
+    let hintTimer = null;
+    panel.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-mp-preset]')) return;
+      holdLine.textContent = HOLD_MISTAKE_LINE;
+      holdLine.classList.add('tx-alarm-soft');
+      // Restarting a finite animation: class off, reflow, class on. Removing it
+      // and adding it back in one tick can coalesce into no change at all,
+      // leaving a second press with nothing to show for it. NOT PROVEN
+      // NECESSARY — deleting the reflow left the scenario green, because the
+      // surrounding style reads flush anyway — so it is kept as a guarantee
+      // rather than as a fix, and this comment says which it is.
+      holdLine.classList.remove('tx-blink');
+      void holdLine.offsetWidth;
+      holdLine.classList.add('tx-blink');
+      if (hintTimer) clearTimeout(hintTimer);
+      hintTimer = setTimeout(() => {
+        holdLine.classList.remove('tx-blink');
+        hintTimer = null;
+      }, HOLD_BLINK_MS);
+    });
+    // Put the standing instruction back — the correction is the exception, and
+    // the next preset starts from the instruction again.
+    return () => {
+      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+      holdLine.textContent = HOLD_LINE;
+      holdLine.classList.remove('tx-alarm-soft', 'tx-blink');
+    };
+  }
+
   return {
     buildPanel, setStage, setBank, setPreset, nextBank, focusControl, bindKeys,
     buildGrid, paintBackup,
+    holdFaceHtml, wireHoldHint, HOLD_LINE, HOLD_MISTAKE_LINE, HOLD_BLINK_MS,
     PREFIX, VIEW, PRESET_CX, GRID_SLOTS,
   };
 });

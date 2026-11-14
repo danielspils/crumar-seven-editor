@@ -196,7 +196,16 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     // instrument actually took.
     setParam: (key, value) => ipcRenderer.invoke('edit:param', { key, value }),
     readParam: (key) => ipcRenderer.invoke('edit:read', { key }),
+    // The WHOLE edit buffer, read off the instrument. What a save is built
+    // from, so the file says what is sounding rather than what the app sent.
+    // All-or-nothing: `ok:false` means nothing may be written.
+    readBuffer: () => ipcRenderer.invoke('edit:buffer'),
     ccMap: () => ipcRenderer.invoke('edit:ccMap'),
+    // Send CC is the player's setting; the editor BORROWS it so it can follow
+    // a knob, and gives it back on leaving the tab. The marker on disk covers
+    // a crash in between (seven-midi.js).
+    borrowSendCc: () => ipcRenderer.invoke('edit:borrowSendCc'),
+    returnSendCc: () => ipcRenderer.invoke('edit:returnSendCc'),
     // Recall a slot on the instrument (bank/preset are 0-based).
     recall: (bank, preset) => ipcRenderer.invoke('midi:recall', { bank, preset }),
     globals: () => ipcRenderer.invoke('midi:globals'),

@@ -18,6 +18,7 @@ const { formatSetlist } = require('./setlist-text');
 const { mailSetlist } = require('./mailto');
 const { NotesSeen } = require('./notes-seen');
 const { parseNotesFeed } = require('./notes-feed');
+const { readBuffer, missingKeys } = require('./param-read');
 
 // Where "Report this instrument" sends someone. The APP's repo — Issues
 // enabled, checked 2026-08-15. It pointed at this-seven-goes-to-eleven, which
@@ -465,6 +466,78 @@ function registerEditIpc() {
       return { ok: true, key, value: r.value };
     } catch {
       return { ok: false };
+    }
+  });
+
+  // THE WHOLE EDIT BUFFER, which is what a save is built from.
+  //
+  // WYHIWYG: the file records what the instrument is holding, not what the app
+  // believes it sent. Some of what is sounding may have come from the panel —
+  // and even where the app follows a control, its copy is a belief and this is
+  // a reading. Measured at roughly 1.3s, which is why this is on a deliberate
+  // save and never on the navigate-away path.
+  //
+  // The id list comes from the INSTRUMENT's own parameter table, not the
+  // schema (the same rule backup-runner.js:117 follows). A unit reporting
+  // fewer parameters than the schema carries has no value for those keys, so
+  // they come back under `missing` to be named — never back-filled from the
+  // app's copy, which would mix a reading with a belief inside one file and
+  // leave nothing able to tell which was which.
+  ipcMain.handle('edit:buffer', async () => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    const schemaParams = getSchema().parameters;
+    const table = midi.paramTable;
+    const ids = table
+      ? table.params.map((p) => p.id)
+      : [...schemaParams].sort((a, b) => a.id - b.id).map((p) => p.id);
+    const startedAt = Date.now();
+    try {
+      const { params } = await readBuffer(midi, ids);
+      return {
+        ok: true,
+        params,
+        missing: missingKeys(schemaParams.map((p) => p.key), params),
+        count: Object.keys(params).length,
+        // Reported so the cost stays a measurement rather than an estimate
+        // somebody wrote down once (CLAUDE.md: "A number with a date beats a
+        // claim"). The save screen does not show it; the UI probe reads it.
+        elapsedMs: Date.now() - startedAt,
+      };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  // BORROWING Send CC, so the app can follow a knob the player turns.
+  //
+  // Off, the panel announces nothing and the Save button would sit there
+  // outlined while the sound changed under it — the app telling a lie about
+  // its own state. Nothing is LOST either way, because a save reads the whole
+  // buffer regardless; this is about the button being honest.
+  //
+  // A failed borrow is reported and never fatal. The editor still works, the
+  // save still reads everything, and the one consequence is a button that is
+  // slower to notice a panel move. Blocking a save on it would trade the thing
+  // that matters for the thing that does not.
+  ipcMain.handle('edit:borrowSendCc', async () => {
+    const midi = getMidi();
+    if (midi.state !== 'connected') return { ok: false, error: 'The Seven is not connected.' };
+    try {
+      return { ok: true, borrowed: await midi.setSendCc(1) };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  ipcMain.handle('edit:returnSendCc', async () => {
+    const midi = getMidi();
+    try {
+      await midi.restoreSendCc();
+      return { ok: true };
+    } catch (err) {
+      // The marker outlives this: the next connect puts it back.
+      return { ok: false, error: String(err.message || err) };
     }
   });
 

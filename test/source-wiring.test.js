@@ -273,14 +273,29 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
   // The event matters as much as the answer. A mouse crosses that panel
   // constantly; on hover the line would change for people who did nothing,
   // which reads as a fault rather than a hint.
+  // THE INSTRUCTION MOVED, AND NOTHING IS GIVEN UP BY FOLLOWING IT.
+  // The save flow shows the same hold for the same act, so the markup and the
+  // handler live in modal-panel.js and both callers use that one copy
+  // (out/save-what-you-hear.md §3: "Do not write a second one"). Each half is
+  // still pinned — just where its code now is.
   const src = code(read('app.js'));
   const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
   assert.ok(walk, 'transferWalk is still recognisable');
-  assert.match(walk[0], /panel\.addEventListener\('click'/,
+  assert.match(walk[0], /SevenModalPanel\.wireHoldHint\(panel, holdLine\)/,
+    'the walk wires the shared hint rather than growing its own');
+  assert.match(walk[0], /SevenModalPanel\.holdFaceHtml\(\)/,
+    'and takes the instruction from the same place');
+  assert.doesNotMatch(walk[0], /not this fake button/,
+    'the copy is NOT duplicated back into the walk');
+
+  const mp = code(read('modal-panel.js'));
+  const hint = /function wireHoldHint\(([\s\S]*?)\n  \}/.exec(mp);
+  assert.ok(hint, 'wireHoldHint is still recognisable');
+  assert.match(hint[0], /panel\.addEventListener\('click'/,
     'the panel answers a click');
-  assert.doesNotMatch(walk[0], /panel\.addEventListener\('(?:mouseover|mouseenter|pointerover|pointerenter)'/,
+  assert.doesNotMatch(mp, /panel\.addEventListener\('(?:mouseover|mouseenter|pointerover|pointerenter)'/,
     'and never a hover');
-  assert.match(walk[0], /closest\('\[data-mp-preset\]'\)/,
+  assert.match(hint[0], /closest\('\[data-mp-preset\]'\)/,
     'only a press on a PRESET — the button they were told to hold');
   // Daniel's copy, both states, unsmoothed: the parenthetical and the
   // exclamation mark are the voice. Pinned so a later tidy-up cannot quietly
@@ -288,7 +303,7 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
   // Long copy is split across adjacent string literals to fit the line, so
   // the joins come out before matching — otherwise this pins the line WRAPS
   // rather than the sentence, and rewrapping would break it.
-  const joined = walk[0].replace(/'\s*\+\s*'/g, '');
+  const joined = mp.replace(/'\s*\+\s*'/g, '');
   assert.match(joined, /Your Seven lights will run indicating the sound is saved\./,
     'the standing line is his, and says what the instrument does');
   assert.match(joined, /Hold the button on the Seven itself \(not this fake button!\)/,
@@ -718,4 +733,96 @@ test('the backup still ends in its own dialog, with its own words', () => {
   assert.match(src, /\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new/,
     'and the unchanged/new split, which is where that distinction lives — '
     + 'the grid lights an unchanged slot exactly like a new one');
+});
+
+// ---- Saving what you hear (out/save-what-you-hear.md §8) -------------------
+//
+// src/save-plan.js holds the decision and test/save-plan.test.js pins it. This
+// is the other half: that the APP is wired to that decision, and that the two
+// things which live only in markup — the tick box's default and the dialog
+// opening before anything moves — are what they have to be.
+//
+// Both halves run in `npm test`. Nothing here waits for somebody to remember
+// to type the second command.
+
+test('the save dialog is driven by the tested decision, not a second copy', () => {
+  const src = code(read('audition.js'));
+  const flow = /async function openSaveFlow\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(flow, 'openSaveFlow is still recognisable');
+  assert.match(flow[0], /SevenSavePlan\.decideSave/,
+    'the flow asks save-plan.js what to do');
+  assert.match(flow[0], /SevenSavePlan\.rowsHtml\(SevenSavePlan\.saveRows/,
+    'and which rows to offer — including whether the overwrite row exists at all');
+  // THE READ IS THE INSTRUMENT'S, and it is what gets written. Handing
+  // appParams in as `readBuffer` would make every save write the app's copy
+  // again with the whole suite green.
+  assert.match(flow[0], /readBuffer: \(\) => withBufferRead\(modal\)/,
+    'the buffer read comes off the instrument');
+  assert.match(code(read('audition.js')), /midi\.readBuffer\(\)/,
+    'and withBufferRead goes to the wire for it');
+});
+
+// THE TICK BOX IS THE WHOLE PROTECTION against a hold that never happens.
+// Unticked it is a step he would skip in exactly the moment he needs it.
+test('"Also save a copy to Patches" is ticked by default', () => {
+  const src = read('audition.js');
+  const hold = /async function runHoldScreen\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(hold, 'runHoldScreen is still recognisable');
+  assert.match(hold[0], /class="sv-copy" checked/,
+    'the box ships ticked, in the markup, not set afterwards by something that could fail');
+  assert.match(hold[0].replace(/'\s*\+\s*'/g, ''),
+    /If you walk away without holding the button, the sound is still on your computer\./,
+    'and says why it is there');
+});
+
+// THE HOLD SCREEN IS A REUSE, not a second telling. Two copies of an
+// instruction drift, and the one that drifts is the one being read.
+test('the save flow shows the SAME hold instruction as the transfer', () => {
+  const src = code(read('audition.js'));
+  const hold = /async function runHoldScreen\(([\s\S]*?)\n  \}/.exec(src);
+  assert.match(hold[0], /SevenModalPanel\.holdFaceHtml\(\)/,
+    'the instruction comes from modal-panel.js');
+  assert.match(hold[0], /SevenModalPanel\.wireHoldHint/,
+    'and so does the answer to pressing the picture');
+  assert.doesNotMatch(src, /Hold for 3 seconds/,
+    'audition.js does not write its own copy of the sentence');
+});
+
+// NAVIGATING AWAY ASKS FIRST — both doors, and before any state moves.
+//
+// "Navigating away discards" was settled on 2026-08-12 with a warning
+// deliberately deferred "until it bites". It bit: Daniel lost two patches on
+// 13 Nov walking out of a patch looking for a save control. The guarantee is
+// that confirmLeave comes BEFORE the selection changes, because a confirm
+// after the recall is a dialog about work that is already gone.
+test('both ways out of an edited patch ask before anything moves', () => {
+  const src = code(read('app.js'));
+
+  const lib = /async function selectLibraryEntry\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(lib, 'selectLibraryEntry is still recognisable');
+  assert.match(lib[0], /await audition\.confirmLeave\(\)/, 'the library row asks');
+  assert.ok(
+    lib[0].indexOf('confirmLeave') < lib[0].indexOf('libSelected = entry'),
+    'and asks BEFORE it moves the selection'
+  );
+
+  // The bank region's slot click. Matched from its own landmark rather than a
+  // function name, because it is an inline listener.
+  const slot = /listEl\.addEventListener\('click', async \(e\) => \{([\s\S]*?)\n  \}\);/.exec(src);
+  assert.ok(slot, 'the slot-row listener is still recognisable');
+  assert.match(slot[0], /await audition\.confirmLeave\(\)/, 'the bank slot asks too');
+  assert.ok(
+    slot[0].indexOf('confirmLeave') < slot[0].indexOf('deviceSel = { bank: bankIndex'),
+    'before it moves the device selection — and so before the recall replaces the buffer'
+  );
+});
+
+// And it is NOT a toll on browsing. With nothing changed the answer is true
+// without drawing anything, which is what kept the 2026-08-12 decision livable.
+test('confirmLeave is silent when nothing has changed', () => {
+  const src = code(read('audition.js'));
+  const fn = /async confirmLeave\(\) \{([\s\S]*?)\n      \}/.exec(src);
+  assert.ok(fn, 'confirmLeave is still recognisable');
+  assert.match(fn[0], /if \(!liveEdit \|\| !driftNow\(\)\) return true;/,
+    'no session or no drift means no dialog at all');
 });

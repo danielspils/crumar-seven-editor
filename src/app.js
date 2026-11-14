@@ -176,6 +176,11 @@
   // which one the detail panel renders.
   let bankIndex = 0; // which bank the list DISPLAYS — navigation, not selection
   let deviceSel = { bank: 0, preset: 0 }; // the Seven boots at preset 1-1
+  // The last status the main process reported. Kept because two questions need
+  // an answer NOW rather than one IPC round trip later: whether Send PC is on,
+  // which decides whether the app can honestly name the slot the Seven is
+  // sitting on, and whether anything is connected at all.
+  let lastStatus = null;
   // WHICH SELECTION THE DETAIL PANEL SHOWS, and nothing else. Both regions
   // keep their selection at once, so the panel has to pick one, and "the thing
   // you last chose" is not derivable from anything on screen — remembering is
@@ -186,6 +191,53 @@
   // that never reset. Ownership of a keypress is answered by focusedRegion(),
   // read from the DOM at press time (Daniel, 2026-08-20).
   let lastTouched = 'device'; // 'device' | 'library'
+
+  // ---- Send CC, borrowed while the instrument view is in front -------------
+  //
+  // `glb[2]` is Send CC: "emit a CC when a panel control moves". With it off
+  // the panel announces nothing, so the app cannot follow a knob the player
+  // turns, and the Save button would sit there outlined while the sound
+  // changed under it. Nothing is LOST either way — a save reads the whole
+  // buffer regardless — so this is about the button being honest, not about
+  // keeping work.
+  //
+  // BORROWED on entering ON THE SEVEN, GIVEN BACK on leaving the view rather
+  // than on app quit. The one USB cable moves between this app and Daniel's
+  // JUNO-X rig, and a Send CC left on means his knobs send CC into the X until
+  // he recalls a scene. That writes nothing to the X's memory, so it is
+  // temporary and harmless — "low risk item that we shouldn't over-design for"
+  // (Daniel, 14 Nov) — which is why there is no warning system and no
+  // reconciliation here. A crash or a yanked cable is covered by the marker
+  // file that already exists (seven-midi.js), and by nothing else.
+  let ccBorrowed = false;
+
+  async function borrowSendCc() {
+    if (ccBorrowed || !isConnected()) return;
+    ccBorrowed = true; // set FIRST: a second entry mid-await must not re-ask
+    const r = await window.sevenAPI.midi.borrowSendCc();
+    if (!r || !r.ok) {
+      ccBorrowed = false;
+      // Said once, and never fatal. A failed borrow costs a button that is
+      // slower to notice a panel move; blocking anything on it would trade
+      // the thing that matters for the thing that does not.
+      toast('Could not turn Send CC on — panel moves may not show until you save');
+    }
+  }
+
+  async function returnSendCc() {
+    if (!ccBorrowed) return;
+    ccBorrowed = false;
+    await window.sevenAPI.midi.returnSendCc();
+  }
+
+  // The ONE place the view changes, so the borrow cannot be missed by a new
+  // caller that sets the variable directly.
+  function setLastTouched(which) {
+    if (lastTouched === which) return;
+    lastTouched = which;
+    if (which === 'device') borrowSendCc();
+    else returnSendCc();
+  }
 
   // Where the sound carousel is parked. null = follow the patch; a number
   // means the user has paged away from it and is browsing.
@@ -286,8 +338,15 @@
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const pickedSound = await chooseSound(
       `Bank ${bank} · Preset ${preset}`,
-      'Choosing an instrument sends it to this preset and plays it. Nothing is kept until ' +
-      'you hold the button on the Seven.'
+      // §4 of out/save-what-you-hear.md: the hold is no longer the only way
+      // to keep a sound, so this no longer says it is. Save Patch writes the
+      // whole buffer to a file, which can be sent back any time; the hold is
+      // what keeps it ON THE INSTRUMENT, in this slot, which is a different
+      // and optional thing. The old sentence — "Nothing is kept until you
+      // hold the button on the Seven" — is now false, and it was false in the
+      // direction that loses work: it told him the computer was not an option.
+      'Choosing an instrument sends it to this preset and plays it. Save Patch keeps it on ' +
+      'your computer; holding the button on the Seven keeps it in this preset.'
     );
     if (!pickedSound) return;
     const chosen = pickedSound.name;
@@ -640,11 +699,16 @@
   // function, because the arrows used to fake a click on the neighbouring row
   // and that raced the list's own re-render: the highlight stopped advancing
   // and the panel showed the patch before last (Daniel, 2026-08-12).
-  function selectLibraryEntry(entry, opts = {}) {
+  async function selectLibraryEntry(entry, opts = {}) {
+    // LEAVING A CHANGED PATCH ASKS FIRST, before anything moves. This is one
+    // of the two doors Daniel walked out of on 13 Nov looking for a save
+    // control, losing the edits he was looking for. Nothing has changed ->
+    // nothing is drawn, so browsing is untolled.
+    if (!(await audition.confirmLeave())) return;
     // Independent of the device selection — both stay set, both stay visibly
     // selected; the detail panel follows the last touch.
     libSelected = entry;
-    lastTouched = 'library';
+    setLastTouched('library');
     resetCollapsed();
     renderAll();
     // Moving to another patch leaves audition mode, here as in the bank region.
@@ -1026,7 +1090,7 @@
     const next = here == null ? (dir > 0 ? 0 : 7) : here + dir;
     if (next < 0 || next > 7) return; // stop at the ends: a bank is 8 slots
     deviceSel = { bank: bankIndex, preset: next };
-    lastTouched = 'device';
+    setLastTouched('device');
     resetCollapsed();
     renderAll();
     const row = listEl.querySelector(`.patch-row[data-index="${next}"]`);
@@ -1278,11 +1342,6 @@
   // left a second of nothing happening between "Send to Bank 3" and the walk
   // appearing. Now the walk appears at once, showing the button you are about
   // to hold, with its actions inert until the patch is actually there.
-  // Three blinks at 260ms on / 260ms off, then rest — long enough to catch the
-  // eye across a stage and short enough that it is plainly over. Kept beside
-  // the CSS that has to agree with it.
-  const BLINK_MS = 3 * 520;
-
   async function transferWalk(slots, bank) {
     const firstSlot = nextTransferSlot(slots, -1);
     if (!firstSlot) return transferDone(await window.sevenAPI.transfer.next());
@@ -1318,20 +1377,11 @@
         // the instrument picture's slot: reserve the space, do not let the
         // content drive the box.
         '<div class="tx-slot">' +
+          // THE HOLD INSTRUCTION, from the one place it is written
+          // (modal-panel.js). The save flow shows the same thing for the same
+          // act, and two copies of an instruction drift.
           '<div class="tx-face" data-face="hold">' +
-            '<p class="tx-note">Hold for 3 seconds.</p>' +
-            // "lights will run" rather than "the button blinks": what the panel
-            // actually does at a store has not been captured, and the owner's
-            // description is a sequence across the LEDs rather than one of them
-            // flashing. Says enough to recognise it, claims nothing precise.
-            //
-            // THIS IS ALSO THE LINE THAT SWAPS when somebody presses the
-            // picture — see the click handler below. It is the standing state;
-            // the correction is the exception, and it goes back to this at the
-            // next preset. Briefly it was replaced outright, which cost this
-            // sentence for a commit (Daniel, 2026-08-23).
-            '<p class="tx-note tx-hold-line">Your Seven lights will run indicating the ' +
-            'sound is saved.</p>' +
+            SevenModalPanel.holdFaceHtml() +
           '</div>' +
           '<div class="tx-face is-off" data-face="skip">' +
             // DELIBERATELY THE SAME SENTENCE as the subtitle under the patch
@@ -1368,59 +1418,12 @@
     const skipLine = modal.body.querySelector('.tx-skip-line');
     // is-off hides a face WITHOUT removing it from the grid, so the slot keeps
     // the height of the taller one either way.
-    // PRESSING THE PICTURE. The dialog says "hold for 3 seconds" beside a
-    // drawing of the button to hold, so somebody will hold THAT one — and it
-    // did nothing whatever, which is the silent-control failure this app
-    // already has a rule against: reaching for it IS the request, so it
-    // answers every time (Daniel, 2026-08-22).
     //
-    // The answer goes in the line that is already there rather than a new one,
-    // so the dialog cannot change size under someone whose finger is on the
-    // screen. "Hold for 3 seconds." stays above it the whole time: they are
-    // being told what to do and the correction must not replace the
-    // instruction.
-    //
-    // A CLICK, NOT A HOVER. A mouse crosses this panel constantly and usually
-    // means nothing; a line that changed every time the cursor passed would
-    // read as a fault rather than a hint (Daniel, 2026-08-22). And only on a
-    // PRESET — that is the button they were told to hold.
-    //
-    // THE CORRECTION STANDS once it has been made. What ends is the BLINK:
-    // three of them, then rest. A hint that ends is a hint; one that never
-    // stops is an error state. Click again and it blinks again, because the
-    // second press means the first answer was not read.
+    // The press-the-picture correction is wired from modal-panel.js, beside the
+    // instruction it corrects. resetHoldLine puts the standing instruction back
+    // at the next preset.
     const holdLine = modal.body.querySelector('.tx-hold-line');
-    const HOLD_LINE = holdLine ? holdLine.textContent : '';
-    const MISTAKE_LINE = 'Hold the button on the Seven itself (not this fake button!)';
-    let hintTimer = null;
-    const resetHoldLine = () => {
-      if (!holdLine) return;
-      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
-      holdLine.textContent = HOLD_LINE;
-      holdLine.classList.remove('tx-alarm-soft', 'tx-blink');
-    };
-    if (panel && holdLine) {
-      panel.addEventListener('click', (e) => {
-        if (!e.target.closest('[data-mp-preset]')) return;
-        holdLine.textContent = MISTAKE_LINE;
-        holdLine.classList.add('tx-alarm-soft');
-        // Restarting a finite animation: class off, reflow, class on. Removing
-        // it and adding it back in one tick can coalesce into no change at
-        // all, leaving a second press with nothing to show for it.
-        // NOT PROVEN NECESSARY HERE — deleting the reflow left the scenario
-        // green, because the surrounding style reads flush anyway — so it is
-        // kept as a guarantee rather than as a fix, and this comment says
-        // which it is.
-        holdLine.classList.remove('tx-blink');
-        void holdLine.offsetWidth;
-        holdLine.classList.add('tx-blink');
-        if (hintTimer) clearTimeout(hintTimer);
-        hintTimer = setTimeout(() => {
-          holdLine.classList.remove('tx-blink');
-          hintTimer = null;
-        }, BLINK_MS);
-      });
-    }
+    const resetHoldLine = SevenModalPanel.wireHoldHint(panel, holdLine);
 
     const showFace = (which) => {
       holdFace.classList.toggle('is-off', which !== 'hold');
@@ -1514,8 +1517,9 @@
     } finally {
       // A four-second timer outliving the dialog would write into nodes that
       // are gone. Harmless, and exactly the kind of thing that stops being
-      // harmless the day somebody reuses the class name.
-      if (hintTimer) clearTimeout(hintTimer);
+      // harmless the day somebody reuses the class name. resetHoldLine clears
+      // it — the timer belongs to wireHoldHint now.
+      resetHoldLine();
       modal.close();
     }
   }
@@ -1689,7 +1693,7 @@
         // another (Daniel, 2026-08-13).
         carouselAt = null;
         liveSound = null;
-        lastTouched = 'device';
+        setLastTouched('device');
         resetCollapsed();
         renderAll();
         expectSlotRead(deviceSel.bank, deviceSel.preset);
@@ -2221,6 +2225,19 @@
     // The save bar needs it to tell "a Bank 1 preset is on screen" from "a
     // patch is on screen and a Bank 1 slot happens to be selected too".
     lastTouchedDevice: () => lastTouched === 'device',
+    // CAN THE APP HONESTLY NAME THE SLOT THE SEVEN IS SITTING ON?
+    //
+    // Only with Send PC on, and the condition really is that narrow. The hold
+    // overwrites whichever slot the instrument is currently on — not the one
+    // on screen — and with Send PC off a panel button press tells the app
+    // nothing, so `deviceSel` can be stale from the moment it is set. Naming a
+    // slot from a stale belief would be an instruction to overwrite something
+    // the player did not mean, which is worse than naming nothing at all
+    // (out/save-what-you-hear.md §3).
+    //
+    // The app's own recalls do NOT make this true. They put the instrument
+    // somewhere, but say nothing about where it has been moved to since.
+    slotIsKnown: () => !!(lastStatus && lastStatus.sendPc === 1),
     // What the edit buffer is actually PLAYING, which after a trip through the
     // carousel is not what the patch file says. Saving without this wrote the
     // new settings under the old instrument's name.
@@ -2538,7 +2555,7 @@
   // dblclick listener can't work here).
   let lastSlotClick = { key: null, t: 0 };
 
-  listEl.addEventListener('click', (e) => {
+  listEl.addEventListener('click', async (e) => {
     const row = e.target.closest('.patch-row');
     if (!row) return;
     if (e.target.closest('.patch-name') && banks[bankIndex].patches[Number(row.dataset.index)]) {
@@ -2556,6 +2573,11 @@
     // pencil therefore renames that library file; both regions then show the
     // new name, because both read the same file.
 
+    // THE OTHER DOOR. A recall replaces the edit buffer wholesale, so moving
+    // to another slot destroys whatever was being worked on — and this is the
+    // view Daniel was in when he lost two patches on 13 Nov. Asked BEFORE any
+    // state moves, and silent when nothing has changed.
+    if (!(await audition.confirmLeave())) return;
     deviceSel = { bank: bankIndex, preset: Number(row.dataset.index) };
     carouselAt = null; // a new selection brings the carousel back to its sound
     liveSound = null;
@@ -2563,7 +2585,7 @@
     // opens one on this slot. Ending it first also RESTORED the instrument to
     // the slot we are leaving, one recall before recalling the slot we want —
     // two moves where the player asked for one.
-    lastTouched = 'device';
+    setLastTouched('device');
     resetCollapsed();
     renderAll();
     // The Seven already moves the app when you press a preset button; this is
@@ -3221,7 +3243,7 @@
         libSelected = null;
         // The library half of the split selection is gone; the detail panel
         // falls back to the device selection.
-        if (lastTouched === 'library') lastTouched = 'device';
+        if (lastTouched === 'library') setLastTouched('device');
       }
     }
     renderAll();
@@ -3971,6 +3993,16 @@
     });
 
     const showStatus = (s, error) => {
+      const wasConnected = !!(lastStatus && lastStatus.state === 'connected');
+      lastStatus = s;
+      // The borrow follows the CABLE as well as the view. Arriving connected
+      // while the instrument view is already in front is the ordinary case —
+      // the app opens there — and without this the first session of every
+      // launch ran with Send CC however the player left it.
+      if (s.state === 'connected' && !wasConnected && lastTouched === 'device') borrowSendCc();
+      // Gone. The borrow is not ours to give back over a cable that is not
+      // there; the marker on disk is what puts it back at the next connect.
+      if (s.state !== 'connected' && wasConnected) ccBorrowed = false;
       connRow.className = s.state === 'connected' ? 'connected'
         : s.state === 'connecting' ? 'connecting'
         : error ? 'failed' : '';
@@ -4436,7 +4468,7 @@
         if (!ours) {
           deviceSel = { bank: ev.bank - 1, preset: ev.preset - 1 };
           bankIndex = ev.bank - 1;
-          lastTouched = 'device';
+          setLastTouched('device');
           resetCollapsed();
           renderAll();
         }

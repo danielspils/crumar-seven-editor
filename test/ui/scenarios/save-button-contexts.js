@@ -4,7 +4,7 @@
 // edits" — a backup record is not written to and cannot be, so a label
 // promising to save into one would describe something the app refuses to do.
 //
-//   ON THE SEVEN   "Save as new patch"   always available
+//   ON THE SEVEN   "Save patch"          always available
 //   Backups        "Save as new patch"   only when something has drifted
 //   Patches        "Save patch"          only when something has drifted
 //
@@ -13,6 +13,19 @@
 // preset may have changed since, so it cannot claim the player edited anything.
 // A control that is always available claims nothing; a drift marker there would
 // be a guess.
+//
+// IT READS "Save patch" THERE SINCE 14 NOV 2026 (out/save-what-you-hear.md §3).
+// It said "Save as new patch", and Daniel could not read that in the moment,
+// standing at the instrument: "They're hard to wrap my head around in the
+// moment. I found that yesterday with the existing 'save as a new patch'. What
+// does that mean? I know now but only because I'm working on the software."
+// The label described the FILING; the choice is the instrument or the
+// computer, and that question now gets asked inside the dialog where both
+// answers are visible at once.
+//
+// Elsewhere the label is untouched. On a backup record "Save as new patch"
+// names the destination exactly, a record never being written to — so that one
+// is still pinned below, and this change must not be allowed to spread to it.
 //
 // Offline on purpose. Drift itself needs a live session and therefore an
 // instrument — that half is covered by test/drift.test.js as a unit, and by
@@ -33,10 +46,17 @@
   await ui.sleep(600);
   ui.check(!!btn(), 'ON THE SEVEN offers a save control');
   ui.note(`OTS: "${label()}" mode=${mode()} disabled=${btn() && btn().disabled}`);
-  ui.check(label() === 'Save as new patch', `it reads "Save as new patch" (${label()})`);
+  ui.check(label() === 'Save patch', `it reads "Save patch" (${label()})`);
   ui.check(mode() === 'new', 'and it saves as new, never overwrites');
   ui.check(btn() && !btn().disabled,
     'ALWAYS AVAILABLE — there is no file here to have drifted from');
+  // TWO STATES, BOTH CLICKABLE. Outlined with nothing changed, solid once
+  // something has. Outlined is NOT disabled: saving an untouched slot into
+  // Patches is how an unedited factory preset gets into the library at all.
+  ui.check(btn() && btn().classList.contains('is-quiet'),
+    'and with nothing changed it is the quiet state, not the asking one');
+  ui.check(!(btn() && btn().classList.contains('is-ready')),
+    'it is not dressed as the thing to press until something has changed');
 
   // ── Backups ─────────────────────────────────────────────────────────────
   await ui.openLibrary();

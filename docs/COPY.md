@@ -309,7 +309,7 @@ One modal, from Settings → `Sounds on this Seven` (app.js:2736).
   - `FX1 is set to Pedal Wha-Wha — the wha takes priority and this assignment is ignored.` — renderer.js:575
 - `Select a preset in Bank 2, 3 or 4 to try another instrument` — renderer.js:485
 - Toasts: `Connect the Seven to edit sounds` (audition.js:384) · `Connect the Seven to try another instrument` (app.js:686) · `Choose a preset to try an instrument on it` (app.js:693) · `Connect the Seven to choose a sound for a preset` (app.js:227)
-- `Choosing an instrument sends it to this preset and plays it. Nothing is kept until you hold the button on the Seven.` — app.js:230
+- `Choosing an instrument sends it to this preset and plays it. Save Patch keeps it on your computer; holding the button on the Seven keeps it in this preset.` — app.js ⚑ reworded 14 Nov 2026: the hold is no longer the only way to keep a sound, so the sentence no longer says it is (out/save-what-you-hear.md §4)
 
 ### Losing edits ⚑
 
@@ -320,6 +320,21 @@ One modal, from Settings → `Sounds on this Seven` (app.js:2736).
 - `The Seven disconnected. These edits are still here — save them to keep them.` — audition.js:109
 - `Save or discard your edits before previewing another patch` — audition.js:772
 - `Could not make a copy` — audition.js:593, app.js:319
+
+### The save flow ⚑ NEW 14 Nov 2026 — needs Daniel's read
+
+Added by out/save-what-you-hear.md. The two row sentences are the whole
+defence against the two choices being mistaken for each other, which is the
+problem this flow exists to solve, so they are the ones worth arguing about.
+
+- Dialog title: `Save patch` · from navigating away: `You have unsaved changes` — audition.js
+- Row 1: `Overwrite Bank 3 / Slot 5` + `Hold the button on the Seven to confirm` — audition.js
+  - with no Send PC, the slot cannot be named honestly: `Overwrite the preset on your Seven`
+- Row 2: `Save to computer` + `Adds it to your Patches library. The Seven is untouched` — audition.js
+- Ways out: `Cancel` · from navigating away: `Discard changes and leave` + `Stay here` — audition.js
+- Hold screen: `Hold it on the Seven` + `Also save a copy to Patches` + `If you walk away without holding the button, the sound is still on your computer.` — audition.js
+- Failed read: `Nothing was saved — <reason>` / `Nothing was saved — the Seven could not be read.` — audition.js
+- Failed Send CC borrow: `Could not turn Send CC on — panel moves may not show until you save` — app.js
 
 ---
 

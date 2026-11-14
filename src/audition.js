@@ -98,7 +98,18 @@
     const onSeven = !!(deps.lastTouchedDevice && deps.lastTouchedDevice());
     const isBackupRecord = !!(donorEntry && donorEntry.origin && donorEntry.origin.kind === 'backup');
     const savesAsNew = onSeven || isBackupRecord;
-    const saveLabel = savesAsNew ? 'Save as new patch' : 'Save patch';
+    // ON THE SEVEN IT IS JUST "Save patch" NOW, and the two destinations are
+    // explained inside the modal instead of being compressed into a label.
+    // "Save as new patch" is what Daniel could not read in the moment — "What
+    // does that mean? I know now but only because I'm working on the software"
+    // — because it describes the FILING rather than the choice. The choice is
+    // the instrument or the computer, and that question belongs where both
+    // answers are visible at once.
+    //
+    // Elsewhere the label is unchanged: on a backup record "Save as new patch"
+    // names the destination correctly and is the whole truth about what the
+    // button does, a record never being written to.
+    const saveLabel = onSeven ? 'Save patch' : (savesAsNew ? 'Save as new patch' : 'Save patch');
 
     const bar = (live, note, kind = '') =>
       `<div class="audition-bar ${live ? 'is-live' : 'is-idle'}">` +
@@ -117,8 +128,18 @@
       // `live` is this bar's own argument — whether anything has drifted — so
       // the button follows drift everywhere except ON THE SEVEN, where it is
       // always present because there is no file to compare against.
+      // TWO STATES, BOTH CLICKABLE (out/save-what-you-hear.md §3). Outlined
+      // with nothing changed, solid once something has — the button was always
+      // reachable on a bank slot, and now it says which of the two it is
+      // rather than only appearing when it has something to ask for.
+      //
+      // Outlined is NOT disabled. Saving an untouched slot to the library is a
+      // real thing to want — it is how an unedited factory preset gets pulled
+      // into Patches — and it is what this control has always done here.
       `<button type="button" id="save-live-btn" data-save-mode="${savesAsNew ? 'new' : 'overwrite'}"` +
-      `${onSeven || live ? '' : ' class="is-hidden" tabindex="-1" aria-hidden="true" disabled'}>` +
+      `${onSeven
+        ? ` class="${live ? 'is-ready' : 'is-quiet'}"`
+        : (live ? '' : ' class="is-hidden" tabindex="-1" aria-hidden="true" disabled')}>` +
       `${saveLabel}</button>` +
       // NO "Send to Seven" HERE, in any context. It is not a link: it moved to
       // the rows, where every other per-patch action already lives.
@@ -556,11 +577,12 @@
   el.addEventListener('click', async (e) => {
     if (e.target.closest('#save-live-btn')) {
       const btn = e.target.closest('#save-live-btn');
-      const mode = btn.dataset.saveMode;
-      btn.disabled = true;
-      btn.textContent = 'Saving…';
-      if (mode === 'new') await saveLiveAsNewPatch();
-      else await saveLiveToLibrary();
+      // NOT disabled, and the label does not change to "Saving…". The modal
+      // opens instantly and nothing is read until a row is picked, so there is
+      // no wait here to narrate — the wait happens inside the dialog, where
+      // the dialog says so by going inert.
+      btn.blur();
+      await openSaveFlow({ fromNav: false });
       deps.renderDetail();
       return;
     }
@@ -644,14 +666,18 @@
   // Provenance is a NEW patch's: created now, instrument facts from what is
   // connected now, and nothing claimed when nothing is attached
   // (createPatchFromLive in library-store.js).
-  async function saveLiveAsNewPatch() {
+  async function saveLiveAsNewPatch(values) {
     const patch = deps.getPatch();
     if (!patch) return;
     const liveSound = deps.getLiveSound && deps.getLiveSound();
     const soundName = (liveSound && liveSound.name) || patch.soundName || '';
-    // Whatever the buffer holds. With no live session — the ON THE SEVEN case,
-    // where nothing has been sent — the slot's own values are what is playing.
-    const params = (liveEdit && liveEdit.params) || patch.params || {};
+    // WHAT THE INSTRUMENT WAS HOLDING, read by the caller. It used to be
+    // `liveEdit.params || patch.params` — the app's own copy, which on the ON
+    // THE SEVEN path is the last backup record's values rather than anything
+    // read from the buffer. That is the gap this change closes: the slot may
+    // have been edited on the panel since, and those edits are exactly what is
+    // being heard and asked for.
+    const params = values || (liveEdit && liveEdit.params) || patch.params || {};
 
     const base = String(patch.name || soundName || 'Patch')
       .replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
@@ -696,10 +722,232 @@
     return true;
   }
 
+  // ---- SAVING: ASK THE INSTRUMENT, THEN WRITE ------------------------------
+  //
+  // WHAT YOU HEAR IS WHAT YOU GET. Daniel, 14 Nov: "What I'm hearing is what I
+  // want to save .. so it shouldn't matter if it's partly programmed in the
+  // app and partly on the Seven."
+  //
+  // Save used to write the app's own copy of the patch. That copy is a BELIEF
+  // — the values the app sent, plus whatever panel moves it managed to follow
+  // — and a belief is not what is sounding. So a save reads the edit buffer
+  // off the instrument and writes THAT.
+  //
+  // Measured at roughly 1.3s, which is why it happens after the player has
+  // chosen what they want, never while a dialog is opening and never on the
+  // way out of a patch.
+
+  // What the app believes, for when there is nothing to ask.
+  function appParams() {
+    const patch = deps.getPatch();
+    return { ...((liveEdit && liveEdit.params) || (patch && patch.params) || {}) };
+  }
+
+  // Returns { params, missing, fromInstrument }, or NULL when the instrument
+  // could not be read — in which case the caller must write nothing at all.
+  //
+  // A partial read is never returned (src/param-read.js). A file holding sixty
+  // fresh values and fifty stale ones, saved under a name, is worse than no
+  // file: nothing afterwards can tell it from a real one, and Daniel moves the
+  // one USB cable between this app and his JUNO-X rig, so losing the
+  // instrument mid-read is ordinary rather than exotic.
+  // The OFFLINE case is not here: SevenSavePlan.valuesToWrite owns the
+  // "nothing to ask, so write what the app has" branch, because that is the
+  // decision and this is the wire.
+  async function readWhatIsSounding() {
+    const r = await window.sevenAPI.midi.readBuffer();
+    if (!r || !r.ok) {
+      auditionNote = {
+        kind: 'is-error',
+        file: liveEdit ? liveEdit.file : null,
+        text: r && r.error
+          ? `Nothing was saved — ${r.error}`
+          : 'Nothing was saved — the Seven could not be read.',
+      };
+      return null;
+    }
+    const missing = r.missing || [];
+    // NAMED, NEVER BACK-FILLED. The read list comes from the instrument's own
+    // parameter table, so a unit reporting fewer parameters than the schema
+    // carries simply has no value for those keys. Writing the app's copy into
+    // them would mix a reading with a belief inside one file, and nothing
+    // afterwards could tell which was which — the quiet version of a partial
+    // read. Units do differ; that is why the fingerprint exists.
+    if (missing.length) {
+      auditionNote = {
+        kind: 'is-error',
+        file: liveEdit ? liveEdit.file : null,
+        text: `Your Seven did not report ${missing.length} parameter`
+          + `${missing.length === 1 ? '' : 's'}, so they are not in this patch: `
+          + `${missing.slice(0, 6).join(', ')}${missing.length > 6 ? '…' : ''}`,
+      };
+    }
+    return { params: r.params, missing, fromInstrument: true };
+  }
+
+  // WHICH SLOT THE HOLD WOULD OVERWRITE, or null when the app cannot honestly
+  // say. The hold replaces whichever preset the Seven is sitting on — not the
+  // one on screen — so a name printed from a stale belief is an instruction to
+  // overwrite something the player did not mean. Worse than naming nothing.
+  function holdSlot() {
+    if (!(deps.slotIsKnown && deps.slotIsKnown())) return null;
+    const slot = deps.getSlot && deps.getSlot();
+    if (!slot) return null;
+    return { bank: slot.bank + 1, preset: slot.preset + 1 };
+  }
+
+  // ---- THE SAVE FLOW -------------------------------------------------------
+  //
+  // ONE BUTTON ON SCREEN, one modal behind it. The two confusable labels —
+  // "save to the Seven" and "save as a new patch" — must never both be on
+  // screen at once, because Daniel could not tell them apart in the moment:
+  // "They're hard to wrap my head around in the moment ... I know now but only
+  // because I'm working on the software." Inside the modal they sit next to
+  // each other and explain themselves by contrast, which is the one place the
+  // pairing helps rather than hurts.
+  //
+  // Opens INSTANTLY. Nothing is read from the instrument until a row is
+  // picked — the 1.3s belongs after the choice, never in front of it.
+  //
+  // Resolves 'saved', 'leave' (discard and go) or 'stay'.
+  async function openSaveFlow({ fromNav = false } = {}) {
+    const changed = driftNow();
+    const slot = holdSlot();
+    // WHICH ROWS, and why, is SevenSavePlan's — injected and unit-tested,
+    // because none of it is reachable from a UI scenario without a connected
+    // instrument. This half only draws what it is told.
+    const rowsHtml = SevenSavePlan.rowsHtml(SevenSavePlan.saveRows({ changed, slot }));
+
+    // OFFLINE IS NOT A FAILURE, BUT IT IS A DIFFERENT SAVE, and it says so
+    // BEFORE the choice rather than after the file exists. With the Seven
+    // connected the file records what the instrument is holding; without it,
+    // the file records what the app believes — which is the same words,
+    // "Save patch", meaning two different things depending on a cable. That
+    // is the shape of bug this project keeps finding, so it is named on
+    // screen at the moment it applies.
+    const offlineNote = isConnected()
+      ? ''
+      : '<p class="tx-fine">The Seven is not connected, so this saves what the app has — '
+        + 'not a reading of the instrument.</p>';
+
+    const modal = SevenModal.open({
+      title: fromNav ? 'You have unsaved changes' : 'Save patch',
+      bodyHtml: `${rowsHtml}${offlineNote}`,
+      // NO AFFIRMATIVE BUTTON: the rows ARE the actions, and a third button
+      // competing with them is the thing this dialog exists to avoid.
+      confirmLabel: '',
+      // Leaving DISCARDS, and from the navigate-away path that has to be a
+      // deliberate press rather than something Escape does by accident —
+      // discarding is the move you cannot walk back from, so the quiet ways
+      // out (Escape, the corner X, the backdrop) all mean STAY.
+      denyLabel: fromNav ? 'Discard changes and leave' : '',
+      cancelLabel: fromNav ? 'Stay here' : 'Cancel',
+      tone: 'is-save',
+    });
+
+    const card = modal.body.closest('.seven-modal');
+    let answer = null;
+    card.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-sv]');
+      if (row) answer = row.dataset.sv;
+      else if (e.target.closest('.seven-modal-deny')) answer = 'leave';
+    });
+
+    try {
+      return await SevenSavePlan.decideSave({
+        connected: isConnected(),
+        savesAsNew: savesAsNew(),
+        // settles on any click, Escape or the X; `answer` says which
+        ask: async () => { await modal.action(); return answer; },
+        holdScreen: () => runHoldScreen(modal, slot),
+        readBuffer: () => withBufferRead(modal),
+        appParams,
+        write: (params, { asNew }) => (
+          asNew ? saveLiveAsNewPatch(params) : saveLiveToLibrary(params).then(() => true)
+        ),
+      });
+    } finally {
+      modal.close();
+    }
+  }
+
+  // WHICH WRITER "Save to computer" reaches, and it is not one question but
+  // the one the bar already answers. A bank slot and a backup record both save
+  // as a NEW patch — a record is a dated account of what the instrument held
+  // and is never written to — while an ordinary patch in Patches is yours, and
+  // there overwriting it is a real thing to want. saveLiveToLibrary asks that
+  // question in its own dialog, which is unchanged.
+  //
+  // Both now write what was READ off the instrument rather than the app's copy,
+  // which is the whole point of this change and applies to every path.
+  function savesAsNew() {
+    const onSeven = !!(deps.lastTouchedDevice && deps.lastTouchedDevice());
+    const target = auditionTarget();
+    const entry = target && (deps.getEntries() || []).find(
+      (e) => e.file === target.file && (e.patchIndex || 0) === (target.patchIndex || 0)
+    );
+    const isBackupRecord = !!(entry && entry.origin && entry.origin.kind === 'backup');
+    return onSeven || isBackupRecord;
+  }
+
+  // The 1.3s. The dialog goes inert rather than vanishing, so it does not
+  // change shape under someone's hand, and a failed read writes NOTHING.
+  async function withBufferRead(modal) {
+    modal.busy(true);
+    try {
+      return await readWhatIsSounding();
+    } finally {
+      modal.busy(false);
+    }
+  }
+
+  // OVERWRITE -> the hold tutorial, in the same dialog. The markup and the
+  // mistaken-press correction come from modal-panel.js, which is also what the
+  // transfer walk shows: one instruction, told once.
+  //
+  // The tick box is the whole protection. Unticked it is a step he will skip
+  // in exactly the moment he needs it, so it is TICKED by default — if he
+  // walks away without holding the button, the sound is still on his computer.
+  async function runHoldScreen(modal, slot) {
+    await modal.replace({
+      title: 'Hold it on the Seven',
+      bodyHtml:
+        (slot ? `<p class="tx-step-where">Bank ${esc(slot.bank)} · Slot ${esc(slot.preset)}</p>` : '') +
+        SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: false }) +
+        `<div class="tx-face" data-face="hold">${SevenModalPanel.holdFaceHtml()}</div>` +
+        '<label class="sv-check"><input type="checkbox" class="sv-copy" checked>' +
+        '<span><b>Also save a copy to Patches</b><br>' +
+        'If you walk away without holding the button, the sound is still on your computer.' +
+        '</span></label>',
+      confirmLabel: 'Done',
+      tone: 'is-save',
+    });
+    const panel = modal.body.querySelector('svg.modal-panel');
+    if (panel && slot) {
+      SevenModalPanel.setBank(panel, slot.bank);
+      SevenModalPanel.setPreset(panel, slot.preset);
+      SevenModalPanel.setStage(panel, 'hold');
+    }
+    const resetHoldLine = SevenModalPanel.wireHoldHint(
+      panel, modal.body.querySelector('.tx-hold-line')
+    );
+    const box = modal.body.querySelector('.sv-copy');
+    await modal.action();
+    resetHoldLine();
+    // Only the ANSWER. Whether a copy is then written, and from what, is
+    // SevenSavePlan's — this screen's job is to teach the hold and to carry
+    // the tick box.
+    return !!(box && box.checked);
+  }
+
   // Writes the working copy to the patch file. Needs no instrument — the
   // values are already here, which is why switching patches never has to cost
   // you the edit itself.
-  async function saveLiveToLibrary() {
+  // `values` is what the instrument was holding, read by the caller — never
+  // liveEdit.params. Passing it in rather than reading it here keeps the 1.3s
+  // read on the path the player chose, and keeps this function the thing it
+  // has always been: the part that writes.
+  async function saveLiveToLibrary(values) {
     if (!liveEdit) return;
     const entry = deps.getEntries().find(
       (e) => e.file === liveEdit.file && e.patchIndex === liveEdit.patchIndex
@@ -770,7 +1018,7 @@
       liveEdit.file = file;
       liveEdit.patchIndex = patchIndex;
     }
-    await window.sevenAPI.library.saveParams(file, patchIndex, liveEdit.params);
+    await window.sevenAPI.library.saveParams(file, patchIndex, values);
 
     // The SOUND goes with the settings. It used not to: audition a Vibraphone
     // onto a Tine patch, save, and the file kept "Tine Piano" over Vibraphone
@@ -789,7 +1037,13 @@
     // SAVED: the file now holds what is live, so the baseline moves to meet
     // it and the drift goes away on its own. There is no flag to clear —
     // clearing one was how a restored value stayed "dirty" in the first place.
-    liveEdit.baseline = { ...liveEdit.params };
+    //
+    // BOTH SIDES move to the values that were written. The working copy is
+    // updated too, because what was saved came off the INSTRUMENT and may
+    // differ from what the app believed — leaving the app's belief in place
+    // would show drift against a file that matches the buffer exactly.
+    liveEdit.params = { ...values };
+    liveEdit.baseline = { ...values };
     if (live && live.name) liveEdit.baselineSound = live.name;
     // A modal, not a line of status text under the controls. Saving is the
     // one thing in this column with a consequence on disk, and a note that
@@ -944,6 +1198,22 @@
     return {
       preview,
       isLive,
+      // LEAVING A CHANGED PATCH. Call this BEFORE touching any selection
+      // state; it resolves true to go ahead and false to stay put.
+      //
+      // Navigating away discards, and has since 2026-08-12 — deliberately,
+      // because a dialog between you and the next patch is a toll on browsing
+      // to protect the rare case. That decision deferred a warning "until it
+      // bites". It bit: Daniel lost two patches this way on 13 Nov, hunting
+      // for a save control while the edits he was looking for went with the
+      // click. So the rare case is no longer rare enough.
+      //
+      // It is still not a toll on browsing: with nothing changed this answers
+      // true without drawing anything.
+      async confirmLeave() {
+        if (!liveEdit || !driftNow()) return true;
+        return (await openSaveFlow({ fromNav: true })) !== 'stay';
+      },
       // The working copy, for a caller that is about to do something the
       // instrument will survive and needs to keep the app's belief in step.
       // Returns a COPY: nothing outside may mutate the live state.

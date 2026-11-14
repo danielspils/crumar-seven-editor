@@ -28,9 +28,13 @@
       '<p class="tx-step-name">Tine Piano</p>'
       + '<p class="tx-step-where">Bank 3 · Preset 5</p>'
       + SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: false })
+      // THE REAL MARKUP, not a replica. It used to be two hand-written <p>s
+      // here, which meant this scenario could stay green through any change to
+      // the thing it is named after — a fixture that cannot express the thing
+      // under test (CLAUDE.md, 2026-08-23). Both the walk and the save flow
+      // render exactly this.
       + '<div class="tx-slot"><div class="tx-face" data-face="hold">'
-        + '<p class="tx-note">Hold for 3 seconds.</p>'
-        + `<p class="tx-note tx-hold-line">${DEFAULT_LINE}</p>`
+        + SevenModalPanel.holdFaceHtml()
       + '</div></div>',
     confirmLabel: 'Held it — next', denyLabel: 'Stop', cancelLabel: 'Stop',
     tone: 'is-transfer',
@@ -47,19 +51,10 @@
   SevenModalPanel.setStage(panel, 'hold');
   await ui.sleep(250);
 
-  // The same handler the walk installs. Kept in step with app.js by the
-  // source-wiring test, which pins the strings and the shape.
-  let hintTimer = null;
-  panel.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-mp-preset]')) return;
-    line.textContent = MISTAKE_LINE;
-    line.classList.add('tx-alarm-soft');
-    line.classList.remove('tx-blink');
-    void line.offsetWidth;
-    line.classList.add('tx-blink');
-    if (hintTimer) clearTimeout(hintTimer);
-    hintTimer = setTimeout(() => { line.classList.remove('tx-blink'); hintTimer = null; }, BLINK_MS);
-  });
+  // THE REAL HANDLER, the one both callers install. A replica here could not
+  // fail when the shared one broke, which is the only failure this scenario
+  // exists to catch.
+  SevenModalPanel.wireHoldHint(panel, line);
 
   const height = () => Math.round(dialog.getBoundingClientRect().height);
   const blinking = () => line.getAnimations().some((a) => a.playState === 'running');

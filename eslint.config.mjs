@@ -30,7 +30,7 @@ const SEVEN = [
   'SevenAudition', 'SevenDayRollover', 'SevenDefaults', 'SevenDrift',
   'SevenExpansions', 'SevenKeyRange', 'SevenLibraryView', 'SevenModal', 'SevenModalPanel',
   'SevenOtsFreshness', 'SevenPicker', 'SevenRenderer',
-  'SevenScrollFade', 'SevenSendChoice', 'SevenSendPcPrompt', 'SevenSoundArt',
+  'SevenSavePlan', 'SevenScrollFade', 'SevenSendChoice', 'SevenSendPcPrompt', 'SevenSoundArt',
   'SevenSlotCheckLog', 'SevenStorageLabel', 'SevenToast', 'SevenTransferSummary',
   'SevenUndo',
 ];
@@ -113,7 +113,7 @@ export default [
     ...base,
     files: [
       'src/day-rollover.js', 'src/drift.js', 'src/expansions.js', 'src/modal-panel.js',
-      'src/ots-freshness.js', 'src/send-choice.js', 'src/send-pc-prompt.js',
+      'src/ots-freshness.js', 'src/save-plan.js', 'src/send-choice.js', 'src/send-pc-prompt.js',
       'src/storage-label.js', 'src/transfer-summary.js', 'src/slot-check-log.js',
       'src/library-view.js', 'src/renderer.js',
       'src/defaults.js', 'src/sound-art.js',
