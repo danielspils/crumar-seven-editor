@@ -103,10 +103,25 @@
 
   // Every id, and every reference to one. Missing the references would leave
   // the caps painting with a gradient that belongs to the other copy.
-  const prefixIds = (markup) => markup
-    .replace(/id="([^"]+)"/g, (_, id) => `id="${PREFIX}${id}"`)
-    .replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${PREFIX}${id})`)
-    .replace(/href="#([^"]+)"/g, (_, id) => `href="#${PREFIX}${id}"`);
+  //
+  // A PREFIX PER COPY, rather than closing over the constant. One panel in the
+  // document can use the module's own; the backup grid puts FOUR in, and four
+  // copies of `mp-cap-grad` do not fail loudly — `url(#mp-cap-grad)` resolves
+  // document-wide to whichever came first, so every reference in rows 2-4
+  // silently points into row 1. Each row gets its own namespace instead.
+  const prefixIds = (markup, prefix = PREFIX) => markup
+    .replace(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
+    .replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`)
+    .replace(/href="#([^"]+)"/g, (_, id) => `href="#${prefix}${id}"`);
+
+  // NOTHING IS LIT TO BEGIN WITH. The drawing ships with bank 1 and preset 1
+  // `on`, because that is a plausible resting state for a picture of an
+  // instrument — and wrong for a modal whose first stage is "nothing chosen
+  // yet", and wrong for a backup that has not read a slot yet.
+  const dark = (markup) => markup
+    .replace(/class="led amber on"/g, 'class="led amber"')
+    .replace(/class="led on"/g, 'class="led"')
+    .replace(/class="btn btn-face on"/g, 'class="btn btn-face"');
 
   // WHICH control a click landed on. The rects are already in the drawing; this
   // only labels them, so a click handler never has to know panel geometry.
@@ -132,15 +147,8 @@
     // inlined and 404s, masking the face the app supplies document-wide.
     const style = block(fullSvg, 'style').replace(/@font-face\s*{[^}]*}\s*/g, '');
     const defs = block(fullSvg, 'defs');
-    // NOTHING IS LIT TO BEGIN WITH. The drawing ships with bank 1 and preset 1
-    // `on`, because that is a plausible resting state for a picture of an
-    // instrument — and wrong for a modal whose first stage is "nothing chosen
-    // yet". The app does not pre-select a bank, so the panel must not imply
-    // one (Daniel, 2026-08-22).
-    const dark = (markup) => markup
-      .replace(/class="led amber on"/g, 'class="led amber"')
-      .replace(/class="led on"/g, 'class="led"')
-      .replace(/class="btn btn-face on"/g, 'class="btn btn-face"');
+    // The app does not pre-select a bank, so the panel must not imply one
+    // (Daniel, 2026-08-22) — see `dark` above.
     const parts = prefixIds(dark(section(fullSvg, 'sec-bank') + section(fullSvg, 'sec-presets')));
     const body = relabel(tagHits(parts));
 
@@ -375,8 +383,131 @@
     });
   }
 
+  // ---- the backup grid ---------------------------------------------------
+  //
+  // THE SEVEN'S OWN 32 BUTTONS, all four banks at once, as the progress view
+  // of a backup run. The same shape the JUNO-X editor's Crumar picker uses
+  // (Daniel, 2026-11-13: "the 4x8 panel buttons we use for the Crumar picker
+  // on Juno-Xtra ... each lights up as it is saved. In the end, all 32 buttons
+  // are lit"). Ported by LOOK, not by code: that app builds its rows from its
+  // own copy of the artwork, and this one has a drawing of its own that every
+  // other panel view already comes out of. Two apps, no shared dependency.
+  //
+  // A run is 32 slots and roughly 48 seconds of ~3,600 round trips, and the
+  // only feedback used to be one line in the connection row — easy to miss
+  // when you are watching the instrument, so the app looked idle for most of a
+  // minute.
+  //
+  // EACH ROW IS A CROP OF THE SAME DRAWING, like every other panel view here,
+  // so a control added to assets/seven-panel.svg appears in all 32 buttons
+  // without anyone remembering to. Row 1 keeps the preset numerals above the
+  // caps; rows 2-4 start below them, because the numbering does not change
+  // down a column and four copies of it is four times the height for nothing.
+  // Each row's own bank lamp is the only one it shows, which is how the row
+  // says which bank it is — the way the instrument says it.
+  const GRID_BANKS = [1, 2, 3, 4];
+  const GRID_SLOTS = 32;
+  // In the drawing's own coordinates. The preset numerals sit on y 30, the
+  // bezels span y 56-148; row 1 reaches up to take the numerals and the BANK
+  // legend, the rest start just above the bezels.
+  const ROW_VIEW = { x: 678, w: 645 };
+  const ROW_TOP = { y: 16, h: 136 };
+  const ROW_REST = { y: 50, h: 102 };
+
+  const gridPrefix = (bank) => `bk${bank}-`;
+
+  function buildGridRow(fullSvg, bank) {
+    const prefix = gridPrefix(bank);
+    const crop = bank === 1 ? ROW_TOP : ROW_REST;
+    const style = block(fullSvg, 'style').replace(/@font-face\s*{[^}]*}\s*/g, '');
+    const defs = block(fullSvg, 'defs');
+    let body = prefixIds(
+      dark(section(fullSvg, 'sec-bank') + section(fullSvg, 'sec-presets')), prefix
+    );
+    // Which preset group is which, so painting never has to know geometry.
+    body = body.replace(
+      new RegExp(`<g id="${prefix}preset-(\\d)">`, 'g'),
+      `<g id="${prefix}preset-$1" data-bk-preset="$1">`
+    );
+    // THIS ROW'S OWN LAMP AND NUMERAL, and no others. Four stacked copies of
+    // all four lamps is sixteen lamps saying nothing; one per row, carrying
+    // that row's number, is the instrument's own way of saying which bank you
+    // are looking at. CSS hides the rest — marked here because the mark is
+    // per-row data and the stylesheet cannot know which row it is in.
+    body = body
+      .replace(
+        new RegExp(`class="led amber"(\\s+id="${prefix}led-bank-${bank}")`),
+        'class="led amber is-own"$1'
+      )
+      .replace(
+        new RegExp(`(<text class="lbl-sm lbl-bank-num)("[^>]*>${bank}</text>)`),
+        '$1 is-own$2'
+      );
+    // THE PANEL'S OWN BACKDROP, per row. Cropping to the sections drops
+    // `.panel-bg` (one rect at the top of the full drawing, outside both), and
+    // without it the panel's white legends land on the dialog's background —
+    // invisible in light mode, which is how that was found the first time
+    // (Daniel, 2026-08-22).
+    const bg = `<rect class="panel-bg" x="${ROW_VIEW.x}" y="${crop.y}" `
+      + `width="${ROW_VIEW.w}" height="${crop.h}" rx="5"/>`;
+    // aria-hidden, and not reluctantly: this is a picture of a machine, and
+    // everything it says is said in words by the status line beside it. A
+    // screen reader walking 32 unlabelled buttons would be worse than useless.
+    return `<svg class="modal-panel bk-row" data-bk-bank="${bank}" `
+      + `viewBox="${ROW_VIEW.x} ${crop.y} ${ROW_VIEW.w} ${crop.h}" `
+      + 'width="100%" aria-hidden="true" focusable="false">'
+      + prefixIds(style, prefix) + prefixIds(defs, prefix) + bg + body
+      + '</svg>';
+  }
+
+  const buildGrid = (fullSvg) => (
+    typeof fullSvg !== 'string' || !fullSvg
+      ? ''
+      : GRID_BANKS.map((b) => buildGridRow(fullSvg, b)).join('')
+  );
+
+  // WHAT THE LIGHTS MEAN, and the whole reason this takes two numbers.
+  //
+  //   `saved`    how many slots the run has finished with, in slot order
+  //   `current`  the slot being read right now (0-based), or null
+  //
+  // A LIT BUTTON MEANS THE RUN HAS REACHED THAT SLOT — not that anything was
+  // written. A typical run is mostly "unchanged": the backup dedupes by
+  // content hash, and Daniel's run of 2026-11-13 was 30 unchanged, 2 new. A
+  // cell staying dark because nothing needed writing would read as a failure,
+  // so an unchanged slot lights exactly like a new one. DARK NEVER MEANS DONE.
+  //
+  // The cap is pressed on the slot being read, which is also what the
+  // instrument's own panel looks like at that moment — the run has just
+  // recalled it. So the light says how far, and the cap says where.
+  //
+  // A light can RETRACT, once, and only on a failure: the slot in flight when
+  // a run aborts was lit as `current` and is not in `saved`, so it goes dark
+  // when the final count arrives. That is correct — it was never saved — and
+  // the connection row says the run stopped.
+  function paintBackup(grid, { saved = 0, current = null } = {}) {
+    if (!grid) return;
+    const currentBank = current == null ? null : Math.floor(current / 8) + 1;
+    for (let i = 0; i < GRID_SLOTS; i += 1) {
+      const bank = Math.floor(i / 8) + 1;
+      const preset = (i % 8) + 1;
+      const g = grid.querySelector(`[data-bk-bank="${bank}"] [data-bk-preset="${preset}"]`);
+      if (!g) continue;
+      const led = g.querySelector('.led');
+      const face = g.querySelector('.btn-face');
+      if (led) led.classList.toggle('on', i < saved || i === current);
+      if (face) face.classList.toggle('on', i === current);
+    }
+    // The bank lamp follows the run exactly as the instrument's does.
+    for (const bank of GRID_BANKS) {
+      const lamp = grid.querySelector(`[data-bk-bank="${bank}"] .led.amber.is-own`);
+      if (lamp) lamp.classList.toggle('on', bank === currentBank);
+    }
+  }
+
   return {
     buildPanel, setStage, setBank, setPreset, nextBank, focusControl, bindKeys,
-    PREFIX, VIEW, PRESET_CX,
+    buildGrid, paintBackup,
+    PREFIX, VIEW, PRESET_CX, GRID_SLOTS,
   };
 });

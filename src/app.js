@@ -4075,10 +4075,109 @@
 
     const fmtElapsed = (ms) => `${Math.round(ms / 1000)}s`;
 
+    // ── THE DURING VIEW ───────────────────────────────────────────────────
+    //
+    // A full backup is 32 slots and roughly 48 seconds of ~3,600 round trips,
+    // and the only feedback used to be one line in the connection row — easy
+    // to miss when you are watching the instrument, so the app looked idle for
+    // most of a minute. The Seven's own 32 buttons light as the run reaches
+    // each slot (Daniel, 2026-11-13).
+    //
+    // THIS IS NOT THE COMPLETION DIALOG and must never become it. The grid
+    // says where the run is; `showBackupDone`'s "Backup completato!" says what
+    // it did. Two views, two moments.
+    //
+    // The runner is untouched. Everything here is derived from the feed it
+    // already emits: `backup-progress` fires when slot n STARTS being read, so
+    // slot n-1 is the last one finished and n-1 (0-based) is the one in hand.
+    let backupModal = null;
+    let backupGrid = null;
+    let backupClosing = false;
+
+    const openBackupProgress = () => {
+      backupClosing = false;
+      const m = SevenModal.open({
+        title: 'Backing up',
+        bodyHtml:
+          `<div class="bk-grid">${SevenModalPanel.buildGrid(window.sevenAPI.getPanelSvg())}</div>`
+          + '<p class="bk-now" role="status"><span class="bk-where">Starting</span>'
+          + '<span class="bk-name">Recalling the first preset…</span></p>'
+          + '<p class="bk-count">0 of 32</p>',
+        confirmLabel: 'Cancel backup',
+        cancelLabel: 'Cancel backup',
+        tone: 'is-backup',
+      });
+      backupModal = m;
+      backupGrid = m.body.querySelector('.bk-grid');
+      SevenModalPanel.paintBackup(backupGrid, { saved: 0, current: null });
+
+      // EVERY WAY OUT OF THIS DIALOG MEANS THE SAME THING, so they all do it.
+      // Escape, the corner X and the backdrop all settle the action as false,
+      // and there is only one thing leaving can mean while a run is in flight:
+      // stop it. The runner's Cancel is the safe one — it finishes the slot in
+      // hand rather than aborting mid-read, and everything already saved stays
+      // saved — so there is nothing here worth a second "are you sure".
+      //
+      // The run finishing closes this dialog itself, which also settles the
+      // action; `backupClosing` is what tells the two apart, or every
+      // successful backup would end by cancelling itself.
+      (async () => {
+        await m.action();
+        if (backupClosing) return;
+        await window.sevenAPI.midi.cancelBackup();
+        backupBtn.textContent = 'Cancelling…';
+        const where = m.body.querySelector('.bk-where');
+        const name = m.body.querySelector('.bk-name');
+        if (where) where.textContent = 'Cancelling';
+        if (name) name.textContent = 'Finishing the preset it is reading…';
+      })();
+      return m;
+    };
+
+    const showBackupProgress = (ev) => {
+      if (!backupModal) return;
+      // `n` slots have been reached, `n - 1` of them finished. The count says
+      // the same number the lit buttons do, so the picture and the line can
+      // never disagree about how far the run is.
+      SevenModalPanel.paintBackup(backupGrid, { saved: ev.n - 1, current: ev.n - 1 });
+      const where = backupModal.body.querySelector('.bk-where');
+      const name = backupModal.body.querySelector('.bk-name');
+      const count = backupModal.body.querySelector('.bk-count');
+      if (where) where.textContent = `Bank ${ev.bank} · Preset ${ev.preset}`;
+      if (name) name.textContent = ev.name;
+      // THE RUNNER'S OWN CLOCK, not a second one ticking beside it. It moves
+      // once per slot rather than once per second, which is honest about where
+      // the figure comes from; a local ticker would be a second thing claiming
+      // to know how long this has taken.
+      if (count) count.textContent = `${ev.n} of ${ev.total} · ${fmtElapsed(ev.elapsedMs)}`;
+    };
+
+    // ALL 32 LIT, AND LONG ENOUGH TO SEE. The last progress event fires when
+    // slot 32 STARTS reading, so the grid is only complete here — and a dialog
+    // that closes on the same frame as its last light never showed it
+    // (Daniel, 2026-11-13: "In the end, all 32 buttons are lit"). This beat is
+    // the end of the during view, not a delay in front of the after view.
+    const FINAL_LIGHT_MS = 700;
+    const finishBackupProgress = async (ev) => {
+      if (!backupModal) return;
+      const m = backupModal;
+      const grid = backupGrid;
+      backupClosing = true;
+      backupModal = null;
+      backupGrid = null;
+      // `ev.slots` is what the runner actually finished. On an abort that is
+      // fewer than were lit — the slot in flight was lit and never saved — so
+      // its light goes out here. Correct, and the connection row says why.
+      SevenModalPanel.paintBackup(grid, { saved: ev.slots || 0, current: null });
+      await new Promise((r) => setTimeout(r, FINAL_LIGHT_MS));
+      m.close();
+    };
+
     const showBackupDone = async (ev) => {
       backupRunning = false;
       backupBtn.textContent = 'Back up instrument';
       connBtn.disabled = false;
+      await finishBackupProgress(ev);
       if (!ev.ok) {
         connText.textContent = `Backup ${ev.slots ? `stopped after ${ev.slots}/32` : 'failed'} — ${ev.error || 'aborted'}`;
         return;
@@ -4146,6 +4245,7 @@
         backupBtn.textContent = 'Cancel backup';
         connBtn.disabled = true;
         connText.textContent = 'Backing up… starting';
+        openBackupProgress();
       }
     });
 
@@ -4250,6 +4350,14 @@
         }
       }
       else if (ev.type === 'backup-progress') {
+        // TWO VIEWS OF ONE EVENT, never two claims. The grid is the during
+        // view; the connection row is what is still on screen once the dialog
+        // goes, and what a screenshot of the window shows. Both are written
+        // here from the same `ev`, in the same branch, so they cannot drift —
+        // and dropping the connection-row half would leave "Backing up…
+        // starting" sitting behind the dialog for the whole run and then
+        // jumping straight to a result.
+        showBackupProgress(ev);
         connText.textContent =
           `Backing up… ${ev.n}/${ev.total} — Bank ${ev.bank} · Preset ${ev.preset} · ${ev.name} · ${fmtElapsed(ev.elapsedMs)}`;
       } else if (ev.type === 'backup-done') showBackupDone(ev);

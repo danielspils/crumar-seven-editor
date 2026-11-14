@@ -479,6 +479,38 @@ for exactly this reason.
   transfer all failed at once, because backup is gated on the 0x45 broadcast a
   recall produces.
 
+- **VERIFIED ON HARDWARE 2026-11-13.** The commit that made the change said in
+  its own message that it had not been, which is the kind of claim that gets
+  repeated as settled if nobody goes back. Daniel's unit, FW 1.37, both
+  channels, both directions:
+
+  | | Ch. 15 | Ch. 1 |
+  | --- | --- | --- |
+  | app → instrument (slot click) | yes, all four banks | yes |
+  | instrument → app (panel button) | yes | yes |
+  | full backup | **32/32**, 30 unchanged / 2 new | not re-run |
+
+  **`glb[0]` is the MIDI channel, on two points rather than one.** It read `14`
+  with the panel on Ch. 15 and `0` with the panel on Ch. 1. The index order is
+  separately corroborated by four other fields in the same reply agreeing with
+  what the Settings panel showed — Send CC, Send PC and Memory Protect all
+  matching the 2026-08-24 snapshot `[0,1,1,1,0,1,0,1,0]`. Before this it rested
+  on a single zero, which is consistent with almost anything.
+
+  **A channel change made IN THE APP takes effect immediately**, with no
+  reconnect: `setGlobalOption` re-reads the globals after writing them.
+  Confirmed by changing to Ch. 1 and back to Ch. 15 from Settings, clicking
+  slots after each, with no disconnect in between.
+
+- **A PANEL-SIDE channel change is NOT noticed until reconnect.** `this.globals`
+  is refreshed at connect, after the app writes a global, and when the Send PC
+  marker is restored — nowhere else. So somebody who changes Channel on the
+  instrument's own panel mid-session will find slot clicks stop working until
+  they Disconnect and Connect. Not a regression (the old build never followed
+  the channel at all) and not yet fixed; the answer to the support question is
+  "reconnect". Reported here rather than in a comment because it is the one
+  thing about this feature a user can run into.
+
 ### Memory Protect is a transfer blocker
 
 With Memory Protect on, the three-second hold will not store. Nothing in
