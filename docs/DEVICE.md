@@ -801,6 +801,34 @@ USB editor has no route to: global options, preset export/import, wavetable
 expansion install and uninstall, the Wi-Fi password, and links for firmware
 update and factory restore.
 
+### What the front panel can reach, and what it cannot
+
+Settled on hardware and against the schema, 14 Nov 2026. It decides how much
+the app has to worry about edits it cannot see.
+
+**The panel reaches:** preset recall, master volume, and the basic effect
+controls — on/off, amount, speed. These are exactly the parameters carrying a
+CC in `schema/seven-1.37.json`: the `efx_*` groups and the expression pedal.
+Because they transmit, the app follows them while a player is playing.
+
+**The panel does not reach:** the sound engines — Rhodes, Wurlitzer, Electric
+Grand, ZD6, DX7, MKS, Vibes, acoustic, ROM — nor the per-mode settings under
+an effect, like Delay's feedback or the Phaser's depth. Nor the choice of
+model or sample itself. None of these carry a CC, because there is no control
+on the instrument to send one. They are reachable only from software.
+
+**The consequence, and it is a reason not to build something.** The app cannot
+follow those parameters when they change on the instrument. In practice they
+cannot change on the instrument. Altering one needs the manufacturer's
+browser editor over the Wi-Fi dongle, running alongside this app — and the
+difficulty of that editor is why this app exists.
+
+So a reminder that cannot see those edits, and a save-time read that would
+have to go looking for them, are both solving a case that does not occur. Do
+not add machinery for it. If this ever stops being true — a firmware update
+putting engine parameters on the panel, say — this section is the thing that
+was relied on, and it is where the change belongs.
+
 ### Scope: this app is USB-only
 
 Everything this app does goes over the Type-B port as class-compliant USB-MIDI
