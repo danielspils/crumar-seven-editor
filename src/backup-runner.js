@@ -11,6 +11,7 @@
 
 const { EventEmitter } = require('node:events');
 const crypto = require('node:crypto');
+const { readBuffer } = require('./param-read');
 
 const SLOT_COUNT = 32;
 const RECALL_TIMEOUT_MS = 1500;
@@ -182,16 +183,10 @@ class BackupRunner extends EventEmitter {
         // The full parameter set, one verified read per id. The device is
         // known to drop the odd reply under a fast burst (documented during
         // interrogation: one dropped reply in 110) — re-request up to twice
-        // before declaring the run dead.
-        const params = {};
-        for (const id of readIds) {
-          let r = null;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try { r = await this.midi.readParamValue(id); break; }
-            catch (err) { if (attempt === 2) throw new Error(`param ${id} unreadable after 3 attempts (${err.message})`); }
-          }
-          params[r.key] = r.value;
-        }
+        // before declaring the run dead. The retry and the all-or-nothing rule
+        // live in src/param-read.js now, shared with the save path; a throw
+        // here still aborts the whole run, which is what it always did.
+        const { params } = await readBuffer(this.midi, readIds);
 
         const hash = patchHash(soundName, params, keyOrder);
         const dupKey = `${hash}:${bank}:${preset}`;

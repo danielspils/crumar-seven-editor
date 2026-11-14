@@ -72,6 +72,7 @@ const OP = {
 const ACTION_STORAGE = [0x0a, 0x03];
 
 const GLB_CHANNEL = 0;  // "Channel" — 0-15 are Ch. 1-16, 16 is TX OFF
+const GLB_SEND_CC = 2; // "Send CC" — emit a CC when a panel control moves
 const GLB_SEND_PC = 3; // pinned by a captured editor write (30 03 01, ack 31 03)
 
 // The nine globals are addressed 1:1 by index (verified sweep), and every
@@ -909,38 +910,91 @@ class SevenMidi extends EventEmitter {
     return { index, value: this.globals.glb[index] };
   }
 
-  async setSendPc(value) {
-    if (this.state !== 'connected') throw new Error('not connected');
-    const current = this.globals.glb[GLB_SEND_PC];
-    if (current === value) return;
-    // Marker BEFORE the write: if we die mid-flight, the next startup knows
-    // what to put back.
-    fs.writeFileSync(
-      this._markerPath(),
-      JSON.stringify({ index: GLB_SEND_PC, value: current, savedAt: new Date().toISOString() })
-    );
-    await this._setGlobal(GLB_SEND_PC, value);
-    this.globals = await this.readGlobals();
-  }
-
-  async restoreSendPc() {
-    await this._restorePendingMarker();
-    if (this.state === 'connected') this.globals = await this.readGlobals();
-  }
-
-  async _restorePendingMarker() {
-    let marker = null;
+  // THE MARKER HOLDS A LIST, because two globals can be out on loan at once.
+  //
+  // It held a single `{ index, value }` while Send PC was the only thing ever
+  // borrowed. Send CC is now borrowed too (the ON THE SEVEN view turns it on
+  // so the app can follow a knob), and those two overlap: a transfer borrows
+  // Send PC while the editor already has Send CC. Writing one object would
+  // have silently dropped the other borrow on the floor — the instrument left
+  // in a state the app changed and no longer remembers changing.
+  //
+  // One file, one restore path, as before. A marker written by an older build
+  // is still a single object, so it is read as a list of one.
+  _readMarker() {
+    let raw = null;
     try {
-      marker = JSON.parse(fs.readFileSync(this._markerPath(), 'utf8'));
+      raw = JSON.parse(fs.readFileSync(this._markerPath(), 'utf8'));
     } catch {
-      return; // no marker — nothing pending
+      return []; // no marker — nothing pending
     }
-    if (!marker || !Number.isInteger(marker.index)) {
+    const list = Array.isArray(raw) ? raw : [raw];
+    return list.filter((m) => m && Number.isInteger(m.index) && Number.isInteger(m.value));
+  }
+
+  _writeMarker(entries) {
+    if (!entries.length) {
       fs.rmSync(this._markerPath(), { force: true });
       return;
     }
-    await this._setGlobal(marker.index, marker.value);
-    fs.rmSync(this._markerPath(), { force: true });
+    fs.writeFileSync(this._markerPath(), JSON.stringify(entries));
+  }
+
+  // Borrow one global, remembering what it was. THE FIRST borrow's value is
+  // the one kept: borrowing something already borrowed must not overwrite the
+  // note with the value we ourselves put there, or the restore puts back our
+  // own setting and calls it the player's.
+  async _borrowGlobal(index, value) {
+    if (this.state !== 'connected') throw new Error('not connected');
+    const current = this.globals.glb[index];
+    if (current === value) return false;
+    // Marker BEFORE the write: if we die mid-flight, the next startup knows
+    // what to put back.
+    const entries = this._readMarker();
+    if (!entries.some((m) => m.index === index)) {
+      entries.push({ index, value: current, savedAt: new Date().toISOString() });
+    }
+    this._writeMarker(entries);
+    await this._setGlobal(index, value);
+    this.globals = await this.readGlobals();
+    return true;
+  }
+
+  // Give back ONE global, leaving any other borrow outstanding.
+  async _returnGlobal(index) {
+    const entries = this._readMarker();
+    const mine = entries.find((m) => m.index === index);
+    if (!mine) return;
+    if (this.state === 'connected') await this._setGlobal(index, mine.value);
+    this._writeMarker(entries.filter((m) => m.index !== index));
+    if (this.state === 'connected') this.globals = await this.readGlobals();
+  }
+
+  setSendPc(value) { return this._borrowGlobal(GLB_SEND_PC, value); }
+  restoreSendPc() { return this._returnGlobal(GLB_SEND_PC); }
+
+  // Send CC off means the panel announces nothing, so the app cannot follow a
+  // knob the player turns. Nothing is LOST either way — a save reads the whole
+  // buffer regardless — but the Save button would sit there outlined while the
+  // sound changed under it, which is the app telling a lie about its own state.
+  setSendCc(value) { return this._borrowGlobal(GLB_SEND_CC, value); }
+  restoreSendCc() { return this._returnGlobal(GLB_SEND_CC); }
+
+  async _restorePendingMarker() {
+    const entries = this._readMarker();
+    if (!entries.length) {
+      fs.rmSync(this._markerPath(), { force: true });
+      return;
+    }
+    // Each one is dropped from the note only once the instrument has taken it,
+    // so a failure part-way leaves the rest pending for the next connect
+    // rather than forgetting them.
+    let left = entries;
+    for (const m of entries) {
+      await this._setGlobal(m.index, m.value);
+      left = left.filter((x) => x.index !== m.index);
+      this._writeMarker(left);
+    }
   }
 
   async _setGlobal(index, value) {
@@ -971,6 +1025,7 @@ class SevenMidi extends EventEmitter {
 }
 
 module.exports = {
-  SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_CHANNEL, GLB_SEND_PC, PINNED_GLOBALS,
+  SevenMidi, parseGlobals, payloadText, CONNECT_FAIL_MSG, GLB_CHANNEL, GLB_SEND_CC, GLB_SEND_PC,
+  PINNED_GLOBALS,
   GLB_FIELDS,
 };

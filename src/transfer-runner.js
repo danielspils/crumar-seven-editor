@@ -33,6 +33,7 @@
 //     it on if it has to and puts it back when it finishes.
 
 const { EventEmitter } = require('node:events');
+const { readParamWithRetry } = require('./param-read');
 
 const SLOTS_PER_BANK = 8;
 const BLOCKED_BANK = 1;
@@ -815,10 +816,14 @@ class TransferRunner extends EventEmitter {
     // Every wanted key has to be SEEN and matched, not merely not-contradicted.
     const seen = new Set();
     for (const id of ids) {
+      // The retry, shared with the backup and the save (src/param-read.js).
+      // NOT readBuffer: this loop EARLY-EXITS at the first parameter that
+      // differs, so a slot that differs at parameter 2 costs two reads rather
+      // than 110. Reading the whole buffer first would add ~1.3s to every slot
+      // the walk was about to reject anyway — worst case 40s on a 32-slot
+      // transfer — to make two call sites look alike.
       let r = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try { r = await this.midi.readParamValue(id); break; } catch { /* retry */ }
-      }
+      try { r = await readParamWithRetry(this.midi, id); } catch { r = null; }
       if (!r) return done('cannot-confirm', 'unreadable-param', `id ${id}`);
       if (typeof r.key !== 'string') return done('cannot-confirm', 'reply-has-no-key', `id ${id}`);
       if (wanted[r.key] === undefined) continue;   // the table has it, the patch does not
