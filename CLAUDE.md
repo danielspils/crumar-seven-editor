@@ -457,8 +457,31 @@ Covered by `test/modal-panel.test.js` (16) and wiring assertions in
 `test/source-wiring.test.js`, both automatic, plus
 `test/ui/scenarios/backup-grid.js` for the picture and the two themes. The
 scenario needs no instrument and skips for nothing: the real run needs a
-Seven and 48 seconds, the picture does not. **NOT YET WATCHED THROUGH A
-REAL 32-SLOT RUN** — every state was driven by hand.
+Seven and 48 seconds, the picture does not.
+
+**WATCHED THROUGH A REAL 32-SLOT RUN** on Daniel's unit, FW 1.37,
+2026-11-13, who reported it worked. The library corroborates rather than
+resting on the report: four setlists dated 2026-11-13, eight slots each,
+none carrying the ", failed" suffix the runner adds to a partial run, plus
+that day's `globals-2026-11-13.json` — which is only written when nothing
+aborted. So 32/32. The full UI suite ran green with the Seven connected
+the same day: **43 passed, 0 failed, 3 skipped**, the three being
+preconditions a plain run cannot satisfy (`donation-ask` needs
+`SEVEN_RESET_DONATIONS`, `offline-state` needs `SEVEN_NO_DEVICE`,
+`transfer-hold-roundtrip` needs `SEVEN_WRITE_BANK` because it writes to
+the instrument).
+
+**BANK 1 IS BACKED UP LIKE ANY OTHER, and should stay that way.** It comes
+up because the bank is locked, and the lock is on WRITING: the Seven
+refuses a store into Bank 1, and the app blocks it as a destination in
+four places. Reading it is a different question, and the answer is that
+Bank 1 is the only place the factory's own numbers are readable —
+`tools/extract-factory-defaults.js` derives
+`schema/factory-defaults-1.37.json` from the newest Bank 1 SETLIST, which
+is what the detail view's at-default muting reads. Skip the bank in the
+backup and that file's source dries up. It is also 8 slots of 32 that
+write nothing, since a bank that cannot be stored to dedupes to
+"unchanged" on every run after the first.
 
 **Expansion visibility is done** (the
 Visibility goal): the connection row's "24 sounds" chip opens the connected
