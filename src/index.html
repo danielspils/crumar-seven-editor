@@ -1441,8 +1441,13 @@
     .modal-panel { display: block; margin: 2px 0 4px; }
     /* The panel is labelled TINES, REEDS, GRAND … which are BANK 1's factory
        presets. In a modal choosing a destination in banks 2-4 they are wrong,
-       so the legends go and the numerals — already in the drawing — stay. */
-    .modal-panel .lbl-preset { display: none; }
+       so the legends go and the numerals — already in the drawing — stay.
+       NOT IN THE BACKUP GRID, whose top row IS bank 1: there the legends are
+       simply true, and they are the panel's own header the way the instrument
+       prints it (Daniel, 2026-11-13: "Just use mine"). Written as :not()
+       rather than undone later, because an opt-out a later rule tries to
+       reverse is the cascade bug test/css-hazards.test.js exists for. */
+    .modal-panel:not(.bk-row) .lbl-preset { display: none; }
     /* The stage heading. The panel's own label face, so it belongs to the
        picture rather than to the dialog around it. */
     .modal-panel .mp-heading {
@@ -1580,6 +1585,19 @@
     .bk-row .led.amber.is-own { opacity: 1; }
     .bk-row .lbl-bank-num { opacity: 0; }
     .bk-row .lbl-bank-num.is-own { opacity: 1; }
+    /* THE BANK INDICATOR, not a bank button. The instrument has one BANK
+       button and four of them said nothing, so the crop starts after it
+       (Daniel, 2026-11-13: "We don't need that") — what is kept is the lamp
+       and the numeral, which is how the panel says which bank is live. The
+       row being read lights both. Literal colours, like everything else
+       inside the backdrop: these numerals are part of the picture, and the
+       picture does not change when the room lights do (DESIGN.md). The lit
+       value is the drawing's own `.lbl` white; the resting one is it, dimmed. */
+    .bk-row .lbl-bank-num.is-own { fill: #6e6e74; transition: fill .18s ease; }
+    .bk-row.is-current .lbl-bank-num.is-own { fill: #f2f2f4; }
+    @media (prefers-reduced-motion: reduce) {
+      .bk-row .lbl-bank-num.is-own { transition: none; }
+    }
     /* A light coming on has a rise. Short enough not to lag a slot that reads
        quickly, long enough that 32 of them do not read as flicker. */
     .bk-row .led { transition: fill .18s ease; }
@@ -1599,21 +1617,19 @@
     .seven-modal-body .bk-count {
       margin: 6px 0 0; font-size: 12px; color: var(--text-muted);
     }
-    /* CANCEL IS THE ONLY ACTION, AND IT IS NOT THE AFFIRMATIVE ONE. The amber
-       fill means "this is what you came to do"; here the thing you came to do
-       is already happening, and the button is the way to stop it. So it wears
-       the quiet outline instead. */
+    /* THERE IS NO BUTTON. The only answer this dialog takes is "stop", the
+       corner X already says it, and a button beside it said it twice
+       (Daniel, 2026-11-13: "the 'x' in the upper right takes care of that").
+       So the actions row is empty and takes no room — and the X's accessible
+       name is "Cancel backup", not "Close", because it is now the only visible
+       way to stop a 48-second run. */
+    .seven-modal-actions:empty { display: none; }
     .seven-modal.is-backup .seven-modal-title {
       text-align: center; padding: 0 28px;
       font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-dim);
     }
     .seven-modal.is-backup .seven-modal-body { text-align: center; margin-top: 16px; }
-    .seven-modal.is-backup .seven-modal-ok {
-      background: transparent; color: var(--text);
-      border: 1px solid var(--line); box-shadow: none;
-    }
-    .seven-modal.is-backup .seven-modal-ok:hover { border-color: var(--accent); }
 
     /* Patch picker: a modal over the setlist, so the slots you're filling stay
        visible behind it. Tiles rather than rows — the point is seeing many

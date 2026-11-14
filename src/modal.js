@@ -68,7 +68,17 @@
     (denyLabel
       ? `<button type="button" class="seven-modal-deny">${esc(denyLabel)}</button>`
       : '') +
-    `<button type="button" class="seven-modal-ok">${esc(confirmLabel)}</button>` +
+    // AN EMPTY confirmLabel MEANS NO AFFIRMATIVE BUTTON — for a dialog whose
+    // only answer is "stop", where the corner X already says it and a button
+    // beside it says it twice (Daniel, 2026-11-13, on the backup grid: "the
+    // 'x' in the upper right takes care of that"). The default is still 'OK',
+    // so this is something a caller asks for rather than something it can
+    // fall into: `confirm()` with no button would be a dialog that can never
+    // resolve true. Where it IS used, cancelLabel carries the whole meaning,
+    // because it is the X's accessible name and the X is now the only way out.
+    (confirmLabel
+      ? `<button type="button" class="seven-modal-ok">${esc(confirmLabel)}</button>`
+      : '') +
     `</div></div>`;
 
   function confirm({
@@ -202,7 +212,10 @@
     };
     document.addEventListener('keydown', onKey, true);
     document.body.appendChild(host);
-    okBtn.focus();
+    // Without an affirmative button the keyboard starts on the close control,
+    // which is then the only control there is. A dialog that opens with focus
+    // on nothing leaves a keyboard user with nothing at all.
+    (okBtn || host.querySelector('.seven-modal-cancel')).focus();
 
     const actionsEl = host.querySelector('.seven-modal-actions');
     const titleEl = host.querySelector('.seven-modal-title');
@@ -239,7 +252,7 @@
         bodyEl.innerHTML = html;
         actionsEl.innerHTML =
           (deny ? `<button type="button" class="seven-modal-deny">${esc(deny)}</button>` : '') +
-          `<button type="button" class="seven-modal-ok">${esc(ok)}</button>`;
+          (ok ? `<button type="button" class="seven-modal-ok">${esc(ok)}</button>` : '');
 
         // Measure the new content's natural height. scrollHeight is no use
         // here: with the height pinned it never reports LESS than the pin, so

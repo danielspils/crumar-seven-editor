@@ -633,3 +633,89 @@ test('the picker caret is drawn, not typed', () => {
       `the caret must not be the character ${JSON.stringify(glyph)} — a font decides where its ink sits`);
   }
 });
+
+// ---- The backup grid has a consumer -----------------------------------------
+//
+// WHY THIS IS A SOURCE TEST. `buildGrid` and `paintBackup` are pure and are
+// covered by test/modal-panel.test.js; the picture and its colours are covered
+// by test/ui/scenarios/backup-grid.js, which builds its own grid and paints it
+// itself. BOTH WOULD STAY GREEN IF NOTHING IN THE APP EVER OPENED ONE — which
+// is the exact shape this repo has been bitten by three times
+// (sevenAPI.notes.latest, midi.auditionSound, #done-live-btn), and the Notes
+// strip spent ten days looking shipped that way.
+//
+// The failure is also invisible by eye: a backup still works, still finishes,
+// still shows "Backup completato!". Only the during view goes missing, and the
+// app looks idle for 48 seconds again — which is the thing this was built for.
+//
+// This is the automatic half and runs in CI on every commit. The scenario is
+// the on-request half; say which is which when reporting coverage.
+test('something actually opens the backup grid, and paints it from the feed', () => {
+  const src = read('app.js');
+
+  assert.match(src, /SevenModalPanel\.buildGrid\(/,
+    'app.js builds the grid from the one drawing');
+  assert.match(src, /SevenModalPanel\.paintBackup\(/,
+    'and paints it');
+
+  // IT OPENS WHEN A RUN STARTS. The grid built in a function nothing calls is
+  // the same bug one level up.
+  const onStart = /const { started } = await window\.sevenAPI\.midi\.backup\(\);[\s\S]{0,400}/.exec(src);
+  assert.ok(onStart, 'the backup button still starts a run in a recognisable way');
+  assert.match(onStart[0], /openBackupProgress\(\)/,
+    'starting a run opens the during view');
+
+  // IT IS PAINTED FROM backup-progress, in the same branch that writes the
+  // connection row — so the picture and the line cannot drift apart.
+  const branch = /ev\.type === 'backup-progress'\)\s*{[\s\S]{0,900}?connText\.textContent =[^;]*;/.exec(src);
+  assert.ok(branch, 'the backup-progress branch is still recognisable');
+  assert.match(branch[0], /showBackupProgress\(ev\)/,
+    'backup-progress paints the grid');
+  assert.match(branch[0], /ev\.n.*ev\.total/,
+    'and the connection row still gets the same numbers from the same event');
+
+  // AND IT CLOSES ON backup-done, having shown the finished grid first. A
+  // dialog nothing closes is worse than one nothing opens: it sits over the
+  // completion dialog.
+  // THE X IS THE ONLY WAY OUT, SO ITS NAME HAS TO CARRY THE MEANING. The
+  // dialog renders no affirmative button (Daniel, 2026-11-13: "the 'x' in the
+  // upper right takes care of that"), which makes `cancelLabel` the whole of
+  // what a keyboard or screen-reader user is told about stopping a 48-second
+  // run. The default is 'Close', and reverting to it would be silent: the
+  // dialog would look and behave identically.
+  const opened = /const openBackupProgress = \(\) => {[\s\S]{0,1400}?\}\);/.exec(src);
+  assert.ok(opened, 'openBackupProgress still opens a modal in a recognisable way');
+  assert.match(opened[0], /confirmLabel: ''/, 'it asks for no affirmative button');
+  assert.match(opened[0], /cancelLabel: 'Cancel backup'/,
+    "and the X says it cancels the backup, not 'Close'");
+  // Cancelling must still MEAN cancelling — the runner's own cancel, which
+  // finishes the slot in flight rather than aborting mid-read.
+  assert.match(src, /await window\.sevenAPI\.midi\.cancelBackup\(\);[\s\S]{0,200}bk-where/,
+    'leaving the dialog still cancels the run through the runner');
+
+  assert.match(src, /finishBackupProgress\(ev\)/, 'backup-done closes the during view');
+  const done = /const showBackupDone = async \(ev\) => {[\s\S]{0,500}/.exec(src);
+  assert.ok(done, 'showBackupDone is still recognisable');
+  assert.match(done[0], /await finishBackupProgress\(ev\)/,
+    'and it is awaited, so the last light is on screen before the dialog goes');
+});
+
+// THE COMPLETION DIALOG IS A SEPARATE MOMENT, AND STAYS ONE.
+//
+// The grid is the DURING view; "Backup completato!" is the AFTER view — a
+// deliberate nod to Castelfidardo that Daniel has confirmed he wants kept
+// (2026-11-13). The tempting simplification, the next time somebody touches
+// this, is to fold the summary into the progress dialog and save a swap. This
+// is the note that says not to, in a place that fails rather than in a comment
+// somebody reads afterwards.
+test('the backup still ends in its own dialog, with its own words', () => {
+  const src = read('app.js');
+  const summary = /title: ev\.cancelled \? 'Backup cancelled' : '([^']+)'/.exec(src);
+  assert.ok(summary, 'the completion dialog still names itself');
+  assert.strictEqual(summary[1], 'Backup completato!',
+    'and it is still the Castelfidardo one');
+  assert.match(src, /backed up<br>to your computer/, 'with the count it has always carried');
+  assert.match(src, /\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new/,
+    'and the unchanged/new split, which is where that distinction lives — '
+    + 'the grid lights an unchanged slot exactly like a new one');
+});

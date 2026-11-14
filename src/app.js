@@ -4103,7 +4103,13 @@
           + '<p class="bk-now" role="status"><span class="bk-where">Starting</span>'
           + '<span class="bk-name">Recalling the first preset…</span></p>'
           + '<p class="bk-count">0 of 32</p>',
-        confirmLabel: 'Cancel backup',
+        // NO AFFIRMATIVE BUTTON. The only answer here is "stop", and the
+        // corner X already is it (Daniel, 2026-11-13: "the 'x' in the upper
+        // right takes care of that"). So cancelLabel carries the whole
+        // meaning — it is the X's accessible name and its tooltip, and the X
+        // is now the only visible way to stop a 48-second run. It must never
+        // go back to saying "Close".
+        confirmLabel: '',
         cancelLabel: 'Cancel backup',
         tone: 'is-backup',
       });

@@ -407,12 +407,38 @@
   // says which bank it is — the way the instrument says it.
   const GRID_BANKS = [1, 2, 3, 4];
   const GRID_SLOTS = 32;
-  // In the drawing's own coordinates. The preset numerals sit on y 30, the
-  // bezels span y 56-148; row 1 reaches up to take the numerals and the BANK
-  // legend, the rest start just above the bezels.
-  const ROW_VIEW = { x: 678, w: 645 };
+  // In the drawing's own coordinates. The preset numerals sit on y 30 and the
+  // factory legends on y 48; the bezels span y 56-148.
+  //
+  // ROW 1 KEEPS THE PANEL'S OWN HEADER — number above name, TINES REEDS
+  // EGRAND CLAVI DX EP MKS EP VIBES GRAND, exactly as the artwork draws it
+  // (Daniel, 2026-11-13: "Just use mine"). The transfer chooser hides those
+  // legends because they name BANK 1's factory presets and it may be pointing
+  // at banks 2-4 — here the top row IS bank 1, so they are simply true, and
+  // rows 2-4 start BELOW them rather than repeating eight names that belong to
+  // the row above. Same reason their numerals are dropped: a column's number
+  // does not change on the way down.
+  //
+  // THE CROP STARTS AFTER THE BANK BUTTON, at x 768 rather than the chooser's
+  // 678. The instrument has ONE bank button and four of them is a column of
+  // identical blank caps taking a sixth of the width to say nothing — the
+  // picture read as four empty slots beside the real ones (seen in the
+  // screenshot, both themes, before this). What a row needs from that cluster
+  // is its LAMP and its NUMERAL, which is how the instrument says which bank
+  // you are on, and those come with it.
+  const ROW_VIEW = { x: 768, w: 554 };
   const ROW_TOP = { y: 16, h: 136 };
-  const ROW_REST = { y: 50, h: 102 };
+  // 53, not 50: the legends' baseline is y 48 and their descenders reach about
+  // 51, so a row starting at 50 catches the bottom of the row above's names.
+  const ROW_REST = { y: 53, h: 99 };
+  // Where the row's own lamp is put: the vertical centre of the caps (y 60-144
+  // in the drawing), with its numeral on the same line. In the full drawing
+  // the four lamps are stacked at cy 64, 88, 112 and 136, which is correct for
+  // four lamps in one cluster and wrong for ONE lamp in each of four rows —
+  // every row showed its lamp at a different height and the column drifted
+  // down the picture. This is the one measurement here that departs from the
+  // drawing, and it departs because the crop already did.
+  const LAMP_CY = 102;
 
   const gridPrefix = (bank) => `bk${bank}-`;
 
@@ -421,9 +447,17 @@
     const crop = bank === 1 ? ROW_TOP : ROW_REST;
     const style = block(fullSvg, 'style').replace(/@font-face\s*{[^}]*}\s*/g, '');
     const defs = block(fullSvg, 'defs');
-    let body = prefixIds(
-      dark(section(fullSvg, 'sec-bank') + section(fullSvg, 'sec-presets')), prefix
-    );
+    // FROM THE BANK CLUSTER, ONLY THE LAMPS AND THEIR NUMERALS. Cropping the
+    // button out of view would leave it in the document — eight elements per
+    // row, four rows, all of them off-picture and none of them inert by
+    // anything but the crop. It is taken out instead, with the BANK legend and
+    // the leader line that runs from the lamps across to the preset row: that
+    // line joins four lamps to eight buttons in the full drawing, and points
+    // at nothing once there is one lamp, moved.
+    const lamps = (dark(section(fullSvg, 'sec-bank')).match(
+      /<circle class="led amber"[^/]*\/>|<text class="lbl-sm lbl-bank-num"[^>]*>\d<\/text>/g
+    ) || []).join('');
+    let body = prefixIds(lamps + dark(section(fullSvg, 'sec-presets')), prefix);
     // Which preset group is which, so painting never has to know geometry.
     body = body.replace(
       new RegExp(`<g id="${prefix}preset-(\\d)">`, 'g'),
@@ -436,12 +470,12 @@
     // per-row data and the stylesheet cannot know which row it is in.
     body = body
       .replace(
-        new RegExp(`class="led amber"(\\s+id="${prefix}led-bank-${bank}")`),
-        'class="led amber is-own"$1'
+        new RegExp(`class="led amber"(\\s+id="${prefix}led-bank-${bank}")( cx="\\d+") cy="\\d+"`),
+        `class="led amber is-own"$1$2 cy="${LAMP_CY}"`
       )
       .replace(
-        new RegExp(`(<text class="lbl-sm lbl-bank-num)("[^>]*>${bank}</text>)`),
-        '$1 is-own$2'
+        new RegExp(`(<text class="lbl-sm lbl-bank-num)("[^>]*?)y="\\d+"([^>]*>${bank}</text>)`),
+        `$1 is-own$2y="${LAMP_CY + 5}"$3`
       );
     // THE PANEL'S OWN BACKDROP, per row. Cropping to the sections drops
     // `.panel-bg` (one rect at the top of the full drawing, outside both), and
@@ -498,9 +532,16 @@
       if (led) led.classList.toggle('on', i < saved || i === current);
       if (face) face.classList.toggle('on', i === current);
     }
-    // The bank lamp follows the run exactly as the instrument's does.
+    // THE BANK INDICATOR follows the run exactly as the instrument's does:
+    // the lamp lights on the bank being read, and that row's numeral comes up
+    // with it (Daniel, 2026-11-13 — "the 1/2/3/4 numeral stack with the active
+    // row's number lit and its lamp"). The numeral is CSS, off the row's own
+    // class, so the lamp and the number cannot come apart: one call sets both.
     for (const bank of GRID_BANKS) {
-      const lamp = grid.querySelector(`[data-bk-bank="${bank}"] .led.amber.is-own`);
+      const row = grid.querySelector(`[data-bk-bank="${bank}"]`);
+      if (!row) continue;
+      row.classList.toggle('is-current', bank === currentBank);
+      const lamp = row.querySelector('.led.amber.is-own');
       if (lamp) lamp.classList.toggle('on', bank === currentBank);
     }
   }
