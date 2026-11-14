@@ -399,7 +399,68 @@ cancel/abort labels them "(partial)"); record-only globals snapshot
 finishes the slot in flight; prior-slot restore when Send PC is on (the
 device echoes received PCs, so the runner knows the prior slot). First real
 run: **32/32 in 48s** (~3,600 round trips); re-run 47s, "32 unchanged, 0
-new"; cancel verified at 13/32. **Expansion visibility is done** (the
+new"; cancel verified at 13/32.
+
+**A run shows itself on the Seven's own 32 buttons** (2026-11-13,
+`buildGrid`/`paintBackup` in `src/modal-panel.js`, opened from `app.js`).
+48 seconds of ~3,600 round trips used to report through one line in the
+connection row, which is easy to miss when you are watching the
+instrument — so the app looked idle for most of a minute. Four bank rows
+of eight light as the run reaches each slot, with the sound name, the
+count and the elapsed time under them. The shape is the JUNO-X editor's
+Crumar picker, ported by LOOK: these rows are crops of
+`assets/seven-panel.svg` like every other panel view here, so a control
+added to the instrument's drawing appears in all 32 without anyone
+remembering to. No code crossed between the repos and there is no shared
+dependency.
+
+Four things it must keep doing:
+
+- **THE RUNNER IS NOT INVOLVED.** Everything is derived from the feed that
+  already existed: `backup-progress` fires when slot n STARTS being read,
+  so n-1 is the last one finished and n-1 (0-based) is the one in hand.
+  Cancel and the never-skip-a-slot guarantee are hardware-verified and
+  were not opened to build this.
+- **A LIT BUTTON MEANS THE RUN REACHED THAT SLOT**, not that anything was
+  written. A typical run is mostly "unchanged" — 30 of 32 on 2026-11-13 —
+  and a cell staying dark because nothing needed writing would read as a
+  failure. **Dark never means done.** New-versus-unchanged stays where it
+  already lives, in the completion dialog's count. A light retracts
+  exactly once and only on a failure: the slot in flight when a run aborts
+  was lit and never saved, so it goes out when the final count arrives.
+- **THE COMPLETION DIALOG IS A SEPARATE MOMENT.** The grid is the DURING
+  view; "Backup completato!" is the AFTER view, and Daniel has confirmed
+  he wants that Castelfidardo nod kept. The tempting next simplification
+  is to fold the summary into the progress dialog and save a swap; a test
+  in `source-wiring.test.js` fails rather than leaving that as a comment
+  somebody reads afterwards.
+- **NOTHING INVENTS A LIT COLOUR**, which is the whole light/dark answer
+  here — see "Both palettes, always" in DESIGN.md and the chevron that
+  spent weeks invisible. The light is the drawing's own `.led.on`
+  (#ff3b30), literal in both themes for the same reason the panel strip is
+  (DESIGN.md, "What is NOT themed"). Measured in a rendered window rather
+  than eyeballed: lit rgb(255,59,48) and unlit rgb(125,43,38) in BOTH, with
+  the furniture around the picture following the theme
+  (rgb(139,139,147) dark / rgb(106,99,85) light). The per-row `.panel-bg`
+  is the part that would have bitten — cropping to the sections drops it,
+  and the drawing's white legends then land on the dialog's own
+  background, invisible on dark.
+
+Each row carries its own id namespace (`bk1-`, `bk2-`, …). Four copies of
+the drawing is four copies of every id, and a duplicate does not fail
+loudly: `url(#cap-grad)` resolves DOCUMENT-WIDE to whichever came first,
+so rows 2-4 would silently paint from row 1 and look right until one row
+needed to differ. Mutation-proved — drop the prefix argument and four
+tests fail.
+
+Covered by `test/modal-panel.test.js` (16) and wiring assertions in
+`test/source-wiring.test.js`, both automatic, plus
+`test/ui/scenarios/backup-grid.js` for the picture and the two themes. The
+scenario needs no instrument and skips for nothing: the real run needs a
+Seven and 48 seconds, the picture does not. **NOT YET WATCHED THROUGH A
+REAL 32-SLOT RUN** — every state was driven by hand.
+
+**Expansion visibility is done** (the
 Visibility goal): the connection row's "24 sounds" chip opens the connected
 unit's own sound table — modeled and GSP-01 sampled columns with unit-specific
 ids, plus the table fingerprint and read time that backups reference.
@@ -1202,6 +1263,65 @@ The cost when it goes wrong is not a conflict — git catches those. It is
 DUPLICATED OR CONTRADICTORY WORK: two sessions each purging half a KV store, or
 one re-fixing what the other fixed with different reasoning, leaving two
 explanations in the history for one change.
+
+**And a second cost, found on 2026-11-13 — see the section below.** The
+checkout is shared, so one session's `git add -A` commits another's
+unfinished work under a message about something else entirely.
+
+## `git add -A` IS NOT YOURS TO RUN HERE (2026-11-13)
+
+The working tree belongs to every session at once, and `git add -A` /
+`git commit -a` stage whatever is in it — including the half-finished
+work of a session that is still typing.
+
+`bc0f56c` says **"Record the channel fix's hardware verification"** and was
+meant to be docs-only. It carries `docs/DEVICE.md` (+32) and, with no
+mention anywhere in its 23-line message, **312 added lines of the backup
+grid** (326 changed, counting the 14 it removed):
+`src/app.js`, `src/index.html` and `src/modal-panel.js`, from another
+session that was mid-build in the same checkout. It was pushed before
+anyone noticed. The grid's own commit is `6068870`, which carries the
+tests, three later corrections, and a pointer back.
+
+**Nothing was lost, and it was deliberately not rewritten.** The other
+session still had the tree open, and `main` was already public: a
+force-push to tidy a message is not worth a second session's working
+state. The history says what it says and the next commit explains it.
+
+Why this is worse than it sounds, and not merely untidy:
+
+- **IT REBUILDS THE EXACT HAZARD THIS FILE ALREADY HAS A SECTION ABOUT.**
+  "A capability added inside a commit about something else is a capability
+  nobody remembers to finish" was written after the Notes strip arrived as
+  a passenger in a commit about badge colours and sat unwired for ten
+  days. This is the same shape arriving from the other direction — not
+  carelessness inside one session, but one session's sweep catching
+  another's work.
+- **`git log -S` and `git blame` now answer wrongly.** Somebody tracing
+  when the grid landed gets a commit about MIDI channels. The message is
+  the only index this project has, and it was silently made false.
+- **It is invisible from the sweeping side.** The session that ran it was
+  reviewing a docs diff; the passengers never appeared in anything it
+  read.
+
+So: **commit with an explicit pathspec.** `git add <paths>` and
+`git commit --only <paths>`, named from a `git status --short` you have
+actually looked at. If `git status` surprises you — files you did not
+touch, or your own changes already gone — stop and find out which session
+owns them before committing anything.
+
+Two related reflexes, same cause:
+
+- **`git status` reporting a clean tree is not proof your edits are
+  unsaved-free.** They may be committed already, by somebody else. The
+  tell on 2026-11-13 was a clean `git status` with the edits plainly on
+  disk, which reads as "nothing changed" and means the opposite.
+- **Before `pkill`-ing the app or running `npm run test:ui`** — which
+  refuses while the editor holds the instrument — check for a live sibling
+  session first (the desktop app can list them). That editor may be
+  somebody's hardware session mid-run. The grid's scenario was run in an
+  isolated second instance instead (`SEVEN_NO_DEVICE=1` plus a scratch
+  `SEVEN_LIBRARY_DIR`), which needed nothing killed.
 
 ## The website (this-seven-goes-to-eleven)
 
