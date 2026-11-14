@@ -717,15 +717,39 @@ class LibraryStore {
   // and with nothing attached it claims nothing (singlePatchContainer). That
   // is the opposite of duplicate(), which INHERITS, and correctly: a copy came
   // from wherever the original did, while this came off the wire just now.
-  createPatchFromLive({ name, soundName, sampled = null, params = {} }) {
+  // `fromSlot` is { bank, preset }, 1-BASED, when these values were read off a
+  // preset on the instrument. It is recorded as `origin.copiedFrom`, NOT as
+  // `origin.bank`.
+  //
+  // THAT IS NOT A STYLE CHOICE. `isBackupRecord` is `typeof origin.bank ===
+  // 'number'` and nothing else, so a top-level bank would make this patch a
+  // backup record: filed in the Backups tab, entered into the backup run's
+  // dedupe, and refused as a destination for its own owner's edits. The save
+  // design asked for "origin with the bank and preset"; this is that, in the
+  // field the store already uses for it — `duplicate()` does exactly the same
+  // thing when it copies a record, dropping the top-level bank and keeping the
+  // slot inside `copiedFrom`.
+  //
+  // No `file` or `name` beside it, because there is no source file: these
+  // values came off the instrument. Readers must therefore check for the bank
+  // rather than assuming a copy of something in the library.
+  createPatchFromLive({ name, soundName, sampled = null, params = {}, fromSlot = null }) {
     const chosen = String(name || '').trim();
     if (!chosen) throw new Error('A patch needs a name.');
     this.assertNameFree(chosen);
     const sound = this.soundByName.get(soundName);
     const file = this.uniqueFile(chosen);
+    const slot = fromSlot
+      && Number.isInteger(fromSlot.bank)
+      && Number.isInteger(fromSlot.preset)
+      ? { bank: fromSlot.bank, preset: fromSlot.preset }
+      : null;
     const container = this.singlePatchContainer({
       name: chosen,
-      origin: { created: new Date().toISOString() },
+      origin: {
+        created: new Date().toISOString(),
+        ...(slot ? { copiedFrom: slot } : {}),
+      },
       // The id is diagnostic only and is never resolved against (FORMAT.md);
       // null when nothing is attached, rather than a number from the schema
       // that describes no instrument in the room.

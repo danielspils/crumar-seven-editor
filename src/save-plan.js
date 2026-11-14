@@ -46,8 +46,38 @@
   // preset the instrument is sitting on — not the one on screen — so a name
   // printed from a stale belief is an instruction to overwrite something the
   // player did not mean. Worse than naming nothing.
-  function saveRows({ changed, slot = null }) {
+  // EVERY ROW IS A DESTINATION, and the count varies by where you are: two in
+  // ON THE SEVEN, three in Patches. Settled by Daniel, 14 Nov 2026.
+  //
+  // The third row is `update`, and it is here because the question it asks used
+  // to be a SECOND DIALOG. Choosing "save to computer" on one of your own
+  // patches opened "write these values into X, or keep it and save them as a
+  // separate patch" — so an ordinary save met two dialogs in a row, which is
+  // the confusion this whole feature exists to remove. Daniel: "'update this
+  // patch' is the common want in Patches that the modal currently cannot
+  // serve."
+  //
+  // `update` is offered only when there is a file to update and updating it is
+  // allowed — never for a bank slot, which has no file behind it, and never
+  // for a backup record or a Bank 1 donor. Those two refusals are the caller's
+  // to decide (audition.js canUpdate) because they are facts about the library;
+  // this function only lays out what it is told is possible.
+  function saveRows({ changed, slot = null, canUpdate = false, targetName = '' }) {
     const rows = [];
+    // NOTHING CHANGED MEANS NOTHING TO WRITE BACK. A row offering to update a
+    // patch with its own contents is an instruction to do nothing, exactly as
+    // the overwrite row below would be.
+    if (changed && canUpdate) {
+      rows.push({
+        value: 'update',
+        // NAMED, because this dialog is reached from several views and Daniel
+        // once met the old version of this question while standing in Backups
+        // and could not tell which patch was the target (2026-08-22). The
+        // unnamed fallback exists for a patch with no name, not as a choice.
+        title: targetName ? `Update “${targetName}”` : 'Update this patch',
+        sub: 'Writes these values into the patch you have open',
+      });
+    }
     if (changed) {
       rows.push({
         value: 'hold',
@@ -60,7 +90,12 @@
     rows.push({
       value: 'computer',
       title: 'Save to computer',
-      sub: 'Adds it to your Patches library. The Seven is untouched',
+      // THE CONTRAST IS THE POINT when `update` sits above it: both write to
+      // the computer and the difference is which file. The words are the ones
+      // the dialog this replaces already used, and Daniel has read those.
+      sub: canUpdate && changed
+        ? 'Keeps this patch and saves these values as a separate one'
+        : 'Adds it to your Patches library. The Seven is untouched',
     });
     return rows;
   }
@@ -99,7 +134,7 @@
 
   // THE WHOLE FLOW.
   //
-  //   ask()        -> 'hold' | 'computer' | 'leave' | null (dismissed)
+  //   ask()        -> 'update' | 'hold' | 'computer' | 'leave' | null (dismissed)
   //   holdScreen() -> true when "Also save a copy to Patches" was left ticked
   //   write(params, { asNew }) -> true when a patch was written
   //
@@ -108,12 +143,17 @@
   // DISMISSING MEANS STAY, from both entry points. Discarding is the one move
   // here that cannot be walked back, so it takes a deliberate press — never an
   // Escape, never a stray click on the backdrop.
+  // The three destination rows. Anything else — a dismissal, a stray click, a
+  // value a future row adds without teaching this function about it — is STAY,
+  // which is the answer that writes nothing and loses nothing.
+  const DESTINATIONS = ['update', 'hold', 'computer'];
+
   async function decideSave({
-    connected, ask, holdScreen, readBuffer, appParams, write, savesAsNew = true,
+    connected, ask, holdScreen, readBuffer, appParams, write,
   }) {
     const answer = await ask();
     if (answer === 'leave') return 'leave';
-    if (answer !== 'hold' && answer !== 'computer') return 'stay';
+    if (!DESTINATIONS.includes(answer)) return 'stay';
 
     // THE HOLD IS THE PLAYER'S, AND IT MAY NOT HAPPEN. The tick box is the
     // whole protection against that, which is why it is ticked by default:
@@ -125,11 +165,16 @@
     const values = await valuesToWrite({ connected, readBuffer, appParams });
     if (!values) return 'stay';
 
+    // ONLY `update` WRITES AN EXISTING FILE, and it is the row the player
+    // pressed rather than something inferred from which view they are in. That
+    // inference is what this replaces: `savesAsNew` worked out the destination
+    // from the view and then a second dialog asked anyway.
+    //
     // A COPY TAKEN AT THE HOLD IS ALWAYS A NEW PATCH, whatever view it was
     // reached from. It exists because the hold may not happen — a record of
     // this moment, taken as insurance — and writing it over whatever file is
     // open would be a second consequence nobody asked for.
-    const asNew = answer === 'hold' ? true : savesAsNew;
+    const asNew = answer !== 'update';
     return (await write(values.params, { asNew, missing: values.missing || [] }))
       ? 'saved'
       : 'stay';

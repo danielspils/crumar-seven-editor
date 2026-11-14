@@ -75,12 +75,53 @@
   ui.check(cb.top >= hb.bottom - 1, 'the rows are stacked, not side by side');
   ui.check(Math.abs(hb.width - cb.width) < 1, 'and the same width');
 
+  // ── THREE ROWS, in Patches (Daniel, 14 Nov 2026) ────────────────────────
+  //
+  // The second dialog was folded in, so one of your own patches offers all
+  // three destinations at once. This is the case most worth LOOKING at: three
+  // similar-sounding choices stacked is exactly the reading problem this
+  // dialog exists for, and the only thing keeping them apart is that each
+  // sentence is present and legible.
+  const three = SevenSavePlan.saveRows({
+    changed: true, slot: { bank: 3, preset: 5 }, canUpdate: true, targetName: 'Reed Piano',
+  });
+  ui.check(seen(three) === 'update,hold,computer',
+    `Patches offers all three, update first (got ${seen(three)})`);
+  m.body.innerHTML = SevenSavePlan.rowsHtml(three);
+  await ui.sleep(200);
+  const drawn3 = [...m.body.querySelectorAll('.sv-row')];
+  ui.check(drawn3.length === 3, `three rows on screen (${drawn3.length})`);
+  let lastBottom = -1;
+  for (const el of drawn3) {
+    const r = el.getBoundingClientRect();
+    const sub = el.querySelector('.sv-row-s');
+    const sh = Math.round(sub.getBoundingClientRect().height);
+    ui.note(`"${titleOf(el)}" / "${subOf(el)}" — sub ${sh}px at y ${Math.round(r.top)}`);
+    ui.check(sh >= 12, `"${titleOf(el)}" has a visible sentence (${sh}px)`);
+    ui.check(r.top >= lastBottom - 1, `"${titleOf(el)}" is stacked below the one before`);
+    lastBottom = r.bottom;
+  }
+  // The two that both write to the computer must not read the same. This is
+  // the pair Daniel could not tell apart in the first place, one level down.
+  const upd = drawn3.find((el) => titleOf(el).startsWith('Update'));
+  const comp = drawn3.find((el) => titleOf(el) === 'Save to computer');
+  ui.check(!!upd && titleOf(upd).includes('Reed Piano'),
+    'the update row names the patch it would write into');
+  ui.check(!!comp && subOf(comp) !== subOf(upd),
+    'and the two computer destinations do not share a sentence');
+  const threeRowHeight = Math.round(dialog.getBoundingClientRect().height);
+  m.body.innerHTML = SevenSavePlan.rowsHtml(rows);
+  await ui.sleep(150);
+
   // ── THE SIZE DOES NOT JUMP between the one-row and two-row forms ────────
   const twoRowHeight = Math.round(dialog.getBoundingClientRect().height);
   m.body.innerHTML = SevenSavePlan.rowsHtml(quiet);
   await ui.sleep(200);
   const oneRowHeight = Math.round(dialog.getBoundingClientRect().height);
-  ui.note(`dialog height: two rows ${twoRowHeight}, one row ${oneRowHeight}`);
+  ui.note(`dialog height: three rows ${threeRowHeight}, two ${twoRowHeight}, one ${oneRowHeight}`);
+  ui.check(threeRowHeight > twoRowHeight,
+    'and a row that is PRESENT brings its own space — the dialog grows for it '
+    + 'rather than squeezing three rows into the height of two');
   ui.check(oneRowHeight < twoRowHeight,
     'a row that is absent takes its space with it — the dialog is not padded out '
     + 'to hide that there is nothing to overwrite');

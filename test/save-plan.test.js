@@ -27,7 +27,6 @@ const rig = (over = {}) => {
   const wrote = [];
   const opts = {
     connected: true,
-    savesAsNew: true,
     ask: async () => 'computer',
     holdScreen: async () => true,
     readBuffer: async () => ({ params: { ...SEVEN_HOLDS }, missing: [] }),
@@ -73,6 +72,58 @@ test('the computer row says the Seven is left alone', () => {
   assert.match(computer.sub, /The Seven is untouched/);
 });
 
+// ---- The update row (Daniel, 14 Nov 2026: fold the second dialog in) --------
+//
+// Two rows in ON THE SEVEN, three in Patches. The third is the question that
+// used to be a SECOND DIALOG behind "save to computer", which is the two-in-a-
+// row confusion this feature exists to remove.
+
+test('ON THE SEVEN offers two rows: no file behind a slot to update', () => {
+  const rows = saveRows({ changed: true, slot: { bank: 3, preset: 5 }, canUpdate: false });
+  assert.deepStrictEqual(rows.map((r) => r.value), ['hold', 'computer']);
+});
+
+test('an own patch offers three, update first', () => {
+  const rows = saveRows({
+    changed: true, slot: { bank: 3, preset: 5 }, canUpdate: true, targetName: 'Reed Piano',
+  });
+  assert.deepStrictEqual(rows.map((r) => r.value), ['update', 'hold', 'computer']);
+});
+
+test('the update row names the patch it would write into', () => {
+  const [update] = saveRows({ changed: true, canUpdate: true, targetName: 'Reed Piano' });
+  assert.strictEqual(update.title, 'Update “Reed Piano”');
+  // Daniel met the dialog this replaces while standing in Backups and could not
+  // tell which patch was the target (2026-08-22). The name is the fix, and it
+  // has to survive the move.
+  assert.match(update.title, /Reed Piano/);
+});
+
+test('an unnamed patch does not render an empty pair of quotes', () => {
+  const [update] = saveRows({ changed: true, canUpdate: true, targetName: '' });
+  assert.strictEqual(update.title, 'Update this patch');
+});
+
+// Same rule as the overwrite row above, for the same reason: with nothing
+// changed there is nothing to write back, so a row offering to is an
+// instruction to do nothing.
+test('update is absent when nothing has changed, even where it is allowed', () => {
+  const rows = saveRows({ changed: false, canUpdate: true, targetName: 'Reed Piano' });
+  assert.deepStrictEqual(rows.map((r) => r.value), ['computer']);
+});
+
+// THE CONTRAST IS THE POINT. With update above it, "Save to computer" has to
+// say which file it means, or the two rows are the pair of labels Daniel could
+// not tell apart in the first place.
+test('the computer row distinguishes itself when update sits above it', () => {
+  const three = saveRows({ changed: true, canUpdate: true, targetName: 'Reed Piano' });
+  const alone = saveRows({ changed: true, canUpdate: false });
+  const sub = (rows) => rows.find((r) => r.value === 'computer').sub;
+  assert.match(sub(three), /separate/, 'it names the difference');
+  assert.notStrictEqual(sub(three), sub(alone),
+    'and does not read identically to the two-row case');
+});
+
 // ---- What the save actually writes -----------------------------------------
 
 // THE CENTRAL ONE. This is the whole change: the file carries what the
@@ -95,17 +146,39 @@ test('the same is true of the copy taken at the hold screen', async () => {
 });
 
 // A copy taken at the hold is insurance, never an edit to the open file —
-// writing it over one would be a second consequence nobody asked for.
-test('the hold copy is a new patch even where a save would overwrite', async () => {
-  const { opts, wrote } = rig({ ask: async () => 'hold', savesAsNew: false });
+// writing it over one would be a second consequence nobody asked for. It is
+// the ROW that decides now, so a hold cannot inherit "overwrite" from the view
+// it was reached from.
+test('the hold copy is a new patch wherever it was reached from', async () => {
+  const { opts, wrote } = rig({ ask: async () => 'hold' });
   await decideSave(opts);
   assert.strictEqual(wrote[0].meta.asNew, true);
 });
 
-test('an ordinary patch still saves over itself when that is the view', async () => {
-  const { opts, wrote } = rig({ savesAsNew: false });
-  await decideSave(opts);
+// THE ONLY ROW THAT WRITES AN EXISTING FILE. This used to be inferred from the
+// view and then confirmed by a second dialog; it is a destination the player
+// picks (Daniel, 14 Nov 2026).
+test('"update" writes the open patch, and nothing else does', async () => {
+  const { opts, wrote } = rig({ ask: async () => 'update' });
+  assert.strictEqual(await decideSave(opts), 'saved');
   assert.strictEqual(wrote[0].meta.asNew, false);
+  assert.deepStrictEqual(wrote[0].params, SEVEN_HOLDS,
+    'and it writes the reading, like every other row');
+
+  for (const answer of ['computer', 'hold']) {
+    const r = rig({ ask: async () => answer });
+    await decideSave(r.opts);
+    assert.strictEqual(r.wrote[0].meta.asNew, true, `${answer} makes a new patch`);
+  }
+});
+
+// Anything that is not one of the three destinations writes nothing. A fourth
+// row added later without teaching decideSave about it must be inert rather
+// than falling into whichever branch it resembles.
+test('an answer that is not a destination is STAY', async () => {
+  const { opts, wrote } = rig({ ask: async () => 'overwrite' });
+  assert.strictEqual(await decideSave(opts), 'stay');
+  assert.strictEqual(wrote.length, 0);
 });
 
 // A PARTIAL READ WRITES NOTHING. Daniel moves the one USB cable between this

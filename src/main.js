@@ -161,8 +161,13 @@ function registerLibraryIpc() {
   // Save as new: the live buffer as its own patch. THROWS on a taken name —
   // the target convention (CLAUDE.md), so a caller that forgets to check
   // cannot proceed on a refusal that looks like a filename.
-  ipcMain.handle('library:createFromLive', (_e, { name, soundName, sampled, params }) =>
-    getStore().createPatchFromLive({ name, soundName, sampled, params }));
+  // `fromSlot` is { bank, preset } when these values were read off a preset on
+  // the instrument, so the patch can say where it came from rather than
+  // arriving in the library unexplained. Named through explicitly rather than
+  // spreading the renderer's object: this handler is the boundary, and a
+  // spread would carry whatever a future caller happened to put on it.
+  ipcMain.handle('library:createFromLive', (_e, { name, soundName, sampled, params, fromSlot }) =>
+    getStore().createPatchFromLive({ name, soundName, sampled, params, fromSlot }));
   ipcMain.handle('library:nextPatchName', (_e, { name }) => {
     try { return getStore().nextPatchName(name); }
     catch { return name; }

@@ -210,23 +210,28 @@
   // reconciliation here. A crash or a yanked cable is covered by the marker
   // file that already exists (seven-midi.js), and by nothing else.
   let ccBorrowed = false;
+  // A FAILED BORROW IS REMEMBERED, NOT ANNOUNCED. It used to toast at the
+  // moment of entering the view: true, and three seconds later gone, said
+  // while nobody was saving anything. It matters at one moment only — a save,
+  // where the button may have sat outlined through a panel move — so the save
+  // modal reads this and says it there (out/save-what-you-hear.md §5b, "say so
+  // once in the save modal and carry on"). Never fatal, in either place.
+  let ccFailed = false;
 
   async function borrowSendCc() {
     if (ccBorrowed || !isConnected()) return;
     ccBorrowed = true; // set FIRST: a second entry mid-await must not re-ask
     const r = await window.sevenAPI.midi.borrowSendCc();
-    if (!r || !r.ok) {
-      ccBorrowed = false;
-      // Said once, and never fatal. A failed borrow costs a button that is
-      // slower to notice a panel move; blocking anything on it would trade
-      // the thing that matters for the thing that does not.
-      toast('Could not turn Send CC on — panel moves may not show until you save');
-    }
+    ccBorrowed = !!(r && r.ok);
+    // CLEARED ON SUCCESS, so a borrow that works after one that did not stops
+    // the save modal repeating a complaint about a state that has passed.
+    ccFailed = !ccBorrowed;
   }
 
   async function returnSendCc() {
     if (!ccBorrowed) return;
     ccBorrowed = false;
+    ccFailed = false; // nothing is borrowed, so there is nothing to warn about
     await window.sevenAPI.midi.returnSendCc();
   }
 
@@ -2238,6 +2243,10 @@
     // The app's own recalls do NOT make this true. They put the instrument
     // somewhere, but say nothing about where it has been moved to since.
     slotIsKnown: () => !!(lastStatus && lastStatus.sendPc === 1),
+    // Whether Send CC could not be borrowed, so the save modal can say that
+    // panel moves may not have reached the screen. See ccFailed above: the
+    // alternative was a toast at a moment when it did not yet matter.
+    sendCcFailed: () => ccFailed,
     // What the edit buffer is actually PLAYING, which after a trip through the
     // carousel is not what the patch file says. Saving without this wrote the
     // new settings under the old instrument's name.

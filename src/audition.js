@@ -666,7 +666,11 @@
   // Provenance is a NEW patch's: created now, instrument facts from what is
   // connected now, and nothing claimed when nothing is attached
   // (createPatchFromLive in library-store.js).
-  async function saveLiveAsNewPatch(values) {
+  // `fromSlot` is { bank, preset }, 1-BASED, when these values were read off a
+  // preset on the instrument and the app can honestly say which — see
+  // slotProvenance. Null everywhere else, and null is written as nothing
+  // rather than as a guess.
+  async function saveLiveAsNewPatch(values, { fromSlot = null } = {}) {
     const patch = deps.getPatch();
     if (!patch) return;
     const liveSound = deps.getLiveSound && deps.getLiveSound();
@@ -704,6 +708,7 @@
         soundName,
         sampled: liveSound ? !!liveSound.sampled : undefined,
         params: { ...params },
+        fromSlot,
       });
     } catch (err) {
       // The seam throws on a refusal, so this cannot be mistaken for success.
@@ -813,10 +818,16 @@
   async function openSaveFlow({ fromNav = false } = {}) {
     const changed = driftNow();
     const slot = holdSlot();
+    const target = openEntry();
     // WHICH ROWS, and why, is SevenSavePlan's — injected and unit-tested,
     // because none of it is reachable from a UI scenario without a connected
     // instrument. This half only draws what it is told.
-    const rowsHtml = SevenSavePlan.rowsHtml(SevenSavePlan.saveRows({ changed, slot }));
+    const rowsHtml = SevenSavePlan.rowsHtml(SevenSavePlan.saveRows({
+      changed,
+      slot,
+      canUpdate: canUpdate(),
+      targetName: (target && target.name) || '',
+    }));
 
     // OFFLINE IS NOT A FAILURE, BUT IT IS A DIFFERENT SAVE, and it says so
     // BEFORE the choice rather than after the file exists. With the Seven
@@ -830,9 +841,22 @@
       : '<p class="tx-fine">The Seven is not connected, so this saves what the app has — '
         + 'not a reading of the instrument.</p>';
 
+    // A FAILED Send CC BORROW IS SAID HERE, which is what the spec asked for
+    // (§5b: "say so once in the save modal and carry on") and not where it was
+    // first built. It was a toast at the moment of entering the view — correct
+    // information, delivered while nobody was saving anything, and gone three
+    // seconds later. It matters at exactly one moment: when a save is about to
+    // happen and the button may have sat outlined through a knob move. A failed
+    // borrow NEVER blocks a save: the read takes the whole buffer regardless,
+    // so this is a note about the button, not about the file.
+    const ccNote = (deps.sendCcFailed && deps.sendCcFailed())
+      ? '<p class="tx-fine">Send CC could not be turned on, so panel moves may not '
+        + 'have shown on screen. Saving reads the instrument either way.</p>'
+      : '';
+
     const modal = SevenModal.open({
       title: fromNav ? 'You have unsaved changes' : 'Save patch',
-      bodyHtml: `${rowsHtml}${offlineNote}`,
+      bodyHtml: `${rowsHtml}${offlineNote}${ccNote}`,
       // NO AFFIRMATIVE BUTTON: the rows ARE the actions, and a third button
       // competing with them is the thing this dialog exists to avoid.
       confirmLabel: '',
@@ -856,14 +880,20 @@
     try {
       return await SevenSavePlan.decideSave({
         connected: isConnected(),
-        savesAsNew: savesAsNew(),
         // settles on any click, Escape or the X; `answer` says which
         ask: async () => { await modal.action(); return answer; },
         holdScreen: () => runHoldScreen(modal, slot),
         readBuffer: () => withBufferRead(modal),
         appParams,
+        // WHERE THESE VALUES CAME FROM, carried onto a new patch so a copy
+        // taken off the instrument does not arrive in a curated library with
+        // nothing to explain it (§3). Computed here rather than inside the
+        // writer because it is a fact about the view, and `null` everywhere
+        // else is the honest answer — see slotProvenance.
         write: (params, { asNew }) => (
-          asNew ? saveLiveAsNewPatch(params) : saveLiveToLibrary(params).then(() => true)
+          asNew
+            ? saveLiveAsNewPatch(params, { fromSlot: slotProvenance() })
+            : saveLiveToLibrary(params).then(() => true)
         ),
       });
     } finally {
@@ -871,23 +901,57 @@
     }
   }
 
-  // WHICH WRITER "Save to computer" reaches, and it is not one question but
-  // the one the bar already answers. A bank slot and a backup record both save
-  // as a NEW patch — a record is a dated account of what the instrument held
-  // and is never written to — while an ordinary patch in Patches is yours, and
-  // there overwriting it is a real thing to want. saveLiveToLibrary asks that
-  // question in its own dialog, which is unchanged.
-  //
-  // Both now write what was READ off the instrument rather than the app's copy,
-  // which is the whole point of this change and applies to every path.
-  function savesAsNew() {
-    const onSeven = !!(deps.lastTouchedDevice && deps.lastTouchedDevice());
+  // The library entry the live session is sitting on, or null.
+  function openEntry() {
     const target = auditionTarget();
-    const entry = target && (deps.getEntries() || []).find(
+    if (!target) return null;
+    return (deps.getEntries() || []).find(
       (e) => e.file === target.file && (e.patchIndex || 0) === (target.patchIndex || 0)
-    );
-    const isBackupRecord = !!(entry && entry.origin && entry.origin.kind === 'backup');
-    return onSeven || isBackupRecord;
+    ) || null;
+  }
+
+  // WHETHER THE OPEN PATCH CAN BE WRITTEN BACK TO — the `update` row's whole
+  // precondition. Three ways the answer is no, and each is its own rule rather
+  // than a consequence of another:
+  //
+  //   ON THE SEVEN      there is no file behind a bank slot to write into.
+  //   a backup record   a dated account of what the instrument held on the day
+  //                     it was captured. Its value is that it does not change
+  //                     (Daniel, 2026-08-13).
+  //   a Bank 1 donor    every generated patch of that model is seeded from it
+  //                     (createPatchFromSound), so editing one in place changes
+  //                     patches made from it afterwards with nothing on screen
+  //                     connecting the two (Daniel, 2026-08-14).
+  //
+  // The donor test is written out even though a Bank 1 patch is ALSO a backup
+  // record and would be caught by the line above. CLAUDE.md is explicit about
+  // why: that is a rule about records which happens to cover donors, and the
+  // day it changes the donors lose their protection silently.
+  function canUpdate() {
+    if (deps.lastTouchedDevice && deps.lastTouchedDevice()) return false;
+    const entry = openEntry();
+    if (!entry || !entry.origin) return false;
+    if (entry.origin.kind === 'backup') return false;
+    if (entry.origin.bank === 1) return false;
+    return true;
+  }
+
+  // WHERE A NEW PATCH'S VALUES CAME FROM, or null when the app cannot honestly
+  // say — which is most of the time, and deliberately.
+  //
+  // It answers only in the ON THE SEVEN view, because that is the one place the
+  // thing on screen IS a slot. Saving a copy while editing one of your own
+  // patches records nothing: the instrument is sitting on some preset, but the
+  // values came from a file, and "from Bank 3 / Slot 5" would be a claim about
+  // provenance that is simply untrue.
+  //
+  // It uses the same gate as naming the slot on screen (holdSlot -> Send PC
+  // on). One rule for both: if the app cannot honestly name the slot to the
+  // player, it does not write it into a file either, where nothing afterwards
+  // could tell a reading from a guess.
+  function slotProvenance() {
+    if (!(deps.lastTouchedDevice && deps.lastTouchedDevice())) return null;
+    return holdSlot();
   }
 
   // The 1.3s. The dialog goes inert rather than vanishing, so it does not
@@ -940,83 +1004,42 @@
     return !!(box && box.checked);
   }
 
-  // Writes the working copy to the patch file. Needs no instrument — the
-  // values are already here, which is why switching patches never has to cost
-  // you the edit itself.
+  // WRITES THESE VALUES INTO THE OPEN PATCH, and only that. Needs no
+  // instrument — the values are already here, which is why switching patches
+  // never has to cost you the edit itself.
+  //
   // `values` is what the instrument was holding, read by the caller — never
   // liveEdit.params. Passing it in rather than reading it here keeps the 1.3s
   // read on the path the player chose, and keeps this function the thing it
   // has always been: the part that writes.
+  //
+  // IT NO LONGER ASKS ANYTHING (14 Nov 2026). It used to open its own dialog —
+  // "write these values into X, or keep it and save them as a separate patch"
+  // — so saving one of your own patches met TWO dialogs in a row, which is the
+  // confusion this feature exists to remove. That question is now a row in the
+  // save modal ("Update X" beside "Save to computer"), where the destinations
+  // sit together and explain themselves by contrast. The copy half of it went
+  // with the question: "Save to computer" reaches saveLiveAsNewPatch from every
+  // view now, so one row means one thing everywhere.
   async function saveLiveToLibrary(values) {
     if (!liveEdit) return;
     const entry = deps.getEntries().find(
       (e) => e.file === liveEdit.file && e.patchIndex === liveEdit.patchIndex
     ) || {};
     const previous = { ...(entry.params || {}) };
-    let { file, patchIndex } = liveEdit;
+    const { file, patchIndex } = liveEdit;
 
-    // A BACKUP RECORD IS NEVER OVERWRITTEN. It is a dated account of what the
-    // instrument held on the day it was captured, and the value of a record is
-    // that it does not change — so saving edits made on top of one always
-    // produces a new patch, with no question asked (Daniel, 2026-08-13).
-    // Anything else in the library is yours, and there the choice is real:
-    // overwriting is right when refining a patch, a copy when making a
-    // variant.
-    const isBackup = !!(entry.origin && entry.origin.kind === 'backup');
-    // A DONOR IS NEVER OVERWRITTEN EITHER, and this is its own rule rather
-    // than a side effect of the one above (Daniel, 2026-08-14).
-    //
-    // A library patch captured from Bank 1 is what every generated patch of
-    // that model is seeded from — see createPatchFromSound in
-    // library-store.js. Editing one in place changes every patch generated
-    // from that model afterwards, with nothing on screen to connect the two.
-    // It was already safe, because a Bank 1 patch is also a backup record and
-    // backups always copy; but that is a rule about RECORDS that happened to
-    // cover donors, and the day it changes the donors lose their protection
-    // silently. So the reason is written down where it applies.
-    const isDonor = !!(entry.origin && entry.origin.bank === 1);
-    // WHAT TO DO, not which button was pressed. The two were the same thing
-    // until the safe option became the confirm, and reading the modal's raw
-    // answer at the branch below is how that swap would silently invert.
-    let intent = 'copy';
-    if (!isBackup && !isDonor) {
-      const target = entry.name || 'this patch';
-      const answer = await SevenModal.confirm({
-        title: `Save “${esc(target)}”`,
-        // NO CLAIM THAT ANYTHING WAS EDITED. This said "save your changes as a
-        // copy" — but a slot captured from the instrument has no changes, and
-        // the sentence narrated an edit that need never have happened. It says
-        // what each button does instead (Daniel, 2026-08-22).
-        body: `Write these values into “${target}”, or keep it and save them `
-          + 'as a separate patch.',
-        // THE SAFE PATH LEADS. Overwrite held both the focus and Return, so
-        // pressing Enter destroyed a patch — and destroying one is
-        // unrecoverable while making a second is not. Not the is-equal tone:
-        // where one choice is undoable and the other is not, the modal should
-        // lean, and it should lean to the one you can walk back from.
-        confirmLabel: 'Save as a separate patch',
-        // NAMED. Daniel met this dialog while standing in the Backups tab, saw
-        // "Overwrite patch", and could not tell whether a backup was about to
-        // be overwritten. It never could be — a record skips this dialog
-        // entirely — but nothing on screen said which patch was the target.
-        secondaryLabel: `Overwrite “${target}”`,
-        cancelLabel: 'Cancel',
-      });
-      if (!answer) return;
-      intent = answer === 'secondary' ? 'overwrite' : 'copy';
-    }
-    if (intent === 'copy') {
-      const copy = await window.sevenAPI.library.duplicate(file, patchIndex);
-      if (!copy || !copy.file) {
-        toast('Could not make a copy');
-        return;
-      }
-      // The live session follows the copy: what you go on editing is the thing
-      // you just chose to keep.
-      file = copy.file;
-      patchIndex = copy.patchIndex || 0;
-      liveEdit.file = file;
-      liveEdit.patchIndex = patchIndex;
+    // REFUSED HERE AS WELL AS BY THE ABSENT ROW. canUpdate() keeps the row off
+    // the dialog for a backup record or a Bank 1 donor, so this cannot be
+    // reached today — and it is checked anyway, because the protection used to
+    // live in this function and moving it somewhere else is exactly how a rule
+    // gets lost. A record is a dated account of what the instrument held and
+    // its value is that it does not change (Daniel, 2026-08-13); a donor seeds
+    // every generated patch of its model, so editing it in place changes
+    // patches made afterwards with nothing connecting the two (2026-08-14).
+    if (entry.origin && (entry.origin.kind === 'backup' || entry.origin.bank === 1)) {
+      toast('That one is a record of what the instrument held — save a copy instead');
+      return;
     }
     await window.sevenAPI.library.saveParams(file, patchIndex, values);
 

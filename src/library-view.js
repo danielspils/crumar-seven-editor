@@ -89,6 +89,30 @@
     return `${years} year${years === 1 ? '' : 's'} ago`;
   };
 
+  // "from Bank 3 · Preset 5", or nothing at all.
+  //
+  // A save taken off the instrument lands in Patches among patches that were
+  // built there, and without this it arrives unexplained — the thing §3 of
+  // out/save-what-you-hear.md asked for.
+  //
+  // NOT A NEW FIELD. The store has written `origin.copiedFrom.bank` since
+  // 2026-08-21, for copies of backup records, and nothing ever displayed it —
+  // so those rows start saying where they came from too.
+  //
+  // GUARDED ON THE NUMBERS, not on `copiedFrom` existing: a copy of an
+  // ordinary patch carries a file and a name in there and no slot at all, and
+  // "from Bank undefined" is exactly how that would read.
+  //
+  // ONE FORMATTER, used by the setlist slot row's origin line and by the flat
+  // Patches row. Two copies of a format string is the shape that drifted the
+  // two panel drawings apart for eleven days.
+  function fromSlotLine(origin) {
+    const c = origin && origin.copiedFrom;
+    return c && typeof c.bank === 'number' && typeof c.preset === 'number'
+      ? `from Bank ${c.bank} · Preset ${c.preset}`
+      : '';
+  }
+
   // Origin line under every patch name: where this file-side patch came from.
   // Absent or unrecognised origins are IMPORTED — never "Created" (a file the
   // user drops into the folder by hand must not claim the app made it).
@@ -98,7 +122,8 @@
       return `Bank ${o.bank} · Preset ${o.preset}${o.date ? ` · ${fmtDate(o.date)}` : ''}`;
     }
     if (o && o.kind === 'created' && o.date) {
-      return `Created ${ago(o.date)}`;
+      const from = fromSlotLine(o);
+      return `Created ${ago(o.date)}${from ? ` · ${from}` : ''}`;
     }
     return `Imported · ${entry.file}`;
   }
@@ -206,7 +231,15 @@
     // a patch you made the date was already the least useful thing on the line.
     // Dates live in Backups, where they distinguish one run from another
     // (Daniel, 2026-08-16).
-    const context = '';
+    //
+    // THE CELL IS EMPTY AGAIN EXCEPT FOR ONE THING (14 Nov 2026): a patch
+    // saved off a preset says which preset. Daniel asked for it by name, and
+    // it does not rebuild what the decision above removed — that was a column
+    // of DATES, the same word on every row. This appears on the few rows that
+    // carry a slot and says something no other cell on the line does: a patch
+    // saved off the instrument otherwise arrives in a curated library with
+    // nothing to explain it. Every other row stays blank.
+    const context = fromSlotLine(o);
     // The sound cell is NEWS, not a column that must be filled: it appears
     // only when the instrument differs from what the patch is called. Most
     // rows are quiet, because a backup patch is auto-named after its own

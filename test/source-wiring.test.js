@@ -63,25 +63,32 @@ test('the transfer step dialog still passes denyLabel', () => {
     'app.js passes a denyLabel — without it the deny branch of the modal router is dead');
 });
 
-test('the unsaved-edits dialog still passes secondaryLabel', () => {
-  // "Save a copy" is the only thing in the app that renders
-  // .seven-modal-second, and the only reason confirm() can resolve 'secondary'.
-  const src = code(read('audition.js'));
-  // Either quoting: the label became a template literal on 2026-08-22 when it
-  // started naming the patch it would overwrite. What this pins is that a
-  // label is passed at all, not how it is written.
+test('the send flow still passes secondaryLabel', () => {
+  // .seven-modal-second renders only when a caller passes a label, and it is
+  // the only reason confirm() can ever resolve 'secondary'.
+  //
+  // IT MOVED (14 Nov 2026). This read audition.js, where the overwrite dialog
+  // was the caller, until that dialog was folded into the save modal as a row.
+  // The capability is not orphaned — the send flow's "Save edits to new patch"
+  // passes one — so the guard follows the surviving caller rather than being
+  // deleted. If that one goes too, .seven-modal-second and the whole
+  // 'secondary' answer are dead code and this should fail, not be retired.
+  const src = code(read('app.js'));
   assert.match(src, /secondaryLabel:\s*(?:'[^']+'|`[^`]+`)/,
-    'audition.js passes a secondaryLabel — without it the secondary branch is dead');
+    'app.js passes a secondaryLabel — without it the secondary branch is dead');
 });
 
 test('the caller that handles the secondary answer still checks for it', () => {
   // The label and the branch that reads its answer are two separate things to
-  // lose. A dialog offering "Save a copy" whose caller no longer tests for
-  // 'secondary' would fall through to the overwrite path — the answer being a
+  // lose. A dialog offering a second action whose caller no longer tests for
+  // 'secondary' would fall through to the confirm path — the answer being a
   // string rather than `true` is the only thing standing between the two.
-  const src = code(read('audition.js'));
-  assert.match(src, /===\s*'secondary'/,
-    "audition.js still branches on the 'secondary' answer");
+  //
+  // send-choice.js is where that branch lives now, for the same reason as
+  // above. It is also where it belongs: a pure module `npm test` can drive.
+  const src = code(read('send-choice.js'));
+  assert.match(src, /!==\s*'secondary'|===\s*'secondary'/,
+    "send-choice.js still branches on the 'secondary' answer");
 });
 
 // ---- The library folder button --------------------------------------------
@@ -144,48 +151,115 @@ test('every function app.js calls in the slot-read path actually exists', () => 
   }
 });
 
-// ---- The overwrite dialog: the safe path leads ----------------------------
+// ---- One dialog, and the safe path still leads ----------------------------
+//
+// THE SECOND DIALOG IS GONE (14 Nov 2026). Choosing a save on one of your own
+// patches used to open "write these values into X, or keep it and save them as
+// a separate patch" — so an ordinary save met two dialogs in a row, which is
+// the confusion the save feature exists to remove. Daniel folded it in: the
+// question is now a ROW in the save modal, beside the other destinations.
+//
+// What these guards carry forward is the lesson that dialog had earned, not its
+// markup. Overwrite used to hold the confirm button, which in modal.js means it
+// held focus and Return too — so pressing Enter destroyed a patch. The new
+// dialog has no affirmative button at all, and that is what keeps Enter safe.
 
-test('the overwrite dialog offers the SEPARATE PATCH as its confirm', () => {
-  // Overwrite held the confirm, which in modal.js means it also held focus and
-  // Return — so Enter destroyed a patch. Destroying one is unrecoverable and
-  // making a second is not, so the safe option is the one that leads.
-  //
-  // Read from source because reaching this dialog needs a live session, and a
-  // live session needs an instrument.
+test('the save dialog has no affirmative button, so Enter cannot write', () => {
+  // With confirmLabel '' there is no .seven-modal-ok, so modal.js puts focus on
+  // the way out (`okBtn || .seven-modal-cancel`) and Enter settles the dialog
+  // with no row having been picked — which decideSave reads as STAY. Every row
+  // therefore takes a deliberate press. Remove this and the destructive choice
+  // is one keystroke from an untouched keyboard.
   const src = code(read('audition.js'));
-  assert.match(src, /confirmLabel: 'Save as a separate patch'/,
-    'the confirm is the non-destructive option');
-  assert.match(src, /secondaryLabel: `Overwrite/,
-    'and overwrite is the secondary');
+  const open = /SevenModal\.open\(\{[\s\S]*?tone: 'is-save',\s*\}\)/.exec(src);
+  assert.ok(open, 'the save dialog is still opened here');
+  assert.match(open[0], /confirmLabel: ''/,
+    'no affirmative button — the rows are the actions');
 });
 
-test('the destructive button names the patch it would overwrite', () => {
-  // Daniel met this dialog standing in the Backups tab, saw "Overwrite patch",
-  // and could not tell whether a backup was the target. It never could be —
-  // but nothing on screen said which patch was.
+test('the writer no longer asks its own question', () => {
+  // The whole point of folding it in. A dialog left behind in here would put
+  // the second question back on exactly the path it was removed from, and it
+  // would look like a merge artefact rather than a decision.
   const src = code(read('audition.js'));
-  assert.match(src, /secondaryLabel: `Overwrite “\$\{target\}”`/,
-    'the label interpolates the target name');
+  const fn = /async function saveLiveToLibrary\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'saveLiveToLibrary is still recognisable');
+  assert.doesNotMatch(fn[0], /SevenModal\.(?:confirm|open)\(/,
+    'it writes; it does not ask');
 });
 
-test('the dialog claims nothing about changes having been made', () => {
-  // "save your changes as a copy" narrated an edit that need never have
-  // happened — a slot captured off the instrument has no changes.
+test('the writer still refuses a record and a donor on its own', () => {
+  // canUpdate() keeps the row off the dialog, so this cannot be reached today.
+  // It is checked anyway: the protection used to live in this function, and
+  // moving a rule somewhere else is how a rule gets lost. Both tests are named
+  // because a Bank 1 patch is ALSO a record, so the donor rule would look
+  // redundant right up to the day the record rule changed.
   const src = code(read('audition.js'));
-  const call = /SevenModal\.confirm\(\{[\s\S]*?Save as a separate patch[\s\S]*?\}\)/.exec(src);
-  assert.ok(call, 'the dialog is still there');
-  assert.doesNotMatch(call[0], /your changes|these edits|you (?:have )?changed/i,
-    'the body says what the buttons do, not what the player did');
+  const fn = /async function saveLiveToLibrary\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'saveLiveToLibrary is still recognisable');
+  assert.match(fn[0], /origin\.kind === 'backup'/, 'a backup record is refused');
+  assert.match(fn[0], /origin\.bank === 1/, 'and a Bank 1 donor, by its own test');
 });
 
-test('the branch reads an INTENT, so swapping the buttons cannot invert it', () => {
-  // The old code branched on the modal's raw answer, where 'secondary' meant
-  // copy. Moving copy to the confirm would have silently made every save an
-  // overwrite. The answer is mapped to an intent first.
+test('the update row is gated on canUpdate, which names all three refusals', () => {
+  // The row's precondition. ON THE SEVEN has no file behind a slot; a record is
+  // a dated account that must not change; a donor seeds every generated patch
+  // of its model. Each is its own line, for the reason above.
   const src = code(read('audition.js'));
-  assert.match(src, /intent = answer === 'secondary' \? 'overwrite' : 'copy'/);
-  assert.match(src, /if \(intent === 'copy'\)/);
+  const fn = /function canUpdate\(\) \{([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'canUpdate is still recognisable');
+  assert.match(fn[1], /lastTouchedDevice/, 'ON THE SEVEN cannot update');
+  assert.match(fn[1], /origin\.kind === 'backup'/, 'a record cannot');
+  assert.match(fn[1], /origin\.bank === 1/, 'a donor cannot');
+
+  const flow = /async function openSaveFlow\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(flow, 'openSaveFlow is still recognisable');
+  assert.match(flow[0], /canUpdate: canUpdate\(\)/,
+    'and the dialog asks it rather than deciding for itself');
+});
+
+// ---- A saved copy says where it came from (§3) -----------------------------
+
+test('only a bank slot stamps its provenance onto a new patch', () => {
+  // The values on screen in Patches came from a FILE. The instrument is still
+  // sitting on some preset, so holdSlot() would happily name one — and writing
+  // it would be a claim about provenance that is simply untrue, baked into a
+  // file where nothing afterwards could tell it from a reading.
+  const src = code(read('audition.js'));
+  const fn = /function slotProvenance\(\) \{([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'slotProvenance is still recognisable');
+  assert.match(fn[1], /lastTouchedDevice/,
+    'it answers only in ON THE SEVEN, where the thing on screen IS a slot');
+  assert.match(fn[1], /holdSlot\(\)/,
+    'and through holdSlot, so it is gated on Send PC like the on-screen name');
+});
+
+test('the new-patch writer is handed that provenance', () => {
+  const src = code(read('audition.js'));
+  assert.match(src, /saveLiveAsNewPatch\(params, \{ fromSlot: slotProvenance\(\) \}\)/,
+    'the save flow passes it');
+  assert.match(src, /createFromLive\(\{[\s\S]{0,200}?fromSlot,/,
+    'and it reaches the store through the IPC call');
+});
+
+// ---- A failed Send CC borrow is said where it matters (§5b) ----------------
+
+test('the save modal says a failed borrow, and app.js no longer toasts it', () => {
+  // §5b: "say so once in the save modal and carry on." It was built as a toast
+  // at the moment of entering the view — true, gone three seconds later, and
+  // said while nobody was saving anything. It matters at one moment: a save,
+  // where the button may have sat outlined through a panel move.
+  const aud = code(read('audition.js'));
+  const flow = /async function openSaveFlow\(([\s\S]*?)\n  \}/.exec(aud);
+  assert.ok(flow, 'openSaveFlow is still recognisable');
+  assert.match(flow[0], /deps\.sendCcFailed/,
+    'the dialog asks whether the borrow failed');
+  assert.match(flow[0], /\$\{ccNote\}/, 'and renders the answer in its body');
+
+  const app = code(read('app.js'));
+  assert.match(app, /sendCcFailed: \(\) => ccFailed/, 'app.js answers it');
+  assert.doesNotMatch(app, /toast\([^)]*Send CC/,
+    'and does not also toast it — one place, at the moment it applies');
 });
 
 // ---- The connect path -----------------------------------------------------

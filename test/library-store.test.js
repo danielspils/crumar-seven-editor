@@ -1130,6 +1130,77 @@ test('save-as-new is a NEW patch, with new-patch provenance', () => {
   assert.strictEqual(doc.patches[0].origin.bank, undefined, 'it claims no slot');
 });
 
+// ---- WHERE A SAVED COPY CAME FROM (out/save-what-you-hear.md §3) -----------
+//
+// A save taken off the instrument lands in Patches among patches that were
+// built there, and without provenance it arrives unexplained. The design asked
+// for "origin with the bank and preset".
+//
+// IT IS RECORDED AS `origin.copiedFrom`, AND THAT IS NOT COSMETIC.
+// `isBackupRecord` is `typeof origin.bank === 'number'` and nothing else, so a
+// top-level bank would turn this patch into a backup record: filed under
+// Backups, entered into the backup run's dedupe, and refused as a destination
+// for its own owner's edits. duplicate() already solved this the same way when
+// it copies a record.
+
+test('a save off the instrument records the slot it came from', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromLive({
+    name: 'Off the panel', soundName: 'Tine Piano', params: { rho_atk: 40 },
+    fromSlot: { bank: 3, preset: 5 },
+  });
+  const patch = store.readFile(made.file).library.patches[0];
+  assert.deepStrictEqual(patch.origin.copiedFrom, { bank: 3, preset: 5 },
+    'the slot is on disk');
+  assert.ok(patch.origin.created, 'and it is still a created patch');
+});
+
+// THE TRAP, pinned on its own. Get this wrong and the patch silently becomes a
+// backup record — which looks like a filing quirk and behaves like data loss,
+// because the backup runner dedupes against it and nothing can edit it.
+test('and that does NOT make it a backup record', () => {
+  const { store } = freshStore();
+  store.createPatchFromLive({
+    name: 'Off the panel', soundName: 'Tine Piano', params: { rho_atk: 40 },
+    fromSlot: { bank: 3, preset: 5 },
+  });
+  const entry = store.list().patches.find((p) => p.name === 'Off the panel');
+  assert.ok(entry, 'the patch is listed');
+  assert.strictEqual(entry.origin.kind, 'created',
+    'created, never backup — isBackupRecord reads origin.bank and must not see one');
+  assert.strictEqual(entry.origin.bank, undefined, 'no top-level bank at all');
+});
+
+test('no slot means nothing is written, rather than a guess', () => {
+  const { store } = freshStore();
+  const made = store.createPatchFromLive({
+    name: 'From a file', soundName: 'Tine Piano', params: { rho_atk: 40 },
+  });
+  const patch = store.readFile(made.file).library.patches[0];
+  assert.strictEqual(patch.origin.copiedFrom, undefined,
+    'a save that cannot name its slot claims none');
+});
+
+// A half-filled slot is a guess wearing a record's clothes. The renderer tests
+// for numbers, so a {bank: 3} with no preset would read "Preset undefined" —
+// but the real reason to drop it here is that the file is the durable half:
+// nothing afterwards can tell an incomplete record from a complete one.
+test('a slot that is not a pair of integers is refused', () => {
+  const { store } = freshStore();
+  const cases = [
+    { bank: 3 }, { preset: 5 }, { bank: '3', preset: '5' },
+    { bank: 3, preset: null }, {},
+  ];
+  cases.forEach((fromSlot, i) => {
+    const made = store.createPatchFromLive({
+      name: `Partial ${i}`, soundName: 'Tine Piano', params: {}, fromSlot,
+    });
+    const patch = store.readFile(made.file).library.patches[0];
+    assert.strictEqual(patch.origin.copiedFrom, undefined,
+      `${JSON.stringify(fromSlot)} is not a slot`);
+  });
+});
+
 test('save-as-new offline claims nothing about an instrument', () => {
   const { store } = freshStore();
   const made = store.createPatchFromLive({
