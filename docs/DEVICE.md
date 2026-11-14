@@ -807,9 +807,13 @@ Settled on hardware and against the schema, 14 Nov 2026. It decides how much
 the app has to worry about edits it cannot see.
 
 **The panel reaches:** preset recall, master volume, and the basic effect
-controls — on/off, amount, speed. These are exactly the parameters carrying a
-CC in `schema/seven-1.37.json`: the `efx_*` groups and the expression pedal.
-Because they transmit, the app follows them while a player is playing.
+controls — on/off, amount, speed. These are the `efx_*` parameters carrying a
+CC in `schema/seven-1.37.json`. Because they transmit, the app follows them
+while a player is playing.
+
+The expression pedal is a separate case and its schema entry is NOT TRUSTED —
+see below. Moving the pedal sends; choosing what it is assigned to does not,
+and needs software like everything else in the next paragraph.
 
 **The panel does not reach:** the sound engines — Rhodes, Wurlitzer, Electric
 Grand, ZD6, DX7, MKS, Vibes, acoustic, ROM — nor the per-mode settings under
@@ -828,6 +832,25 @@ have to go looking for them, are both solving a case that does not occur. Do
 not add machinery for it. If this ever stops being true — a firmware update
 putting engine parameters on the panel, say — this section is the thing that
 was relied on, and it is where the change belongs.
+
+**The `pdl_exp` group's CC data is wrong and nothing should be counted from it
+until it is fixed.** As of 14 Nov 2026 the schema reads:
+
+    exp_fn  Function    cc: 1   max: 9
+    exp_mn  Range min.  cc: 0   max: 127
+    exp_mx  Range max.  cc: 1   max: 127
+
+Three things are wrong on the face of it. `exp_fn` chooses which of ten
+destinations the pedal drives — an assignment, which no panel control sets and
+which should carry no CC. It claims the same CC as `exp_mx`, so one of the two
+can never be followed. And `exp_mn` claims CC 0, which is Bank Select MSB.
+
+Daniel confirmed the behaviour on 14 Nov: the pedal's position transmits, but
+you cannot assign the pedal without software.
+
+This is why a parameter count has been left out of this section. Any
+"N of 110 carry a CC" figure inherits these three entries and is wrong by an
+unknown amount. Fix the group, then count.
 
 ### Scope: this app is USB-only
 
