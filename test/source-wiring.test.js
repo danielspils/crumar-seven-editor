@@ -730,9 +730,32 @@ test('the backup still ends in its own dialog, with its own words', () => {
   assert.strictEqual(summary[1], 'Backup completato!',
     'and it is still the Castelfidardo one');
   assert.match(src, /backed up<br>to your computer/, 'with the count it has always carried');
-  assert.match(src, /\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new/,
-    'and the unchanged/new split, which is where that distinction lives — '
-    + 'the grid lights an unchanged slot exactly like a new one');
+
+  // AND NOT THE DEDUPE SPLIT, which Daniel removed from this dialog on
+  // 14 Nov 2026 as unreadable. Pinned from THIS dialog's own body rather than
+  // from the whole file: `counts` is still built two lines above for the
+  // connection row, so a file-wide match would pass with the sentence back.
+  // Comments stripped first, or the note in app.js saying why it went would
+  // satisfy the search — a test passing on prose.
+  const body = /'Backup completato!',([\s\S]*?)confirmLabel: 'Done'/.exec(code(src));
+  assert.ok(body, 'the dialog body is still recognisable');
+  //
+  // It looks for `counts`, the VARIABLE, not the word "unchanged": the dialog
+  // only ever interpolated it, so the sentence can come back in full without
+  // the word appearing anywhere inside the body. Asserting on the word is how
+  // the assertion this replaces came to pass file-wide while pinning nothing —
+  // it was matching the `const counts` line two lines above the dialog.
+  assert.doesNotMatch(body[1], /counts/,
+    'the announcement carries no unchanged/new split — it says what was backed '
+    + 'up and nothing else');
+
+  // The split itself is not deleted. The grid lights an unchanged slot exactly
+  // like a new one, so the distinction has to live somewhere; it is the
+  // connection row's line.
+  assert.match(src, /counts = `\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new`/,
+    'the split is still computed');
+  assert.match(src, /connText\.textContent = ev\.cancelled[\s\S]{0,300}\$\{counts\}/,
+    'and still shown in the connection row');
 });
 
 // ---- Saving what you hear (out/save-what-you-hear.md §8) -------------------

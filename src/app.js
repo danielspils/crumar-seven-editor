@@ -4237,9 +4237,15 @@
       const n = ev.cancelled ? ev.slots : 32;
       SevenModal.confirm({
         title: ev.cancelled ? 'Backup cancelled' : 'Backup completato!',
+        // NO DEDUPE COUNTS HERE. "(32 unchanged, 0 new)" sat under this line
+        // until 14 Nov 2026, when the person who wrote the app could not read
+        // it: "What does (32 unchanged, 0 new) refer to? Do we need it?" A
+        // rewording was drafted and he removed the sentence instead — the
+        // announcement says the thing he asked for and nothing else. The split
+        // still exists where somebody looking for it can find it: the
+        // connection row's own line, and the library's dated records.
         bodyHtml:
-          `<p class="bk-sum">${n} preset${n === 1 ? '' : 's'} backed up<br>to your computer</p>` +
-          `<p class="bk-time">(${esc(counts)})</p>`,
+          `<p class="bk-sum">${n} preset${n === 1 ? '' : 's'} backed up<br>to your computer</p>`,
         confirmLabel: 'Done',
         cancelLabel: 'Close', // the corner X's accessible name, not a button
         tone: 'is-announce',
