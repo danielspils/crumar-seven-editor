@@ -1602,6 +1602,38 @@
        quickly, long enough that 32 of them do not read as flicker. */
     .bk-row .led { transition: fill .18s ease; }
     @media (prefers-reduced-motion: reduce) { .bk-row .led { transition: none; } }
+    /* THE GRID ARRIVES WHOLE AND FADED, AND FILLS IN (Daniel, 2026-11-14, on
+       his own design: "the progress thing is somewhat overwhelming"). Every
+       slot is drawn from the first frame, at a tenth; a slot comes to full
+       when its light goes on. The growing bright area IS the progress bar, and
+       the faded remainder is where the rest will land.
+
+       REVEALING ONE BANK AT A TIME WAS THE FIRST IDEA AND IS WRONG. A row
+       arriving mid-run changes the dialog's height four times, at the exact
+       moment somebody is watching it to see whether anything is still
+       happening. The same mistake was made and fixed once already in the
+       JUNO-X editor, where the setlist sheet's rule is now always drawn at
+       zero width for this reason. Reserve the space; reveal the content.
+
+       Keyed off `.led.on` rather than a class of its own, so there is ONE
+       definition of "this slot is done" — paintBackup sets the light, and
+       nothing can set the light and forget the slot. */
+    .bk-row [data-bk-preset] { opacity: .1; transition: opacity .18s ease; }
+    .bk-row [data-bk-preset]:has(.led.on) { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .bk-row [data-bk-preset] { transition: none; }
+    }
+    /* THE UNLIT LED, DARKER THAN THE DRAWING'S (#7d2b26 in
+       assets/seven-panel.svg, which is right on the instrument where one lamp
+       is lit at a time, and wrong here where thirty-two are drawn at once).
+       Daniel, 2026-11-14: "make the inactive light less bright so when it
+       lights up there's more contrast and it's clear it has saved."
+
+       :not(.on) so the lit state still comes from the drawing, and :not(.amber)
+       so the bank lamp keeps its own colour. Both are needed — without them
+       this rule outranks `.led.on` and `.led.amber` and puts out the two
+       lights that matter. */
+    .bk-row .led:not(.amber):not(.on) { fill: #5d201c; }
     /* The slot being read, in words — the sound name is the thing worth
        seeing, because it is what the instrument is playing at that moment.
        A fixed height: the name changes 32 times and the dialog must not
