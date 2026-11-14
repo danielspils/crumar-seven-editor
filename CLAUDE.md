@@ -1547,6 +1547,21 @@ percentage would never have shown:
 Run one with: break a behaviour, `npm test`, restore. A test that passes with
 the thing under test removed is testing nothing.
 
+**1.5.6 (2026-11-14): 4 mutations, 4 caught, 0 missed.** The release's own new
+code, not a sweep of the whole app:
+
+| mutation | result |
+|---|---|
+| the channel gate at the top of `_handleNonSysex` removed | 2 fail |
+| `_deviceChannel` accepts 16, so TX OFF becomes a 17th channel | 1 fail |
+| `readParamWithRetry` attempts 3 -> 1 | 2 fail |
+| `readBuffer`'s post-read `requireLive` removed | 1 fail |
+
+The last one is the one worth noting: it is the check that the instrument is
+STILL there after the final reply, and a suite that passed without it would
+have let a half-read patch be saved under a name. It was written with a test
+beside it, which is why it fails rather than passes quietly.
+
 Some habits that this project earned the hard way:
 
 - **Measure, don't eyeball.** "It lines up" is worth nothing; "626 = 626" is
