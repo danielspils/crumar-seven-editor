@@ -1807,6 +1807,19 @@ Kept here because they otherwise live only in a chat that ends.
   declined" — those are different bugs and the fixes are nowhere near each
   other.
 
+  **THE FOUR-TAB REDESIGN PLAUSIBLY REMOVES ITS CAUSE, AND THAT IS NOT THE SAME
+  AS FIXING IT** (2026-11-14). Ownership there stops being derived from which
+  of two regions holds focus and becomes "which tab is selected", because the
+  redesign puts one navigable list on screen at a time. If the diagnosis above
+  is right, the Windows failure cannot happen in that shape: nothing depends on
+  a `<button>` taking focus, so Chromium's macOS-convention behaviour and the
+  re-render that destroyed focus both stop mattering.
+  **DO NOT RECORD IT AS FIXED.** It has never been reproduced on a PC, the
+  diagnosis is still DIAGNOSED, NOT CONFIRMED, and a cause removed by accident
+  is exactly the kind of thing this file has twice been wrong about — "a cause
+  that was never established, only made impossible". It needs a real Windows
+  check, and the UI suite has still never run on Windows at all.
+
 - **THE UI SUITE HAS NEVER RUN ON WINDOWS, not once.** CI runs `npm test` on
   ubuntu and no job anywhere runs `test:ui`. Every scenario this project trusts
   has been proven on exactly one platform, which is how the arrow bug above
