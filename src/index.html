@@ -116,25 +116,35 @@
     /* Antiqued white: warm paper, not grey. Accents darken rather than
        change hue, so the two themes stay recognisably the same UI. */
     :root[data-theme="light"] {
-      /* A LIGHTER GROUND, picked by Daniel from a five-way study (2026-11-15).
-         ONLY THE TWO LIGHTEST SURFACES LIFT. --bg-panel, --line and --page are
-         deliberately untouched: the field gets more air while rows, borders
-         and the artwork's ground keep their bite. Lifting the furniture with
-         it would have returned exactly the flatness this was meant to fix. */
-      --bg: #faf8f2;
-      --bg-raised: #fffefb;
+      /* THE LIGHTER GROUND WAS TRIED IN THE REAL APP AND REJECTED
+         (Daniel, 2026-11-15). #faf8f2 / #fffefb — the two lightest surfaces
+         lifted, with --bg-panel, --line and --page held so the furniture kept
+         its bite. It measured well: seventeen pairs moved and every one went
+         UP, nothing newly failed. He ran it and preferred what shipped.
+         Not reverted in history — the commit that tried it and this one that
+         takes it back are both in the log, so the next person to propose it
+         can read what it looked like and why it did not stay. Measuring well
+         is not the same as looking right, and the app is the judge. */
+      --bg: #f0ebe0;
+      --bg-raised: #f8f5ed;
       --bg-panel: #e4ddcd;
       --line: #d2c9b6;
       --text: #26231f;
       --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%2326231f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
       --text-muted: #6a6355;
-      /* DARKENED WITH THE GROUND, not as a separate taste decision. #8a8375
-         was already only just passing, and on the lifted --bg it measures
-         3.54:1 — under the 4.5 small text needs. This ink carries the row
-         numbers and the unselected tab labels, so it is not a decorative one.
-         #78715f holds the same warm hue and measures 4.57:1 on --bg and
-         4.81:1 on --bg-raised. Verified here, not taken on trust. */
-      --text-dim: #78715f;
+      /* BACK WITH THE GROUND IT WAS DARKENED FOR. #78715f existed only because
+         the lifted --bg pushed this ink under AA; the lift is gone, so it goes
+         with it rather than becoming an unreviewed change of its own — Daniel
+         has never seen #78715f on THIS ground.
+         AND IT DOES NOT PASS HERE, which is worth saying plainly rather than
+         filing under "restored". Measured, not assumed: #8a8375 on --bg
+         #f0ebe0 is 3.16:1 and on --bg-raised #f8f5ed is 3.45:1, both under the
+         4.5 small text needs. That is not a regression from the revert — it is
+         what shipped, and what the lift briefly improved to 3.54 before the
+         ink change took it to 4.57. This ink carries the row numbers and the
+         unselected tab labels. It is a live failure waiting on a decision, not
+         a settled value. */
+      --text-dim: #8a8375;
       --accent: #b8362b;
       --accent-rgb: 184, 54, 43;
       /* LIGHT IS UNTOUCHED by the dark repaint of 2026-11-15, but every
