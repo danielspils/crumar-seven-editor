@@ -50,9 +50,16 @@
   ui.note(`row 1: "${titleOf(hold)}" / "${subOf(hold)}"`);
   ui.note(`row 2: "${titleOf(computer)}" / "${subOf(computer)}"`);
 
-  ui.check(titleOf(hold) === 'Overwrite Bank 3 / Slot 5', 'the real bank and slot are named');
-  ui.check(subOf(hold) === 'Hold the button on the Seven to confirm',
+  ui.check(titleOf(hold) === 'Overwrite Bank 3 · Preset 5',
+    'the real bank and preset are named, in the words the instrument prints');
+  ui.check(subOf(hold) === 'Holding the button on the Seven for three seconds is what saves it',
     'and the row says on its face that the HOLD is what does it');
+  // NOT "confirm", in either word position: the app cannot write the preset at
+  // all, so a sentence reading as app-saves-and-you-approve is the one wrong
+  // thing this row can say. Asserted separately from the string above so a
+  // future reword cannot reintroduce it while still matching some new wording.
+  ui.check(!/confirm/i.test(subOf(hold)),
+    'and never asks the player to CONFIRM something the app did not do');
   ui.check(titleOf(computer) === 'Save to computer', 'the other destination is the computer');
   ui.check(subOf(computer).includes('The Seven is untouched'),
     'which says the instrument is left alone');

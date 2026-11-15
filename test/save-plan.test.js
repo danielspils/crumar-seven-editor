@@ -50,12 +50,18 @@ test('the overwrite row is PRESENT when something has changed', () => {
   assert.deepStrictEqual(rows.map((r) => r.value), ['hold', 'computer']);
 });
 
-test('the overwrite row names the real bank and slot', () => {
+test('the overwrite row names the real bank and preset', () => {
   const [hold] = saveRows({ changed: true, slot: { bank: 3, preset: 5 } });
-  assert.strictEqual(hold.title, 'Overwrite Bank 3 / Slot 5');
-  // It must not read like a save button: the app cannot write a slot at all,
+  // PRESET, and a ·, because that is the instrument's own word and the app's
+  // in nine other places. The spec said "Slot"; the spec was corrected.
+  assert.strictEqual(hold.title, 'Overwrite Bank 3 · Preset 5');
+  // It must not read like a save button: the app cannot write a preset at all,
   // so the row can only ask for the hold, and says so on its face.
-  assert.match(hold.sub, /Hold the button on the Seven/);
+  assert.match(hold.sub, /Holding the button on the Seven/);
+  // AND NOT "confirm" — the word reverses the row's whole point, since there
+  // is nothing the app did for the player to approve. Asserted apart from the
+  // string above so a later reword cannot quietly bring it back.
+  assert.doesNotMatch(hold.sub, /confirm/i);
 });
 
 // A name printed from a stale belief is an instruction to overwrite something

@@ -321,33 +321,48 @@ One modal, from Settings → `Sounds on this Seven` (app.js:2736).
 - `Save or discard your edits before previewing another patch` — audition.js:772
 - `Could not make a copy` — audition.js:593, app.js:319
 
-### The save flow ⚑ NEW 14 Nov 2026 — needs Daniel's read
+### The save flow — read and approved by Daniel, 14 Nov 2026
 
 Added by out/save-what-you-hear.md. The two row sentences are the whole
 defence against the two choices being mistaken for each other, which is the
 problem this flow exists to solve, so they are the ones worth arguing about.
+
+**Three strings changed in that read, and all three were caught by laying the
+set out together rather than by reading any one of them:**
+
+- `Slot` → `Preset`, with a `·` for the slash. The save flow was the only place
+  in the app saying "Slot" — nine others, and the instrument's own panel, say
+  Preset — and one save walked the player past both words: Slot in the modal
+  and the hold screen, Preset in the library row it lands in. It came from the
+  spec, which has been corrected rather than followed (§3).
+- `Hold the button on the Seven to confirm` → `Holding the button on the Seven
+  for three seconds is what saves it`. "Confirm" reads as the app having saved
+  and the player approving. The row exists because the opposite is true.
+- The failed-borrow line lost `Send CC`. It is a global on the instrument's
+  menu and the name of a borrow the app does quietly; in a save dialog it is a
+  sentence nobody can act on.
 
 EVERY ROW IS A DESTINATION. Two in ON THE SEVEN, three in Patches — the third
 is the question that used to be a second dialog behind "save to computer"
 (folded in by Daniel, 14 Nov 2026). The rows are in this order on screen.
 
 - Dialog title: `Save patch` · from navigating away: `You have unsaved changes` — audition.js
-- Row — update, **Patches only**: `Update “Reed Piano”` + `Writes these values into the patch you have open` — save-plan.js ⚑ NEW
-  - an unnamed patch: `Update this patch` ⚑ NEW
+- Row — update, **Patches only**: `Update “Reed Piano”` + `Writes these values into the patch you have open` — save-plan.js
+  - an unnamed patch: `Update this patch` ⚑ needs a patch saved without a name
   - absent for a bank slot (no file behind it), a backup record, and a Bank 1 donor
-- Row — the Seven: `Overwrite Bank 3 / Slot 5` + `Hold the button on the Seven to confirm` — save-plan.js
-  - with no Send PC, the slot cannot be named honestly: `Overwrite the preset on your Seven`
+- Row — the Seven: `Overwrite Bank 3 · Preset 5` + `Holding the button on the Seven for three seconds is what saves it` — save-plan.js
+  - with no Send PC, the preset cannot be named honestly: `Overwrite the preset on your Seven`
 - Row — the computer: `Save to computer` — save-plan.js
   - alone: `Adds it to your Patches library. The Seven is untouched`
-  - with the update row above it: `Keeps this patch and saves these values as a separate one` ⚑ NEW
+  - with the update row above it: `Keeps this patch and saves these values as a separate one`
     (the contrast is the point: both write to the computer, and the difference
     is which file)
 - Ways out: `Cancel` · from navigating away: `Discard changes and leave` + `Stay here` — audition.js
-- Hold screen: `Hold it on the Seven` + `Also save a copy to Patches` + `If you walk away without holding the button, the sound is still on your computer.` — audition.js
+- Hold screen: `Hold it on the Seven` + `Bank 3 · Preset 5` + `Also save a copy to Patches` + `If you walk away without holding the button, the sound is still on your computer.` — audition.js
 - Failed read: `Nothing was saved — <reason>` / `Nothing was saved — the Seven could not be read.` — audition.js
-- Failed Send CC borrow, **in the save dialog** now rather than as a toast on entering the view (§5b): `Send CC could not be turned on, so panel moves may not have shown on screen. Saving reads the instrument either way.` — audition.js ⚑ NEW, REPLACES the toast
-- A refused update (cannot be reached while the row is correctly absent): `That one is a record of what the instrument held — save a copy instead` — audition.js ⚑ NEW
-- Library row, under a patch saved off a preset: `from Bank 3 · Preset 5` — library-view.js ⚑ NEW
+- Failed Send CC borrow, **in the save dialog** now rather than as a toast on entering the view (§5b): `Knob moves on the Seven may not have shown on screen. Saving reads the instrument either way.` — audition.js ⚑ needs a refused glb[2] write; REPLACES the toast. It does not name Send CC: see the note at the top of this section
+- A refused update (cannot be reached while the row is correctly absent): `That one is a record of what the instrument held — save a copy instead` — audition.js ⚑ unreachable while canUpdate() is correct
+- Library row, under a patch saved off a preset: `from Bank 3 · Preset 5` — library-view.js
   - in a setlist slot row it follows the age: `Created 2 hours ago · from Bank 3 · Preset 5`
   - the flat Patches row shows the slot ALONE, since that row carries no date
     (2026-08-16). Reopening that cell for this one thing is Daniel's call of

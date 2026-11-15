@@ -850,8 +850,12 @@
     // borrow NEVER blocks a save: the read takes the whole buffer regardless,
     // so this is a note about the button, not about the file.
     const ccNote = (deps.sendCcFailed && deps.sendCcFailed())
-      ? '<p class="tx-fine">Send CC could not be turned on, so panel moves may not '
-        + 'have shown on screen. Saving reads the instrument either way.</p>'
+      // NO JARGON. "Send CC" is a global on the instrument's menu and a name
+      // for a borrow this app does on the quiet; nobody opening a save dialog
+      // knows what it is, and a sentence they cannot act on is noise in the
+      // one moment they are trying to decide where a sound goes.
+      ? '<p class="tx-fine">Knob moves on the Seven may not have shown on '
+        + 'screen. Saving reads the instrument either way.</p>'
       : '';
 
     const modal = SevenModal.open({
@@ -942,7 +946,7 @@
   // It answers only in the ON THE SEVEN view, because that is the one place the
   // thing on screen IS a slot. Saving a copy while editing one of your own
   // patches records nothing: the instrument is sitting on some preset, but the
-  // values came from a file, and "from Bank 3 / Slot 5" would be a claim about
+  // values came from a file, and "from Bank 3 · Preset 5" would be a claim about
   // provenance that is simply untrue.
   //
   // It uses the same gate as naming the slot on screen (holdSlot -> Send PC
@@ -976,7 +980,7 @@
     await modal.replace({
       title: 'Hold it on the Seven',
       bodyHtml:
-        (slot ? `<p class="tx-step-where">Bank ${esc(slot.bank)} · Slot ${esc(slot.preset)}</p>` : '') +
+        (slot ? `<p class="tx-step-where">Bank ${esc(slot.bank)} · Preset ${esc(slot.preset)}</p>` : '') +
         SevenModalPanel.buildPanel(window.sevenAPI.getPanelSvg(), { brackets: false }) +
         `<div class="tx-face" data-face="hold">${SevenModalPanel.holdFaceHtml()}</div>` +
         '<label class="sv-check"><input type="checkbox" class="sv-copy" checked>' +
