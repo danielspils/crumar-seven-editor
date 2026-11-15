@@ -236,7 +236,13 @@ test('only a bank slot stamps its provenance onto a new patch', () => {
 
 test('the new-patch writer is handed that provenance', () => {
   const src = code(read('audition.js'));
-  assert.match(src, /saveLiveAsNewPatch\(params, \{ fromSlot: slotProvenance\(\) \}\)/,
+  // THE ARGUMENT, NOT THE WHOLE CALL. This matched the entire options object
+  // as a literal and went red on 14 Nov when a second option joined it
+  // (`reveal`, for the guard path) — a test failing because the line grew,
+  // which teaches nobody anything and costs a reader the real question. What
+  // is load-bearing is that the writer is handed slotProvenance(), and that
+  // is what is asserted.
+  assert.match(src, /saveLiveAsNewPatch\(params, \{[^}]*fromSlot: slotProvenance\(\)/,
     'the save flow passes it');
   assert.match(src, /createFromLive\(\{[\s\S]{0,200}?fromSlot,/,
     'and it reaches the store through the IPC call');
@@ -912,6 +918,60 @@ test('both ways out of an edited patch ask before anything moves', () => {
     slot[0].indexOf('confirmLeave') < slot[0].indexOf('deviceSel = { bank: bankIndex'),
     'before it moves the device selection — and so before the recall replaces the buffer'
   );
+});
+
+// ANSWERING THE GUARD RESOLVES IT — the arrival after a save does not re-ask.
+//
+// Daniel, 2026-11-14: answer the guard with "Save to computer", name the patch,
+// dismiss "Saved to Patches", and the guard is on screen again. Not the first
+// one undismissed — a SECOND one, raised by the save's own arrival at the new
+// file, which goes through selectLibraryEntry and so through confirmLeave. The
+// session is still dirty by design (a copy on disk does not store anything on
+// the Seven), so the question was asked again and the answer was already given.
+//
+// Two separate wires, each with its own mutation, and `test/ui/scenarios/
+// leave-guard-resolves.js` drives the real thing — but that needs the
+// instrument, so these are the half that runs by itself.
+test('the trip to a just-saved patch does not re-ask the leave guard', () => {
+  const src = code(read('app.js'));
+
+  const lib = /async function selectLibraryEntry\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(lib, 'selectLibraryEntry is still recognisable');
+  assert.match(lib[0], /if \(!opts\.answered && !\(await audition\.confirmLeave\(\)\)\) return;/,
+    'an already-answered arrival skips the ASKING');
+  // NOT BY CLEARING THE DRIFT, which would be the shortcut and is the one
+  // thing this must not do: the buffer genuinely still differs from the stored
+  // preset. A flag cleared to quiet a dialog is how a restored value stayed
+  // "dirty" once already.
+  const reveal = /revealPatch: \(file, patchIndex\) => \{([\s\S]*?)\n    \},/.exec(src);
+  assert.ok(reveal, 'revealPatch is still recognisable');
+  assert.match(reveal[1], /selectLibraryEntry\(entry, \{ answered: true \}\)/,
+    'and the post-save arrival is the one caller that says so');
+  assert.doesNotMatch(reveal[1], /baseline|liveEdit|dirty/,
+    'the arrival does not touch the live session to get there');
+});
+
+// AND FROM THE GUARD THERE IS NO ARRIVAL AT ALL. The click being held up is
+// already a request to be somewhere else, so landing on the new file and being
+// moved off it again is a flash plus a second 1.3s instrument send for one
+// gesture. The Save button keeps the arrival (2026-08-23) — there is nowhere
+// else the player was heading from there.
+test('a save from the guard does not take you to the new patch', () => {
+  const src = code(read('audition.js'));
+  const flow = /async function openSaveFlow\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(flow, 'openSaveFlow is still recognisable');
+  // BOTH WRITERS, NAMED. A bare /reveal: !fromNav/ passed with the new-patch
+  // call site mutated to `reveal: true`, because the OTHER one still matched —
+  // a test green while half the thing it guards was gone, caught by mutating
+  // it rather than by reading it (2026-11-14).
+  assert.match(flow[0], /saveLiveAsNewPatch\(params, \{[^}]*reveal: !fromNav/,
+    'a new patch from the guard asks for no arrival');
+  assert.match(flow[0], /saveLiveToLibrary\(params, \{[^}]*reveal: !fromNav/,
+    'and neither does an update from the guard');
+  const announce = /function announceSaved\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(announce, 'announceSaved is still recognisable');
+  assert.match(announce[0], /if \(reveal && deps\.revealPatch\)/,
+    'and announceSaved honours it rather than revealing regardless');
 });
 
 // And it is NOT a toll on browsing. With nothing changed the answer is true

@@ -709,7 +709,22 @@
     // of the two doors Daniel walked out of on 13 Nov looking for a save
     // control, losing the edits he was looking for. Nothing has changed ->
     // nothing is drawn, so browsing is untolled.
-    if (!(await audition.confirmLeave())) return;
+    //
+    // `answered` IS FOR AN ARRIVAL THE APP ITSELF DROVE — the trip to a patch
+    // the app has just written, from revealPatch. Saving a COPY leaves the
+    // session dirty on purpose (the new file records this moment; the open
+    // patch is still edited), so the guard fired AGAIN on the way to the file
+    // the player had just made — a second "You have unsaved changes" sitting
+    // behind the "Saved to Patches" confirmation and revealed when it was
+    // dismissed (Daniel, 2026-11-14). The question had been answered; this is
+    // the answer being carried out.
+    //
+    // IT DOES NOT CLEAR THE DRIFT, and must not: the buffer genuinely still
+    // differs from the stored preset, and a flag cleared to quiet a dialog is
+    // how a restored value stayed "dirty" once already. What is skipped is the
+    // ASKING, on the one path where the player has already said where these
+    // values go.
+    if (!opts.answered && !(await audition.confirmLeave())) return;
     // Independent of the device selection — both stay set, both stay visibly
     // selected; the detail panel follows the last touch.
     libSelected = entry;
@@ -2298,7 +2313,11 @@
       if (!entry) return;
       setLibraryOpen(true);
       libView.reveal(file, patchIndex, { tab: 'patches' });
-      selectLibraryEntry(entry);
+      // ALREADY ANSWERED. This is the app completing a save the player asked
+      // for, not the player navigating away from one — and the save leaves the
+      // session dirty by design, so the leave guard would ask a second time
+      // about work that is already on disk. See selectLibraryEntry.
+      selectLibraryEntry(entry, { answered: true });
     },
     undoStack,
     schema, // for a parameter's display name in the undo label

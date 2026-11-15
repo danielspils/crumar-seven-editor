@@ -1895,6 +1895,62 @@ decision refused to pay was on BROWSING, and browsing still costs nothing: with
 nothing changed, `confirmLeave` answers true without drawing anything.
 `test/ui/scenarios/switch-patch-guard.js` pins both halves, in that order.
 
+### A GUARD THAT CAME BACK AFTER IT WAS ANSWERED (14 Nov 2026)
+
+Answering the leave guard with "Save to computer" — name it, read "Saved to
+Patches", press Done — put the guard back on screen. So the row the guard exists
+to offer was a dead end, in the feature built because Daniel lost two patches
+hunting for a save control.
+
+**It was not the first guard, undismissed.** That one is closed by
+`openSaveFlow`'s own `finally`, and these dialogs are independent overlays
+rather than one card being replaced — the only `replace()` in this flow is the
+hold screen, which is the same dialog turned into its next step and was never
+involved. It was a SECOND guard, created by the save itself: `announceSaved`
+takes the player to the new file (`revealPatch` → `selectLibraryEntry`), and
+that door asks `confirmLeave` like any other.
+
+**The reason it had something to ask about is correct and must stay correct.**
+Saving a COPY deliberately leaves the session dirty — the new file records this
+moment, the open patch is still edited, and saving to the computer stores
+nothing on the Seven. So the drift is real. **The dirty flag is not cleared**;
+clearing one to quiet a dialog is how a restored value stayed dirty once
+already. What is skipped is the ASKING.
+
+Two wires, because the bug has two halves and neither covers the other:
+
+- **The arrival does not ask** — `selectLibraryEntry(entry, { answered: true })`
+  from `revealPatch`. This is the half that made the **Save button** raise a
+  leave guard, with no navigation anywhere in the gesture.
+- **From the guard there is no arrival** — `announceSaved`'s `reveal`, passed
+  `!fromNav`. The click being held up is already a request to be somewhere else,
+  so landing on the new file and being moved off it again is a flash plus a
+  second 1.3s instrument send for one gesture. The Save button keeps its arrival
+  (2026-08-23); there is nowhere else the player was heading from there.
+
+`test/ui/scenarios/leave-guard-resolves.js` drives all three paths on hardware —
+Save to computer from the guard, Overwrite from the guard, and the Save button —
+and its sharpest assertion is a COUNT: while "Saved to Patches" is up it must be
+the only dialog on screen. That is what reproduced the bug before anything was
+changed (`dialogs on screen: You have unsaved changes | Saved to Patches`). Two
+assertions in `source-wiring.test.js` are the half that runs by itself.
+
+**4 mutations, 4 caught.** Each half independently: removing `answered`, or
+`revealPatch` not passing it, fails 3 assertions on the Save-button path and
+leaves the other two paths green; forcing `reveal: true`, or `announceSaved`
+ignoring the option, fails the two "did not detour through Patches" assertions
+and leaves the dialog counts green. A fifth mutation caught a test rather than
+the code: a bare `/reveal: !fromNav/` passed with one of the two call sites
+broken, because the other still matched.
+
+**Still a dead end, by decision rather than by accident:** clearing the hold
+screen's tick box and pressing Done returns `'stay'`, so from the guard the
+navigation is refused. Nothing was written to disk and the app cannot know
+whether the three-second hold happened — there is no store opcode and no
+acknowledgement — so holding the player in place is the choice that keeps the
+work. Worth revisiting only with a decision about what Done means on that
+screen.
+
 ### Storing, and what it is no longer the only way to do
 
 **Storing to a preset is always a physical three-second panel hold** — no store

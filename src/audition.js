@@ -617,8 +617,16 @@
   //
   // Not awaited, deliberately: the caller carries on — pushing its undo entry,
   // returning to the send flow — while the dialog sits there to be dismissed.
-  function announceSaved(file, patchIndex, fallback) {
-    if (deps.revealPatch) deps.revealPatch(file, patchIndex);
+  //
+  // IT DOES NOT TAKE YOU THERE WHEN YOU ASKED TO BE SOMEWHERE ELSE (14 Nov
+  // 2026). Reached from the navigate-away guard, the player's click is already
+  // a request to go to another patch — so arriving at the new file, and then
+  // being moved off it again when the guard resolves, is a flash and a second
+  // 1.3s send to the instrument for one gesture. The guard's own path says
+  // where it saved and lets the navigation happen; the arrival belongs to the
+  // Save button, where there is nowhere else the player was heading.
+  function announceSaved(file, patchIndex, fallback, { reveal = true } = {}) {
+    if (reveal && deps.revealPatch) deps.revealPatch(file, patchIndex);
     // Name the patch that now EXISTS, not the one that was open. Saving a
     // backup record's edit writes a new file, and the dialog used to announce
     // the record's own name — "Bank 1 Preset 4 — Clavi Piano" — for a patch
@@ -670,7 +678,7 @@
   // preset on the instrument and the app can honestly say which — see
   // slotProvenance. Null everywhere else, and null is written as nothing
   // rather than as a guess.
-  async function saveLiveAsNewPatch(values, { fromSlot = null } = {}) {
+  async function saveLiveAsNewPatch(values, { fromSlot = null, reveal = true } = {}) {
     const patch = deps.getPatch();
     if (!patch) return;
     const liveSound = deps.getLiveSound && deps.getLiveSound();
@@ -723,7 +731,7 @@
     // The toast this replaces said the same words and then took itself away.
     // The other save path had a dialog; this one is the same act and now says
     // so the same way.
-    if (made && made.file) announceSaved(made.file, made.patchIndex || 0, chosen);
+    if (made && made.file) announceSaved(made.file, made.patchIndex || 0, chosen, { reveal });
     return true;
   }
 
@@ -906,10 +914,14 @@
         // nothing to explain it (§3). Computed here rather than inside the
         // writer because it is a fact about the view, and `null` everywhere
         // else is the honest answer — see slotProvenance.
+        // FROM THE GUARD, THE SAVE DOES NOT CHANGE WHERE YOU ARE GOING. The
+        // player's click is already a request to be somewhere else; the save
+        // answers the guard, and the navigation it was holding up proceeds.
+        // See announceSaved.
         write: (params, { asNew }) => (
           asNew
-            ? saveLiveAsNewPatch(params, { fromSlot: slotProvenance() })
-            : saveLiveToLibrary(params).then(() => true)
+            ? saveLiveAsNewPatch(params, { fromSlot: slotProvenance(), reveal: !fromNav })
+            : saveLiveToLibrary(params, { reveal: !fromNav }).then(() => true)
         ),
       });
     } finally {
@@ -1037,7 +1049,7 @@
   // sit together and explain themselves by contrast. The copy half of it went
   // with the question: "Save to computer" reaches saveLiveAsNewPatch from every
   // view now, so one row means one thing everywhere.
-  async function saveLiveToLibrary(values) {
+  async function saveLiveToLibrary(values, { reveal = true } = {}) {
     if (!liveEdit) return;
     const entry = deps.getEntries().find(
       (e) => e.file === liveEdit.file && e.patchIndex === liveEdit.patchIndex
@@ -1097,7 +1109,7 @@
     // you there first — see announceSaved. This one used to offer a LINK
     // instead of arriving, which is why the ordering comment there mentions
     // it.
-    announceSaved(file, patchIndex, (entry && entry.name) || '');
+    announceSaved(file, patchIndex, (entry && entry.name) || '', { reveal });
 
     deps.undoStack.push('save to library', async () => {
       await window.sevenAPI.library.saveParams(file, patchIndex, previous);
