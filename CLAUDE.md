@@ -1717,6 +1717,57 @@ branches that have already broken — the slot read and the connect path. They
 are narrower than the linter and catch one thing it cannot: that a specific
 consumer still exists.
 
+### Working without prompts (2026-11-15)
+
+Daniel was clicking "Once" / "Always" constantly in this project and almost
+never in his JUNO-X one. The cause was not the permission rules and it was not
+the permission mode. **It was the shape of the commands this project's work
+produces**, and most of it is ours to fix.
+
+MEASURED, in `~/.claude/settings.local.json`: 1,944 allow entries, of which
+**87% are exact one-off strings with no wildcard** — 291 of them over 120
+characters, 378 naming a specific absolute path. Each one was captured by an
+"Always" click on a command that can never occur again. Meanwhile the JUNO-X
+project has **zero** entries and far fewer prompts, because that work is
+mostly file edits, which `acceptEdits` mode never asks about.
+
+**A compound command cannot match any rule.** This is the whole finding.
+
+```
+cd ~/crumar-seven-editor && S=/tmp/x && cat > "$S/p.js" <<'EOF' … EOF
+pkill -f Electron; SEVEN_NO_DEVICE=1 … npm start > "$S/l.log" 2>&1; python3 - <<'PY' … PY
+```
+
+Nothing in a permission file can ever match that, so adding rules does not
+help. Six habits, which between them remove most of the asking:
+
+- **Write scratch scripts with the Write tool**, never `cat > file <<'EOF'`.
+- **Read logs and source with the Read tool**, never `sed -n '10,40p'`.
+- **Run scripts by path** — `node /path/to/probe.js` — never `node -e '…'` or
+  `python3 - <<'PY'`.
+- **One command per call, with absolute paths.** No `cd X && …` chains; a
+  single simple command is the only thing a rule can match.
+- **Launch the app with `./scripts/dev-offline.sh`**, not an env-var prefix.
+  `SEVEN_NO_DEVICE=1 npm start` can never match a rule for `npm start`.
+- **Never `rm -rf "$VAR"`.** That trips Claude Code's own dangerous-delete
+  check, which fires BEFORE permissions are consulted — no rule can silence
+  it. Use a literal path, or `mktemp -d`, which returns a directory that is
+  new by construction and needs nothing deleted.
+
+**Two different things get called "a prompt" and only one is fixable with a
+rule.** A permission prompt ("Once / Always") is fixable. A Claude Code safety
+refusal — the dangerous-`rm` check is the one this project keeps hitting — is
+not, at any permission level. When reporting that something was refused, say
+which of the two it was.
+
+The five rules that cover what is genuinely left, after the habits above:
+`Bash(npm test)`, `Bash(npm run lint)`, `Bash(npm run test:ui *)`,
+`Bash(pkill -f MacOS/Electron)`, `Bash(./scripts/dev-offline.sh *)`.
+
+**Deliberately NOT rules: `node`, `python3`, `npx`, or any shell.** A wildcard
+on an interpreter is a blank cheque for arbitrary code. If a script is worth
+running often, give it a name in `scripts/` and allow that name.
+
 ### Smaller things still open
 
 Kept here because they otherwise live only in a chat that ends.
