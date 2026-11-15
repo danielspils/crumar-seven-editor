@@ -280,7 +280,11 @@ test('captured records are not in Patches at all', () => {
   ];
   const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 3 },
     { tab: 'patches', search: '' });
-  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
+  // [^>]* so the match survives attributes on the cell. The name carries a
+  // title= with its full text now (it is the one cell that truncates), and
+  // a regex pinned to the exact tag turned that into two red tests about
+  // something else entirely.
+  const names = [...html.matchAll(/class="patch-name"[^>]*>([^<]+)</g)].map((m) => m[1]);
   assert.deepStrictEqual(names, ['Kitchen Dishes Delay']);
   assert.ok(!/badge-factory/.test(html), 'and no factory badge — those records are elsewhere');
 });
@@ -300,7 +304,11 @@ test('your patches sort by what changed most recently', () => {
   ];
   const html = SevenLibraryView.renderBody({ patches, setlists: [], files: 2 },
     { tab: 'patches', search: '' });
-  const names = [...html.matchAll(/class="patch-name">([^<]+)</g)].map((m) => m[1]);
+  // [^>]* so the match survives attributes on the cell. The name carries a
+  // title= with its full text now (it is the one cell that truncates), and
+  // a regex pinned to the exact tag turned that into two red tests about
+  // something else entirely.
+  const names = [...html.matchAll(/class="patch-name"[^>]*>([^<]+)</g)].map((m) => m[1]);
   assert.deepStrictEqual(names, ['Newer', 'Older']);
 });
 

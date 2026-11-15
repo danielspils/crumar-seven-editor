@@ -674,8 +674,18 @@
     #main { flex: 1; display: flex; min-height: 0; }
 
     /* 3. Library */
+    /* ONE VALUE DECIDES THE LEFT PANEL (Daniel, 2026-11-15): 400px, or 36% of
+       the window where that is narrower. It was a fixed 480 with a 400 floor.
+       The percentage is what stops a narrow window squeezing the effects
+       column — at 1100px the panel gives back 4px rather than holding 400 and
+       taking it out of the columns.
+       THERE IS NOTHING TO PRESERVE HERE. The divider that used to set this was
+       draggable and its position persisted; the four-tab layout removed it
+       along with the two trays, so this is the only width there is.
+       flex: none, so the width above is the answer and flex-shrink cannot
+       quietly overrule it. */
     #library {
-      width: 480px; min-width: 400px;
+      flex: none; width: min(400px, 36%); min-width: 0;
       border-right: 1px solid var(--line);
       display: flex; flex-direction: column; min-height: 0;
     }
@@ -2294,8 +2304,14 @@
        so a patch whose widest word was narrower got a narrower column — 287px
        against 294 (Daniel, 2026-08-13). Now both halves are exactly half,
        whatever is in them. */
+    /* THE FREED WIDTH GOES TO THE SOUND ENGINE, not to both columns. It was
+       1fr 1fr, so narrowing the left panel by 80px would have handed 40 to a
+       column that did not need it. The effects chain is pinned at the 294px it
+       already measured, and the engine column takes whatever is left — which
+       is where the long sound names, the carousel and the parameter rows all
+       compete (Daniel, 2026-11-15). */
     .detail-cols {
-      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      display: grid; grid-template-columns: minmax(0, 1fr) 294px;
       gap: 24px; align-items: start;
       /* For the overlay below. Absolutely positioned, so it takes no grid
          cell and the two columns are laid out exactly as before. */

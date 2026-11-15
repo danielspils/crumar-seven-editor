@@ -180,7 +180,7 @@
     if (entry.invalid) {
       return (
         `<div class="lib-row lib-row-invalid" title="${esc(entry.error || 'Unreadable file')}">` +
-        `<span class="patch-name">${esc(entry.name)}</span>` +
+        `<span class="patch-name" title="${esc(entry.name)}">${esc(entry.name)}</span>` +
         `<span class="patch-sound">unreadable</span>` +
         `<span class="badge badge-warn">⚠ Invalid</span>` +
         `</div>`
@@ -259,7 +259,7 @@
       `<span class="lib-row-wrap"${opts.readOnly ? ' data-in-run' : ''}>` +
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}"${opts.readOnly ? '' : ' draggable="true"'}${tip ? ` title="${esc(tip)}"` : ''}>` +
       `<span class="patch-num">${lead}</span>` +
-      `<span class="patch-name">${esc(name)}</span>` +
+      `<span class="patch-name" title="${esc(name)}">${esc(name)}</span>` +
       `<span class="lib-origin">${esc(context)}</span>` +
       `<span class="patch-sound"></span>` +
       // The Patches list carries NO pill. Which engine a patch uses is
@@ -762,7 +762,7 @@
           `<div class="lib-row lib-setlist-row" draggable="true">` +
           `<button type="button" class="lib-setlist" data-setlist="${i}">` +
           `<span class="patch-num">${n}</span>` +
-          `<span class="patch-name">${esc(s.name)}</span>` +
+          `<span class="patch-name" title="${esc(s.name)}">${esc(s.name)}</span>` +
           `<span class="patch-sound">${label}</span>` +
           `</button>` +
           // No Send here. The row already carries a name, a count, a delete
@@ -881,7 +881,7 @@
         return `<button type="button" class="pick-row" data-pick-file="${esc(entry.file)}" ` +
           `data-pi="${entry.patchIndex}">` +
           `<span class="patch-num">${i + 1}</span>` +
-          `<span class="patch-name">${esc(displayName(entry))}</span>` +
+          `<span class="patch-name" title="${esc(displayName(entry))}">${esc(displayName(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}</span></button>`;
       }).join('');
       return `<div class="lib-group"><div class="lib-group-title">Bank ${b.bank}</div>${rows}</div>`;
@@ -1178,7 +1178,7 @@
         }
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-          `${num}<span class="patch-name">${esc(displayName(entry))}</span>` +
+          `${num}<span class="patch-name" title="${esc(displayName(entry))}">${esc(displayName(entry))}</span>` +
           `<span class="lib-origin">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`

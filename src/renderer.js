@@ -650,7 +650,7 @@
       return (
         `<button class="patch-row${index === selectedIndex ? ' selected' : ''}${stale ? ' is-stale' : ''}" data-index="${index}" type="button"${title}>` +
         `<span class="patch-num">${index + 1}</span>` +
-        `<span class="patch-name">${esc(patch.name)}</span>` +
+        `<span class="patch-name" title="${esc(patch.name)}">${esc(patch.name)}</span>` +
         `<span class="patch-sound"></span>` +
         // NO Model/Sample pill. Removed from both list views 2026-08-21 —
         // engine type describes the patch that is loaded, and the detail panel
