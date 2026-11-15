@@ -100,6 +100,64 @@
       'and the Seven’s rows are out of the layout, not merely covered');
   }
 
+  // ── EVERY CHILD HAS A COLUMN ────────────────────────────────────────────
+  //
+  // THE PREVIEW'S LESSON, carried into the real lists. A Seven row there had
+  // four children — number, name, sound, chevron — against a three-column
+  // grid, and a grid puts the overflow on a new IMPLICIT row at column 1: the
+  // chevron appeared on a second line at the row's far left rather than
+  // overlapping or vanishing (Daniel, 14 Nov 2026).
+  //
+  // Stated as the property, not the numbers, because the two lists have
+  // different shapes and will gain cells. A row may have FEWER children than
+  // columns — the Seven's rows do, since renderer.js emits an empty
+  // .patch-sound cell — and that is harmless. More children than columns is
+  // the wrap.
+  const gridRows = [
+    ['seven', '#patch-list .patch-row'],
+    ['patches', '#library .lib-list .lib-row'],
+  ];
+  for (const [tab, sel] of gridRows) {
+    await ui.selectTab(tab);
+    await ui.sleep(350);
+    const row = ui.$(sel);
+    if (!row) { ui.note(`${tab}: no row to measure`); continue; }
+    const cs = getComputedStyle(row);
+    if (cs.display !== 'grid') { ui.note(`${tab}: rows are ${cs.display}, not a grid`); continue; }
+    const cols = cs.gridTemplateColumns.trim().split(/\s+/).length;
+    const kids = row.children.length;
+    const h = Math.round(row.getBoundingClientRect().height);
+    ui.note(`${tab}: ${kids} children, ${cols} columns, row ${h}px`);
+    ui.check(kids <= cols, `${tab}: every child has a column (${kids} in ${cols})`);
+    ui.check(h <= 48, `${tab}: the row is ONE line (${h}px)`);
+  }
+
+  // ── AND THE FRESHNESS CAVEAT IS NOT A FIFTH TAB ─────────────────────────
+  //
+  // The other preview lesson. It sat inside the tab strip with margin-left
+  // auto, bottom-aligned on the tabs' own line in the same dim uppercase, and
+  // read as a fifth bank tab — the type was already the 10/700 micro-label, so
+  // it was the shared LINE that did it, not the size.
+  await ui.selectTab('seven');
+  const fresh = ui.$('#bank-asof');
+  const aTab = ui.$('#bank-tabs .bank-tab');
+  ui.check(!!fresh, 'the freshness caveat is on screen');
+  if (fresh && aTab) {
+    const fs = getComputedStyle(fresh);
+    const ts = getComputedStyle(aTab);
+    const fr = fresh.getBoundingClientRect();
+    const tr = aTab.getBoundingClientRect();
+    ui.note(`caveat ${fs.fontSize}/${fs.letterSpacing} bottom ${Math.round(fr.bottom)}`
+      + ` · bank tab ${ts.fontSize}/${ts.letterSpacing} bottom ${Math.round(tr.bottom)}`);
+    ui.check(fresh.tagName.toLowerCase() !== 'button', 'it is not a button');
+    ui.check(!fresh.closest('#bank-tabs'), 'and not inside the tab strip');
+    ui.check(fr.top >= tr.bottom - 1,
+      `it sits BELOW the tabs rather than on their line `
+      + `(${Math.round(fr.top)} vs ${Math.round(tr.bottom)})`);
+    ui.check(parseFloat(fs.fontSize) === 10,
+      `at the type ladder's 10px micro-label (${fs.fontSize})`);
+  }
+
   // Put the tray back where a bank-region scenario expects to find it.
   await ui.selectTab('seven');
   report('back on the Seven');

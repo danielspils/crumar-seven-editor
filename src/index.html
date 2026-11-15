@@ -682,15 +682,24 @@
     /* .bank-tabs admits a second instance of the same component — the backup
        detail view's tabs. The tabs themselves are
        .bank-tab either way; only the container needed a class. */
-    #bank-tabs, .bank-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    /* NO RULE UNDER THE STRIP. "Lines separate rows. Nothing else" — regions
+       are separated by space and type size (the design language agreed 14 Nov
+       2026, which also took out the rule under the top tabs and the one above
+       the foot). The chosen tab's own tint is what marks the strip now. */
+    #bank-tabs, .bank-tabs { display: flex; }
     /* Subtle tabs: selection is carried by the same raised background as a
        selected patch row — no tab outline, no radius. The amber underline is
        text-width (on the label span), so it doesn't stack with the patch row's
        full-width red edge marker. All four tabs are identical when unselected. */
+    /* LEVEL 2 WEARS THE REGION-HEADER TREATMENT: 12/700, .12em, uppercase
+       (DESIGN.md's type ladder). It was 13/600 at .08em — a size the ladder
+       does not have, which is how 11px and 14px crept in before. The mock has
+       carried the ladder's own values since the design was agreed. */
     .bank-tab {
       flex: 1; padding: 9px 0 7px; text-align: center;
       background: transparent; border: none;
-      color: var(--text-muted); font: inherit; font-weight: 600; letter-spacing: .08em;
+      color: var(--text-dim); font: inherit;
+      font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       cursor: pointer;
     }
     .bank-tab:hover { color: var(--text); }
