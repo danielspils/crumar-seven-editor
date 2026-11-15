@@ -1029,7 +1029,21 @@
     // Only the ANSWER. Whether a copy is then written, and from what, is
     // SevenSavePlan's — this screen's job is to teach the hold and to carry
     // the tick box.
-    return !!(box && box.checked);
+    const keepCopy = !!(box && box.checked);
+    // CLEARING THE BOX IS THE PLAYER TAKING THE KEEPING ON (Daniel, 14 Nov
+    // 2026). Nothing is written, so this flow still answers 'stay' — but the
+    // next attempt to leave must not ask again: he has been shown the hold and
+    // has declined the copy, and re-asking makes that answer unreachable. It
+    // was the one route through this dialog that could not resolve the guard.
+    //
+    // IT LIVES ON `liveEdit`, not beside it. A session-scoped fact stored in a
+    // module variable needs clearing in six places (endSession, clearLive,
+    // preview, recallOnDevice, beginLiveForTarget, the recall check) and one of
+    // them gets forgotten — then declining once disarms the guard for the rest
+    // of the run. Hung on the session object, it dies with the session, and
+    // there is no clearing code to lose.
+    if (!keepCopy && liveEdit) liveEdit.holdDeclined = true;
+    return keepCopy;
   }
 
   // WRITES THESE VALUES INTO THE OPEN PATCH, and only that. Needs no
@@ -1261,8 +1275,38 @@
       //
       // It is still not a toll on browsing: with nothing changed this answers
       // true without drawing anything.
+      //
+      // AND IT ASKS ONCE. Clearing the hold screen's tick box and pressing
+      // Done is the player saying the keeping is his — so the next attempt to
+      // leave is TOLD, not asked. Daniel's words and his shape: a title and
+      // one button, no question in it.
+      //
+      // Every way out of this one means go: Okay, Escape, the corner X, the
+      // backdrop. It is not the leave guard and must not read as one — the
+      // deliberate press this project insists on before a discard has already
+      // happened, on the screen before this. Asking a second time is what made
+      // "I will keep it on the Seven" an answer the app would not accept.
       async confirmLeave() {
         if (!liveEdit || !driftNow()) return true;
+        if (liveEdit.holdDeclined) {
+          await SevenModal.confirm({
+            // DANIEL'S WORDS, 14 Nov 2026, to be seen running before they are
+            // settled. The sentence is the only thing a player cannot work out
+            // for themselves in that moment: that discarding costs nothing once
+            // the hold is done. The app cannot check it, and says so rather
+            // than implying either answer.
+            //
+            // `body` MUST BE PASSED. SevenModal.confirm does not default it and
+            // paragraphs() stringifies what it is handed, so omitting it prints
+            // the literal word "undefined" under the heading.
+            title: 'Discarding Edits',
+            body: "If you've saved to your Seven you're good "
+              + "(this app can't tell if you have).",
+            confirmLabel: 'Okay',
+            cancelLabel: 'Okay',
+          });
+          return true;
+        }
         return (await openSaveFlow({ fromNav: true })) !== 'stay';
       },
       // The working copy, for a caller that is about to do something the

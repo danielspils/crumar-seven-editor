@@ -224,6 +224,93 @@
     'and that navigation went through as well');
   ui.check(!ui.$('#library.lib-open'), 'and no detour through Patches here either');
 
+  // ── CLEARING THE TICK BOX: TOLD, NOT ASKED ──────────────────────────────
+  //
+  // The one route through this dialog that could not resolve the guard.
+  // Clearing "Also save a copy to Patches" and pressing Done writes nothing,
+  // so the flow still answers 'stay' — and the NEXT attempt to leave used to
+  // raise the whole guard again, which made "I will keep it on the Seven" an
+  // answer the app would not accept. Daniel's call, 14 Nov 2026: that press is
+  // him taking the keeping on, so the next move out is told rather than asked.
+  if (!(await makeDrift(2))) return;
+  ui.$$('#patch-list .patch-row')[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  if (!(await ui.waitFor(() => !!top(), { what: 'the leave guard a third time' }))) return;
+  const holdRow2 = inTop('.sv-row').find(
+    (x) => /^Overwrite /.test(x.querySelector('.sv-row-t').textContent)
+  );
+  if (!ui.check(!!holdRow2, 'the overwrite row is there')) return;
+  ui.click(holdRow2, 'the overwrite row');
+  if (!(await ui.waitFor(
+    () => /Hold it on the Seven/.test(String(top() && top().textContent)),
+    { what: 'the hold screen' }
+  ))) return;
+  await ui.waitFor(() => { const c = top(); return c && !c.classList.contains('is-resizing'); },
+    { what: 'the hold screen to settle' });
+
+  const box2 = inTop('.sv-copy')[0];
+  if (!ui.check(!!box2, 'the tick box is there to clear')) return;
+  box2.click();
+  ui.check(!box2.checked, 'the copy to Patches is cleared');
+  ui.click(inTop('.seven-modal-ok')[0], 'Done');
+  await ui.sleep(1200);
+
+  // NOTHING WAS WRITTEN, so this press on its own does not move anybody. That
+  // half is unchanged and is asserted so a later fix cannot quietly turn Done
+  // on the hold screen into a navigation of its own.
+  ui.check(overlays().length === 0, `the hold screen closes (${overlays().length})`);
+  const stillHere = ui.$('#patch-list .patch-row.selected');
+  ui.check(!!stillHere && stillHere.dataset.index === '2',
+    'and clearing the box does not move you on its own');
+
+  // NOW MOVE ON. Told, not asked.
+  ui.$$('#patch-list .patch-row')[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  if (!(await ui.waitFor(() => !!top(), { what: 'the acknowledgement' }))) return;
+  const ack = top();
+  ui.note(`moving on after clearing the box says: "${titleOf(ack)}"`);
+  ui.check(titleOf(ack) === 'Discarding Edits',
+    `it is told, not asked (${titleOf(ack)})`);
+  ui.check(ack.querySelectorAll('.sv-row').length === 0,
+    'and it is not the leave guard wearing a different title');
+  // THE SENTENCE IS THE ONLY THING THE PLAYER CANNOT WORK OUT UNAIDED: that
+  // discarding costs nothing once the hold is done. Matched on a distinctive
+  // phrase rather than the whole string — the wording is Daniel's and may move
+  // once he has seen it running, and an assertion on the full sentence would
+  // make a reword look like a regression.
+  ui.check(/saved to your Seven/.test(ack.textContent),
+    'and it says the Seven may already have it');
+  // SevenModal.confirm does not default its body and paragraphs() stringifies
+  // what it is handed, so an omitted body prints the literal word "undefined"
+  // under the heading. Found by reading modal.js rather than by shipping it,
+  // and pinned here because the title-only version is one deletion away.
+  ui.check(!/undefined/.test(ack.textContent),
+    'with no stray text under it');
+  const okay = ack.querySelector('.seven-modal-ok');
+  ui.check(!!okay && okay.textContent.trim() === 'Okay', 'one button, and it says Okay');
+  if (!okay) return;
+  ui.click(okay, 'Okay');
+  await ui.sleep(1200);
+  ui.check(overlays().length === 0, `nothing remains after Okay (${overlays().length})`);
+  const moved = ui.$('#patch-list .patch-row.selected');
+  ui.note(`selected slot after being told: ${moved && moved.dataset.index}`);
+  ui.check(!!moved && moved.dataset.index === '3', 'and the move goes through');
+
+  // ── AND IT DOES NOT OUTLIVE THE SESSION ─────────────────────────────────
+  //
+  // THE DANGEROUS MUTATION. Declining the copy once must not disarm the guard
+  // for the rest of the run: the next edit has never been offered a hold. The
+  // flag is hung on liveEdit so it dies when the session does, and this is what
+  // proves it — without it, a module-level flag nobody remembered to clear
+  // would pass everything above.
+  if (!(await makeDrift(3))) return;
+  ui.$$('#patch-list .patch-row')[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  if (!(await ui.waitFor(() => !!top(), { what: 'the guard on a fresh session' }))) return;
+  ui.check(titleOf(top()) === 'You have unsaved changes',
+    `a new session is asked properly again (${titleOf(top())})`);
+  const discard = top().querySelector('.seven-modal-deny');
+  if (!ui.check(!!discard, 'and it still offers the named discard')) return;
+  ui.click(discard, 'Discard changes and leave');
+  await ui.sleep(900);
+
   // ── AND THE SAVE BUTTON, WHICH IS NOT A NAVIGATION AT ALL ───────────────
   //
   // THE OTHER HALF OF THE SAME BUG, and the only path that exercises

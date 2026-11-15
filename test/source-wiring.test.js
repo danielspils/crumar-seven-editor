@@ -974,6 +974,45 @@ test('a save from the guard does not take you to the new patch', () => {
     'and announceSaved honours it rather than revealing regardless');
 });
 
+// CLEARING THE TICK BOX IS AN ANSWER, AND IT IS ACCEPTED (14 Nov 2026).
+//
+// Clearing "Also save a copy to Patches" and pressing Done writes nothing, so
+// the flow answers 'stay' — and the next attempt to leave used to raise the
+// whole guard again. That made "I will keep it on the Seven" the one answer the
+// app would not take: the route through this dialog that could never resolve
+// it. Daniel's call — that press is him taking the keeping on, so the next move
+// out is TOLD rather than asked.
+test('clearing the copy box is remembered, and only for that session', () => {
+  const src = code(read('audition.js'));
+
+  const hold = /async function runHoldScreen\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(hold, 'runHoldScreen is still recognisable');
+  assert.match(hold[0], /liveEdit\.holdDeclined = true/,
+    'declining the copy is recorded');
+  // ON THE SESSION OBJECT, not beside it. A module-level flag needs clearing in
+  // six places and one gets forgotten — then declining once disarms the guard
+  // for the rest of the run, which is the dangerous version of this change.
+  // Hung on liveEdit it dies with the session and there is no clearing code to
+  // lose, so nothing here may declare one.
+  assert.doesNotMatch(src, /let holdDeclined/,
+    'and NOT in a module variable somebody has to remember to clear');
+
+  const fn = /async confirmLeave\(\) \{([\s\S]*?)\n      \}/.exec(src);
+  assert.ok(fn, 'confirmLeave is still recognisable');
+  assert.match(fn[1], /if \(liveEdit\.holdDeclined\)/,
+    'and the next way out is told rather than asked');
+  assert.ok(
+    fn[1].indexOf('holdDeclined') < fn[1].indexOf('openSaveFlow'),
+    'before the guard is reached, or it would ask anyway'
+  );
+  // `body` MUST BE PASSED. SevenModal.confirm does not default it and
+  // paragraphs() stringifies what it is handed, so an omitted body prints the
+  // literal word "undefined" under the heading. The wording is Daniel's and may
+  // move; that there IS one is what this pins.
+  assert.match(fn[1], /title: 'Discarding Edits',\s*\n?\s*body: ["']/,
+    'with a body, so the dialog cannot render the word "undefined"');
+});
+
 // And it is NOT a toll on browsing. With nothing changed the answer is true
 // without drawing anything, which is what kept the 2026-08-12 decision livable.
 test('confirmLeave is silent when nothing has changed', () => {

@@ -217,4 +217,43 @@
   ui.check(!!holdLine && holdLine.textContent.includes('lights will run'),
     'the hold instruction is the shared one, not a second telling');
   h.close();
+
+  // ── CLEARING THE BOX: WHAT THE NEXT MOVE OUT SAYS ──────────────────────
+  //
+  // Daniel's words, 14 Nov 2026. Clearing the box and pressing Done writes
+  // nothing, so his next attempt to leave is TOLD rather than asked — it was
+  // the one route through the save dialog that could never resolve the guard.
+  //
+  // Opened here as confirmLeave opens it, because reaching the real thing needs
+  // a live session and a live session needs the cable (the full gesture is in
+  // leave-guard-resolves.js, which requires the instrument). This is the half
+  // that only needs a window: that the dialog READS right.
+  SevenModal.confirm({
+    title: 'Discarding Edits',
+    body: "If you've saved to your Seven you're good (this app can't tell if you have).",
+    confirmLabel: 'Okay',
+    cancelLabel: 'Okay',
+  });
+  await ui.sleep(300);
+  const ack = ui.$('.seven-modal-overlay .seven-modal');
+  if (ui.check(!!ack, 'the acknowledgement is on screen')) {
+    ui.note(`it says: "${ack.querySelector('.seven-modal-title').textContent.trim()}"`
+      + ` / "${ack.querySelector('.seven-modal-body').textContent.trim()}"`);
+    ui.check(/saved to your Seven/.test(ack.textContent),
+      'it says the Seven may already have it, which is the part nobody can work out unaided');
+    // SevenModal.confirm does not default `body`, and paragraphs() stringifies
+    // what it is handed — so an omitted body prints the literal word
+    // "undefined" under the heading. Caught by reading modal.js rather than by
+    // shipping it, and pinned because a title-only version is one deletion away.
+    ui.check(!/undefined/.test(ack.textContent), 'and nothing stray under it');
+    const okay = ack.querySelector('.seven-modal-ok');
+    ui.check(!!okay && okay.textContent.trim() === 'Okay',
+      'one button, and it says Okay');
+    // NOT A QUESTION. The deliberate press this project insists on before a
+    // discard already happened on the screen before this one, so there is no
+    // second refusal to offer here.
+    ui.check(!ack.querySelector('.seven-modal-deny'),
+      'and it offers no way to refuse, because it is not asking');
+    ack.querySelector('.seven-modal-ok').click();
+  }
 })()
