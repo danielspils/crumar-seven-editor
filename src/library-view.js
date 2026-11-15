@@ -1239,14 +1239,21 @@
     return renderAllPatches(data, state);
   }
 
-  function renderBody(data, state, sounds) {
-    const tab = (id, label) =>
-      `<button type="button" class="seg-btn${state.tab === id ? ' active' : ''}" data-tab="${id}"><span class="seg-label">${label}</span></button>`;
+  // `countLabel` is what is on screen, said once on the right of the bar —
+  // "9 patches", "1 setlist". It is passed IN because the filtered count lives
+  // in createLibraryView (visibleCount) and this function is module-level and
+  // exported for tests; computing a second answer here is how two numbers for
+  // one list start to disagree.
+  function renderBody(data, state, sounds, countLabel = '') {
+    // THE THREE TABS ARE LEVEL 1 NOW and are not rendered here any more. They
+    // were a segmented control inside the tray — Backups | Patches | Setlists
+    // — and the four-tab redesign of 14 Nov 2026 raised them to the top level
+    // beside the Seven, which is what app.js's #top-tabs draws. This component
+    // still owns WHICH of its three views is showing (state.tab); it no longer
+    // owns the control that chooses.
     const listHtml = renderList(data, state, sounds);
     return (
       `<div class="lib-bar">` +
-      `<div class="lib-seg">${tab('backups', 'Backups')}${tab('patches', 'Patches')}` +
-      `${tab('setlists', 'Setlists')}</div>` +
       // No "Sort by recency" control. It appeared once a list had been
       // dragged, as the way back — and it was a button in the bar earning its
       // place from a state most people never reach (Daniel, 2026-08-14).

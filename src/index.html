@@ -700,7 +700,15 @@
        Dim, and it does not brighten with the tab: it is a note about the bank,
        not a second thing to read (Daniel, 2026-08-16). */
     .bank-tab-lock { margin-left: 9px; vertical-align: -1px; color: var(--text-dim); }
-    .bank-tab.active { background: var(--bg-panel); color: var(--amber); }
+    /* THE UNDERLINE CARRIES THE SELECTION ALONE. The word was amber too, which
+       is the same thing said twice — "underline = selection" is already the
+       vocabulary (DESIGN.md). The tint and the 1px cap highlight say "chosen"
+       the same way the selected row does, so wherever the tint appears,
+       something is selected. */
+    .bank-tab.active {
+      background: var(--bg-panel); color: var(--text);
+      box-shadow: inset 0 1px 0 var(--cap-hi);
+    }
     .bank-tab.active .bank-tab-label { border-bottom-color: var(--amber); }
     /* The eight bank rows are always fully visible — they never scroll out of
        view when the Library opens; the Library body scrolls internally. */
@@ -777,109 +785,110 @@
          pill      10px/700                  badges and state chips
        Add a role to a tier rather than inventing a new size. */
 
-    /* 3a. Two-region model: "On the Seven" (banks) above, "On this computer"
-       (Library) below. The regions expand mutually exclusively — app.js
-       toggles .lib-open on #library — but the bank region is NEVER fully
-       hidden: it collapses to a one-line summary strip (current bank +
-       selected preset) so the instrument↔computer relationship stays on
-       screen, and transfer always has a visible target. */
-    .region-head {
-      font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--text-muted); padding: 8px 14px 4px;
-      /* A row now, because it carries a chevron. Same hover and cursor as
-         .fx-head so the two region headers are the same control. */
-      display: flex; align-items: center; cursor: pointer;
-    }
-    #seven-head:hover { background: var(--shade); color: var(--text); }
-    /* Nudged so this chevron starts on the same x as the Library's: the two
-       headers have different left padding, and measured left edges were 8 vs
-       18. Two region headers one above the other make any offset obvious. */
-    .region-head .fx-chevron { margin-left: 4px; }
-    .region-head .asof {
-      font-weight: 400; letter-spacing: normal; text-transform: none;
-      color: var(--text-dim); margin-left: 6px;
-    }
+    /* 3a. FOUR TABS, ONE LIST. The two-region model this replaced had the bank
+       rows above and the library below, expanding mutually exclusively with a
+       one-line summary strip so the instrument-to-computer relationship stayed
+       on screen. The transfer names its own destination now, and both regions
+       were never actually visible together — one was always a strip — so the
+       tabs lose nothing and remove the strip's own overlap bug with it. */
     .patch-row.empty-slot .patch-name { color: var(--text-dim); font-style: italic; font-weight: 400; }
-    #bank-strip {
-      display: none; /* visible only while the Library is expanded */
-      width: 100%; align-items: center; gap: 8px;
-      padding: 8px 14px;
-      background: none; border: none; border-bottom: 1px solid var(--line);
-      color: var(--text); font: inherit; text-align: left; cursor: pointer;
-    }
-    #bank-strip:hover { background: var(--bg-raised); }
-    #bank-strip .strip-chevron { transform: rotate(-90deg); }
-    #bank-strip .fx-title { flex: none; }
-    /* One line, always. min-width:0 on both the flex item and the truncating
-       span is what actually lets a flex child shrink below its content —
-       without it the name pushes the strip wider and wraps instead. */
-    #bank-strip-label { flex: 1; min-width: 0; display: flex; align-items: baseline; }
-    #bank-strip-label .strip-bank { flex: none; white-space: nowrap; }
-    #bank-strip-label .strip-patch {
-      flex: 0 1 auto; min-width: 0;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .strip-asof { font-size: 12px; color: var(--text-dim); flex: none; }
-    /* One title line only: while the strip is showing, it IS the header. */
-    #library.lib-open #seven-head { display: none; }
-    /* The tray clips its own content and collapses to nothing, rather than
-       the rows blinking out via display:none. Both trays are then plain boxes
-       with a height, which is what lets one slide open as the other closes. */
-    #bank-region {
-      display: flex; flex-direction: column; min-height: 0;
-      overflow: hidden; flex: 0 0 auto;
-    }
-    #bank-tray {
-      display: flex; flex-direction: column; min-height: 0;
-      overflow: hidden;
-      /* Content-sized, like the #patch-list it wraps. `flex: 1 1 auto` made
-         the tray absorb every spare pixel and shove the "On this computer"
-         header to the floor of the window, a long gap below the eighth row
-         (Daniel, 2026-08-13). The collapsed header belongs directly under the
-         tray above it; leftover space belongs below BOTH of them. */
-      flex: 0 0 auto;
-    }
-    #library.lib-open #bank-tray { height: 0; flex: none; }
-    #library.lib-open #bank-strip { display: flex; }
-    /* Drag handle between the regions. Only meaningful while the Library is
-       open; the chosen split persists across launches (app.js). */
-    #split-divider { display: none; height: 5px; cursor: row-resize; flex: none; position: relative; }
-    #split-divider::after {
-      content: ''; position: absolute; left: 50%; top: 2px; width: 44px; height: 3px;
-      transform: translateX(-50%); border-radius: 2px; background: var(--line);
-    }
-    #split-divider:hover::after { background: var(--text-muted); }
-    #library.lib-open #split-divider { display: block; }
 
-    /* 3b. Library section — reuses the fx-section disclosure (chevron,
-       header hover, grid-rows collapse animation) but sits full-width in the
-       library column: no side borders, no radius, visually distinct from the
-       indented bank rows above. The dimming rule is NOT reused. */
-    #library-section {
-      margin: 0; border-left: none; border-right: none; border-radius: 0;
-      border-top: 1px solid var(--line);
-      padding: 8px 10px;
-      min-height: 0; overflow: hidden;
+    /* ---- LEVEL 1: the four tabs ------------------------------------------
+       BASELINE, NOT CENTRE. A script face has a far deeper descender than a
+       grotesque, so centring the boxes floats the logo above the line its
+       neighbours sit on. The baselines are what the eye reads, so they are
+       what is aligned.
+       The 7px padding under every tab gives the underline somewhere to sit
+       that clears the descenders of "Patches" and "Setlists"; the transparent
+       border on all four means selecting one moves no layout. */
+    #top-tabs {
+      display: flex; align-items: baseline; flex: none;
+      padding: 14px 14px 11px; flex-wrap: wrap; row-gap: 8px;
     }
-    /* Expanded, the section flexes into the REMAINING column space and the
-       list scrolls inside whatever fits — the section must never run past
-       the window edge (that clipped the slot view to two visible rows).
-       Scoped to expanded so a collapsed section still shrinks to its header.
-       Tradeoff: the height half of the open animation is skipped for this
-       section (the body snaps to the flexed size; the opacity fade
-       remains). */
-    /* GROWS. With the bank region sized to its content, nothing else claims
-       the leftover height — the open Library sat at 174px inside a 531px
-       column and clipped its own list (Daniel, 2026-08-13). Before the tray
-       wrapper existed, the bank rows' `flex: 1 1 auto` swallowed that space,
-       which is the same bug wearing the opposite face. */
-    #library-section:not(.collapsed) { display: flex; flex-direction: column; flex: 1 1 auto; }
-    #library-section:not(.collapsed) .fx-head { flex: none; }
-    #library-section:not(.collapsed) .fx-body { flex: 0 1 auto; min-height: 0; }
+    .top-tab {
+      font: 700 17px/1.1 inherit; font-family: inherit;
+      background: none; border: 0; padding: 0 0 7px; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim); transition: color .14s ease;
+    }
+    .top-tab:hover { color: var(--text-muted); }
+    .top-tab[aria-selected="true"] { color: var(--text); }
+    /* :not(.top-logo) IS THE RULE, and it stays a negation rather than a list
+       of the three word tabs: a fourth word tab added later must get the
+       underline by default, while the one thing that LIGHTS stays the
+       exception that names itself. */
+    .top-tab[aria-selected="true"]:not(.top-logo) { border-bottom-color: var(--amber); }
+    .top-grp { display: flex; align-items: baseline; gap: 16px; }
+    /* The divider separates two GROUPS — the Seven is one thing, the computer
+       is three — and centres on the row rather than sitting on the baseline. */
+    .top-split {
+      width: 1px; height: 17px; background: var(--line);
+      margin: 0 15px 0 14px; flex: none; align-self: center;
+    }
+    /* THE LOGO IS A LIT SIGN (DESIGN.md), the one element allowed to differ by
+       theme, and the only one that may glow. The bloom is tight and low: lit,
+       not neon. A drop-shadow on the PATHS, not a text-shadow — the ink is a
+       shape, so the glow follows the strokes instead of a glyph box. */
+    .top-logo { position: relative; padding: 0 2px 7px 0; line-height: 1; color: var(--logo-off); }
+    .top-strut { font: 700 17px/1.1 inherit; font-family: inherit; }
+    /* IN FLOW, so the button sizes to the ink and nothing can overlap it.
+       Absolute positioning took the drawing out of flow once: the button's
+       width came from the zero-width strut alone and a ~90px drawing painted
+       straight across "Patches".
+       28.2px, not 31: the asset's box is cropped to the letters' baseline
+       (626 units, not 688), so the same number would render ~9.8% larger.
+       31 x 626/688 = 28.2 is the size the design was approved at. */
+    .top-logo svg { display: inline-block; height: 28.2px; width: auto; }
+    .top-logo:hover { color: var(--logo); }
+    .top-logo[aria-selected="true"] {
+      color: var(--logo);
+      filter: drop-shadow(0 0 5px color-mix(in srgb, var(--logo) 45%, transparent))
+              drop-shadow(0 0 13px color-mix(in srgb, var(--logo) 22%, transparent));
+    }
+    /* LIT ON PAPER, and not the dark glow in another colour. A sign in
+       daylight does not halo white — it spills its own colour onto the surface
+       behind it, so the spill is wider and much weaker, reading as more
+       SATURATED than the ground rather than brighter. Only the spill changes;
+       the ink is the same either way. */
+    :root[data-theme="light"] .top-logo[aria-selected="true"] {
+      filter: drop-shadow(0 0 9px color-mix(in srgb, var(--logo) 30%, transparent))
+              drop-shadow(0 0 22px color-mix(in srgb, var(--logo) 17%, transparent))
+              drop-shadow(0 0 44px color-mix(in srgb, var(--logo) 8%, transparent));
+    }
+
+    /* ---- the freshness caveat, on its own line ---------------------------- */
+    #fresh-line { display: flex; justify-content: flex-end; padding: 2px 14px 6px; flex: none; }
+    .fresh {
+      font-size: 10px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+
+    /* ---- the foot: 12px labels, sentence case ---------------------------- */
+    #lib-foot {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      padding: 14px 14px 16px; min-height: 54px; flex: none;
+    }
+    .foot-slot { font-size: 12px; font-weight: 700; color: var(--action-text); }
+    .foot-link {
+      background: none; border: 0; padding: 0; cursor: pointer;
+      font: inherit; font-size: 12px; font-weight: 400;
+      color: var(--text-dim); margin-left: auto;
+    }
+    .foot-link:hover { color: var(--text-muted); }
+    .foot-link:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; border-radius: 3px; }
+
+    /* ONE LIST ON SCREEN. The tab decides which of the two containers is in
+       the layout at all — not opacity, not height: a hidden list must not be
+       reachable by a click or an arrow key. */
+    #bank-region {
+      display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
+    }
+    #library[data-view="seven"] #library-body { display: none; }
+    #library:not([data-view="seven"]) #bank-region { display: none; }
     /* The list scrolls inside a fixed height, so a cut-off row can look like
        the end of the list. A fade over the bottom edge says otherwise; the
        .at-end class removes it once there is nothing left to scroll to. */
-    #library-body { display: flex; flex-direction: column; min-height: 0; height: 100%; position: relative; }
+    #library-body { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; position: relative; }
     #library-body::after {
       content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px;
       background: linear-gradient(to bottom, transparent, var(--bg));
@@ -927,31 +936,12 @@
        changes — and e.target is now the button, which is stricter, not looser. */
     button svg { pointer-events: none; }
 
-    .lib-reveal {
-      flex: none; padding: 3px 8px;
-      /* OPAQUE AT REST, deliberately. The row's hover is a translucent wash
-         (--shade) across the whole header, and a transparent button let that
-         wash through — so pointing anywhere on the row lit the button up too,
-         and you could not tell whether the button itself was hovered
-         (Daniel, 2026-08-19). Its own ground stops that at the border. */
-      background-color: var(--bg-raised); border: 1px solid var(--line); border-radius: 4px;
-      color: var(--text-muted); font: inherit; font-size: 11px; line-height: 1.4;
-      cursor: pointer; transition: background .15s, color .15s, border-color .15s;
-    }
-    /* The old hover set background: var(--bg-raised) — the SAME colour the
-       button now sits on, so the fill never visibly changed and only the
-       border moved. The shade goes on as an image layer instead, which
-       composites over the button's own ground rather than replacing it. */
-    .lib-reveal:hover {
-      background-image: linear-gradient(var(--shade-hard), var(--shade-hard));
-      border-color: var(--text-muted); color: var(--text);
-    }
-    .lib-reveal:active { background-image: linear-gradient(var(--shade), var(--shade)); }
-    .lib-reveal:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
-    /* Pointer on the button is not pointer on the row: suppress the row's own
-       hover so the two targets never claim the pointer together. */
-    #library-head:has(.lib-reveal:hover) { background: transparent; }
-    #library-head:has(.lib-reveal:hover) .fx-title { color: var(--text-muted); }
+    /* .lib-reveal is GONE. It was a bordered button in the library header,
+       opaque at rest so the header's own hover wash could not light it up
+       (Daniel, 2026-08-19) — a problem that no longer exists, because the
+       header it sat in does not. The folder now opens from a plain 12px link
+       in the foot (.foot-link), which is where the design puts it and where
+       nothing else claims the pointer. */
     /* The FOLDER total, beside the button that opens the folder. It used to
        sit in the header over a filtered list, where it was accurate and
        therefore confusing — "36 patch files" above a tab showing one
@@ -1085,12 +1075,10 @@
       font-size: 12px; color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* By DEFAULT the list fills whatever height the window leaves — a fixed
-       320px left dead space below it on a tall screen and clipped it on a
-       short one. Once the user drags the divider, app.js sets --lib-split (px)
-       on #library and that becomes a cap; the list is still free to be
-       shorter when the window is. */
-    #library.lib-open .lib-list { flex: 1 1 auto; max-height: var(--lib-split, none); }
+    /* The list fills whatever height the window leaves. There is no cap any
+       more: the divider that set one is gone with the two-tray layout, and so
+       is the persisted split it wrote. */
+    .lib-list { flex: 1 1 auto; }
     /* A setlist row is a button plus its own delete control, so the row is a
        container rather than one button. */
     .lib-setlist-row { display: flex; align-items: center; gap: 6px; padding: 0; }
@@ -2728,8 +2716,6 @@
     }
     /* Uppercase + tracking is reserved for section headers (matches .col-title). */
     .fx-title { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
-    #library-head .fx-title { color: var(--text-muted); transition: color .15s; }
-    #library-head:hover .fx-title { color: var(--text); }
     /* The summary is the header's flex-grow middle slot in BOTH states —
        visibility (not display) hides its text when expanded, so the slot keeps
        filling and the ON/OFF pill stays anchored hard right regardless of
@@ -3030,62 +3016,68 @@
   </div>
   <div id="main">
     <div id="library" tabindex="-1">
-      <!-- Two labelled regions teach the core relationship: the four banks
-           mirror what's ON THE SEVEN; the Library is files ON THIS COMPUTER.
-           Transfer means moving between them, so BOTH stay visible at all
-           times — when the Library expands, the bank rows collapse to a
-           one-line summary strip (never hidden). -->
-      <!-- One tray, so the three parts slide together. Height is what
-           animates; display:none cannot tween, which is why the swap used to
-           happen in a single frame (Daniel, 2026-08-13). -->
-      <!-- Tray AND strip in one animated box. The strip appears the instant the
-           tray collapses (display cannot tween), so with only the tray
-           animated its ~40px vanished in one frame and everything below
-           jumped up before the tray grew back down over it — the OTC header
-           travelling up and then down (Daniel, 2026-08-13). Inside a box whose
-           height is tweened between measured before/after, the exchange is
-           just part of the slide. -->
-      <!-- FOCUSABLE AS A REGION, not row by row. Key ownership is derived from
-           which region holds focus when a key is pressed (see app.js), and a
-           row cannot carry that: these lists re-render on every refresh and a
-           re-render destroys focus on a child, so ownership would go ambiguous
-           straight after every library refresh. The container survives its
-           children being replaced. -1 because it is reached by clicking, not
-           by tabbing. -->
+      <!-- FOUR TABS, ONE LIST ON SCREEN (the redesign of 14 Nov 2026).
+           Seven | Patches | Setlists | Backups, with the bank tabs as a second
+           level under Seven.
+
+           WHAT THIS REPLACED, and why the old reason no longer holds. There
+           were two collapsing trays with a drag divider between them, because
+           "the instrument<->computer relationship stays on screen, and
+           transfer always has a visible target". The transfer names its own
+           destination in its own dialog now, and Daniel (14 Nov): "No need to
+           see them both at once. You can't see them together today." The trays
+           already expanded mutually exclusively — one was always a one-line
+           strip — so nothing is lost, and the strip's own text-overlap bug
+           goes with it.
+
+           THE SEVEN TAB IS THE LOGO, and it LIGHTS when chosen rather than
+           taking the amber underline: it is a sign, not a label, and saying it
+           twice is the doubling taken out everywhere else. The three word tabs
+           keep the underline. INLINED, never through <img> — an <img> SVG is
+           its own document and inherits nothing, so currentColor would resolve
+           to nothing and neither the theme nor the lit state would reach it.
+           app.js fills it from sevenAPI.getLogoSvg().
+
+           THE STRUT IS LOAD-BEARING. The tabs align on BASELINES, not boxes,
+           and an SVG has no baseline of its own — the zero-width strut at the
+           neighbours' size gives the button a text baseline to align on. The
+           drawing's own box bottom IS its letters' baseline (assets/
+           seven-logo.svg is cropped there), so the two meet without any nudge.
+      -->
+      <div id="top-tabs" role="tablist">
+        <button type="button" class="top-tab top-logo" data-view="seven"
+                role="tab" aria-selected="true" aria-label="Seven"
+        ><span class="top-strut"></span><span class="top-logo-ink"></span></button>
+        <span class="top-split" aria-hidden="true"></span>
+        <span class="top-grp">
+          <button type="button" class="top-tab" data-view="patches" role="tab" aria-selected="false">Patches</button>
+          <button type="button" class="top-tab" data-view="setlists" role="tab" aria-selected="false">Setlists</button>
+          <button type="button" class="top-tab" data-view="backups" role="tab" aria-selected="false">Backups</button>
+        </span>
+      </div>
+      <!-- FOCUSABLE AS A REGION, not row by row: these lists re-render on
+           every refresh and a re-render destroys focus on a child. -1 because
+           it is reached by clicking, not by tabbing. It no longer decides who
+           owns the arrow keys — the selected TAB does, since only one list is
+           ever on screen (app.js, focusedRegion). -->
       <div id="bank-region" tabindex="-1">
-      <div id="bank-tray">
-        <div class="region-head" id="seven-head">On the Seven</div>
         <div id="bank-tabs"></div>
+        <!-- THE FRESHNESS CAVEAT, on its own line and never in the tab strip.
+             The Seven has no read-slot opcode, so this view is only as fresh
+             as the last backup. In the tab strip it bottom-aligned with BANK
+             1-4 in the same dim uppercase and read as a fifth tab (Daniel, 14
+             Nov) — the type was already the 10/700 micro-label; it was the
+             shared line that did it. Not a header for the column it sits over,
+             which holds sound names. -->
+        <div id="fresh-line"><span id="bank-asof" class="fresh"></span></div>
         <div id="patch-list"></div>
       </div>
-      <!-- Collapsed, the bank region reads exactly like the collapsed library
-           header: chevron, region name, then its one-line summary. Its own
-           region-head is hidden so there is only ever one title line. -->
-      <button type="button" id="bank-strip" title="Show the bank presets">
-        <span class="fx-chevron strip-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span class="fx-title">On the Seven</span>
-        <span id="bank-strip-label" class="lib-count"></span>
-        <span id="bank-strip-asof" class="strip-asof"></span>
-      </button>
-      </div>
-      <!-- Drag handle between the regions; the split persists across
-           launches. Active only while the Library is expanded. -->
-      <div id="split-divider" title="Drag to resize the Library"></div>
-      <!-- Library: a collapsible section directly after the 8th bank row.
-           Reuses the effects-section disclosure component (fx-section /
-           fx-head / fx-body classes: same chevron, same animation) but NEVER
-           the bypass-dimming rule — bypass has no meaning here. Global: the
-           same Library renders under every bank. -->
-      <div id="library-section" class="fx-section collapsed">
-        <div class="fx-head" id="library-head" role="button" title="Toggle Library">
-          <span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="fx-title">On this computer</span>
-          <span id="library-count" class="lib-count"></span>
-          <button type="button" id="library-reveal" class="lib-reveal" title="Open the library folder in Finder">Open Library Folder</button>
-        </div>
-        <div class="fx-body"><div class="fx-body-inner">
-          <div id="library-body"></div>
-        </div></div>
+      <div id="library-body"></div>
+      <!-- The foot. 12px labels in sentence case: uppercase .12em is the
+           region-header treatment and does not belong here. -->
+      <div id="lib-foot">
+        <span id="foot-seven" class="foot-slot"></span>
+        <button type="button" id="library-reveal" class="foot-link" title="Open the library folder in Finder">Open library folder</button>
       </div>
     </div>
     <div id="detail"><div class="placeholder">Select a patch</div></div>

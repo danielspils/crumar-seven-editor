@@ -2731,21 +2731,62 @@
     audition.offerAudition();
   });
 
-  // ---- Library section (on-disk library; data via preload IPC) --------------
-  // Collapsible section below the bank rows. Reuses the fx-section disclosure
-  // classes; expanded/collapsed persists across launches (view state —
-  // localStorage, never patch data). The body is the self-contained
-  // SevenLibraryView component: data in, events out.
+  // ---- The four tabs (on-disk library; data via preload IPC) ---------------
+  //
+  // ONE LIST ON SCREEN. Seven | Patches | Setlists | Backups at level 1, with
+  // the bank tabs as a second level under Seven. The three word tabs are the
+  // library's own three views, which used to be a segmented control INSIDE the
+  // library tray; they are level 1 now and the tray is gone.
+  //
+  // The body is still the self-contained SevenLibraryView component — data in,
+  // events out — and it is still the thing that knows what a setlist row looks
+  // like. All that changed is who tells it which of its three views to show.
   const libRoot = document.getElementById('library');
-  const libSection = document.getElementById('library-section');
-  const libHead = document.getElementById('library-head');
-  const libCount = document.getElementById('library-count');
   const libReveal = document.getElementById('library-reveal');
-  const bankStrip = document.getElementById('bank-strip');
-  const bankStripLabel = document.getElementById('bank-strip-label');
-  const splitDivider = document.getElementById('split-divider');
-  const LIB_OPEN_KEY = 'seven.libraryOpen';
-  const LIB_SPLIT_KEY = 'seven.librarySplit';
+  const topTabs = document.getElementById('top-tabs');
+  const bankAsOf = document.getElementById('bank-asof');
+  const footSeven = document.getElementById('foot-seven');
+  // WHICH TAB, and the persisted key the tray used to write. The tray's
+  // open/closed state and its dragged split are both gone; what persists now
+  // is simply which of the four you were on.
+  const VIEW_KEY = 'seven.view';
+  const VIEWS = ['seven', 'patches', 'setlists', 'backups'];
+  let view = VIEWS.includes(localStorage.getItem(VIEW_KEY))
+    ? localStorage.getItem(VIEW_KEY) : 'seven';
+
+  // THE LOGO IS INLINED, never loaded through <img>: an <img> SVG is its own
+  // document and inherits nothing, so currentColor would resolve to nothing
+  // and neither the theme nor the lit state would reach it. Same rule the
+  // panel drawing and the instrument art already follow.
+  {
+    const ink = topTabs.querySelector('.top-logo-ink');
+    if (ink) ink.innerHTML = window.sevenAPI.getLogoSvg();
+  }
+
+  function setView(next, opts = {}) {
+    if (!VIEWS.includes(next)) return;
+    view = next;
+    libRoot.dataset.view = view;
+    for (const b of topTabs.querySelectorAll('.top-tab')) {
+      b.setAttribute('aria-selected', String(b.dataset.view === view));
+    }
+    localStorage.setItem(VIEW_KEY, view);
+    // The three word tabs ARE the library's own views, so selecting one tells
+    // the component which to render. 'seven' is not one of its views, so it is
+    // left showing whatever it last had — nothing is on screen either way.
+    if (view !== 'seven' && libView) libView.setTab(view);
+    // THE THIRD PLACE THE SCREEN CHANGES. Swapping views re-renders neither
+    // list, so nothing else here would re-ask whether the detail panel is
+    // describing something visible — and the answer changes, because a whole
+    // region has just been taken off screen.
+    if (!opts.quiet) { renderAll(); updatePanelReach(); }
+  }
+
+  topTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.top-tab');
+    if (!tab) return;
+    setView(tab.dataset.view);
+  });
   // Which patches the Patches tab lists. A PREFERENCE, so it survives a
   // launch — the tab you were on and the text in the search box are things
   // you did, and they do not (Daniel, 2026-08-14).
