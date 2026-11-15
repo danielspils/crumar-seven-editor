@@ -2378,7 +2378,33 @@
     .audition-bar.is-live .audition-note {
       flex: 0 0 100%; min-width: 0; min-height: 1.4em; margin-top: 2px;
     }
-    #detail { flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 16px 20px; }
+    /* THREE HEADER ROWS, SHARED BY ALL THREE COLUMNS (Daniel, approved and
+       drawn, 2026-11-15). The panel sets them, because its rows are the ones
+       with fixed heights; the detail columns answer to the same numbers
+       rather than starting at the top of their own box.
+
+         1. NAV      logo · Patches / Setlists / Backups. The sound engine and
+                     effects columns leave this row empty.
+         2. LABEL    BANK 1-4 · SOUND ENGINE · EFFECTS CHAIN, one baseline.
+         3. CONTENT  the first preset row, the sound title and the first FX
+                     card's top edge all start at the same y.
+
+       --hdr-label-pad is .bank-tab's own padding-top, and it is what puts the
+       three labels on ONE baseline: the detail's titles are indented into the
+       label row by the same amount the bank tabs indent their own words.
+       Derived from the tab strip rather than chosen, so the three rows cannot
+       drift apart when a tab's padding changes. */
+    :root {
+      --hdr-nav: 65px;
+      --hdr-label: 39px;
+      --hdr-label-pad: 9px;
+    }
+    #detail {
+      flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable;
+      /* Row 1 is the panel's alone, so the detail starts below it — then the
+         same 9px that indents a bank tab's word. */
+      padding: calc(var(--hdr-nav) + var(--hdr-label-pad)) 20px 16px;
+    }
     /* pre-line so the blank line in the message becomes a break — it is two
        statements, what is missing and what to do, and it read as one run-on
        sentence (Daniel, 2026-08-13). Already centred. */
@@ -2446,7 +2472,11 @@
     }
     .col-title {
       font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--text-muted); margin-bottom: 10px;
+      color: var(--text-muted);
+      /* WHAT IS LEFT OF THE LABEL ROW once the 9px indent and the title's own
+         17px line box are taken out of its 39px: 39 - 9 - 17 = 13. That is
+         what lands the content row's top edge on the first preset row's. */
+      margin-bottom: 13px;
       /* Centered over each column's own width (bank tabs stay left-aligned —
          they're a tab strip, not a column header). */
       text-align: center;
@@ -3326,8 +3356,15 @@
              Nov) — the type was already the 10/700 micro-label; it was the
              shared line that did it. Not a header for the column it sits over,
              which holds sound names. -->
-        <div id="fresh-line"><span id="bank-asof" class="fresh"></span></div>
         <div id="patch-list"></div>
+        <!-- AT THE FOOT OF THE EIGHT ROWS, not above them (Daniel,
+             2026-11-15). It had been moved out of the tab strip already, for
+             the same reason it moves again: it is a caveat about what the
+             rows say, and anything sitting above them reads as a header for
+             them. Below the list it is a footnote, which is what it is — and
+             the row it used to occupy is what the three header rows need in
+             order to line up across all three columns. -->
+        <div id="fresh-line"><span id="bank-asof" class="fresh"></span></div>
       </div>
       <div id="library-body"></div>
       <!-- The foot. 12px labels in sentence case: uppercase .12em is the
