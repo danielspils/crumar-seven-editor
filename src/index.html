@@ -1178,9 +1178,19 @@
     .setlist-delete:hover { color: var(--warn-text, #c0392b); background: var(--shade-hard); }
     .setlist-delete:focus-visible { opacity: 1; }
     .lib-setlist-chev { color: var(--text-dim); font-size: 15px; padding-right: 6px; }
+    /* THE SAME GUTTER THE ROWS USE. A list view indents its content 6px — the
+       row number of every .lib-row and .lib-slot sits at x6 — and the detail
+       views did not: the head was 2px, so the back button's box and the title
+       beneath it sat on the panel's left edge while the numbered rows below
+       them were indented (Daniel, 2026-11-15). 6px, measured off .lib-row and
+       .lib-slot rather than chosen, so the three left edges line up.
+       The BOX, not the text: .lib-back is a bordered button, so its border is
+       what the eye reads as its left edge, and that is what matches a row's
+       number. Aligning its TEXT instead would hang the border outside the
+       gutter by its own 8px padding. */
     .lib-setlist-head {
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 2px 8px; color: var(--text-muted);
+      padding: 4px 6px 8px; color: var(--text-muted);
     }
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
@@ -1226,7 +1236,8 @@
        long, and one cannot share a row with three controls. */
     .lib-setlist-title {
       font-size: 15px; font-weight: 600; color: var(--text);
-      padding: 0 2px 8px; line-height: 1.25;
+      /* 6px to match the rows below it and the head above it. */
+      padding: 0 6px 8px; line-height: 1.25;
     }
     /* Same reason inside a backup: a bank heading is not a hoverable row, so
        its Send would have stayed invisible (Daniel, 2026-08-13). */
