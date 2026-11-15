@@ -78,7 +78,27 @@
         sub: 'Writes these values into the patch you have open',
       });
     }
-    if (changed) {
+    // BANK 1 CANNOT BE STORED TO, so it is never offered as a destination.
+    //
+    // The Seven refuses a store into Bank 1 outright — owner-confirmed on
+    // hardware 2026-08-13, and it is why Bank 1 is the only place the factory's
+    // own numbers are readable. The transfer runner blocks it, and the app
+    // blocks it as a destination in three other places. This flow did not: a
+    // hardware run of switch-patch-guard offered "Overwrite Bank 1 · Preset 1"
+    // on a real instrument.
+    //
+    // That is this feature's own failure mode, pointed back at itself. Daniel
+    // lost two patches on 13 Nov by hunting for a way to save, and the row
+    // would have sent him to hold a button for three seconds while the
+    // instrument quietly refused — a save he would have every reason to
+    // believe had worked.
+    //
+    // ABSENT, not disabled, and not relabelled to say the bank is locked:
+    // adding that sentence is a copy decision rather than a correctness one,
+    // and what is left — "Save to computer" — is already the true answer, since
+    // the computer is genuinely the only place a Bank 1 edit can go.
+    const slotIsWritable = !slot || slot.bank !== 1;
+    if (changed && slotIsWritable) {
       rows.push({
         value: 'hold',
         // PRESET, with a ·, because that is what the instrument prints on its

@@ -352,6 +352,15 @@ is the question that used to be a second dialog behind "save to computer"
   - absent for a bank slot (no file behind it), a backup record, and a Bank 1 donor
 - Row — the Seven: `Overwrite Bank 3 · Preset 5` + `Holding the button on the Seven for three seconds is what saves it` — save-plan.js
   - with no Send PC, the preset cannot be named honestly: `Overwrite the preset on your Seven`
+  - **absent entirely when the Seven is sitting on a Bank 1 preset**, since that
+    bank cannot be stored to (hardware, 2026-08-13). A hardware run offered
+    `Overwrite Bank 1 · Preset 1` before this was caught, which would have sent
+    the player to hold a button the instrument refuses.
+    **OPEN FOR DANIEL — this removes a row and says nothing in its place.**
+    What is left is true (the computer is the only place a Bank 1 edit can go)
+    and "Save to computer" already explains itself, but a player who pressed
+    Save while on Bank 1 may want to be told why the Seven is not on the list.
+    Writing that sentence is a copy decision, so no sentence was invented.
 - Row — the computer: `Save to computer` — save-plan.js
   - alone: `Adds it to your Patches library. The Seven is untouched`
   - with the update row above it: `Keeps this patch and saves these values as a separate one`

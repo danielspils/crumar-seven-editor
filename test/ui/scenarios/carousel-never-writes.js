@@ -21,6 +21,33 @@
     return e ? JSON.stringify(e) : null;
   };
 
+  // SETTLE THE PREVIOUS PATCH, or the second pass is scenery.
+  //
+  // Choosing an instrument makes the open patch CHANGED, and since 14 Nov
+  // navigating away from a changed patch asks first (audition.confirmLeave).
+  // This scenario predates that guard: it chose a sound in `patches`, left the
+  // patch unsettled, and clicked a row in `backups` — so the guard's dialog
+  // came up and the row click never moved the selection at all.
+  //
+  // The visible symptom was one failed assertion. The real cost was that the
+  // whole backups pass then ran against the patches patch still being live,
+  // while measuring the backups FILE — which was of course untouched, because
+  // nothing could reach it. A green check for a file nothing could write is
+  // the same family as a fixture that cannot express the thing under test.
+  //
+  // So the guard is answered deliberately, the way a player would: discard.
+  // Discarding is what this scenario wants anyway — its whole claim is that
+  // the carousel never writes the file.
+  const settleLeaveGuard = async (why) => {
+    const modal = ui.$('.seven-modal');
+    const deny = modal && modal.querySelector('.seven-modal-deny');
+    if (!deny) return false;
+    ui.note(`${why}: the leave guard asked first — discarding, as a player would`);
+    deny.click();
+    await ui.sleep(1200);
+    return true;
+  };
+
   for (const tab of ['patches', 'backups']) {
     await ui.openLibrary();
     const seg = await ui.waitEl(`.seg-btn[data-tab="${tab}"]`, `the ${tab} tab`);
@@ -41,9 +68,27 @@
     // contains anything in this tab depends on the source library. Noted
     // rather than failed — an empty tab is not this feature misbehaving.
     if (!row) { ui.note(`${tab}: no patch in this library to try — not checked`); await ui.closeLibrary(); continue; }
+    const wantFile = row.dataset.file;
     ui.click(row, `a patch in ${tab}`);
+    // The guard, if the previous pass left something changed. It answers the
+    // navigation, so the selection then proceeds on its own.
+    await ui.sleep(400);
+    await settleLeaveGuard(tab);
     // Selecting plays it; that send must land before the wheel starts another.
     await ui.sleep(3000);
+
+    // AND THE ROW WE AIMED AT IS ACTUALLY THE OPEN ONE. Without this, a
+    // blocked click leaves the previous tab's patch live and every assertion
+    // below measures that one while naming this tab — which is exactly how
+    // the backups pass went quietly hollow. It fails loudly now instead.
+    const open = ui.$(`#library .lib-row.selected[data-file="${wantFile}"]`)
+      || ui.$(`#library [data-file="${wantFile}"].selected`);
+    if (!ui.check(!!open, `the ${tab} row we clicked is the open patch`)) {
+      ui.note(`${tab}: selection did not move to ${wantFile} — nothing below `
+        + 'would be measuring this tab, so the pass is abandoned');
+      await ui.closeLibrary();
+      continue;
+    }
 
     // THE CONTROL IS THERE — this is what was missing until the restoration.
     const car = ui.$('[data-carousel]');

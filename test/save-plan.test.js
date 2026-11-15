@@ -72,6 +72,51 @@ test('an unknown slot is NOT guessed at', () => {
   assert.doesNotMatch(hold.title, /Bank|Slot \d/, 'no number is invented');
 });
 
+// ---- Bank 1 is not a destination -------------------------------------------
+//
+// The Seven refuses a store into Bank 1 (owner-confirmed on hardware
+// 2026-08-13). A hardware run of switch-patch-guard offered
+// "Overwrite Bank 1 · Preset 1" anyway, which would have sent the player to
+// hold a button for three seconds while the instrument declined — a save they
+// would have had every reason to think had worked, in the one feature built
+// because that exact loss happened twice.
+test('Bank 1 is never offered as a destination, however changed the patch', () => {
+  const rows = saveRows({ changed: true, slot: { bank: 1, preset: 1 } });
+  assert.deepStrictEqual(rows.map((r) => r.value), ['computer'],
+    'only the computer, which is genuinely the only place a Bank 1 edit can go');
+  assert.ok(!rows.some((r) => /Bank 1/.test(r.title)),
+    'and Bank 1 is not named as somewhere to overwrite');
+});
+
+test('Bank 1 still offers the update row when there is a file to update', () => {
+  const rows = saveRows({
+    changed: true, slot: { bank: 1, preset: 1 }, canUpdate: true, targetName: 'Reed Piano',
+  });
+  // The LOCK IS ON THE INSTRUMENT, not on the library. A patch of your own,
+  // open while the Seven happens to sit on a Bank 1 preset, is still yours to
+  // update — only the hold is impossible.
+  assert.deepStrictEqual(rows.map((r) => r.value), ['update', 'computer']);
+});
+
+// Every other bank is unaffected, so the guard cannot be a blanket refusal
+// that happens to pass the test above.
+for (const bank of [2, 3, 4]) {
+  test(`Bank ${bank} is still offered`, () => {
+    const rows = saveRows({ changed: true, slot: { bank, preset: 5 } });
+    assert.ok(rows.some((r) => r.value === 'hold'), 'the hold row is there');
+    assert.strictEqual(rows[0].title, `Overwrite Bank ${bank} · Preset 5`);
+  });
+}
+
+// AND AN UNKNOWN SLOT IS STILL OFFERED. With Send PC off the app cannot tell
+// which preset the Seven is on, so it cannot rule out Bank 1 — and refusing on
+// a maybe would remove the Seven as a destination for everybody with that
+// global switched off. Not knowing is not the same as knowing it is locked.
+test('an unknown slot is still offered, since Bank 1 cannot be ruled out', () => {
+  const rows = saveRows({ changed: true, slot: null });
+  assert.ok(rows.some((r) => r.value === 'hold'));
+});
+
 test('the computer row says the Seven is left alone', () => {
   const rows = saveRows({ changed: true, slot: null });
   const computer = rows.find((r) => r.value === 'computer');

@@ -60,11 +60,42 @@
   ui.check(title === 'You have unsaved changes',
     `the dialog names what is at stake (${title})`);
 
-  // THE OVERWRITE ROW IS PRESENT, because something HAS changed — and it asks
-  // for the hold, because the app cannot write a slot on the Seven at all.
+  // WHICH ROWS BELONG HERE DEPENDS ON THE BANK, so the bank is read from the
+  // app rather than assumed. This used to assert a flat `rows.length === 2`,
+  // and on the first hardware run it passed while the dialog offered
+  // "Overwrite Bank 1 · Preset 1" — a destination the Seven refuses outright
+  // (owner-confirmed 2026-08-13). So the count was DEFENDING that bug: fixing
+  // save-plan.js turned this scenario red, which is the shape CLAUDE.md warns
+  // about under "a test that asserts the buggy behaviour DEFENDS it".
+  //
+  // Stated as the rule instead: the Seven is a destination from every bank
+  // except the locked one. Whichever bank this instrument happens to be on,
+  // one of the two branches below is exercised.
+  const activeTab = ui.$('#bank-tabs .bank-tab.active');
+  const bankName = activeTab
+    ? (activeTab.querySelector('.bank-tab-label') || activeTab).textContent.trim()
+    : '(unknown)';
+  const onBank1 = /\b1\b/.test(bankName);
   const rows = [...dialog.querySelectorAll('.sv-row')];
-  ui.note(`rows offered: ${rows.map((x) => x.querySelector('.sv-row-t').textContent).join(' · ')}`);
-  ui.check(rows.length === 2, `both destinations are offered (${rows.length})`);
+  ui.note(`on ${bankName} — rows offered: `
+    + rows.map((x) => x.querySelector('.sv-row-t').textContent).join(' · '));
+
+  const holdRow = rows.find((x) => /^Overwrite /.test(x.querySelector('.sv-row-t').textContent));
+  if (onBank1) {
+    // BANK 1 CANNOT BE STORED TO, so offering it would send the player to hold
+    // a button for three seconds while the instrument declined — in the one
+    // feature built because that loss happened twice.
+    ui.check(!holdRow,
+      'Bank 1 is locked, so the Seven is NOT offered as a destination');
+    ui.check(!/Bank 1/.test(dialog.textContent),
+      'and Bank 1 is not named as somewhere to overwrite');
+    ui.check(rows.length >= 1 && rows.some(
+      (x) => /Save to computer/.test(x.querySelector('.sv-row-t').textContent)),
+    'the computer is still offered, which is the only place a Bank 1 edit can go');
+  } else {
+    ui.check(!!holdRow, `the Seven is offered from ${bankName}`);
+    ui.check(rows.length === 2, `both destinations are offered (${rows.length})`);
+  }
   // MATCHED ON "Seven", NOT ON THE OPENING WORDS. This assertion read
   // /Hold the button on the Seven/ and went stale on 14 Nov when the sentence
   // became "HOLDING the button on the Seven for three seconds is what saves
@@ -73,13 +104,18 @@
   // for the string you are changing does not find assertions that match a
   // substring of it; grep for a distinctive word, in both directions.
   const instrumentRow = rows.find((x) => /button on the Seven/.test(x.textContent));
-  ui.check(!!instrumentRow,
-    'and the instrument row says the HOLD is what does it');
-  // The same pairing the unit test and save-flow.js carry: the row must ask
-  // for the hold and must NOT call it a confirmation, since there is nothing
-  // the app did for the player to approve.
-  ui.check(!!instrumentRow && !/confirm/i.test(instrumentRow.textContent),
-    'and never calls the hold a confirmation');
+  if (onBank1) {
+    ui.check(!instrumentRow,
+      'and no row asks for a hold, since no hold could work from Bank 1');
+  } else {
+    ui.check(!!instrumentRow,
+      'and the instrument row says the HOLD is what does it');
+    // The same pairing the unit test and save-flow.js carry: the row must ask
+    // for the hold and must NOT call it a confirmation, since there is nothing
+    // the app did for the player to approve.
+    ui.check(!/confirm/i.test(instrumentRow.textContent),
+      'and never calls the hold a confirmation');
+  }
 
   // ── DISCARD AND LEAVE ───────────────────────────────────────────────────
   //
