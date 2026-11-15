@@ -36,8 +36,16 @@
          transparent to full chroma on the selected-row edge. */
       --accent-rgb: 181, 88, 74;
       /* TEXT ON A RED FILL. Near-black on this red failed to read; warm paper
-         does. Delete buttons and the modal's destructive bar wear it. */
-      --accent-ink: #f6ece2;
+         does. Delete buttons and the modal's destructive bar wear it.
+         MEASURED AGAINST THE SMALL-TEXT BAR, which is the one that applies:
+         the label is 12px/600, so 4.5:1 rather than the 3:1 large text gets.
+         #f6ece2 on --accent #b5584a was 4.04:1 and failed. The ground is the
+         brand red and is load-bearing elsewhere — the selected-row edge, the
+         warning border, the connecting dot — so the INK moved instead, which
+         is used on this one fill and nowhere else. #fffaf6 reads 4.54:1 and
+         is still warm rather than a plain white. Light theme was already
+         5.22:1 and is untouched. */
+      --accent-ink: #fffaf6;
       /* An OUTLINED pill is state, never an action (DESIGN.md). Its border is
          quieter than its word so the shape reads before the colour. */
       --pill-amber-border: #7d6a45;
