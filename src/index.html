@@ -2378,32 +2378,35 @@
     .audition-bar.is-live .audition-note {
       flex: 0 0 100%; min-width: 0; min-height: 1.4em; margin-top: 2px;
     }
-    /* THREE HEADER ROWS, SHARED BY ALL THREE COLUMNS (Daniel, approved and
-       drawn, 2026-11-15). The panel sets them, because its rows are the ones
-       with fixed heights; the detail columns answer to the same numbers
-       rather than starting at the top of their own box.
+    /* ONE HEADER LINE ACROSS ALL THREE COLUMNS (Daniel, 2026-11-15).
+       The logo and the word tabs used to hold this line alone, leaving it
+       empty across the right two-thirds while SOUND ENGINE and EFFECTS CHAIN
+       sat a row lower. They share it now, so the line is a header rather than
+       a nav strip with a gap in it.
 
-         1. NAV      logo · Patches / Setlists / Backups. The sound engine and
-                     effects columns leave this row empty.
-         2. LABEL    BANK 1-4 · SOUND ENGINE · EFFECTS CHAIN, one baseline.
-         3. CONTENT  the first preset row, the sound title and the first FX
-                     card's top edge all start at the same y.
+       BELOW THE LINE THE THREE COLUMNS RUN INDEPENDENTLY, and deliberately so.
+       An earlier pass coupled them into a shared content row; that is undone.
+       The patch name is much larger type than a bank tab, and coupling the
+       heights lets the name set the row and drag the bank tabs off the top of
+       the list they label — and that closeness is doing real work. The name
+       landing roughly level with the tabs is a coincidence worth having, not
+       a constraint worth enforcing.
 
-       --hdr-label-pad is .bank-tab's own padding-top, and it is what puts the
-       three labels on ONE baseline: the detail's titles are indented into the
-       label row by the same amount the bank tabs indent their own words.
-       Derived from the tab strip rather than chosen, so the three rows cannot
-       drift apart when a tab's padding changes. */
-    :root {
-      --hdr-nav: 65px;
-      --hdr-label: 39px;
-      --hdr-label-pad: 9px;
-    }
+       BASELINES, NOT BOXES. A 12/700 upper label and a 13.33/400 word tab have
+       different ascents, so equal boxes — or even equal line-heights — leave
+       the text at two different heights. The logo's own fix (1aa88be) put the
+       offset in the artwork so no call site carries it; these two labels sit
+       in different containers with no shared inline flow, so the offset has to
+       be a number here. MEASURED in a rendered window with the font's own
+       metrics, not the glyphs' (a line's baseline does not move because its
+       words happen to have no descenders): the word tabs' baseline is y202.6,
+       and 33.5px puts both column titles on it. Swept — 34px lands +0.5,
+       32px lands -1.5.
+       A NUMBER IN A COMMENT ROTS, so one-header-line.js asserts the two
+       baselines match in a real window rather than trusting this paragraph. */
     #detail {
       flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable;
-      /* Row 1 is the panel's alone, so the detail starts below it — then the
-         same 9px that indents a bank tab's word. */
-      padding: calc(var(--hdr-nav) + var(--hdr-label-pad)) 20px 16px;
+      padding: 33.5px 20px 16px;
     }
     /* pre-line so the blank line in the message becomes a break — it is two
        statements, what is missing and what to do, and it read as one run-on
@@ -2473,10 +2476,10 @@
     .col-title {
       font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--text-muted);
-      /* WHAT IS LEFT OF THE LABEL ROW once the 9px indent and the title's own
-         17px line box are taken out of its 39px: 39 - 9 - 17 = 13. That is
-         what lands the content row's top edge on the first preset row's. */
-      margin-bottom: 13px;
+      /* Its own spacing, not a number tuned to land the column's content level
+         with another column's. The columns are independent below the header
+         line. */
+      margin-bottom: 10px;
       /* Centered over each column's own width (bank tabs stay left-aligned —
          they're a tab strip, not a column header). */
       text-align: center;
