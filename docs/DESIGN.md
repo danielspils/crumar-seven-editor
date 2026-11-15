@@ -150,10 +150,10 @@ into a rule:
 
 | Role | Token | Dark |
 |---|---|---|
-| Page — deepest, behind artwork | `--page` | `#24211d` |
-| Panel and lists | `--bg` | `#2d2a25` |
-| Raised: selected row, modal body, hover | `--bg-panel`, `--bg-raised` | `#38342e` |
-| Borders and row dividers | `--line` | `#4a443c` |
+| Page — deepest, behind artwork | `--page` | `#1c1a17` |
+| Panel and lists | `--bg` | `#23211e` |
+| Raised: selected row, modal body, hover | `--bg-panel`, `--bg-raised` | `#2d2a26` |
+| Borders and row dividers | `--line` | `#3d3934` |
 | Primary text | `--text` | `#e6dfd2` |
 | Secondary text | `--text-muted`, `--text-dim` | `#9d9484` |
 | Navigation | `--amber` | `#c9a25e` |
@@ -161,10 +161,19 @@ into a rule:
 | Action / ON / Sampled / the logo | `--action`, `--sampled`, `--logo` | `#7f9c78` |
 | ON pill | `--pill-on-*` | text `#a9c3a1`, border `#56704f`, fill `#2f3a2b` |
 | Outlined amber pill | `--pill-amber-border` | `#7d6a45` |
+| Modeled | `--modeled` | `#8fa8c4`, muted steel blue |
+| Sampled | `--sampled` | `#7f9c78` |
 
 **TEXT ON A RED FILL IS WARM PAPER, NOT NEAR-BLACK** (`--accent-ink`). Black
 on this red is harder to read than the old one, which is the kind of thing a
 palette change quietly breaks.
+
+**The first warm pass read as brown.** The surfaces above are the second
+set: #24211d / #2d2a25 / #38342e / #4a443c were lighter and browner, and
+muted text on the raised one measured 4.12:1 — under the 4.5 the project
+enforces for body text, which `sounds-modal-contrast` caught as 24 failing
+nodes. Darkening the surfaces fixed it without touching a single ink:
+muted on raised is 4.76:1 now.
 
 **Two text tiers collapsed in dark.** `--text-muted` and `--text-dim` were
 distinct greys and are both `#9d9484` now, because the elements the palette
