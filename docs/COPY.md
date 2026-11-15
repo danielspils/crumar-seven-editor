@@ -356,11 +356,20 @@ is the question that used to be a second dialog behind "save to computer"
     bank cannot be stored to (hardware, 2026-08-13). A hardware run offered
     `Overwrite Bank 1 · Preset 1` before this was caught, which would have sent
     the player to hold a button the instrument refuses.
-    **OPEN FOR DANIEL — this removes a row and says nothing in its place.**
-    What is left is true (the computer is the only place a Bank 1 edit can go)
-    and "Save to computer" already explains itself, but a player who pressed
-    Save while on Bank 1 may want to be told why the Seven is not on the list.
-    Writing that sentence is a copy decision, so no sentence was invented.
+- Note — in the Seven row's place on Bank 1: `Bank 1 holds the factory presets and cannot be written to.` — save-plan.js
+  - **SETTLED 2026-11-15 (Daniel).** This was OPEN: the row was removed and
+    nothing said why, so a player who pressed Save while on Bank 1 saw only
+    "Save to computer" and was not told where the Seven had gone.
+  - **The wording is REUSED, not written.** Daniel had already written this
+    sentence three times — transfer-runner.js held three copies of the literal
+    — and his reason for reusing it was that a fourth phrasing would have been
+    a fourth thing to keep in sync. It is now defined once, as `BANK1_LOCKED`
+    in save-plan.js, and the runner takes its three from there.
+  - Placed where the row would have been, so it reads as the reason there are
+    fewer options rather than as a warning about something the player did.
+  - A NOTE, not a row: no border, no hover, no cursor, nothing clickable, and
+    deliberately not red or amber. It is a fact about the instrument, not a
+    problem with the save, so it wears the same muted ink as the row subtitles.
 - Row — the computer: `Save to computer` — save-plan.js
   - alone: `Adds it to your Patches library. The Seven is untouched`
   - with the update row above it: `Keeps this patch and saves these values as a separate one`

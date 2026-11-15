@@ -34,6 +34,13 @@
 
 const { EventEmitter } = require('node:events');
 const { readParamWithRetry } = require('./param-read');
+// ONE DEFINITION OF THE BANK 1 SENTENCE. This file used to hold three copies
+// of the literal, and the save dialog needed a fourth place to say it
+// (2026-11-15). Daniel's call was to reuse the words rather than write a
+// variant, so the string lives in save-plan.js — it is user-facing copy, and a
+// runner that happens to need the same words should not own them. save-plan is
+// pure and dependency-free, so requiring it here costs nothing.
+const { BANK1_LOCKED } = require('./save-plan');
 
 const SLOTS_PER_BANK = 8;
 const BLOCKED_BANK = 1;
@@ -146,7 +153,7 @@ class TransferRunner extends EventEmitter {
   // decide with the facts in front of them.
   preflight(setlistIndex, bank) {
     if (bank === BLOCKED_BANK) {
-      return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
+      return { ok: false, error: BANK1_LOCKED };
     }
     if (!Number.isInteger(bank) || bank < 1 || bank > 4) {
       return { ok: false, error: `There is no bank ${bank}.` };
@@ -216,7 +223,7 @@ class TransferRunner extends EventEmitter {
   async selectBank(bank) {
     if (this.running) return { ok: false, error: 'A transfer is already running' };
     if (bank === BLOCKED_BANK) {
-      return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
+      return { ok: false, error: BANK1_LOCKED };
     }
     if (!Number.isInteger(bank) || bank < 1 || bank > 4) {
       return { ok: false, error: `There is no bank ${bank}.` };
@@ -293,7 +300,7 @@ class TransferRunner extends EventEmitter {
     // keep it there.
     const soundOnly = String(ref).startsWith('sound:');
     if (bank === BLOCKED_BANK && !soundOnly) {
-      return { ok: false, error: 'Bank 1 holds the factory presets and cannot be written to.' };
+      return { ok: false, error: BANK1_LOCKED };
     }
     if (!Number.isInteger(bank) || bank < 1 || bank > 4) {
       return { ok: false, error: `There is no bank ${bank}.` };

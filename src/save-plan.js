@@ -34,6 +34,16 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   // WHICH ROWS THE DIALOG OFFERS.
   //
+  // THE ONE SENTENCE ABOUT BANK 1, DEFINED ONCE (Daniel, 2026-11-15).
+  //
+  // He had written it three times already — transfer-runner.js held three
+  // copies of the same literal — and the save dialog needed a fourth place to
+  // say it. His call was to reuse the words rather than invent a variant, so
+  // this is the definition and transfer-runner takes its three from here.
+  // The direction is deliberate: this is user-facing COPY, and a runner that
+  // happens to need the same words should not be the thing that owns them.
+  const BANK1_LOCKED = 'Bank 1 holds the factory presets and cannot be written to.';
+
   // The overwrite row is ABSENT with nothing changed: there is no slot to
   // overwrite, and a row offering to replace a preset with its own contents is
   // an instruction to do nothing. With changes it is present — and it is NOT a
@@ -93,11 +103,23 @@
     // instrument quietly refused — a save he would have every reason to
     // believe had worked.
     //
-    // ABSENT, not disabled, and not relabelled to say the bank is locked:
-    // adding that sentence is a copy decision rather than a correctness one,
-    // and what is left — "Save to computer" — is already the true answer, since
-    // the computer is genuinely the only place a Bank 1 edit can go.
+    // ABSENT, not disabled — and SINCE 2026-11-15 a note takes its place.
+    //
+    // Leaving the gap unexplained was flagged OPEN FOR DANIEL in docs/COPY.md:
+    // a player who pressed Save while sitting on Bank 1 saw only "Save to
+    // computer" and was never told why the Seven was not on the list. Still
+    // not a row and still not disabled — it is a NOTE, in the position the row
+    // would have had, so it reads as the reason there are fewer options rather
+    // than as a warning about something they did.
+    //
+    // THE SENTENCE IS NOT A NEW ONE. Daniel had already written it three
+    // times; a fourth phrasing would have been a fourth thing to keep in step.
+    // BANK1_LOCKED is that one string, and transfer-runner.js now takes its
+    // three copies from here rather than holding its own.
     const slotIsWritable = !slot || slot.bank !== 1;
+    if (changed && !slotIsWritable) {
+      rows.push({ kind: 'note', text: BANK1_LOCKED });
+    }
     if (changed && slotIsWritable) {
       rows.push({
         value: 'hold',
@@ -147,12 +169,19 @@
   // what Daniel reported on 2026-11-14. Letting modal.js settle on a marked
   // choice means a dialog built out of rows cannot be left unanswerable by a
   // caller that forgot to wire it up.
+  // A NOTE IS NOT A ROW, and the markup says so rather than relying on styling
+  // to carry it: no button, no data-sv, no data-modal-choice. Clicking it
+  // answers nothing because there is nothing on it to answer with — which is
+  // the property that matters, since a dialog of buttons with one unclickable
+  // button in it would be the worst of both.
   const rowsHtml = (rows) =>
-    '<div class="sv-rows">' + rows.map((r) =>
-      `<button type="button" class="sv-row" data-sv="${esc(r.value)}" data-modal-choice>` +
-      `<span class="sv-row-t">${esc(r.title)}</span>` +
-      `<span class="sv-row-s">${esc(r.sub)}</span></button>`
-    ).join('') + '</div>';
+    '<div class="sv-rows">' + rows.map((r) => (
+      r.kind === 'note'
+        ? `<p class="sv-note">${esc(r.text)}</p>`
+        : `<button type="button" class="sv-row" data-sv="${esc(r.value)}" data-modal-choice>`
+          + `<span class="sv-row-t">${esc(r.title)}</span>`
+          + `<span class="sv-row-s">${esc(r.sub)}</span></button>`
+    )).join('') + '</div>';
 
   // WHAT THE SAVE WRITES.
   //
@@ -220,5 +249,5 @@
       : 'stay';
   }
 
-  return { saveRows, rowsHtml, valuesToWrite, decideSave };
+  return { saveRows, rowsHtml, valuesToWrite, decideSave, BANK1_LOCKED };
 });

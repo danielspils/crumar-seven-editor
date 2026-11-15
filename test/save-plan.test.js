@@ -15,7 +15,11 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { saveRows, valuesToWrite, decideSave } = require('../src/save-plan');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  saveRows, rowsHtml, valuesToWrite, decideSave, BANK1_LOCKED,
+} = require('../src/save-plan');
 
 // The app's belief and the instrument's reality, deliberately DIFFERENT. A
 // fixture where the two agree cannot catch the bug this file exists for: every
@@ -80,12 +84,65 @@ test('an unknown slot is NOT guessed at', () => {
 // hold a button for three seconds while the instrument declined — a save they
 // would have had every reason to think had worked, in the one feature built
 // because that exact loss happened twice.
+// DESTINATIONS ONLY. Since 2026-11-15 the list can also carry a NOTE, which
+// is not somewhere a patch can go — so the question "what is offered" is asked
+// of the rows that offer something.
+const destinations = (rows) => rows.filter((r) => r.kind !== 'note').map((r) => r.value);
+
 test('Bank 1 is never offered as a destination, however changed the patch', () => {
   const rows = saveRows({ changed: true, slot: { bank: 1, preset: 1 } });
-  assert.deepStrictEqual(rows.map((r) => r.value), ['computer'],
+  assert.deepStrictEqual(destinations(rows), ['computer'],
     'only the computer, which is genuinely the only place a Bank 1 edit can go');
-  assert.ok(!rows.some((r) => /Bank 1/.test(r.title)),
+  assert.ok(!rows.some((r) => /Bank 1/.test(r.title || '')),
     'and Bank 1 is not named as somewhere to overwrite');
+});
+
+test('and it says why, in the row’s place', () => {
+  // The gap used to be silent: the row vanished and the player was left to
+  // work out where the Seven had gone (OPEN FOR DANIEL in docs/COPY.md until
+  // 2026-11-15).
+  const rows = saveRows({ changed: true, slot: { bank: 1, preset: 1 } });
+  const notes = rows.filter((r) => r.kind === 'note');
+  assert.strictEqual(notes.length, 1, 'exactly one note');
+  assert.strictEqual(notes[0].text, BANK1_LOCKED);
+  // IN THE ROW'S PLACE, not appended at the end: it explains the absence, so
+  // it belongs where the absence is — above "Save to computer".
+  const order = rows.map((r) => (r.kind === 'note' ? 'note' : r.value));
+  assert.deepStrictEqual(order, ['note', 'computer']);
+  // AND IT IS NOT A CONTROL. No value to answer the dialog with.
+  assert.strictEqual(notes[0].value, undefined);
+});
+
+test('no note on a bank that CAN be written to', () => {
+  const rows = saveRows({ changed: true, slot: { bank: 3, preset: 5 } });
+  assert.ok(!rows.some((r) => r.kind === 'note'),
+    'the explanation appears only where there is an absence to explain');
+  assert.ok(destinations(rows).includes('hold'), 'and the Seven is offered instead');
+});
+
+test('the note is rendered as a note, not as a row', () => {
+  const html = rowsHtml(saveRows({ changed: true, slot: { bank: 1, preset: 1 } }));
+  assert.match(html, /<p class="sv-note">Bank 1 holds the factory presets/);
+  // The properties that matter are the absences: a dialog of buttons with one
+  // unclickable button in it would be worse than either.
+  const noteTag = /<p class="sv-note">[^<]*<\/p>/.exec(html)[0];
+  assert.ok(!/data-modal-choice/.test(noteTag), 'it cannot answer the dialog');
+  assert.ok(!/data-sv/.test(noteTag), 'it names no destination');
+  assert.ok(!/<button/.test(noteTag), 'and it is not a button');
+});
+
+test('the Bank 1 sentence has ONE definition, shared with the transfer runner', () => {
+  // Daniel had written it three times; a fourth phrasing would have been a
+  // fourth thing to keep in sync (2026-11-15). This fails if either side
+  // starts holding its own copy.
+  const runner = require('../src/transfer-runner');
+  assert.strictEqual(typeof BANK1_LOCKED, 'string');
+  assert.ok(BANK1_LOCKED.length > 0);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'transfer-runner.js'), 'utf8');
+  assert.ok(!src.includes(`'${BANK1_LOCKED}'`),
+    'transfer-runner.js no longer holds its own copy of the sentence');
+  assert.match(src, /BANK1_LOCKED/, 'it uses the shared one');
+  assert.ok(runner, 'and it still loads');
 });
 
 test('Bank 1 still offers the update row when there is a file to update', () => {
@@ -95,7 +152,14 @@ test('Bank 1 still offers the update row when there is a file to update', () => 
   // The LOCK IS ON THE INSTRUMENT, not on the library. A patch of your own,
   // open while the Seven happens to sit on a Bank 1 preset, is still yours to
   // update — only the hold is impossible.
-  assert.deepStrictEqual(rows.map((r) => r.value), ['update', 'computer']);
+  assert.deepStrictEqual(destinations(rows), ['update', 'computer']);
+  // AND THE NOTE STILL EXPLAINS THE MISSING ONE. Two destinations here rather
+  // than one makes the absence easier to miss, not harder, so the sentence is
+  // if anything more needed.
+  assert.deepStrictEqual(
+    rows.map((r) => (r.kind === 'note' ? 'note' : r.value)),
+    ['update', 'note', 'computer']
+  );
 });
 
 // Every other bank is unaffected, so the guard cannot be a blanket refusal

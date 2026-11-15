@@ -1640,6 +1640,19 @@
       display: block; margin-top: 3px;
       font-size: 12px; line-height: 1.45; color: var(--text-muted);
     }
+    /* THE BANK 1 NOTE, where the Seven row would have been.
+       It explains why there are fewer options; it is not a warning about
+       something the player did, and it is not a control. So: no border, no
+       background, no hover, no cursor, and NOT red or amber — this is a fact
+       about the instrument, not a problem with the save. --text-muted is the
+       same ink the row subtitles use, which is what makes it read as of a
+       piece with them rather than as an alert dropped into the list.
+       The left padding matches .sv-row's so the sentence starts on the same
+       line as the titles above and below it. */
+    .seven-modal-body .sv-note {
+      margin: 0; padding: 2px 14px;
+      font-size: 12px; line-height: 1.45; color: var(--text-muted);
+    }
     /* THE TICK BOX IS THE PROTECTION, so it reads as reassurance rather than
        as an extra decision: a quiet box under the instruction, already
        ticked. */
