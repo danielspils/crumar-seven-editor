@@ -2460,11 +2460,61 @@
     .engine-stage .engine-carousel {
       float: none; width: 100%; height: 100%; margin: 0; aspect-ratio: auto;
     }
-    /* The peeks were drawn OUTSIDE the box on purpose, so the resting layout
-       kept its height and nothing reflowed when the pointer arrived. The box
-       is fixed either way now, so the reason is gone and the clipping is what
-       keeps a neighbour off the parameters. */
+    /* ROOM FOR THE HALO, and it is the halo that drew the box edge.
+       The dark theme lifts a cut-out off the page with drop-shadow(0 0 9px
+       rgba(255,255,255,.16)), which follows the instrument's ALPHA. The fitted
+       picture is exactly as tall as the stage, so that glow met the stage's
+       overflow:hidden and was cut off square — a straight bright line across
+       the top and bottom of the box, which is what a box edge looks like.
+       NOT a background baked into the photos. Measured, all 19: alpha is 0 at
+       every corner, 24-66% of each canvas is fully transparent, and only
+       0.2-0.5% of any canvas sits in the near-invisible 1-8 band — they are
+       clean cut-outs, and no element in the chain paints a background
+       (every computed backgroundColor rgba(0,0,0,0), no background-image).
+       What the composite actually reads, canvas-reproduced with Chromium's own
+       filter over the page colour rgb(35,33,30): along the box's top edge
+       42,40,37 · 52,50,48 · 45,43,41 — the glow — dropping to the page one
+       pixel above. 87% of the box differs from the page at all.
+       10px is the room the 9px layer needs. The 26px layer is .07 alpha and
+       lands within a level or two of the page, which is why it never drew an
+       edge of its own. Padding rather than a smaller max-height so the
+       carousel's faces and the plain drawing answer to one number, and the
+       scan line is unaffected: app.js measures the DRAWN rect at runtime and
+       absolute offsets resolve against the padding box, whose origin does not
+       move. */
+    .engine-stage .sound-art { box-sizing: border-box; padding: 10px; }
+    /* CLIPPED AT REST, OPEN WHILE TURNING.
+       The neighbours sit at translateX(±72%) and the hero scales to 1.12, so
+       all three leave the box the moment the wheel wakes. fc940cd clipped them
+       outright — to keep a neighbour off the parameter rows — which hid them
+       completely and left the wheel unturnable: the peeks ARE the control,
+       since clicking one brings it to the middle. That is a regression, not a
+       trade (Daniel, 2026-11-15).
+       So the box clips only while the wheel is asleep. Awake, the clipping
+       moves out to the sound engine COLUMN: a peek may cross the meta text
+       beside it, which is what it was always allowed to do, and may never
+       cross into the effects chain. */
     .engine-stage .engine-carousel { overflow: hidden; }
+    .engine-stage:has(.engine-carousel.is-open),
+    .engine-stage:has(.engine-carousel.is-turning),
+    .engine-stage:has(.engine-carousel:focus-within) {
+      overflow: visible;
+      /* ABOVE ITS SIBLINGS. The stage is the SECOND child of the head grid, so
+         the meta lines that follow it in the DOM would paint over any peek
+         that reached them. */
+      z-index: 5;
+    }
+    .engine-stage:has(.engine-carousel.is-open) .engine-carousel,
+    .engine-stage:has(.engine-carousel.is-turning) .engine-carousel,
+    .engine-stage:has(.engine-carousel:focus-within) .engine-carousel {
+      overflow: visible;
+    }
+    /* THE COLUMN IS THE OUTER FENCE, and it is safe to be one: overflow:hidden
+       does NOT trap position:fixed children — only transform, filter and
+       will-change do — so the parameter picker still escapes it. That is the
+       same distinction that stopped the library list using a mask
+       (src/scroll-fade.js). */
+    .detail-cols > .col-engine { overflow: hidden; }
     /* THE PLAIN DRAWING IS FITTED TOO, not merely clipped.
        The carousel already fitted its faces; the plain variant a library patch
        gets sized itself to the picture and relied on its own 363/512 slot
