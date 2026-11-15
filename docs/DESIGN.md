@@ -181,8 +181,9 @@ third thing wants this green, split them then.
 it states "selected" in the instrument's own language instead of the app's. A
 second element that starts glowing takes the meaning away from this one.
 
-*(The mock at `out/lists-design.html` still shows the earlier ink-only light
-mode — it predates the correction above.)*
+The mock at `out/lists-design.html` implements this — a same-hue spill at low
+alpha, widening and weakening, so the sign reads as more saturated than the
+paper rather than brighter than it.
 
 ## Parameter rendering taxonomy
 
