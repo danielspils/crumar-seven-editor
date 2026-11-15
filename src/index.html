@@ -2708,10 +2708,35 @@
          that reached them. */
       z-index: 5;
     }
+    /* AND WHILE IT IS AWAKE, THE WHEEL CENTRES ON THE COLUMN.
+       The stage is flush against the engine column's RIGHT edge — that is the
+       resting design, text left and instrument right (fc940cd) — so a
+       symmetric spread around the stage throws the right-hand neighbour out of
+       the column while the left one has the whole meta text to spill over.
+       MEASURED with the Seven attached, before: column x420..794, stage
+       x607..794 (0px from the right edge), prev peek x496.7..635 fully
+       visible, next peek x766..904.3 with 28px of 138 inside — 20%.
+       IT CANNOT BE TUNED AWAY. The hero at scale 1.12 is 104.7px half-width
+       and there are only 93.5px between the stage's centre and the column's
+       edge, so any peek narrow enough to fit on the right is entirely behind
+       the hero. A visible symmetric peek REQUIRES the wheel to move.
+       translateX(-50%) is exactly the shift: the stage is flush right, so the
+       gap to the left is (column - stage), and half of that is what centres
+       it — and while the stage is `min(190px, 50%)` of the column, half the
+       gap IS half the stage. Nothing is scaled: the hero is the same size it
+       was, in a different place, which is the one thing this fix was told not
+       to trade away. */
+    .engine-stage .engine-carousel {
+      transition: transform .26s cubic-bezier(.3, 1, .5, 1);
+    }
     .engine-stage:has(.engine-carousel.is-open) .engine-carousel,
     .engine-stage:has(.engine-carousel.is-turning) .engine-carousel,
     .engine-stage:has(.engine-carousel:focus-within) .engine-carousel {
       overflow: visible;
+      transform: translateX(-50%);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .engine-stage .engine-carousel { transition: none; }
     }
     /* THE COLUMN IS THE OUTER FENCE, and it is safe to be one: overflow:hidden
        does NOT trap position:fixed children — only transform, filter and
@@ -2973,11 +2998,20 @@
          click to choose it. */
       z-index: 4;
     }
+    /* THE SPREAD, AS ONE NUMBER. 72% put the right-hand neighbour off the end
+       of the column — see the centring note on .engine-carousel above for the
+       measurements. 56% is what fits with the wheel centred: at the measured
+       187px face, the hero's own half-width at scale 1.12 is 104.7px, so a
+       peek centred at ±104.7 shows 69px of itself beyond the hero's edge on
+       each side, and its hover state at scale .82 still lands 6px inside the
+       column. Anything wider escapes on hover before it escapes at rest,
+       which is why the bound was taken from the HOVER size, not this one. */
+    .engine-carousel { --peek: 56%; }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
-      transform: translateX(-72%) scale(.74);
+      transform: translateX(calc(-1 * var(--peek))) scale(.74);
     }
     .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
-      transform: translateX(72%) scale(.74);
+      transform: translateX(var(--peek)) scale(.74);
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
@@ -2993,12 +3027,12 @@
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
-    .engine-carousel.is-open .is-prev:hover { transform: translateX(-72%) scale(.82); }
-    .engine-carousel.is-open .is-next:hover { transform: translateX(72%) scale(.82); }
+    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.82); }
+    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.82); }
     .engine-carousel.is-turning.is-turning-next .is-next,
     .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
-    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
     /* The one rolling in from beyond, taking the vacated side. */
