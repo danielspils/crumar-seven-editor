@@ -24,6 +24,37 @@
 // So a row can say "this is no longer what your backup recorded" and can name
 // the SOUND — but never the patch name, because the Seven stores no names and
 // the app has no way to know what the slot is called now.
+//
+// ---------------------------------------------------------------------------
+// STILL TO BUILD, decided 2026-11-15 and written here because this is the file
+// the next step extends.
+//
+// AN INCOMING PANEL PROGRAM CHANGE MUST ARM THE SAME SLOT READ AS AN APP
+// RECALL — the 0x45 sound and the 110-parameter read, with the same
+// coalescing. Today only the app's own recalls arm it: expectSlotRead() has
+// three callers (the bank row, the panel preset button, the bank-tab arrow
+// walk) and recordSlotSound() rejects anything it did not ask for.
+//
+// THIS COVERS STORES WITH NO SEPARATE WATCHER, which is why the fingerprint
+// watcher that was proposed is NOT being built. Measured on hardware,
+// 2026-11-15, Bank 4 Preset 5 (program 28), Send PC on, with a real
+// three-second hold:
+//
+//   16:27:19.327  program-change  program=28 bank=4 preset=5 echo=false
+//   16:27:19.337  recall-burst    program=28 soundId=10 fingerprint=10|7:127,...
+//
+// A store is followed by exactly such a recall. The frames already reach the
+// renderer and carry the slot; nothing consumes them, so the slot's own 0x45
+// arrived and was dropped, and the app went on showing a row whose preset had
+// changed underneath it.
+//
+// AND THE FULL READ CLOSES THE FINGERPRINT HOLE. The burst's fingerprint is
+// the sound id plus the 22 panel CCs, so a slot differing only in CC-less
+// parameters reads as unchanged. Re-reading all 110 does not care.
+//
+// IT NEEDS SEND PC ON. Without it a panel press carries no program number and
+// the app cannot know which slot moved — the same condition slotIsKnown()
+// already gates the save flow's slot naming on.
 
 (function (root, factory) {
   const api = factory();
