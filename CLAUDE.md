@@ -1721,6 +1721,48 @@ consumer still exists.
 
 Kept here because they otherwise live only in a chat that ends.
 
+- **THE SEARCH COUNT NEVER REFRESHES WHILE YOU TYPE** — on any tab. Logged for
+  1.5.7 (Daniel, 2026-11-15); deliberately NOT fixed in the four-tab branch,
+  which is visual-only, because the fix is in the shared search paint path.
+
+  The count ("3 of 12") is drawn into `.lib-bar` by `renderBody`, and it only
+  appears WHILE a search is narrowing something — that was the point of it
+  (2f727c5). But typing does not call `render()`: the input handler repaints
+  `.lib-list` alone, on purpose, because a full render replaces the field being
+  typed in and takes the caret with it. The bar is never touched, so the one
+  number whose whole job is to answer "how much did that hide?" is stale from
+  the keystroke before, or absent.
+
+  It is also why `countLabel()` reads a render behind: it is evaluated as an
+  ARGUMENT to `renderBody`, so it reports the hits the PREVIOUS render left on
+  `state`. Both halves want fixing together, and the fix has to keep the caret.
+
+- **`.top-tab`'s font shorthand is invalid, so the word tabs render at the
+  browser default** (found 2026-11-15, NOT fixed — Daniel's call, since it
+  changes the most prominent type in the app).
+
+  ```css
+  .top-tab { font: 700 17px/1.1 inherit; font-family: inherit; }
+  ```
+
+  The `font` shorthand's last value must be a font-FAMILY, and `inherit` is not
+  a family token there, so the whole declaration is invalid and is dropped —
+  the 17px and the 700 with it. `font-family: inherit` on the next line still
+  applies, which is why the family looks right and nothing ever looked broken
+  enough to chase.
+
+  MEASURED, not inferred: the parsed rule in the CSSOM contains no `font-size`
+  and no `font-weight` at all; `font: 700 17px/1.1 inherit` parses to `""`
+  while the same declaration ending in `sans-serif` parses fine; the tabs
+  compute to **400 13.333px**, the UA button default; and the valid shorthand
+  applied inline takes them straight to 17px/700.
+
+  So the type ladder's top rung has never been on screen. Two things rest on
+  the broken number and must be re-derived when it is fixed: the 33.5px
+  baseline offset that puts SOUND ENGINE on the word tabs' baseline
+  (`one-header-line.js` will fail loudly, which is what it is for), and the
+  bank tabs' size, which was chosen to sit a step below the word tabs.
+
 - **UI STATE LEAKS BETWEEN SCENARIOS, and it cost two days of calling two
   tests "flaky"** (settled 2026-08-22). The runner copies a fresh LIBRARY per
   scenario. It does NOT reset userData — and whether the library tray is open
