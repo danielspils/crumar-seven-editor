@@ -367,9 +367,12 @@
     // three tabs overlap (Daniel, 2026-08-13). The cost, accepted: you cannot
     // browse every Rhodes you have ever had in one place; a captured one is
     // reached through its backup.
-    const list = data.patches.filter(
-      (e) => inList(e) && matches(e, state.search)
-    );
+    const inScope = data.patches.filter(inList);
+    const list = inScope.filter((e) => matches(e, state.search));
+    if (String(state.search || '').trim()) {
+      state.searchHits = list.length;
+      state.searchTotal = inScope.length;
+    }
     if (!list.length) {
       return `<div class="lib-empty">${state.search
         ? 'No patches match the search.'
@@ -618,9 +621,12 @@
       // each row says which bank and slot it came from ("2·3") because the
       // heading that used to say it is gone. Clearing brings the tabs back.
       if (searching) {
-        const hits = run.banks.flatMap((b) => slotsOf(b).map((f, i) => ({
+        const all = run.banks.flatMap((b) => slotsOf(b).map((f, i) => ({
           entry: f ? byFile.get(f) : null, bank: b.bank, preset: i + 1,
-        }))).filter((x) => x.entry && matches(x.entry, state.search));
+        })));
+        const hits = all.filter((x) => x.entry && matches(x.entry, state.search));
+        state.searchHits = hits.length;
+        state.searchTotal = all.filter((x) => x.entry).length;
         return runHead('') + (hits.length
           ? `<div class="lib-group">${hits.map((x) => renderPatchRow(
             x.entry, state, { flat: true, readOnly: true, n: `${x.bank}·${x.preset}` }
@@ -1226,6 +1232,17 @@
   // Anything that needs the list's markup calls this. A third copy would go
   // stale the same way.
   function renderList(data, state, sounds) {
+    // HOW MANY THE SEARCH NARROWED TO, set by whichever list below actually
+    // does the narrowing and read by the bar afterwards. Cleared first, so a
+    // list that does NOT filter by search leaves no count rather than an
+    // inherited one — and renderBody builds the list before the bar, which is
+    // what makes reading it here safe.
+    //
+    // Taken from the real list rather than recomputed beside it: a replica
+    // cannot fail when the original breaks, and a second count is how two
+    // numbers for one list start to disagree.
+    state.searchHits = null;
+    state.searchTotal = null;
     if (state.tab === 'backups') {
       return state.backupRun == null
         ? renderBackupList(data, state)
@@ -1379,12 +1396,17 @@
 
     // SINGULAR WHEN THERE IS ONE. "1 setlists" is the kind of thing nobody
     // reports and everybody notices.
+    // ONLY WHILE A SEARCH IS NARROWING SOMETHING (Daniel, 2026-11-15). The bar
+    // used to carry "9 patches" / "1 setlist" at all times, which is a number
+    // beside a list you can already see and count. While searching it answers
+    // a question you cannot: how much of the list the search just hid.
+    //
+    // Nothing on a tab whose search narrows nothing. The setlist list does not
+    // filter by state.search at all, so a count there would read "3 of 3"
+    // forever — true, and a lie in shape.
     function countLabel() {
-      const n = visibleCount();
-      const word = state.tab === 'patches' ? 'patch'
-        : state.tab === 'backups' ? 'backup' : 'setlist';
-      const plural = n === 1 ? '' : (word === 'patch' ? 'es' : 's');
-      return `${n} ${word}${plural}`;
+      if (state.searchHits == null) return '';
+      return `${state.searchHits} of ${state.searchTotal}`;
     }
 
     function render() {

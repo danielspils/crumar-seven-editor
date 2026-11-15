@@ -176,3 +176,63 @@ test('clicking inert chrome ends the search and redraws', async () => {
   await m.click({});
   assert.ok(!boxOpen(m), 'search ended, and the body was rebuilt to say so');
 });
+
+// --- the count beside the search -------------------------------------------
+//
+// IT ONLY APPEARS WHILE A SEARCH IS NARROWING SOMETHING (Daniel, 2026-11-15).
+// The bar used to carry "9 patches" at all times — a number beside a list you
+// can already see and count. While searching it answers the question you
+// cannot: how much of the list the search just hid.
+//
+// Mounted rather than calling renderBody directly, because the count is passed
+// IN by the live view: a bare renderBody() has no count by design, and a test
+// that called it would assert the absence of something nothing was asked for.
+// ASSERTED ON THE STATE, which is where the honesty lives. The numbers are
+// set by whichever list actually does the narrowing, so they cannot drift from
+// what was rendered — and reading them here needs no test-only method on the
+// view. (renderBody takes the finished label as an argument; the live view is
+// what supplies it.)
+const twoPatches = [
+  { file: 'a.json', patchIndex: 0, name: 'Rhodes', soundName: 'Tine Piano',
+    mtime: 2, params: {}, origin: { kind: 'created', date: '2026-08-15T10:00:00Z' } },
+  { file: 'b.json', patchIndex: 0, name: 'Clav thing', soundName: 'Clavi Piano',
+    mtime: 1, params: {}, origin: { kind: 'created', date: '2026-08-15T10:00:00Z' } },
+];
+
+test('a search records how many of how many it narrowed to', () => {
+  const state = { tab: 'patches', patchScope: 'all', search: 'tine' };
+  SevenLibraryView.renderBody({ patches: twoPatches, setlists: [], files: 2 }, state);
+  assert.strictEqual(state.searchHits, 1);
+  assert.strictEqual(state.searchTotal, 2);
+});
+
+test('with no search there is nothing to count', () => {
+  // The bar used to say "9 patches" at all times — a number beside a list you
+  // can already see and count.
+  const state = { tab: 'patches', patchScope: 'all', search: '' };
+  SevenLibraryView.renderBody({ patches: twoPatches, setlists: [], files: 2 }, state);
+  assert.strictEqual(state.searchHits, null);
+});
+
+test('a search that narrows nothing counts nothing', () => {
+  // The setlist list does not filter by state.search at all, so a count there
+  // would read "3 of 3" forever — true, and a lie in shape. Asserted so that
+  // giving setlists a real search later comes with its own decision about it.
+  const state = { tab: 'setlists', search: 'fri' };
+  SevenLibraryView.renderBody(
+    { patches: [], setlists: [{ name: 'Friday', slots: [] }], files: 0 }, state
+  );
+  assert.strictEqual(state.searchHits, null);
+});
+
+test('the label is only drawn when there is one to draw', () => {
+  const data = { patches: twoPatches, setlists: [], files: 2 };
+  const withCount = SevenLibraryView.renderBody(
+    data, { tab: 'patches', patchScope: 'all', search: 'tine' }, [], '1 of 2'
+  );
+  assert.ok(/lib-count-right[^>]*>1 of 2</.test(withCount), 'the count renders when supplied');
+  const without = SevenLibraryView.renderBody(
+    data, { tab: 'patches', patchScope: 'all', search: '' }, [], ''
+  );
+  assert.ok(!/lib-count-right/.test(without), 'and no empty span when there is none');
+});
