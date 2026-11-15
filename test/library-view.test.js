@@ -214,9 +214,13 @@ test('each run row opens ITS run, not the first one sharing its date', () => {
   assert.deepStrictEqual(keys, ['2026-08-16', '2026-08-16|partial'],
     'two rows, two keys — a date alone could not tell them apart');
 
+  // The run's date moved from the action line to the bar's own title
+  // (.lib-detail-title) on 2026-11-15. WHAT THIS PINS IS UNCHANGED — that a
+  // row opens ITS run and not another sharing its date — and the date is
+  // still the only thing on screen that says which one opened.
   const header = (key) => {
     const html = SevenLibraryView.renderBody(data, { tab: 'backups', backupRun: key, search: '' });
-    return /lib-setlist-name">([^<]*)</.exec(html)[1];
+    return /lib-detail-title"[^>]*>([^<]*)</.exec(html)[1];
   };
   assert.strictEqual(header('2026-08-16|partial'), '16 August · failed');
   assert.strictEqual(header('2026-08-16'), '16 August', 'the clean run opens as itself');

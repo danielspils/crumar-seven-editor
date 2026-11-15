@@ -1042,6 +1042,23 @@
     .seg-btn.active .seg-label { border-bottom-color: var(--amber); }
     .seg-label { display: inline-block; padding-bottom: 3px; border-bottom: 2px solid transparent; }
     .seg-btn:hover:not(.active) { color: var(--text); }
+    /* THE BAR INSIDE A DETAIL VIEW: "‹ Backups   14 November".
+       The title is a flex child here, NOT the absolutely-centred span the old
+       head used. That span was centred on the header so it would not shuffle
+       when the Send button's bank number changed width — and the cost was that
+       it knew nothing about what it was centring over, so at this pane width
+       it overlapped the button by 6px. Laid out in the line, it cannot.
+       It also takes the leftover width and truncates, which the nowrap
+       absolute span could not: setlist names are user-written and long. */
+    /* 6px, the gutter the rows use — the back button moved up here from
+       .lib-setlist-head, which had just been aligned to it, and .lib-bar's own
+       2px would have put it back on the panel edge. */
+    .lib-bar-detail { flex-wrap: nowrap; padding-left: 6px; }
+    .lib-detail-title {
+      min-width: 0; flex: 1 1 auto;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 15px; font-weight: 600; color: var(--text);
+    }
     /* Search is a magnifier until it is wanted. */
     /* Right-hand end of the bar, away from the tabs it is not part of. */
     .lib-search-open { margin-left: auto; }
@@ -1195,22 +1212,21 @@
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
        row here to hover — so it was present and invisible. */
-    /* Back on the left, everything else flushed right: icons, then Send.
-       This lives on the BACK button rather than on the first icon —
-       `.setlist-icon:first-of-type` matched nothing, because :first-of-type
-       counts element type and the first <button> in this row is .lib-back. */
-    .lib-setlist-head .lib-back { margin-right: auto; }
-    /* The date sits BETWEEN the two controls rather than beside the back
-       button: it names what you are looking at, and a title tucked against the
-       left edge reads as a caption on the button next to it. Absolute, not a
-       flex child, so it centres on the HEADER — centring it in the leftover
-       space would move it every time the Send button's bank number changed
-       width (Daniel, 2026-08-20). */
-    .lib-setlist-head { position: relative; }
-    .lib-setlist-head .lib-setlist-name {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      white-space: nowrap; pointer-events: none;
-    }
+    /* AN ACTION LINE, flushed right. The back button used to live here with
+       `margin-right: auto` pushing the icons and Send to the far end; it is in
+       the bar now, so the row aligns its own contents instead.
+       EMPTY DRAWS NOTHING: a backup run with no Send (the bank-tab branch
+       passes '') would otherwise leave a padded, ruled strip behind. */
+    .lib-setlist-head { justify-content: flex-end; }
+    .lib-setlist-head:empty { display: none; }
+    /* The centred date is GONE from this line, with the rule that positioned
+       it. It was absolute so it would centre on the header rather than on the
+       leftover space, which kept it still as the Send button's bank number
+       changed width (Daniel, 2026-08-20) — and the same absoluteness is why it
+       could overlap that button by 6px at this pane width. It is a laid-out
+       flex child of .lib-bar now (.lib-detail-title), where it cannot.
+       Removed rather than left behind: a rule with no element is the same
+       zero-consumer shape as the Notes strip. */
     .lib-setlist-head .setlist-send { opacity: 1; }
     /* Drawn on the same grid as .slot-clear (the trash can on a slot row):
        no fill, hairline stroke, round joins — and the same colour and the same
@@ -1232,13 +1248,10 @@
        to anybody. Dimmed, unclickable, and the tooltip says why. */
     .setlist-icon[disabled] { opacity: .35; cursor: default; }
     .setlist-icon[disabled]:hover { color: var(--text-dim); }
-    /* The name gets a line of its own: setlist names are user-written and get
-       long, and one cannot share a row with three controls. */
-    .lib-setlist-title {
-      font-size: 15px; font-weight: 600; color: var(--text);
-      /* 6px to match the rows below it and the head above it. */
-      padding: 0 6px 8px; line-height: 1.25;
-    }
+    /* .lib-setlist-title is gone too. The setlist's name had a line of its own
+       because a long user-written one could not share a row with three
+       controls; it shares the bar with the back button now, and truncates
+       there, so the line it needed no longer exists. */
     /* Same reason inside a backup: a bank heading is not a hoverable row, so
        its Send would have stayed invisible (Daniel, 2026-08-13). */
     .lib-group-title-row .setlist-send { opacity: 1; }

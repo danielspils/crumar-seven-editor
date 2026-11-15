@@ -622,12 +622,13 @@
     // NO LOCK GLYPH. On the instrument it says "Crumar reserves Bank 1"; in a
     // backup it would be decoration attached to a fact that does not apply —
     // these eight records can be sent to any bank.
+    // THE ACTION LINE. The back button and the run's date moved up to the bar
+    // (detailHead), which is also what stopped the centred date colliding
+    // with "Send Bank 1 to Seven →". What is left is the action, if there is
+    // one — an empty line draws nothing, since .lib-setlist-head:empty is
+    // display:none.
     const runHead = (extra) => (
-      '<div class="lib-setlist-head">' +
-      '<button type="button" class="lib-back" data-backup-back>‹ Backups</button>' +
-      `<span class="lib-setlist-name">${esc(fmtDateLong(run.date))}` +
-      `${run.partial ? ' · failed' : ''}</span>` + (extra || '') +
-      '</div>'
+      '<div class="lib-setlist-head">' + (extra || '') + '</div>'
     );
     const slotsOf = (b) => (data.setlists[b.index] || {}).slots || [];
 
@@ -1212,8 +1213,10 @@
       : '';
     return (
       overlay +
+      // THE ACTION LINE. The back button and the setlist's name moved up to
+      // the bar (detailHead), so what is left here is what you can DO to this
+      // setlist, on a line of its own.
       `<div class="lib-setlist-head">` +
-      `<button type="button" class="lib-back">‹ Setlists</button>` +
       // Also here, not only on the row you hovered to get in: this is the view
       // where you finish arranging a setlist, and it is the moment you want to
       // put it on the instrument.
@@ -1233,9 +1236,10 @@
       `<button type="button" class="setlist-send" data-setlist-send="${state.setlistIndex}" ` +
       `title="Load “${esc(setlist.name)}” onto a bank on the Seven">Send to Seven →</button>` +
       `</div>` +
-      // ITS OWN LINE. Setlist names are user-written and get long — "Long
-      // Winters Gig in Seattle" cannot share a row with the controls.
-      `<div class="lib-setlist-title">${esc(setlist.name)}</div>` +
+      // The name used to get a line of its own here, because a long
+      // user-written one could not share a row with three controls. It is in
+      // the bar now, beside the back button and with the controls on this
+      // line instead — so the reason holds and the line it needed is gone.
       rows
     );
   }
@@ -1280,6 +1284,37 @@
   // in createLibraryView (visibleCount) and this function is module-level and
   // exported for tests; computing a second answer here is how two numbers for
   // one list start to disagree.
+  // THE TOP LINE INSIDE A DETAIL VIEW (Daniel, 2026-11-15).
+  //
+  // A list view's top line is the search. A single setlist or backup is not a
+  // list of things to search through, so that line carries where you are
+  // instead — "‹ Backups   14 November" — and the actions move to a line of
+  // their own below. That also ends the collision the centred title had with
+  // the Send button, which overlapped it by 6px at this pane width.
+  //
+  // BUILT HERE, not in the two list renderers, because the line it belongs on
+  // is this function's. The renderers keep their actions and nothing else, so
+  // there is one place that decides what the top line says.
+  function detailHead(data, state) {
+    if (state.tab === 'setlists' && state.setlistIndex != null) {
+      const sl = (data.setlists || [])[state.setlistIndex];
+      if (!sl) return null;
+      return { back: '‹ Setlists', attr: '', title: sl.name };
+    }
+    if (state.tab === 'backups' && state.backupRun != null) {
+      // BY RUN KEY, the same way renderBackupRun finds it: two runs can share
+      // a date and finding by date opens whichever came first.
+      const run = backupRuns(data).find((r) => r.key === state.backupRun);
+      if (!run) return null;
+      return {
+        back: '‹ Backups',
+        attr: ' data-backup-back',
+        title: fmtDateLong(run.date) + (run.partial ? ' · failed' : ''),
+      };
+    }
+    return null;
+  }
+
   function renderBody(data, state, sounds, countLabel = '') {
     // THE THREE TABS ARE LEVEL 1 NOW and are not rendered here any more. They
     // were a segmented control inside the tray — Backups | Patches | Setlists
@@ -1288,8 +1323,13 @@
     // still owns WHICH of its three views is showing (state.tab); it no longer
     // owns the control that chooses.
     const listHtml = renderList(data, state, sounds);
+    const head = detailHead(data, state);
     return (
-      `<div class="lib-bar">` +
+      `<div class="lib-bar${head ? ' lib-bar-detail' : ''}">` +
+      (head
+        ? `<button type="button" class="lib-back"${head.attr}>${esc(head.back)}</button>` +
+          `<span class="lib-detail-title" title="${esc(head.title)}">${esc(head.title)}</span>`
+        : '') +
       // No "Sort by recency" control. It appeared once a list had been
       // dragged, as the way back — and it was a button in the bar earning its
       // place from a state most people never reach (Daniel, 2026-08-14).
@@ -1303,7 +1343,19 @@
       // At the RUN LIST there is nothing to search — a handful of dated runs,
       // picked by looking. Inside a run there are thirty-two records and the
       // box earns its place (Daniel, 2026-08-16).
-      (state.tab === 'backups' && state.backupRun == null
+      // NOT IN A SETLIST, where the top line is now the back button and the
+      // name: eight slots are read by looking, and nothing recorded ever
+      // argued for searching them (Daniel, 2026-11-15).
+      //
+      // INSIDE A BACKUP RUN IT STAYS, against the same instruction, and the
+      // deviation is deliberate: "there are thirty-two records and the box
+      // earns its place" is a decision Daniel took on 2026-08-16, and the
+      // search inside a run was fixed again on 2026-08-20 after typing there
+      // swapped the run for the Patches list. Removing it is a behaviour
+      // change rather than a layout one, so it is his to make — the magnifier
+      // sits at the right-hand end of the new line until he says otherwise.
+      ((state.tab === 'backups' && state.backupRun == null)
+      || (state.tab === 'setlists' && state.setlistIndex != null)
         ? ''
         : (state.searchOpen || state.search
         ? `<input class="lib-search lib-autofocus" type="search" ` +
