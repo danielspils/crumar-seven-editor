@@ -50,8 +50,7 @@
 
   for (const tab of ['patches', 'backups']) {
     await ui.openLibrary();
-    const seg = await ui.waitEl(`.seg-btn[data-tab="${tab}"]`, `the ${tab} tab`);
-    ui.click(seg, `the ${tab} tab`);
+    await ui.selectTab(tab);
     await ui.sleep(700);
 
     // BACKUPS IS TWO LEVELS. It lists backup SETLISTS ("24 August Backup, 32

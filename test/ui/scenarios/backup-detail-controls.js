@@ -14,7 +14,7 @@
   const btn = () => ui.$('#save-live-btn');
 
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="backups"]', 'the Backups tab'), 'Backups');
+  await ui.selectTab('backups');
   await ui.sleep(600);
   const run = ui.$$('.lib-setlist[data-backup]')[0];
   ui.check(!!run, 'there is a backup run');
@@ -69,7 +69,7 @@
   // …and that treatment is the one the Patches tab already uses. The two
   // cannot be on screen together, so each is measured in its own tab and the
   // numbers compared.
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(600);
   const del = ui.$('#library .patch-delete');
   if (del && sendPos) {
@@ -81,12 +81,19 @@
     ui.note('no .patch-delete to compare against in this library');
   }
 
-  // ── the header separator ───────────────────────────────────────────────
-  const strip = ui.$('#bank-strip-label');
-  const asof = ui.$('#bank-strip-asof');
-  if (asof && strip) {
-    const gap = parseFloat(getComputedStyle(asof).marginLeft) || 0;
-    ui.note(`strip: "${strip.textContent.trim()}" + "${asof.textContent.trim()}" gap=${gap}px`);
-    ui.check(gap > 0, 'the honesty label has air after the bank name, in every state');
+  // ── the honesty label ──────────────────────────────────────────────────
+  //
+  // IT USED TO BE A SPACING CHECK on the collapsed summary strip, where the
+  // bank name and this label shared a line and could collide. The strip is
+  // gone with the two-tray layout — and so is that collision, which is one of
+  // the things the redesign removed rather than fixed. What is still worth
+  // asserting is that the label is on screen and says something.
+  await ui.selectTab('seven');
+  const asof = ui.$('#bank-asof');
+  ui.check(!!asof, 'the freshness caveat is on the Seven tab');
+  if (asof) {
+    ui.note(`freshness: "${asof.textContent.trim()}"`);
+    ui.check(/as of|verified|backup/i.test(asof.textContent),
+      'and it says what the view is as of');
   }
 })()

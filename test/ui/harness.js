@@ -128,31 +128,40 @@ window.ui = (() => {
   // Any scenario working in the bank region calls this first. It is a
   // precondition a scenario CAN control, so it arranges it rather than
   // inheriting whatever the last one left.
-  async function closeLibrary() {
-    if (document.querySelector('#library.lib-open')) {
-      document.getElementById('library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  // SELECTING A TAB, which is what opening and closing the tray became.
+  //
+  // These two are the seam every bank-region and library scenario goes
+  // through, so the four-tab redesign is absorbed here rather than in twenty
+  // scenarios. The names are kept deliberately: what a scenario means by
+  // "open the library" is still "put the library's list on screen", and that
+  // intent did not change when the mechanism did.
+  //
+  // The persisted-state warning below is softer than it was — which of the
+  // four tabs you were on is still remembered across runs, but there is no
+  // longer a tray that can be open on top of the bank rows, so a scenario
+  // cannot hand the next one a region that is merely a strip. It still has to
+  // CHOOSE its tab rather than inherit one.
+  const topTab = (name) => document.querySelector(`#top-tabs .top-tab[data-view="${name}"]`);
+  async function selectTab(name) {
+    const tab = topTab(name);
+    if (!tab) { check(false, `no "${name}" tab on screen`); return; }
+    if (tab.getAttribute('aria-selected') !== 'true') {
+      tab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     }
-    await waitFor(() => !document.querySelector('#library.lib-open'),
-      { timeout: 5000, what: 'the library tray to close' });
-    await sleep(300);   // the tray slides; the bank region arrives after it
+    await waitFor(() => topTab(name) && topTab(name).getAttribute('aria-selected') === 'true',
+      { timeout: 5000, what: `the ${name} tab to be selected` });
+    await sleep(250); // the list renders just after the attribute lands
   }
 
-  async function openLibrary() {
-    if (!document.querySelector('#library.lib-open')) {
-      document.getElementById('library-head').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
-    await waitFor(() => !!document.querySelector('#library.lib-open'), { what: 'the library to open' });
-    await sleep(250); // its body renders just after the class lands
-    // Land on PATCHES. The library opens on Backups now (2026-08-13), and
-    // every scenario here goes on to wait for patch rows — so they all timed
-    // out on a tab that has none. The app's default is deliberate; this is the
-    // harness catching up with it.
-    const tab = document.querySelector('.seg-btn[data-tab="patches"]');
-    if (tab && !tab.classList.contains('active')) {
-      tab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await sleep(250);
-    }
-  }
+  // "Close the library" is now "go back to the Seven", which is the same thing
+  // collapsing the tray always meant.
+  const closeLibrary = () => selectTab('seven');
+
+  // Land on PATCHES. The library used to open on Backups (2026-08-13) and
+  // every scenario here goes on to wait for patch rows, so they all timed out
+  // on a tab that has none. With the three views at level 1 the tab IS the
+  // choice, so this makes it explicitly.
+  const openLibrary = () => selectTab('patches');
 
   async function selectBankPreset(index) {
     const rows = $$('#patch-list .patch-row');
@@ -245,7 +254,7 @@ window.ui = (() => {
   return {
     env,
     sleep, check, note, click, hitTarget, waitFor, waitEl, waitClickable, $, $$, connected, live,
-    requireDevice, selectBankPreset, enterAudition, openLibrary, closeLibrary,
+    requireDevice, selectBankPreset, enterAudition, openLibrary, closeLibrary, selectTab,
     waitForHuman,
     result: () => ({ failures, notes }),
   };

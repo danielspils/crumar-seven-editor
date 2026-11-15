@@ -2,7 +2,7 @@
 // "unedited" option, since the Seven never gave up factory defaults.
 (async () => {
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'the Setlists tab');
+  await ui.selectTab('setlists');
   const first = await ui.waitEl('.lib-setlist .patch-name', 'a setlist row');
   if (!ui.check(!!first, 'a setlist to open')) return;
   ui.click(first, 'the first setlist');

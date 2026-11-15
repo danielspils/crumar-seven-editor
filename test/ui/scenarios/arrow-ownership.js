@@ -28,7 +28,7 @@
 
   // ── 1. up/down inside a backup run highlight a row ────────────────────
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="backups"]', 'the Backups tab'), 'Backups');
+  await ui.selectTab('backups');
   await ui.sleep(500);
   const run = ui.$$('.lib-setlist[data-backup]')[0];
   if (!run) {
@@ -63,7 +63,7 @@
   }
 
   // ── 2. the OTS tabs get the arrows back after a trip to the library ───
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(400);
   const patch = ui.$('#library .lib-row.lib-patch');
   if (!patch) {
@@ -73,20 +73,23 @@
   ui.click(patch.querySelector('.patch-name') || patch, 'a patch in the library');
   await ui.sleep(500);
 
-  // The tabs must be on screen for any of this to mean anything.
-  const tabs = ui.$$('#bank-tabs .bank-tab');
-  if (!tabs.length || !ui.$('#bank-tabs').offsetParent) {
-    ui.note('skipped: the OTS bank tabs are not visible in this layout');
-    return;
-  }
-
-  // COME BACK THE WAY A PERSON DOES: close the library, which puts the tray
-  // back on screen. This gesture is deliberately NOT a click inside the bank
-  // region — it is the case the region-click claim does not cover, and the one
-  // that has to work without any click on the tabs at all.
-  ui.click(ui.$('#library-head'), 'the library header (collapsing it)');
-  await ui.waitFor(() => !ui.$('#library.lib-open'), { what: 'the library to close' });
+  // COME BACK THE WAY A PERSON DOES: select the Seven tab. Deliberately NOT a
+  // click inside the bank region — the arrows have to work without any click
+  // on the tabs themselves.
+  await ui.selectTab('seven');
   await ui.sleep(400);
+
+  // THE TABS MUST BE ON SCREEN, and this is checked HERE rather than before
+  // the trip back. It used to sit above, where it was harmlessly true because
+  // both regions were on screen at once. With four tabs the bank tabs are
+  // genuinely out of the layout while Patches is showing, so asking there
+  // turned the whole second half into a SKIP — a test reporting green while
+  // asserting nothing, which is the shape CLAUDE.md files under "a test that
+  // skips on failure is worse than no test". Asked where the answer means
+  // something, it is a real precondition again.
+  const tabs = ui.$$('#bank-tabs .bank-tab');
+  if (!ui.check(tabs.length > 0 && !!ui.$('#bank-tabs').offsetParent,
+    'the bank tabs are on screen once the Seven tab is selected')) return;
   const before = activeBank();
 
   await key('ArrowRight');
@@ -99,20 +102,18 @@
   ui.check(activeBank() === before,
     `ArrowLeft comes back (${after} → ${activeBank()})`);
 
-  // THIS FILE COVERS ONE WAY BACK. The other is arrow-ownership-open.js, and
-  // leaving it out is what let 1.4.0 ship broken.
+  // THERE USED TO BE A SECOND WAY BACK, and a second scenario for it.
   //
-  // A comment here used to say there was no other way — that with the library
-  // open the only reachable thing in #bank-region is the collapsed strip, and
-  // clicking it closes the library, so no gesture could reach the bank region
-  // while a library list was still live. The MEASUREMENT was right (the tray is
-  // 0px, #seven-head is display:none, only #bank-strip is hittable). The
-  // CONCLUSION drawn from it was wrong: it forgot that a backup run left open
-  // behind the closed tray still answers both arrow axes. Daniel hit exactly
-  // that on the release, and the comment is why nobody looked.
+  // With two trays you could leave a backup run open BEHIND the collapsed
+  // library and it still answered both arrow axes — a state
+  // arrow-ownership-open.js existed to reproduce, because a comment here had
+  // once declared it unreachable. The measurement behind that comment was
+  // right (the tray was 0px, #seven-head display:none, only #bank-strip
+  // hittable); the conclusion drawn from it was wrong, and the comment is why
+  // nobody looked until Daniel hit it on the release.
   //
-  // Ownership no longer depends on either gesture — it is read from focus at
-  // press time (focusedRegion in app.js) — but both are tested, because the two
-  // ways back are two different DOM states and a rule that holds for one is not
-  // evidence about the other.
+  // That state is now UNCONSTRUCTABLE: four tabs put exactly one navigable
+  // list on screen, so there is no behind. The scenario was replaced rather
+  // than deleted — one-list-on-screen.js asserts the invariant that makes it
+  // impossible, which is the risk it was really guarding.
 })()

@@ -50,7 +50,7 @@
   };
 
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'the Patches tab');
+  await ui.selectTab('patches');
   await ui.waitFor(() => rows().length > 0, { what: 'the patches list' });
 
   // The Patches tab lists your own patches only (records live behind Backups),

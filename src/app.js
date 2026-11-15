@@ -1203,50 +1203,33 @@
 
   // ---- Who owns the arrow keys ---------------------------------------------
   //
-  // DERIVED AT PRESS TIME from which region holds focus. Never remembered.
+  // WHICH LIST OWNS THE ARROW KEYS: the one on screen. Derived from the tab.
   //
-  // This was `lastTouched` twice, and it broke twice. First as a gate that was
-  // never true (opening a backup run is not "selecting", so the flag stayed
-  // 'device' while a run filled the screen). Then as a gate that never reset:
-  // once you had clicked a patch, left/right were swallowed for as long as the
-  // library stayed open, and up/down kept driving the library's selection —
-  // auditioning a different patch on the instrument on every press — while the
-  // list you were watching never moved (Daniel, on 1.4.0, 2026-08-20).
+  // THREE ANSWERS BECAME ONE, and the history is why that matters. It was
+  // `lastTouched` twice and broke twice — first as a gate that was never true
+  // (opening a backup run is not "selecting", so the flag stayed 'device'
+  // while a run filled the screen), then as a gate that never reset: once you
+  // had clicked a patch, left/right were swallowed for as long as the library
+  // stayed open, and up/down kept driving the library's selection, auditioning
+  // a different patch on the instrument on every press, while the list you
+  // were watching never moved (Daniel, on 1.4.0, 2026-08-20).
   //
-  // Each fix was another clause, and the next navigation path nobody thought
-  // of would have broken it again. A remembered flag cannot answer "where am I
-  // working now", because nothing that happens on screen updates it.
+  // The fix after that was FOCUS: read from the DOM at press time, at region
+  // level, with "a closed library owns nothing" as a special case. It was
+  // right for a screen holding two regions at once, and it had a special case
+  // precisely because two regions could both be present while only one was
+  // usable.
   //
-  // Focus can: it is read from the DOM when the key is pressed, and clicking
-  // anywhere else changes it. REGION level, not row: these lists re-render on
-  // every refresh and that destroys focus on a child, so a row-level answer
-  // would go ambiguous immediately after each refresh — the same bug wearing a
-  // different hat. The question is which region you are working in, not which
-  // row, and the container survives its children being replaced.
+  // With four tabs there is exactly ONE navigable list on screen, so the
+  // question "which region is this keypress for" has a single derivable
+  // answer and no case left to get wrong. Deliberately NOT kept alongside the
+  // focus answer: two answers to "who owns the arrows" is the bug class
+  // itself, and adding this one on top would make three states to reason
+  // about instead of one (Daniel, 14 Nov 2026).
   //
-  // Focus on neither region — a fresh launch, nothing clicked — answers
-  // 'bank-region', which is what the app opens showing.
-  const focusedRegion = () => {
-    const el = document.activeElement;
-    const region = el && el.closest ? el.closest('#library, #bank-region') : null;
-    // A CLOSED LIBRARY OWNS NOTHING. Collapsing the tray is the other way of
-    // going back to On the Seven, and #library-head is inside #library — so the
-    // click that closes it leaves focus in a region with nothing on screen to
-    // drive. Read from the DOM like the rest of this: not "what was clicked"
-    // but "what is showing".
-    if (region && region.id === 'library' && !document.querySelector('#library.lib-open')) {
-      return 'bank-region';
-    }
-    return region ? region.id : 'bank-region';
-  };
-
-  // Clicking anywhere in a region gives that region focus. Capture phase, so it
-  // runs whatever the click goes on to do, and it changes no selection — this
-  // answers only "where am I working".
-  for (const id of ['library', 'bank-region']) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', () => el.focus({ preventScroll: true }), true);
-  }
+  // It is still derived at press time and still never remembered — the tab is
+  // read from the same state the markup renders from, so nothing can drift.
+  const focusedRegion = () => (view === 'seven' ? 'bank-region' : 'library');
 
   document.addEventListener('keydown', (e) => {
     const vertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
@@ -2001,7 +1984,7 @@
     // list", and dimming there would put the panel's controls out of reach
     // whenever a tray moved — a behaviour change, where this is a visual cue
     // (Daniel, 2026-08-23: "not a behaviour change").
-    if (fromLibrary !== libRoot.classList.contains('lib-open')) return true;
+    if (fromLibrary !== (view !== 'seven')) return true;
     // Now the only question left, and it is the one the whole thing is about:
     // is the row for what is being described actually rendered. Tabs, bank
     // tabs, search and clearing search all answer it by themselves — a row
@@ -2311,7 +2294,12 @@
         (e) => e.file === file && (e.patchIndex || 0) === (patchIndex || 0)
       );
       if (!entry) return;
-      setLibraryOpen(true);
+      // THE TAB IS THE TRIP NOW. This used to open the library tray; with four
+      // tabs, going to a patch means selecting the tab that holds it. The
+      // component's own reveal() moves its internal view too — setView keeps
+      // the two in step rather than letting the tab strip and the list
+      // disagree about which one is showing.
+      setView('patches');
       libView.reveal(file, patchIndex, { tab: 'patches' });
       // ALREADY ANSWERED. This is the app completing a save the player asked
       // for, not the player navigating away from one — and the save leaves the
@@ -2330,9 +2318,10 @@
   // while connected — offering it otherwise would be a button that can't work.
   // The wording never implies the patch is SAVED: it isn't, and can't be
   // without a three-second panel hold (no store opcode exists).
-  // Region header carries the honesty label: this view is what the LAST
-  // BACKUP saw, not a live read — the Seven has no read-slot opcode.
-  const sevenHead = document.getElementById('seven-head');
+  // The honesty label: this view is what the LAST BACKUP saw, not a live read
+  // — the Seven has no read-slot opcode. It lives on its own line above the
+  // rows now (#bank-asof); the region header that used to carry it is gone
+  // with the two-tray layout.
   // Shared by the expanded header and the collapsed strip, so the two can
   // never drift or depend on each other's render order.
   // HOW OLD, not just when.
@@ -2389,18 +2378,19 @@
   // Two triggers, because neither is sufficient alone. The timer handles an app
   // sitting open on a stage all night; the focus listener handles a laptop that
   // was ASLEEP across midnight, where the timer may not have fired at all.
-  // EVERY PLACE THE FRESHNESS LINE APPEARS, repainted together.
+  // ONE PLACE SAYS IT NOW, which is what this indirection was always for.
   //
-  // It appears twice: in the region header, and in the collapsed strip when the
-  // library is open. Repainting one and not the other leaves two places on
-  // screen making different claims about the same slots — which is what
-  // happened when a slot read called updateSevenHead() alone (2026-08-21).
+  // It used to appear twice — in the region header and in the collapsed strip
+  // — and repainting one without the other left two places on screen making
+  // different claims about the same slots, which is what happened when a slot
+  // read called updateSevenHead() alone (2026-08-21). The second place is gone
+  // with the trays; the indirection stays, because the next thing to show it
+  // should join here rather than paint its own copy.
   //
   // So every trigger goes through here rather than picking a renderer: the day
   // rollover, the window focus listener, and a slot read.
   const refreshAgeLabels = () => {
-    updateSevenHead();
-    updateBankStrip();
+    updateFreshLine();
   };
   SevenDayRollover.startDayRollover({ onRollover: refreshAgeLabels });
   // Labels only — NOT refreshLibrary(). Measured with 54 files: 0.096ms per
@@ -2469,19 +2459,11 @@
     }
   }
 
-  function updateSevenHead() {
-    // The chevron is part of the header, not decoration on the collapsed
-    // strip: expanded, this header used to lose it and with it any sign that
-    // the region closes at all, while "On this computer" kept its chevron in
-    // both states (Daniel, 2026-08-13). Both regions now say the same thing
-    // the same way.
-    const chev = '<span class="fx-chevron"><svg viewBox="0 0 14 9" width="14" height="9" aria-hidden="true"><path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-    // asOfText(), not a second copy of the same sentence: the collapsed strip
-    // and this header used to build it independently, which is two places for
-    // one rule to drift.
-    sevenHead.innerHTML =
-      `${chev}<span>On the Seven</span> <span class="asof">${esc(asOfText())}</span>`;
-  }
+  // updateSevenHead is GONE with the "ON THE SEVEN" region header it wrote.
+  // The tab says which region you are in, and the freshness caveat it used to
+  // carry is its own line now — updateFreshLine, which uses the same
+  // asOfText() this did, so there is still exactly one place that sentence is
+  // built.
 
   // Lit knob = its effect is ON in the selected patch (amber cap fill + amber
   // outline; the accent EXPANDED ring is a separate cue on the outer ring only
@@ -2593,7 +2575,7 @@
     updateClaviGroup();
     // Function declaration in the library block below — hoisted, and
     // renderAll only ever runs after the whole IIFE has initialised.
-    updateBankStrip();
+    updateFreshLine();
   }
 
   tabsEl.addEventListener('click', (e) => {
@@ -2774,18 +2756,37 @@
     // The three word tabs ARE the library's own views, so selecting one tells
     // the component which to render. 'seven' is not one of its views, so it is
     // left showing whatever it last had — nothing is on screen either way.
-    if (view !== 'seven' && libView) libView.setTab(view);
-    // THE THIRD PLACE THE SCREEN CHANGES. Swapping views re-renders neither
-    // list, so nothing else here would re-ask whether the detail panel is
-    // describing something visible — and the answer changes, because a whole
-    // region has just been taken off screen.
-    if (!opts.quiet) { renderAll(); updatePanelReach(); }
+    const libRendered = view !== 'seven' && libView ? libView.setTab(view) : false;
+
+    // EXACTLY ONE updatePanelReach PER TAB CHANGE, which is what the tray swap
+    // this replaces also did. The out-of-reach cue nudges only on the pass
+    // that ENTERS the state (`is-new`, guarded by reachWasOut), so a second
+    // pass in the same change strips the class and the arrow never moves —
+    // and panel-reach.js asserts it is running. The library's own render ends
+    // in on.rendered, which is one such pass, so this only adds one when
+    // nothing rendered.
+    //
+    // NO renderAll(). Swapping which list is on screen re-renders neither of
+    // them — the rows are already drawn and the tab only decides which are in
+    // the layout — exactly as the two trays traded places without re-rendering.
+    // Calling it here would repaint the detail panel too, which is the second
+    // pass this is avoiding.
+    if (!opts.quiet && !libRendered) updatePanelReach();
   }
 
   topTabs.addEventListener('click', (e) => {
     const tab = e.target.closest('.top-tab');
     if (!tab) return;
     setView(tab.dataset.view);
+  });
+
+  // SPRING-LOADING, kept. Dragging a patch onto the Setlists tab opens it, as
+  // it has since the tab was a segment inside the library tray — the behaviour
+  // moved out here with the control rather than being lost to the redesign.
+  topTabs.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.types.includes('text/seven-file')) return;
+    const tab = e.target.closest('.top-tab[data-view="setlists"]');
+    if (tab && view !== 'setlists') setView('setlists');
   });
   // Which patches the Patches tab lists. A PREFERENCE, so it survives a
   // launch — the tab you were on and the text in the search box are things
@@ -2826,14 +2827,27 @@
         await m.action();
         m.close();
       },
-      counts: (shown, total) => {
-        libCount.textContent = `— ${shown}`;
-      },
+      // THE COUNT MOVED INTO THE LIST'S OWN BAR. It used to be written into
+      // the library header beside the folder button — a header that no longer
+      // exists — and it was already the count of what is ON SCREEN rather than
+      // the folder total, because "36 patch files" over a list of one was
+      // wrong in the way that matters (Daniel, 2026-08-14). The component
+      // draws it now, from the same visibleCount() that fed this.
       // The picker's Instruments tab. A GETTER, read at each render, so it
       // follows the connected unit's table the moment one is read and falls
       // back to the schema when nothing is plugged in (setSoundList). Slots
       // reference these by NAME, never by id: ids are not portable across
       // units (schema soundsNote).
+      // THE COMPONENT CHANGED ITS OWN VIEW, so the tab strip follows. It does
+      // that from reveal() and from beginSetlistRename() — paths that move you
+      // to where the thing you asked for actually lives. Without this the
+      // strip would still say Patches while the list showed Setlists: two
+      // places answering "where am I" differently, which is exactly what one
+      // list on screen is supposed to make impossible.
+      //
+      // setView calls back into libView.setTab, which returns immediately when
+      // the tab already matches — so this cannot loop.
+      tabChanged: (tab) => setView(tab),
       get sounds() { return soundList; },
       select: (entry, opts = {}) => selectLibraryEntry(entry, opts),
       // The row's own Send control. THE SAME PATH the context menu uses, so
@@ -3330,7 +3344,7 @@
     libView.update(data);
     // The bank region derives from the same list — one fetch feeds both.
     rebuildBanks(data.patches);
-    updateSevenHead();
+    updateFreshLine();
     // Keep the detail in sync if the selected entry changed on disk.
     if (libSelected) {
       const fresh = data.patches.find(
@@ -3349,192 +3363,36 @@
     renderAll();
   }
 
-  // The bank summary strip shown while the Library is expanded. It ALWAYS
-  // shows the device selection when one exists — regardless of what's
-  // selected in the library — and falls back to bank-only when no preset has
-  // been selected this session.
-  function updateBankStrip() {
-    // TWO PARTS, because only one of them may give way. A long patch name
-    // wrapped the strip onto a second line and made the header grow — "Bank 1
-    // · Crumar Experimental Piano" is enough to do it (Daniel, 2026-08-17).
-    // The bank and the as-of date are short and load-bearing, so they stay
-    // whole; the name truncates, and carries the full text as its tooltip.
-    if (deviceSel) {
-      const bank = banks[deviceSel.bank];
-      const patch = bank.patches[deviceSel.preset];
-      bankStripLabel.innerHTML =
-        // A NON-BREAKING space after the separator: a normal one is at the
-        // element's edge and HTML collapses it, which read as "Bank 1 ·Crumar".
-        `<span class="strip-bank">— Bank ${esc(bank.name)}${patch ? ' ·\u00a0' : ''}</span>` +
-        (patch ? `<span class="strip-patch" title="${esc(patch.name)}">${esc(patch.name)}</span>` : '');
-    } else {
-      bankStripLabel.innerHTML =
-        `<span class="strip-bank">— Bank ${esc(banks[bankIndex].name)}</span>`;
-    }
-    // The honesty label rides along, so collapsing the region never hides the
-    // fact that this view is only as fresh as the last backup.
-    const asof = document.getElementById('bank-strip-asof');
-    if (asof) asof.textContent = asOfText();
-  }
-
-  // The two regions expand mutually exclusively: opening the Library
-  // collapses the bank rows to the strip; re-expanding the banks collapses
-  // the Library back to its header. View state, persisted across launches.
-  // The two trays trade places, and the point of animating it is that the
-  // player SEES there are two (Daniel, 2026-08-13: "it happens so fast that
-  // it's not clear what's going on"). One slides shut exactly as the other
-  // slides open, so the space is visibly handed over rather than repainted.
+  // THE FRESHNESS CAVEAT, on its own line above the slot rows.
   //
-  // Measure, switch, measure, animate between the two — the only way to tween
-  // a height that is `auto` at one end and driven by flex at the other. The
-  // animation never writes a style of its own (fill defaults to none), so the
-  // layout after it is whatever the CSS says, not whatever the animation left
-  // behind.
-  // 360ms, up from 260: at the shorter duration the handover still read as a
-  // jump rather than a movement (Daniel, 2026-08-13). One constant — nothing
-  // else needs to change to retune it.
-  const SWAP_MS = 360;
-  // The CLOSING tray leads; the opening one follows a beat later, so the eye
-  // sees space being given up and then taken, rather than two boxes moving as
-  // one block (Daniel, 2026-08-13).
-  const SWAP_STAGGER_MS = 110;
-  function animateSwap(apply) {
-    // #bank-region, not #bank-tray: the region contains the collapsed strip
-    // too, so the strip appearing or vanishing is inside the height being
-    // animated rather than a step change beside it.
-    const trays = [document.getElementById('bank-region'), libSection.querySelector('.fx-body')]
-      .filter(Boolean);
-    const reduced = window.matchMedia
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || !trays.length || !trays[0].animate) { apply(); return; }
-    const from = trays.map((el) => el.getBoundingClientRect().height);
-    apply();
-    const to = trays.map((el) => el.getBoundingClientRect().height);
-    trays.forEach((el, i) => {
-      if (Math.abs(from[i] - to[i]) < 1) return;
-      const closing = to[i] < from[i];
-      // Pin the box while it travels. The bank tray is `flex: 1 1 auto` when
-      // open, and flex-grow stretches a flex item to fill regardless of the
-      // height being animated on it — so the opening tray jumped to full size
-      // and sat out its own stagger (measured: 90% there at 60ms with a 110ms
-      // delay). `flex: none` makes height the thing that decides, for exactly
-      // as long as the animation owns it.
-      const prevFlex = el.style.flex;
-      el.style.flex = 'none';
-      const restore = () => { el.style.flex = prevFlex; };
-      const anim = el.animate(
-        [{ height: `${from[i]}px` }, { height: `${to[i]}px` }],
-        {
-          duration: SWAP_MS,
-          delay: closing ? 0 : SWAP_STAGGER_MS,
-          // Was cubic-bezier(.32,.72,0,1), which is 93% travelled by 90ms —
-          // nearly all the motion in the first quarter, so lengthening the
-          // duration only added a long slow tail nobody could see and it still
-          // read as a jump. This spends the time on the part of the move the
-          // eye is actually following.
-          easing: 'cubic-bezier(.4,0,.2,1)',
-          // Without this the delayed tray snaps to its FINAL height and sits
-          // there through the stagger, which is the jump we are removing.
-          fill: 'backwards',
-        }
-      );
-      anim.finished.then(restore, restore);
-    });
+  // It replaces the one-line summary strip the collapsed bank region used to
+  // show — bank, selected preset and this same label all on one line, where
+  // three unshrinkable items produced the "— Bank 3" overlap found on 14 Nov.
+  // With one list on screen there is nothing left to summarise: the rows are
+  // visible, so only the caveat needs saying.
+  //
+  // asOfText(), not a second copy of the sentence. It used to be built
+  // independently here and in the region header, which is two places for one
+  // rule to drift.
+  function updateFreshLine() {
+    if (bankAsOf) bankAsOf.textContent = asOfText();
   }
 
-  function setLibraryOpen(open, opts = {}) {
-    animateSwap(() => {
-      libSection.classList.toggle('collapsed', !open);
-      libRoot.classList.toggle('lib-open', open);
-    });
-    updateBankStrip();
-    localStorage.setItem(LIB_OPEN_KEY, open ? '1' : '0');
-    // THE THIRD PLACE THE SCREEN CHANGES. The two trays trade places without
-    // re-rendering either list, so nothing else here would re-ask whether the
-    // panel is describing something visible — and the answer changes, because
-    // one whole region has just been given away.
-    updatePanelReach();
-    // Never open below the fold.
-    if (open && opts.scroll !== false) libSection.scrollIntoView({ block: 'nearest' });
-  }
-  libHead.addEventListener('click', (e) => {
-    if (e.target.closest('#library-reveal')) return; // button, not a toggle
-    setLibraryOpen(libSection.classList.contains('collapsed'));
-  });
-  bankStrip.addEventListener('click', () => setLibraryOpen(false));
-  // Clicking the expanded header closes this region, which — the two being
-  // mutually exclusive — means opening the Library. Same gesture the Library
-  // header has always had.
-  sevenHead.addEventListener('click', () => setLibraryOpen(true));
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it
   // opened Finder and where it would have gone, which is for tests. Nothing in
   // the UI changes either way.
   libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
 
-  // Divider drag: sets the Library list height (--lib-split), persisted as a
-  // FRACTION of the region rather than pixels. A pixel split saved on a tall
-  // window left dead space under the list on a short one and clipped it on a
-  // taller one; a fraction scales with whatever window the app opens in.
-  let splitFraction = Number(localStorage.getItem(LIB_SPLIT_KEY)) || 0;
-  // Migrate the old pixel value: anything >= 1.5 was px, not a fraction.
-  if (splitFraction >= 1.5) {
-    splitFraction = libRoot.clientHeight ? splitFraction / libRoot.clientHeight : 0;
-    if (splitFraction > 0) localStorage.setItem(LIB_SPLIT_KEY, String(splitFraction));
-  }
-  splitFraction = splitFraction > 0.05 && splitFraction < 0.98 ? splitFraction : 0;
-
-  // No saved split means no cap at all — the list fills what the window gives.
-  function applySplit() {
-    if (!splitFraction) {
-      libRoot.style.removeProperty('--lib-split');
-      return;
-    }
-    const h = Math.round(libRoot.clientHeight * splitFraction);
-    // A split that has collapsed onto its own floor is not a choice anybody
-    // made — it is a fraction saved against a taller window, and honouring it
-    // caps the list at 80px in a column with hundreds to spare (Daniel,
-    // 2026-08-13: "setlist tray length is now truncated"). Below the floor the
-    // saved value carries no usable information, so the list fills instead.
-    // Proportional, not just the absolute floor: this fraction was saved
-    // against a different layout, and at ~15% of the column it caps the list
-    // at two rows inside hundreds of pixels of room. A split that small is a
-    // stale value rather than a preference — dragging the divider sets a real
-    // one again, and anything from a fifth of the column up is honoured.
-    if (h < Math.max(80, libRoot.clientHeight * 0.2)) {
-      libRoot.style.removeProperty('--lib-split');
-      return;
-    }
-    libRoot.style.setProperty('--lib-split', `${h}px`);
-  }
-  applySplit();
-  window.addEventListener('resize', applySplit);
-  splitDivider.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    const list = document.querySelector('#library-body .lib-list');
-    if (!list) return;
-    const startY = e.clientY;
-    const startH = list.getBoundingClientRect().height;
-    const onMove = (ev) => {
-      // Dragging down gives the bank region more room, the Library less.
-      const h = Math.max(80, Math.round(startH - (ev.clientY - startY)));
-      libRoot.style.setProperty('--lib-split', `${h}px`);
-    };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      const h = parseInt(libRoot.style.getPropertyValue('--lib-split'), 10);
-      const total = libRoot.clientHeight;
-      if (h >= 80 && total) {
-        splitFraction = h / total;
-        localStorage.setItem(LIB_SPLIT_KEY, String(splitFraction));
-      }
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  });
-
-  // Default: banks expanded, Library collapsed; persisted view state wins.
-  setLibraryOpen(localStorage.getItem(LIB_OPEN_KEY) === '1', { scroll: false });
+  // WHICH TAB YOU WERE ON, restored at launch. What used to be here was the
+  // two-tray state: whether the Library was expanded, and the height you had
+  // dragged the divider to. Both are gone with the trays — there is one list
+  // on screen and nothing to split — so the only view state left to keep is
+  // which of the four tabs you had open.
+  //
+  // AFTER libView EXISTS. setView tells the component which of its three
+  // views to show, and `const libView` is in the temporal dead zone until its
+  // declaration above runs.
+  setView(view, { quiet: true });
   refreshLibrary();
 
   // THE DEMO PATCHES 1.0 SHIPPED BY MISTAKE. The main process removes them

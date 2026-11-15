@@ -27,7 +27,7 @@
 
   // A patch to work on, and a live session so the controls act.
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(700);
   const row = ui.$('#library .lib-row.lib-patch, #library [data-file]');
   if (!ui.check(!!row, 'a patch to select')) return;

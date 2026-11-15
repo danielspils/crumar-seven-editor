@@ -16,7 +16,7 @@
 (async () => {
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'the Setlists tab');
+  await ui.selectTab('setlists');
   await ui.waitFor(() => ui.$$('.lib-setlist-row').length > 0, { what: 'the setlist list' });
 
   // Open the setlist first. Send lives in the setlist's own header now, not on

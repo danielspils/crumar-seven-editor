@@ -22,7 +22,7 @@
 // inside. This covers the PLAIN variant, which a library patch gets.
 (async () => {
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(600);
   const row = ui.$('#library .lib-row.lib-patch');
   ui.check(!!row, 'a patch of your own to select');

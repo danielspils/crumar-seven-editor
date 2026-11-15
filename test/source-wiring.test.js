@@ -118,17 +118,28 @@ test('a slot read repaints BOTH freshness labels, not just the header', () => {
   assert.ok(block, 'the slot-read branch is still there');
   assert.match(block[1], /refreshAgeLabels\(\)/,
     'it goes through refreshAgeLabels, which repaints both');
-  assert.doesNotMatch(block[1], /updateSevenHead\(\)/,
-    'and not the header renderer alone, which is how it drifted');
+  // NOT THE RENDERER DIRECTLY. Calling updateSevenHead() alone is how the two
+  // copies drifted in the first place; that renderer is gone, so the guard is
+  // restated against the one that replaced it. Bypassing the indirection is
+  // the mistake, whatever the renderer is called this month.
+  assert.doesNotMatch(block[1], /updateFreshLine\(\)/,
+    'and not the renderer directly, which is how it drifted');
 });
 
-test('refreshAgeLabels really does repaint both', () => {
+test('refreshAgeLabels really does repaint the freshness line', () => {
   // Otherwise the test above pins a name rather than a behaviour.
+  //
+  // IT USED TO ASSERT TWO RENDERERS, because the label appeared twice — in the
+  // region header and in the collapsed strip — and repainting one without the
+  // other put two different claims about the same slots on screen
+  // (2026-08-21). The four-tab layout leaves one place that says it, so there
+  // is one call to make. The indirection is kept, and so is this test: the
+  // next surface that wants the label should join refreshAgeLabels rather
+  // than paint its own copy, and this is what notices if the path is bypassed.
   const src = code(read('app.js'));
   const fn = /const refreshAgeLabels = \(\) => \{([\s\S]*?)\};/.exec(src);
   assert.ok(fn, 'refreshAgeLabels exists');
-  assert.match(fn[1], /updateSevenHead\(\)/);
-  assert.match(fn[1], /updateBankStrip\(\)/);
+  assert.match(fn[1], /updateFreshLine\(\)/);
 });
 
 test('every function app.js calls in the slot-read path actually exists', () => {

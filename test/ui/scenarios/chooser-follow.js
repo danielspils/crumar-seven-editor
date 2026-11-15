@@ -33,7 +33,7 @@
 
   await ui.openLibrary();
   await ui.sleep(400);
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(600);
   const row = ui.$('#library .lib-row.lib-patch');
   ui.check(!!row, 'the library has a patch to send');

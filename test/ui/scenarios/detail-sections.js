@@ -22,7 +22,7 @@
   // A patch has to be on screen for the detail panel to render at all.
   await ui.openLibrary();
   await ui.sleep(400);
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(500);
   const row = ui.$('#library .lib-row.lib-patch');
   ui.check(!!row, 'the library has a patch to select — no patch, no detail panel, no test');

@@ -60,7 +60,7 @@
 
   // ── Backups ─────────────────────────────────────────────────────────────
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="backups"]', 'the Backups tab'), 'Backups');
+  await ui.selectTab('backups');
   await ui.sleep(500);
   const run = ui.$$('.lib-setlist[data-backup]')[0];
   ui.check(!!run, 'there is a backup run to open');
@@ -82,7 +82,7 @@
   }
 
   // ── Patches ─────────────────────────────────────────────────────────────
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(500);
   const patch = ui.$('#library .lib-row.lib-patch');
   ui.check(!!patch, 'there is a patch of your own');
@@ -103,7 +103,7 @@
   // Back to ON THE SEVEN properly: the library is open, so the bank rows are
   // clipped to nothing and `row` is both stale and unhittable. Close it first,
   // then take a fresh reference.
-  ui.click(ui.$('#bank-strip'), 'the ON THE SEVEN strip (closing the library)');
+  await ui.selectTab('seven');
   await ui.sleep(700);
   const slot = await ui.waitEl('#patch-list .patch-row', 'the slot list again');
   ui.click(slot, 'a slot on the instrument');

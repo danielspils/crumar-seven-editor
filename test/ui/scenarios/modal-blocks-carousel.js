@@ -27,9 +27,8 @@
   // The carousel lives beside a SELECTED patch, with the library open — the
   // same door carousel-never-writes goes through.
   await ui.openLibrary();
-  const seg = await ui.waitEl('.seg-btn[data-tab="patches"]', 'the patches tab');
-  ui.click(seg, 'the patches tab');
-  await ui.sleep(700);
+  await ui.selectTab('patches');
+  await ui.sleep(450);
   const row = ui.$('#library .lib-row.lib-patch, #library [data-file]');
   if (!row) {
     ui.note('this library has no patch to select — not checked');

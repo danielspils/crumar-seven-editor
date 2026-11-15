@@ -160,7 +160,7 @@
   // be somewhere else, so arriving at the new file and being moved off it again
   // is a flash and a second instrument send for one gesture. This is the
   // visible half of announceSaved's `reveal`.
-  ui.check(!ui.$('#library.lib-open'),
+  ui.check(ui.$('#library').dataset.view === 'seven',
     'and it did not detour through Patches on the way');
   // The copy is on disk, which is what made the guard answerable at all.
   const data = await window.sevenAPI.library.list();
@@ -222,7 +222,8 @@
   ui.note(`selected slot after the overwrite path: ${landed2 && landed2.dataset.index}`);
   ui.check(!!landed2 && landed2.dataset.index === '2',
     'and that navigation went through as well');
-  ui.check(!ui.$('#library.lib-open'), 'and no detour through Patches here either');
+  ui.check(ui.$('#library').dataset.view === 'seven',
+    'and no detour through Patches here either');
 
   // ── CLEARING THE TICK BOX: TOLD, NOT ASKED ──────────────────────────────
   //
@@ -343,7 +344,8 @@
   ui.check(overlays().length === 0,
     `no dialog remains after the Save button's save (${overlays().length})`);
   // THE ARRIVAL, which is this path's whole difference from the two above.
-  ui.check(!!ui.$('#library.lib-open'), 'pressing Save takes you to the new patch');
+  ui.check(ui.$('#library').dataset.view === 'patches',
+    'pressing Save takes you to the new patch');
   const arrived = ui.$('#library .lib-row.lib-patch.selected');
   ui.note(`arrived at: ${arrived && arrived.dataset.file}`);
   ui.check(!!arrived, 'and the new patch is the selected row there');

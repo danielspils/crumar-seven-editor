@@ -14,7 +14,7 @@
 // passed for two dead controls this week.
 (async () => {
   const check = async (tab, label) => {
-    ui.click(await ui.waitEl(`.seg-btn[data-tab="${tab}"]`, `the ${label} tab`), label);
+    await ui.selectTab(tab);
     await ui.sleep(700);
     if (tab === 'backups') {
       // WAIT for the list rather than reading it the instant the tab is

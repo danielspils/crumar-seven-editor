@@ -1277,15 +1277,16 @@
           '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" ' +
           'stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
           '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button>')) +
-      // WHICH patches, on the tab that has more than one answer. The numbers
-      // ride on the segments: three surfaces filtered the same files three
-      // ways and the header count matched none of them, so the control that
-      // chooses is also where the totals reconcile (Daniel, 2026-08-14).
+      // WHAT IS ON SCREEN, said once, on the right of the bar. It is the
+      // VISIBLE count, not the folder total: three surfaces filtered the same
+      // files three ways and a header total matched none of them, so "36 patch
+      // files" sat over a list of one (Daniel, 2026-08-14).
       //
-      // Emitted AFTER the search on purpose: it wraps to its own line, and
-      // anything after it wraps too — with the scope first, the magnifier was
-      // pushed onto a third row of its own (measured).
-
+      // It used to be written into the library header by app.js through
+      // on.counts. That header is gone with the two-tray layout, so the number
+      // lives beside the list it describes — which is where the reconciling
+      // was always meant to happen.
+      (countLabel ? `<span class="lib-count-right">${esc(countLabel)}</span>` : '') +
       `</div>` +
       // ONE LINE, ONCE, FOR THE WHOLE REGION — never a marker per row.
       //
@@ -1376,11 +1377,21 @@
       return data.setlists.filter((s2) => !BACKUP_NAME.test(s2.name)).length;
     }
 
+    // SINGULAR WHEN THERE IS ONE. "1 setlists" is the kind of thing nobody
+    // reports and everybody notices.
+    function countLabel() {
+      const n = visibleCount();
+      const word = state.tab === 'patches' ? 'patch'
+        : state.tab === 'backups' ? 'backup' : 'setlist';
+      const plural = n === 1 ? '' : (word === 'patch' ? 'es' : 's');
+      return `${n} ${word}${plural}`;
+    }
+
     function render() {
       const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupRun}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
-      el.innerHTML = renderBody(data, state, on.sounds);
+      el.innerHTML = renderBody(data, state, on.sounds, countLabel());
       if (keepScroll != null) {
         const list = el.querySelector('.lib-list');
         if (list) list.scrollTop = keepScroll;
@@ -1571,15 +1582,9 @@
         return;
       }
 
-      const seg = e.target.closest('.seg-btn');
-      if (seg) {
-        state.tab = seg.dataset.tab;
-        state.setlistIndex = null;
-        state.backupRun = null;
-        if (state.tab === 'backups') { state.search = ''; state.searchOpen = false; }
-        render();
-        return;
-      }
+      // THE SEGMENTED CONTROL IS GONE from inside this component: those three
+      // tabs are level 1 now and app.js owns the control. What it did on a tab
+      // change is not gone — it moved into setTab below, which app.js calls.
       // No .pick-cancel exclusion needed any more: while the picker is up it
       // answers every click above and never reaches here.
       if (e.target.closest('.lib-back')) {
@@ -1807,15 +1812,12 @@
     });
     el.addEventListener('dragenter', (e) => {
       if (!e.dataTransfer.types.includes('text/seven-file')) return;
-      // Spring-loading: hovering the Setlists tab opens it; hovering a
-      // setlist row opens its slots.
-      const seg = e.target.closest('.seg-btn[data-tab="setlists"]');
-      if (seg && state.tab !== 'setlists') {
-        state.tab = 'setlists';
-        state.setlistIndex = null;
-        render();
-        return;
-      }
+      // SPRING-LOADING THE SETLISTS TAB moved OUT with the tab. The tab is in
+      // app.js's #top-tabs now, so a dragenter over it never reaches this
+      // listener — app.js springs it there instead, calling setTab, so the
+      // behaviour is unchanged and lives beside the control that owns it.
+      // Hovering a setlist ROW to open its slots is still here, because that
+      // row is still in here.
     });
     // Where a reorder drop would land: above the row under the pointer, or
     // below it. Half the row each, so the whole list is a target and there is
@@ -2071,6 +2073,12 @@
       },
       beginSetlistRename(index) {
         state.tab = 'setlists';
+        // SAY SO OUTWARD. The tab control is outside this component now, so a
+        // view changed from in here leaves the strip pointing at the view you
+        // are no longer looking at — two places claiming different answers to
+        // "where am I", which is the thing the four-tab layout exists to make
+        // unambiguous.
+        if (on.tabChanged) on.tabChanged(state.tab);
         state.renamingSetlist = index;
         render();
       },
@@ -2084,6 +2092,8 @@
           state.tab = tab;
           state.setlistIndex = null;
           state.backupRun = null;
+          // The strip outside follows — see beginSetlistRename.
+          if (on.tabChanged) on.tabChanged(state.tab);
         }
         // AND a scope that can show it. Landing on the Patches tab is not
         // enough now that the tab filters: saving a patch while the list was
@@ -2098,6 +2108,31 @@
         state.selected = `${file} ${patchIndex || 0}`;
         render();
       },
+      // WHICH OF THE THREE VIEWS TO SHOW, told from outside.
+      //
+      // This is what the segmented control inside this component used to do on
+      // a click, moved intact: a tab change clears the drill-downs (a setlist's
+      // slots, an opened backup run), because they belong to the view you are
+      // leaving — and Backups additionally clears the search, which has nothing
+      // to search there (a handful of dated runs, picked by looking).
+      //
+      // Idempotent: app.js calls it on every tab selection including the one
+      // already showing, and re-rendering the same view would throw away a
+      // search in progress.
+      // Answers whether it actually RENDERED. app.js needs to know: a render
+      // here ends in on.rendered, which repaints the detail panel's
+      // out-of-reach cue — and that cue only animates on the pass that ENTERS
+      // the state, so a second pass in the same tab change silently kills it.
+      setTab(tab) {
+        if (!tab || tab === state.tab) return false;
+        state.tab = tab;
+        state.setlistIndex = null;
+        state.backupRun = null;
+        if (tab === 'backups') { state.search = ''; state.searchOpen = false; }
+        render();
+        return true;
+      },
+      tab: () => state.tab,
       // `slot` is the setlist position when the selection is a slot. Passing
       // it is what keeps two slots holding one file from both lighting up.
       select(entry, opts = {}) {

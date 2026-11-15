@@ -8,7 +8,7 @@
   };
 
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'the Setlists tab');
+  await ui.selectTab('setlists');
   await ui.waitFor(() => ui.$$('.lib-setlist').length > 0, { what: 'the setlist list' });
   const before = setlists();
   ui.check(before.length > 0, `some setlists exist (${before.length})`);

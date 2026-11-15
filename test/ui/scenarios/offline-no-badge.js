@@ -18,7 +18,7 @@
 (async () => {
   await ui.openLibrary();
   await ui.sleep(500);
-  ui.click(await ui.waitEl('.seg-btn[data-tab="patches"]', 'the Patches tab'), 'Patches');
+  await ui.selectTab('patches');
   await ui.sleep(700);
 
   const rows = ui.$$('#library .lib-row.lib-patch');
@@ -51,7 +51,7 @@
   }
 
   // ── THE SETLIST SLOT MAKES THE SAME CLAIM, so it is checked too ─────────
-  ui.click(await ui.waitEl('.seg-btn[data-tab="setlists"]', 'the Setlists tab'), 'Setlists');
+  await ui.selectTab('setlists');
   await ui.sleep(700);
   const first = ui.$('#library .lib-setlist-row');
   if (first) {

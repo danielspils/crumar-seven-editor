@@ -20,9 +20,15 @@
   const cols = () => ui.$('#detail .detail-cols');
   const dimmed = () => !!cols() && cols().classList.contains('out-of-view');
   const overlay = () => ui.$('#detail .panel-reach');
-  const tab = async (name, label) => {
-    ui.click(await ui.waitEl(`.seg-btn[data-tab="${name}"]`, `the ${label} tab`), label);
-    await ui.sleep(600);
+  // THE NUDGE IS 600ms x 3 = 1800ms FROM THE MOMENT THE STATE IS ENTERED, and
+  // this scenario asserts it is still running. ui.selectTab already waits for
+  // the tab to take and settles for 250ms, so the 600ms that used to follow a
+  // raw segment click now pushes the check past the end of the animation —
+  // green or red by stopwatch rather than by behaviour. Kept short on purpose:
+  // what follows is time-critical.
+  const tab = async (name) => {
+    await ui.selectTab(name);
+    await ui.sleep(120);
   };
 
   await ui.openLibrary();

@@ -19,7 +19,7 @@
 // again, which is exactly what this catches.
 (async () => {
   await ui.openLibrary();
-  ui.click(await ui.waitEl('.seg-btn[data-tab="backups"]', 'the Backups tab'), 'Backups');
+  await ui.selectTab('backups');
   await ui.sleep(600);
   const run = ui.$$('.lib-setlist[data-backup]')[0];
   ui.check(!!run, 'there is a backup run to open');

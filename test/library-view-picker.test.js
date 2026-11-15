@@ -86,7 +86,10 @@ const MAKTUB = 4; // the one setlist that is not part of the backup run
 // single click held for 260ms — the delay is what tells it from the first half
 // of the double click that renames one — so the wait is the real path.
 const openPicker = async (ui) => {
-  await ui.click({ '.seg-btn': { dataset: { tab: 'setlists' } } });
+  // setTab, not a click on a segment: the three tabs left this component on
+  // 14 Nov 2026 and are level 1 now, so there is no .seg-btn in here to press.
+  // The method is the seam app.js uses, which is what this should exercise.
+  ui.view.setTab('setlists');
   await ui.click({
     '.patch-name': {},
     '[data-setlist]': { dataset: { setlist: String(MAKTUB) }, classes: ['lib-setlist'] },
