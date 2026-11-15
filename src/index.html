@@ -2645,7 +2645,15 @@
     .engine-sound { grid-column: 1 / -1; grid-row: 1; }
     .engine-sub   { grid-column: 1; grid-row: 2; }
     .engine-pos   { grid-column: 1; grid-row: 3; }
-    .save-slot    { grid-column: 1; grid-row: 4; }
+    /* ABOVE THE WHEEL, WHATEVER THE WHEEL IS DOING. A peek may cross the meta
+       TEXT — that is deliberate and has always been allowed — but it may not
+       take a click meant for a control. The stage lifts to z-index 5 while the
+       wheel is awake so its neighbours can paint over the lines beside it, and
+       that lift put the peek's image in front of this button: a click at the
+       overlap's own centre was measured hitting `img`, not the button.
+       A BUTTON OUTRANKS A PICTURE. z-index needs a position to bite, hence
+       the relative. */
+    .save-slot    { grid-column: 1; grid-row: 4; position: relative; z-index: 6; }
     /* Spanning the meta rows and ALIGNED TO THE TOP of them, so the row's
        height is the taller of the two and the parameters start below both. */
     .engine-stage { grid-column: 2; grid-row: 2 / span 3; align-self: start; }
@@ -2708,35 +2716,35 @@
          that reached them. */
       z-index: 5;
     }
-    /* AND WHILE IT IS AWAKE, THE WHEEL CENTRES ON THE COLUMN.
-       The stage is flush against the engine column's RIGHT edge — that is the
-       resting design, text left and instrument right (fc940cd) — so a
-       symmetric spread around the stage throws the right-hand neighbour out of
-       the column while the left one has the whole meta text to spill over.
-       MEASURED with the Seven attached, before: column x420..794, stage
-       x607..794 (0px from the right edge), prev peek x496.7..635 fully
-       visible, next peek x766..904.3 with 28px of 138 inside — 20%.
-       IT CANNOT BE TUNED AWAY. The hero at scale 1.12 is 104.7px half-width
-       and there are only 93.5px between the stage's centre and the column's
-       edge, so any peek narrow enough to fit on the right is entirely behind
-       the hero. A visible symmetric peek REQUIRES the wheel to move.
-       translateX(-50%) is exactly the shift: the stage is flush right, so the
-       gap to the left is (column - stage), and half of that is what centres
-       it — and while the stage is `min(190px, 50%)` of the column, half the
-       gap IS half the stage. Nothing is scaled: the hero is the same size it
-       was, in a different place, which is the one thing this fix was told not
-       to trade away. */
-    .engine-stage .engine-carousel {
-      transition: transform .26s cubic-bezier(.3, 1, .5, 1);
-    }
+    /* THE WHEEL HAS ONE POSITION, AND IT IS THIS ONE (Daniel, 2026-11-15).
+       An earlier pass centred it on the COLUMN while awake, to give the
+       right-hand neighbour room. It worked, and it cost three things that
+       were worse than the problem — all measured in the running app:
+         1. the hero jumped 93.5px the moment the wheel woke, so the resting
+            picture was not where the live one was;
+         2. turning the wheel REBUILDS the faces, and the rebuilt wheel has no
+            .is-open — so at the exact frame the new name landed the hero
+            snapped 607 -> 700.5. Daniel read that as "it skipped forward yet
+            another image. But it hasn't", and he placed the moment exactly.
+            Nothing above it moved: the header held h141.3 and the stage top
+            held 240 for all 80 samples of the turn;
+         3. centred, the wheel sits over column 1, where the meta text AND the
+            Save patch button live — and a click in the overlap hit the peek's
+            image, not the button. Measured, not guessed.
+       So the stage stays where fc940cd put it, which is where Daniel put it:
+       "the stage, column 2", text left and instrument right.
+       WHAT THAT COSTS, kept honest: the right-hand peek is clipped by the
+       column edge. The hero at scale 1.12 is 104.7px half-width with only
+       93.5px to the column edge, so there is no spread that shows it fully
+       without moving the wheel — this is a trade Daniel chose with the
+       numbers in front of him, not an oversight. --peek is 56% rather than
+       the original 72% precisely because it is the better end of that trade:
+       the right peek shows 42% of itself instead of 20%, and the left one
+       stops overlapping the Save patch button entirely. */
     .engine-stage:has(.engine-carousel.is-open) .engine-carousel,
     .engine-stage:has(.engine-carousel.is-turning) .engine-carousel,
     .engine-stage:has(.engine-carousel:focus-within) .engine-carousel {
       overflow: visible;
-      transform: translateX(-50%);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .engine-stage .engine-carousel { transition: none; }
     }
     /* THE COLUMN IS THE OUTER FENCE, and it is safe to be one: overflow:hidden
        does NOT trap position:fixed children — only transform, filter and

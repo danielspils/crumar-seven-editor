@@ -1,113 +1,127 @@
-// BOTH PEEK FACES STAY INSIDE THE ENGINE COLUMN, SYMMETRICALLY.
+// THE WHEEL HAS ONE POSITION, AND NOTHING IT DRAWS EATS A CLICK.
 //
-// The peeks ARE the control — clicking one brings it to the middle — so a peek
-// off the end of the column is a control you cannot reach. Daniel reported it
-// as "the right-hand neighbour is off screen and the left one is cut by the
-// column edge", and the measurement agreed: the next peek had 28px of its
-// 138px inside, 20%.
+// This scenario was first written to assert that both peek faces sit fully
+// inside the engine column. That turned out to be unreachable without moving
+// the wheel out of column 2, and moving it cost three things that were worse
+// than the clipped peek — so Daniel chose the trade with the numbers in front
+// of him (2026-11-15) and this file follows the decision rather than the
+// original wish. What it pins now is what that decision has to keep true.
 //
-// THE CAUSE WAS NOT THE SPREAD, IT WAS WHERE THE WHEEL SAT. The stage is flush
-// against the column's RIGHT edge — the resting design is text left, instrument
-// right (fc940cd) — so a symmetric spread around the stage puts one neighbour
-// over the meta text, which is allowed, and the other past the column edge,
-// which is not. With the hero at scale 1.12 there are only 93.5px between the
-// stage's centre and the column edge against a 104.7px half-width, so no spread
-// narrow enough to fit on the right is visible at all: it sits behind the hero.
-// The wheel has to centre on the COLUMN while it is awake, and then the spread
-// has to fit the room that gives it.
+//   1. ONE POSITION. The hero's centre is identical at rest and awake. When it
+//      was not, the picture jumped 93.5px the moment the wheel woke.
+//   2. AND THE SAME ONE AFTER A TURN. Turning REBUILDS the faces; a rebuilt
+//      wheel that landed somewhere else snapped 607 -> 700.5 at the exact
+//      frame the new name arrived, which reads as the wheel skipping an extra
+//      image. Daniel placed that moment precisely and he was right about the
+//      moment — the cause is the rebuild, not the text, and the measurements
+//      say so: the header held its height and the stage held its top through
+//      the whole turn.
+//   3. NOTHING ABOVE THE WHEEL MOVES WHILE THE HEADER LOADS. The cheap way to
+//      reintroduce 2 is to let the name or badge change the block's height.
+//   4. NO PEEK TAKES A CLICK FROM A CONTROL. A peek over meta TEXT is allowed
+//      and deliberate. A peek over a BUTTON is not: a click at the overlap's
+//      centre was measured hitting the peek's `img` rather than Save patch.
 //
-// WHAT THIS PINS, and why each one is here:
-//   - both peeks fully inside the column, at the default width AND at a narrow
-//     one. A spread tuned at one width that fails at another is the same bug.
-//   - symmetry, measured as the two gaps to the column edges rather than
-//     trusted from the CSS being a mirror image.
-//   - the centre is NOT shrunk to make room. That was the one fix explicitly
-//     ruled out, and it is the cheap way to make everything else pass.
+// What is deliberately NOT asserted: that the right-hand peek is fully
+// visible. It is clipped by the column edge, knowingly — the hero at scale
+// 1.12 is 104.7px half-width with 93.5px to the edge, so no spread shows it
+// whole without moving the wheel. Asserting it would be asserting against a
+// decision somebody made on purpose.
 (async () => {
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
   const px = (n) => Math.round(n * 10) / 10;
+  const box = (el) => (el ? el.getBoundingClientRect() : null);
+  const centreOf = (r) => (r ? r.left + r.width / 2 : null);
 
   await ui.selectTab('seven');
   await ui.sleep(800);
   const rows = ui.$$('#patch-list .patch-row');
   if (!rows.length) { ui.note('no bank rows on screen'); return; }
+
+  // ── 3. NOTHING MOVES WHILE THE HEADER LOADS ─────────────────────────────
   rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  await ui.sleep(2200);
+  const t0 = performance.now();
+  const loadTops = [];
+  const loadHeads = [];
+  for (let i = 0; i < 40; i++) {
+    const stage = ui.$('#detail .engine-stage');
+    const head = ui.$('#detail .engine-head-text');
+    if (stage) loadTops.push(px(box(stage).top));
+    if (head) loadHeads.push(px(box(head).height));
+    await ui.sleep(50);
+  }
+  const uTops = [...new Set(loadTops)];
+  const uHeads = [...new Set(loadHeads)];
+  ui.note(`while the header loaded (${Math.round(performance.now() - t0)}ms): `
+    + `stage top ${uTops.join(' -> ')} · head height ${uHeads.join(' -> ')}`);
+  ui.check(uTops.length === 1, `the stage does not shift while the header loads (${uTops.join(' -> ')})`);
+  ui.check(uHeads.length === 1, `and the header block keeps its height (${uHeads.join(' -> ')})`);
 
-  // window.resizeTo is ignored in Electron's renderer (CLAUDE.md), so the
-  // narrow case is reached by constraining the pane the columns live in —
-  // which is what a narrower window does to them.
-  const main = ui.$('#main') || document.body;
+  const car = ui.$('#detail .engine-carousel');
+  if (!car) { ui.note('no carousel on screen (offline?)'); return; }
 
-  const look = async (label, width) => {
-    if (width) {
-      main.style.width = `${width}px`;
-      main.style.maxWidth = `${width}px`;
-      await ui.sleep(500);
+  // ── 1. ONE POSITION, REST vs AWAKE ──────────────────────────────────────
+  const rest = centreOf(box(ui.$('#detail .car-face.is-hero')));
+  car.classList.add('is-open', 'no-anim');
+  await ui.sleep(320);
+  const awake = centreOf(box(ui.$('#detail .car-face.is-hero')));
+  ui.note(`hero centre: rest ${px(rest)} · awake ${px(awake)}`);
+  ui.check(Math.abs(awake - rest) <= 1,
+    `the hero has ONE position, not two (${px(rest)} vs ${px(awake)})`);
+
+  // ── 4. NO PEEK TAKES A CLICK FROM A CONTROL ─────────────────────────────
+  // Every interactive element in the engine column, not just the one that was
+  // reported: the next one to drift under a peek should fail here, not in the
+  // app.
+  const col = ui.$('#detail .col-engine');
+  const controls = ui.$$('#detail .col-engine button, #detail .col-engine select, '
+    + '#detail .col-engine input, #detail .col-engine [role="button"]')
+    .filter((el) => !el.closest('.engine-carousel') && box(el).width > 0);
+  ui.note(`interactive elements in the engine column: ${controls.length}`);
+  const peeks = ui.$$('#detail .car-face.is-peek').filter((p) => box(p).width > 0);
+  for (const el of controls) {
+    const r = box(el);
+    const name = (el.id || el.className || el.tagName).toString().trim().split(/\s+/)[0];
+    for (const p of peeks) {
+      const pr = box(p);
+      const over = !(pr.right <= r.left || pr.left >= r.right
+        || pr.bottom <= r.top || pr.top >= r.bottom);
+      if (!over) continue;
+      const cx = (Math.max(pr.left, r.left) + Math.min(pr.right, r.right)) / 2;
+      const cy = (Math.max(pr.top, r.top) + Math.min(pr.bottom, r.bottom)) / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      const reaches = !!(hit && (hit === el || el.contains(hit)));
+      ui.note(`   peek over "${name}" at (${px(cx)}, ${px(cy)}) -> hits `
+        + `${hit ? hit.tagName.toLowerCase() : 'null'}${reaches ? ' (the control)' : ' (NOT the control)'}`);
+      ui.check(reaches, `a pointer over "${name}" reaches the control, not the peek`);
     }
-    const car = ui.$('#detail .engine-carousel');
-    if (!car) { ui.check(false, `${label}: there is a carousel on screen`); return; }
-    // no-anim so the faces are measured where they land, not mid-transition.
-    car.classList.add('is-open', 'no-anim');
-    await ui.sleep(320);
+  }
+  // And the one that was reported, by name, whether or not a peek is over it.
+  const save = ui.$('#save-live-btn') || ui.$('#detail .save-slot button');
+  if (save && box(save).width) {
+    const r = box(save);
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    ui.check(!!hit && (hit === save || save.contains(hit)),
+      'a pointer on Save patch reaches Save patch');
+  } else {
+    ui.note('Save patch is not on screen for this slot — not checked');
+  }
 
-    const col = ui.$('#detail .col-engine').getBoundingClientRect();
-    const stage = ui.$('#detail .engine-stage').getBoundingClientRect();
-    ui.note(`--- ${label} ---`);
-    ui.note(`   column x${px(col.left)}..${px(col.right)} w${px(col.width)} · stage w${px(stage.width)}`);
-
-    const faces = {};
-    for (const f of ui.$$('#detail .car-face')) {
-      const cls = f.className;
-      const key = /is-hero/.test(cls) ? 'hero'
-        : (/is-peek/.test(cls) && /is-prev/.test(cls)) ? 'prev'
-          : (/is-peek/.test(cls) && /is-next/.test(cls)) ? 'next' : null;
-      if (!key) continue;
-      const r = f.getBoundingClientRect();
-      faces[key] = r;
-      const inside = r.left >= col.left - 1 && r.right <= col.right + 1;
-      const vis = Math.max(0, Math.min(r.right, col.right) - Math.max(r.left, col.left));
-      ui.note(`   ${key.padEnd(5)} x${px(r.left)}..${px(r.right)}`
-        + `  ${Math.round(vis / r.width * 100)}% in column  ${inside ? 'INSIDE' : 'ESCAPES'}`);
-      if (key !== 'hero') {
-        ui.check(inside, `${label}: the ${key} peek is fully inside the engine column`);
-      }
-    }
-
-    if (faces.prev && faces.next) {
-      const gapL = faces.prev.left - col.left;
-      const gapR = col.right - faces.next.right;
-      ui.note(`   gaps: left ${px(gapL)}px · right ${px(gapR)}px`);
-      ui.check(Math.abs(gapL - gapR) <= 2,
-        `${label}: the two peeks sit symmetrically (${px(gapL)} vs ${px(gapR)})`);
-      // AND THEY ARE ACTUALLY VISIBLE, not merely inside. A spread small enough
-      // to hide both peeks behind the hero would satisfy every check above.
-      const heroR = faces.hero;
-      if (heroR) {
-        const leftShowing = heroR.left - faces.prev.left;
-        const rightShowing = faces.next.right - heroR.right;
-        ui.note(`   showing beyond the hero: left ${px(leftShowing)}px · right ${px(rightShowing)}px`);
-        ui.check(leftShowing > 20 && rightShowing > 20,
-          `${label}: each peek shows a usable amount of itself (${px(leftShowing)} / ${px(rightShowing)})`);
-      }
-    }
-
-    if (faces.hero) {
-      // NOT SHRUNK. scale(1.12) of the stage is what the hero is at rest when
-      // open; anything less means the centre paid for the peeks.
-      const expected = stage.width * 1.12;
-      ui.note(`   hero w${px(faces.hero.width)} · stage*1.12 = ${px(expected)}`);
-      ui.check(Math.abs(faces.hero.width - expected) <= 2,
-        `${label}: the centre image is full size, not shrunk to make room`);
-    }
-
-    car.classList.remove('is-open', 'no-anim');
-    await ui.sleep(200);
-  };
-
-  await look(`DEFAULT (viewport ${document.documentElement.clientWidth}px)`, null);
-  await look('NARROW (#main 980px)', 980);
-
-  main.style.width = '';
-  main.style.maxWidth = '';
+  // ── 2. AND THE SAME POSITION AFTER A TURN ───────────────────────────────
+  car.classList.remove('no-anim');
+  const next = ui.$('#detail .car-face.is-peek.is-next');
+  if (!next) { ui.note('no next peek to turn with — the turn half is not checked'); return; }
+  const before = centreOf(box(ui.$('#detail .car-face.is-hero')));
+  next.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  // Through the whole turn AND the rebuild that follows the device confirming.
+  const seen = [];
+  for (let i = 0; i < 70; i++) {
+    await ui.sleep(50);
+    const h = ui.$('#detail .car-face.is-hero');
+    if (h) seen.push(px(centreOf(box(h))));
+  }
+  const settled = seen[seen.length - 1];
+  ui.note(`hero centre before the turn ${px(before)} · after it settles ${settled}`);
+  ui.check(Math.abs(settled - before) <= 1,
+    `the wheel lands where it started, so a turn does not look like two (${px(before)} vs ${settled})`);
 })()
