@@ -2098,6 +2098,43 @@ the read pattern changes.
 That cost is why the read happens after the player has chosen, never while a
 dialog is opening and never on the way out of a patch.
 
+### THE BOOT CONNECTION TAKES ~2.1 SECONDS (measured 2026-11-15)
+
+**Nobody had measured this, and the 1363ms above is NOT it.** That figure is
+`readBuffer` — 110 parameter reads — a different sequence that was being
+quoted for the connection because it was the only number on record.
+
+`midi.connect()` covers: find the port, open it, the mandatory STRING-4
+liveness probe, the device's OWN parameter table (`0x10` for the count then
+`0x14` per id), the sound table (`0x42` per id), and the globals.
+
+MEASURED on Daniel's unit, FW 1.37, 27 sounds installed, five consecutive
+connects each preceded by a disconnect and a 900ms settle:
+
+```
+run 1  1765ms      min     1765ms
+run 2  2072ms      median  2072ms
+run 3  2079ms      max     2091ms
+run 4  2068ms      spread   327ms
+run 5  2091ms
+```
+
+Timed around the IPC call rather than inside the main process, deliberately:
+the bridge is part of what a person waits through.
+
+**The first connect was the fastest by ~300ms and the other four clustered
+within 23ms of each other.** That is one observation, not a property — n=1 for
+the first — and it is recorded without a theory attached rather than filed
+under the nearest story.
+
+**The sound table scales with what is installed.** 27 sounds here; a unit with
+no expansions reads 24, one with all of them more. So this figure belongs to
+THIS instrument, and a bare Seven should be expected to come in slightly
+under it.
+
+This is the number the boot loader exists for: two seconds is long enough that
+a blank window reads as a broken app.
+
 Two rules, both mutation-proven in `test/save-plan.test.js`:
 
 - **What is written is what was read**, never the app's copy, whenever there is
