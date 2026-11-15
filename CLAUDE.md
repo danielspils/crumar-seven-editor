@@ -1970,6 +1970,40 @@ Kept here because they otherwise live only in a chat that ends.
   you cannot hear it" — which is a real answer either way, and the only kind
   this project accepts.
 
+- **PICKUP COMPRESS TAKES, AND DANIEL CANNOT HEAR IT** (measured 2026-11-15).
+  The same question as above, asked of a MODELED parameter, and answered.
+
+  Daniel: every other CP80 parameter works, `egp_pucm` does not. Three causes
+  were possible and they have nothing in common — the write is refused, the
+  write is accepted and ignored by the instrument, or the app never sends it.
+
+  SWEPT ON HARDWARE with an Electric Grand loaded and a live session, each
+  value written and then read back, against TWO controls from the same group
+  so that "the write did not take" could be told from "the method is wrong":
+
+  ```
+  egp_pucm  Pickup Compress    set 0/64/127 -> echo 0/64/127 -> read 0/64/127
+  egp_rell  Release Length     set 0/64/127 -> echo 0/64/127 -> read 0/64/127
+  egp_dyna  Dynamics           set 0/64/127 -> echo 0/64/127 -> read 0/64/127
+  ```
+
+  Pickup Compress behaves EXACTLY like the two controls. The device echoes
+  every value and reads it back. So the app sends it, the instrument accepts
+  it, and it survives — which eliminates "refused" and "never sent" and leaves
+  only **it takes and you cannot hear it**.
+
+  WHAT THAT DOES NOT SETTLE, and must not be written up as if it did: whether
+  the parameter is inert on this firmware, inert on this sound, or audible
+  only under a condition nobody has identified. Nothing here establishes any
+  of those, and the app is not at fault in any of them.
+
+  THE NEXT STEP, for whoever picks this up: the `0x23` reply's 4th field is
+  the device's own DISPLAY STRING — that is how the enum labels were harvested
+  on 2026-08-09. If the display changes as `egp_pucm` sweeps, the instrument
+  is acknowledging the value internally and the question is purely audio; if
+  it does not, the parameter is a stub on this firmware. `edit:read` does not
+  surface that field today, so it needs the raw reply.
+
 ### There are no modes (settled 2026-08-12)
 
 Audition mode is gone as a concept, not renamed. A patch is live the moment it
