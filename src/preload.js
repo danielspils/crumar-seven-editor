@@ -55,6 +55,21 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // same family document-wide.
   getPanelSvg: () =>
     readText('assets/seven-panel.svg').replace(/@font-face\s*{[^}]*}\s*/g, ''),
+  // THE SEVEN'S LOGO, traced once as paths (four subpaths, viewBox 0 0 1987
+  // 688, fill="currentColor"). It is the Seven tab in the four-tab nav and it
+  // LIGHTS when chosen, which is why it is paths rather than a webfont: a face
+  // cannot be made to glow along its strokes, and fonts.gstatic.com is blocked
+  // by this app's CSP anyway (index.html's font-src is 'self' data:).
+  //
+  // INLINED, LIKE THE PANEL AND THE INSTRUMENTS, and for the same reason. An
+  // SVG loaded through <img> is its own document and inherits nothing, so
+  // `currentColor` would resolve to nothing and neither the theme nor the lit
+  // state would reach it. One file, both themes, both states.
+  //
+  // ONE DRAWING. Same rule as modal-panel.js cropping the single panel SVG
+  // rather than redrawing it: two drawings of one object drift, and the one
+  // used less is the one that is wrong when you look at it.
+  getLogoSvg: () => readText('assets/seven-logo.svg'),
   // Instrument illustrations, inlined. They must be INLINE for their CSS
   // variables to resolve: an SVG loaded through <img> is a separate document
   // and inherits nothing from the page, so it would render its fallback

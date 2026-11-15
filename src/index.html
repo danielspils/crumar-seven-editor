@@ -9,20 +9,55 @@
        reads from these; the panel strip is artwork and stays as it is in
        both — the instrument should be the darkest thing on screen. */
     :root {
-      --bg: #141416;
+      /* A TAMER BLACK (change 1 of the six locked 14 Nov 2026). Daniel, on the
+         preview in the real window: "make the black a little less midnight
+         black and more tame black." #141416 is the panel drawing's OWN ground —
+         right behind photoreal artwork, too deep behind type, and the app was
+         using it for both jobs. The drawing keeps it as --page.
+            --bg        #141416 -> #1b1b1e
+            --bg-panel  #232326 -> #2a2a2e
+            --line      #2e2e33 -> #33333a
+         DARK ONLY: the light values below already match the mock. */
+      --bg: #1b1b1e;
       --bg-raised: #1c1c1f;
-      --bg-panel: #232326;
-      --line: #2e2e33;
+      --bg-panel: #2a2a2e;
+      --line: #33333a;
+      /* The old ground, kept for what it was always right for: behind the
+         instrument artwork, so a drawing still reads as resting on something
+         rather than floating on the new lighter surface. */
+      --page: #141416;
       --text: #e8e8ea;
       --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%23e8e8ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
       --text-muted: #8b8b93;
       --text-dim: #5e5e66;
       --accent: #ff3b30;      /* panel LED red */
+      /* The same red as channels, for a keyframe that has to fade it. rgba()
+         cannot take a hex, and the arrival animation interpolates from fully
+         transparent to full chroma on the selected-row edge. */
+      --accent-rgb: 255, 59, 48;
       --amber: #ffb020;
       /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
       --action: #4fb96a;
       --action-ink: #08150d;
+      /* THE SAME GREEN AS WORDS, damped (DESIGN.md, "full chroma for marks,
+         damped for text"). --action is borrowed from a printed legend a few
+         millimetres tall; set on a 12px bold label it is many times the ink,
+         and the first pass of the list design read as neon because of exactly
+         this. A filled control keeps --action; text that acts takes this.
+         In LIGHT they are the same value — on paper the legend green is
+         already at word strength, so nothing needs damping. */
+      --action-text: #63a87a;
+      /* THE LOGO IS A LIT SIGN, and the one element in the app allowed to
+         change value by theme (DESIGN.md, "The one exception"). Dark: the
+         panel green, glowing. Unlit: a dark version of its own hue, so an
+         unselected sign reads as switched off rather than as grey type. */
+      --logo: #73c98c;
+      --logo-off: #3a4a3e;
+      /* The 1px top highlight on a chosen surface — a tab or a selected row.
+         The panel's own cap highlight, which is where "chosen" gets its
+         slight physicality without a second surface tone. */
+      --cap-hi: rgba(255, 255, 255, .06);
 
       /* Instrument illustrations (assets/instruments/*.svg, inlined so these
          reach them — an SVG loaded through <img> is its own document and
@@ -68,7 +103,12 @@
       --text-muted: #6a6355;
       --text-dim: #8a8375;
       --accent: #b8362b;
+      --accent-rgb: 184, 54, 43;
       --amber: #8a5d00;
+      /* THE LIGHT GROUND IS ALREADY TAME. Change 1 is dark-only: these values
+         were measured against the mock and match it, so only --page is new —
+         the antiqued paper one step down, for the artwork to sit on. */
+      --page: #ded5c2;
       /* Darkened from #2c8b4f on 2026-08-21. Same hue; it simply was not dark
          enough to be read on any light surface. Measured against WCAG AA
          (4.5:1 for normal text), on the three surfaces it can land on:
@@ -80,6 +120,28 @@
          #4fb96a already passes at 6.33-7.43 and is untouched. */
       --action: #1f6b3d;
       --action-ink: #f4f7f5;
+      /* SAME VALUE AS --action HERE, deliberately, and not a copy-paste slip:
+         on paper the legend green is already at word strength, so there is
+         nothing to damp. The variable still has to exist in both palettes —
+         test/css-hazards.test.js fails the build otherwise, because a colour
+         defined in one theme is invisible in the other until somebody
+         switches. */
+      --action-text: #1f6b3d;
+      /* FOREST, chosen 14 Nov 2026 from six candidates all sourced from the
+         panel drawing (the LOCAL OFF magenta, the LED red, this green, the
+         panel teal, the unlit ochre legend, plain ink).
+         It differs from the dark value where the panel strip deliberately does
+         not, and that is allowed for one reason: the panel is a picture of a
+         machine, the logo is a lit SIGN. A sign reads as its emission in the
+         dark and as its own material in daylight. One object, two lights.
+         WATCH: this is also --action-text in light, both descended from the
+         DEPTH/RATE legend, so the shared hue is honest rather than a
+         coincidence — a 31px script in the corner is not confusable with a
+         12px label in the foot. If a third thing wants this green, split them
+         then. */
+      --logo: #1f6b3d;
+      --logo-off: #b3a994;
+      --cap-hi: rgba(255, 255, 255, .6);
 
       --inst-chassis: #3f3f47;
       --inst-chassis-accent: #6b6b78;
