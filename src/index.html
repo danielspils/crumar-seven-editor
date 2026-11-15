@@ -2720,15 +2720,11 @@
        beside it, which is what it was always allowed to do, and may never
        cross into the effects chain. */
     .engine-stage .engine-carousel { overflow: hidden; }
-    .engine-stage:has(.engine-carousel.is-open),
-    .engine-stage:has(.engine-carousel.is-turning),
-    .engine-stage:has(.engine-carousel:focus-within) {
-      overflow: visible;
-      /* ABOVE ITS SIBLINGS. The stage is the SECOND child of the head grid, so
-         the meta lines that follow it in the DOM would paint over any peek
-         that reached them. */
-      z-index: 5;
-    }
+    /* THE STAGE NO LONGER OPENS, and no longer lifts above its siblings.
+       Both existed to let a peek reach OUT of column 2 — the lift so the meta
+       lines that follow the stage in the DOM would not paint over it. Nothing
+       reaches out any more, so a lift would only put a picture in front of the
+       Save patch button again, which is the bug it used to cause. */
     /* THE WHEEL HAS ONE POSITION, AND IT IS THIS ONE (Daniel, 2026-11-15).
        An earlier pass centred it on the COLUMN while awake, to give the
        right-hand neighbour room. It worked, and it cost three things that
@@ -2754,11 +2750,16 @@
        the original 72% precisely because it is the better end of that trade:
        the right peek shows 42% of itself instead of 20%, and the left one
        stops overlapping the Save patch button entirely. */
-    .engine-stage:has(.engine-carousel.is-open) .engine-carousel,
-    .engine-stage:has(.engine-carousel.is-turning) .engine-carousel,
-    .engine-stage:has(.engine-carousel:focus-within) .engine-carousel {
-      overflow: visible;
-    }
+    /* NOTHING ESCAPES THE STAGE ANY MORE, in any state — so these rules are
+       gone rather than left switched off.
+       The wheel used to need `overflow: visible` because its neighbours were
+       drawn outside the box at full size. They are not: the hero pulls back to
+       0.60 while awake and the peeks live in the room it gives up, so all
+       three faces fit inside column 2 at every moment. That is what makes the
+       column-1 overlap and the click-eating impossible BY CONSTRUCTION rather
+       than by a rule somebody has to keep honouring — a peek cannot reach the
+       Save patch button if it cannot leave the stage.
+       The clip stays on .engine-stage, where fc940cd put it. */
     /* THE COLUMN IS THE OUTER FENCE, and it is safe to be one: overflow:hidden
        does NOT trap position:fixed children — only transform, filter and
        will-change do — so the parameter picker still escapes it. That is the
@@ -3027,17 +3028,39 @@
        each side, and its hover state at scale .82 still lands 6px inside the
        column. Anything wider escapes on hover before it escapes at rest,
        which is why the bound was taken from the HOVER size, not this one. */
-    .engine-carousel { --peek: 56%; }
+    /* THE WHEEL PULLS BACK TO SHOW ITS OPTIONS (Daniel, 2026-11-15).
+       At rest the hero is full size and alone. Awake, it scales DOWN, and the
+       room it gives up is what makes two symmetric peeks visible — all of it
+       inside column 2, so the wheel never reaches the meta text or the Save
+       button and the click-eating cannot come back by construction.
+       Size carries meaning here: large is "this is what you have", small is
+       "you are choosing".
+
+       ONE NUMBER, DERIVED, NOT TUNED. The stage is flush to column 2's right
+       edge, so everything must fit within 93.5px of the centre at the measured
+       374px column. A peek shows 93.5(1-h) beyond a hero of scale h; a third
+       of a peek of the same scale needs 93.5(1-h) >= 62.3h, which gives
+       h <= 0.60. At exactly 0.60 the hero, the peeks and the spread are all
+       0.60 and each peek shows 37.4px of its 112.2 — a third, as asked.
+       It is a RATIO of the face, so it holds at every column width: the same
+       run measures 0.60 at the 980px pane as at 1147. */
+    .engine-carousel { --peek: 60%; --awake: .6; }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
-      transform: translateX(calc(-1 * var(--peek))) scale(.74);
+      transform: translateX(calc(-1 * var(--peek))) scale(var(--awake));
     }
     .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
-      transform: translateX(var(--peek)) scale(.74);
+      transform: translateX(var(--peek)) scale(var(--awake));
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
+    /* DOWN, NOT UP. It grew to 1.12 before, which is what made a visible peek
+       impossible: at 1.12 the hero's own half-width is 104.7px against 93.5px
+       of room, so every peek narrow enough to fit was hidden behind it.
+       transform-origin is `bottom center` (set above), which is what holds
+       condition 1 — the centre x does not move, and the instruments keep the
+       shared floor line they are drawn to stand on. */
     .engine-carousel.is-open .is-hero, .engine-carousel:focus-within .is-hero {
-      transform: scale(1.12);
+      transform: scale(var(--awake));
     }
     /* Turning the wheel: every face moves one position along, so the picture
        you clicked travels INTO the middle and the middle one travels out.
@@ -3048,12 +3071,18 @@
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
-    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.82); }
-    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.82); }
+    /* Hover LIFTS without moving: same place, a little larger. It stays on the
+       awake scale's own terms rather than jumping to a third size. */
+    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.66); }
+    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.66); }
+    /* THE INCOMING FACE ARRIVES AT THE AWAKE SIZE, not the resting one. The
+       wheel is still awake while it turns; growing back to full is what
+       SETTLING does, once .is-open goes. Landing at full size mid-turn and
+       then having to shrink again is the double movement Daniel caught. */
     .engine-carousel.is-turning.is-turning-next .is-next,
-    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
-    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(var(--awake)); opacity: 1; }
+    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(var(--awake)); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(var(--awake)); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
     /* The one rolling in from beyond, taking the vacated side. */
