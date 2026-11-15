@@ -884,8 +884,20 @@
       display: flex; align-items: baseline; flex: none;
       padding: 14px 14px 11px; flex-wrap: wrap; row-gap: 8px;
     }
+    /* LONGHAND, BECAUSE THE SHORTHAND WAS INVALID AND SILENTLY DISCARDED.
+       `font: 700 17px/1.1 inherit` looks like it sets three things and sets
+       none: the shorthand's last value must be a font-FAMILY, `inherit` is not
+       a family token there, so the whole declaration is thrown away — the 700
+       and the 17px with it. The `font-family: inherit` beside it still applied
+       on its own, which is why the family looked right and nothing ever looked
+       broken enough to chase. These tabs rendered at the UA button default,
+       400 13.333px, from the day the rule was written until 2026-11-15.
+       A BARE `font: inherit` IS FINE and is used ~30 times in this file. Only
+       a shorthand that MIXES `inherit` with other values is broken, and there
+       were exactly two — this and .top-strut. css-hazards.test.js now fails on
+       the shape rather than trusting anyone to spot it again. */
     .top-tab {
-      font: 700 17px/1.1 inherit; font-family: inherit;
+      font-size: 17px; font-weight: 700; line-height: 1.1; font-family: inherit;
       background: none; border: 0; padding: 0 0 7px; cursor: pointer;
       border-bottom: 2px solid transparent;
       color: var(--text-dim); transition: color .14s ease;
@@ -909,7 +921,12 @@
        not neon. A drop-shadow on the PATHS, not a text-shadow — the ink is a
        shape, so the glow follows the strokes instead of a glyph box. */
     .top-logo { position: relative; padding: 0 2px 7px 0; line-height: 1; color: var(--logo-off); }
-    .top-strut { font: 700 17px/1.1 inherit; font-family: inherit; }
+    /* The strut carries the SAME metrics as a word tab on purpose: it is what
+       gives the logo button a text baseline to sit the artwork on (1aa88be).
+       It had the same invalid shorthand, so it had the same wrong metrics —
+       and the two were wrong together, which is why the logo still lined up
+       with the tabs while both were at 13.333px. */
+    .top-strut { font-size: 17px; font-weight: 700; line-height: 1.1; font-family: inherit; }
     /* IN FLOW, so the button sizes to the ink and nothing can overlap it.
        Absolute positioning took the drawing out of flow once: the button's
        width came from the zero-width strut alone and a ~90px drawing painted
@@ -2413,9 +2430,18 @@
        in different containers with no shared inline flow, so the offset has to
        be a number here. MEASURED in a rendered window with the font's own
        metrics, not the glyphs' (a line's baseline does not move because its
-       words happen to have no descenders): the word tabs' baseline is y202.6,
-       and 33.5px puts both column titles on it. Swept — 34px lands +0.5,
-       32px lands -1.5.
+       words happen to have no descenders): the word tabs' baseline is y202.4,
+       and 33.5px puts both column titles within 0.2px of it. Swept — 32px
+       lands -1.3, 31px lands -2.3.
+
+       RE-SWEPT after .top-tab's invalid font shorthand was fixed, which took
+       the word tabs from the UA default 400 13.333px to their intended
+       700 17px. The number did NOT have to change, and that is not luck: the
+       nav row is baseline-aligned and its baseline is set by the LOGO, whose
+       height comes from a fixed 28.2px drawing rather than from type. The word
+       tabs were always aligning to it. Their baseline moved y202.6 -> y202.4,
+       and the row's height did not move at all (the bank strip below it went
+       y221.1 -> y221.3).
        A NUMBER IN A COMMENT ROTS, so one-header-line.js asserts the two
        baselines match in a real window rather than trusting this paragraph. */
     #detail {

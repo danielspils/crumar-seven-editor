@@ -91,6 +91,47 @@ test('no rule paints text with the undamped action green', () => {
   );
 });
 
+// THE THIRD MISTAKE THAT ACTUALLY SHIPPED HERE, and the most expensive to
+// spot because the page looked fine.
+//
+// `font: 700 17px/1.1 inherit` reads as "bold, 17px, inherit the family" and
+// sets NONE of it. The `font` shorthand's last value must be a font-FAMILY,
+// and `inherit` is not a family token there, so the declaration is invalid and
+// the browser discards it whole — the 700 and the 17px with it. A
+// `font-family: inherit` sitting beside it still applies on its own, so the
+// family is right and nothing looks broken enough to chase.
+//
+// The top tabs — the most prominent type in the app — rendered at the UA
+// button default, 400 13.333px, from the day the rule was written until
+// 2026-11-15. It was found by Daniel reading the source against a measurement
+// of the screen and noticing the two did not agree.
+//
+// A BARE `font: inherit` IS VALID and is used ~30 times in this file. Only a
+// shorthand that MIXES `inherit` with other values is broken, so that is
+// exactly what this matches — anything stricter would condemn 30 correct
+// lines, and a test that cries wolf is one people learn to skim.
+test('no font shorthand mixes `inherit` with other values', () => {
+  const offenders = [];
+  for (const r of rules) {
+    for (const d of r.body.split(';')) {
+      const i = d.indexOf(':');
+      if (i < 0) continue;
+      const prop = d.slice(0, i).trim();
+      const value = d.slice(i + 1).trim();
+      if (prop !== 'font') continue;
+      // A bare keyword as the ENTIRE value is legal: inherit, initial, unset,
+      // revert, and the system font keywords.
+      if (!/\binherit\b/.test(value)) continue;
+      if (/^inherit$/i.test(value)) continue;
+      offenders.push(`${r.selector} { font: ${value} }`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    'the `font` shorthand needs a real family last; `inherit` there voids the '
+    + 'whole declaration, size and weight included. Use longhand: '
+    + 'font-size / font-weight / line-height / font-family: inherit.');
+});
+
 test('no media-query rule is overridden by a later plain rule for the same selector', () => {
   const problems = [];
   for (const inMedia of rules.filter((r) => r.media)) {
