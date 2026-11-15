@@ -119,9 +119,35 @@ function runScenario(file, libraryDir) {
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
-    child.on('exit', () => {
+    child.on('exit', (code, signal) => {
       const line = out.split('\n').find((l) => l.startsWith('[ui-test]'));
-      if (!line) return resolve({ file, failures: ['no result — the app crashed or never loaded'], notes: [], out });
+      if (!line) {
+        // THE ONE FAILURE MODE WITH NO DIAGNOSTIC WAS THE ONE THAT NEEDED IT
+        // MOST. `out` was resolved and then never printed, so "the app crashed"
+        // and "the scenario threw before it could report" — different bugs,
+        // with fixes nowhere near each other — arrived as the same sentence.
+        // On 2026-11-14 two scenarios failed this way in a hardware run and
+        // the run output could not distinguish them even in principle.
+        //
+        // The exit code and signal separate them on their own: a renderer
+        // exception leaves the app to exit 0 with its reporting skipped, while
+        // a crash exits non-zero or dies on a signal. Both are printed, with
+        // the tail of what the child said.
+        const how = signal ? `killed by ${signal}` : `exit code ${code}`;
+        const tail = out.trim().split('\n').slice(-25);
+        return resolve({
+          file,
+          failures: [
+            `no [ui-test] result — ${how}. `
+            + (signal || code ? 'The app died before reporting.'
+              : 'The app exited cleanly WITHOUT reporting, so the scenario '
+                + 'most likely threw before its result was printed.'),
+            ...tail.map((l) => `  | ${l}`),
+          ],
+          notes: [],
+          out,
+        });
+      }
       try {
         resolve({ file, ...JSON.parse(line.slice('[ui-test]'.length)) });
       } catch (err) {

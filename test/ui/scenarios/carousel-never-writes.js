@@ -82,7 +82,17 @@
 
     ui.$('[data-carousel] .is-hero').click();   // the choice
     await ui.sleep(2800);
-    ui.check(!ui.$('.seven-modal'), `choosing raised no refusal in ${tab}`);
+    // SAY WHAT WAS RAISED. "choosing raised no refusal in backups" named the
+    // expectation and not the thing on screen, so a real failure here arrived
+    // as a sentence nobody could act on — and the next guess was that it was
+    // the same pre-existing connection timeout, which it was not.
+    const raised = ui.$('.seven-modal');
+    if (raised) {
+      const t = (raised.querySelector('.seven-modal-title') || {}).textContent || '';
+      ui.note(`${tab}: a modal IS up — title "${t.trim()}" · `
+        + `body "${raised.textContent.replace(/\s+/g, ' ').trim().slice(0, 160)}"`);
+    }
+    ui.check(!raised, `choosing raised no refusal in ${tab}`);
 
     // THE WHOLE POINT: the file is untouched.
     const after = await onDisk(file);

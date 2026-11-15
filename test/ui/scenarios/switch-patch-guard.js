@@ -65,8 +65,21 @@
   const rows = [...dialog.querySelectorAll('.sv-row')];
   ui.note(`rows offered: ${rows.map((x) => x.querySelector('.sv-row-t').textContent).join(' · ')}`);
   ui.check(rows.length === 2, `both destinations are offered (${rows.length})`);
-  ui.check(rows.some((x) => /Hold the button on the Seven/.test(x.textContent)),
+  // MATCHED ON "Seven", NOT ON THE OPENING WORDS. This assertion read
+  // /Hold the button on the Seven/ and went stale on 14 Nov when the sentence
+  // became "HOLDING the button on the Seven for three seconds is what saves
+  // it" — and the pre-change grep missed it, because that grep was for the
+  // string's TAIL ("Seven to confirm") while this matched its HEAD. Grepping
+  // for the string you are changing does not find assertions that match a
+  // substring of it; grep for a distinctive word, in both directions.
+  const instrumentRow = rows.find((x) => /button on the Seven/.test(x.textContent));
+  ui.check(!!instrumentRow,
     'and the instrument row says the HOLD is what does it');
+  // The same pairing the unit test and save-flow.js carry: the row must ask
+  // for the hold and must NOT call it a confirmation, since there is nothing
+  // the app did for the player to approve.
+  ui.check(!!instrumentRow && !/confirm/i.test(instrumentRow.textContent),
+    'and never calls the hold a confirmation');
 
   // ── DISCARD AND LEAVE ───────────────────────────────────────────────────
   //
