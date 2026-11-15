@@ -214,15 +214,41 @@ test('with no search there is nothing to count', () => {
   assert.strictEqual(state.searchHits, null);
 });
 
-test('a search that narrows nothing counts nothing', () => {
-  // The setlist list does not filter by state.search at all, so a count there
-  // would read "3 of 3" forever — true, and a lie in shape. Asserted so that
-  // giving setlists a real search later comes with its own decision about it.
+// INVERTED 2026-11-15, with the code, which is the only way a test of this
+// shape may change. It used to assert that the setlist list set no count —
+// correct while it did not filter at all — and said in its own comment that
+// giving setlists a real search later had to come with its own decision about
+// the count. That is this: the list filters by name, so the count is a real
+// answer and is set from the list that actually did the narrowing.
+test('searching setlists narrows the list and counts what it hid', () => {
+  const data = {
+    patches: [],
+    setlists: [
+      { name: 'Friday', slots: [] },
+      { name: 'Saturday', slots: [] },
+      // A backup's own setlist is not a setlist of yours and is not counted.
+      { name: 'Bank 1 setlist (2026-08-16)', slots: [] },
+    ],
+    files: 0,
+  };
   const state = { tab: 'setlists', search: 'fri' };
-  SevenLibraryView.renderBody(
-    { patches: [], setlists: [{ name: 'Friday', slots: [] }], files: 0 }, state
-  );
-  assert.strictEqual(state.searchHits, null);
+  const html = SevenLibraryView.renderBody(data, state);
+  assert.strictEqual(state.searchHits, 1, 'one name matched');
+  assert.strictEqual(state.searchTotal, 2, 'out of the two that are yours');
+  assert.ok(/Friday/.test(html) && !/Saturday/.test(html),
+    'and the list shows only the match');
+
+  // No search, no count — the bar carries a number only while one is narrowing.
+  const idle = { tab: 'setlists', search: '' };
+  SevenLibraryView.renderBody(data, idle);
+  assert.strictEqual(idle.searchHits, null);
+});
+
+test('a setlist search that matches nothing says so, and does not claim the library is empty', () => {
+  const data = { patches: [], setlists: [{ name: 'Friday', slots: [] }], files: 0 };
+  const html = SevenLibraryView.renderBody(data, { tab: 'setlists', search: 'zzz' });
+  assert.ok(/No setlists match/.test(html), 'it names the search');
+  assert.ok(!/No setlists yet/.test(html), 'and never the empty-library state');
 });
 
 test('the label is only drawn when there is one to draw', () => {

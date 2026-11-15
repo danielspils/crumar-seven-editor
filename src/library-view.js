@@ -732,14 +732,32 @@
   }
 
   function renderSetlistList(data, state) {
+    // THE SEARCH FILTERS HERE NOW (Daniel, 2026-11-15). The box has been in
+    // the bar on this tab all along and narrowed nothing: typing hid no row,
+    // and the count beside it was suppressed precisely because a count over an
+    // unfiltered list would have read "3 of 3" forever. A control that does
+    // nothing is worse than no control — you cannot tell it from a list with
+    // no matches in it.
+    //
+    // BY NAME, which is all a setlist has. A setlist's own identity is the
+    // name somebody typed; its slots are patches that the Patches tab already
+    // searches. Matching on contents would mean a search for "Rhodes"
+    // returning setlists with no "Rhodes" in their names, which reads as a
+    // broken filter rather than a clever one.
+    const q = String(state.search || '').trim().toLowerCase();
     // The original index travels with each row: everything downstream (rename,
     // delete, send, open) addresses setlists by their position in the FILE, so
     // this ordering is display only and never renumbers anything.
-    const rows = data.setlists
+    const mine = data.setlists
       .map((s, i) => ({ s, i, key: createdKey(s, i) }))
       // A setlist is something YOU made. The dated records a backup writes are
       // backups, and they live under their own tab (Daniel, 2026-08-13).
-      .filter(({ s }) => !BACKUP_NAME.test(s.name))
+      .filter(({ s }) => !BACKUP_NAME.test(s.name));
+    const kept = q ? mine.filter(({ s }) => (s.name || '').toLowerCase().includes(q)) : mine;
+    // The bar reads these afterwards. Set from the REAL list rather than
+    // recomputed beside it, which is how two counts for one list disagree.
+    if (q) { state.searchHits = kept.length; state.searchTotal = mine.length; }
+    const rows = kept
       // SORT FIRST, then number. Numbering before the sort assigned the file's
       // order to rows that were about to be rearranged, so the newest setlist
       // sat at the top wearing the number 2 (Daniel, 2026-08-14). The intent
@@ -805,6 +823,16 @@
     const create = state.creatingSetlist
       ? `<div class="lib-row lib-setlist-renaming"><input class="setlist-input lib-autofocus" data-setlist-create type="text" placeholder="Setlist name…" spellcheck="false"></div>`
       : `<button type="button" class="lib-new-setlist">＋ Create new setlist</button>`;
+    // A SEARCH THAT MATCHED NOTHING IS NOT AN EMPTY LIBRARY. Saying "No
+    // setlists yet" over a hidden list would be the same wrong answer the
+    // offline badge gave: a state described from the wrong cause.
+    if (q && !kept.length) {
+      return `<div class="lib-empty">No setlists match “${esc(state.search)}”.</div>` + create;
+    }
+    // Left as data.setlists, not `mine`: whether the "no setlists yet" state
+    // should also appear for a library holding only backups is a separate
+    // question from this one, and changing it here would be a second change
+    // riding along inside a search fix.
     const empty = !data.setlists.length && !state.creatingSetlist
       ? `<div class="lib-empty">No setlists yet. A setlist is a bank’s worth of patches — 8 slots — staged for a gig or a transfer.</div>`
       : '';
@@ -1160,7 +1188,8 @@
           return (
             `<div class="lib-slot lib-slot-empty${pulse(i)}" data-slot="${i}">` +
             `${num}<span class="slot-text">Empty</span><span class="lib-badges"></span>` +
-            `<span class="lib-origin">${clearedEntry(i) ? esc(originLine(clearedEntry(i))) : ''}</span>` +
+            `<span class="lib-origin"${clearedEntry(i) ? ` title="${esc(originLine(clearedEntry(i)))}"` : ''}>` +
+            `${clearedEntry(i) ? esc(originLine(clearedEntry(i))) : ''}</span>` +
             `<span class="patch-sound"></span>` +
             `<span class="slot-controls">${undoBtn(i)}${assignBtn(i)}</span></div>`
           );
@@ -1191,7 +1220,7 @@
             `<div class="lib-slot lib-slot-patch selected" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}">` +
             `${num}<input class="lib-rename-input" type="text" value="${esc(displayName(entry))}" spellcheck="false">` +
             `<span class="lib-badges"></span>` +
-            `<span class="lib-origin">${esc(originLine(entry))}</span>` +
+            `<span class="lib-origin" title="${esc(originLine(entry))}">${esc(originLine(entry))}</span>` +
             `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
             `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
           );
@@ -1199,7 +1228,11 @@
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
           `${num}<span class="patch-name" title="${esc(displayName(entry))}">${esc(displayName(entry))}</span>` +
-          `<span class="lib-origin">${esc(originLine(entry))}</span>` +
+          // THE META LINE TRUNCATES, SO IT CARRIES ITS OWN TEXT. "Bank 2 ·
+          // Preset 4 · 14 Nov" is exactly the kind of line a narrow pane cuts,
+          // and the part that gets cut — the date — is the part somebody is
+          // hovering to read.
+          `<span class="lib-origin" title="${esc(originLine(entry))}">${esc(originLine(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}${soundTag(entry)}</span>` +
           `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
         );

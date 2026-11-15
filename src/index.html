@@ -2173,16 +2173,43 @@
     .lib-slot .slot-num { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
     .lib-slot .patch-name, .lib-slot .slot-text { grid-column: 2; grid-row: 1; }
     .lib-slot .lib-badges { grid-column: 3; grid-row: 1; text-align: right; }
-    .lib-slot .lib-origin { grid-column: 2; grid-row: 2; }
-    .lib-slot .patch-sound { grid-column: 3 / -1; grid-row: 2; text-align: right; }
+    /* TWO LINES, NAME ABOVE META (Daniel, 2026-11-15).
+       Line 1 pairs the patch name with the sound it is made of, which is the
+       same left-name/right-sound pairing the Patches list uses. Line 2 is the
+       meta line, and it spans to the row's end because it is the one that
+       runs long — "Bank 2 · Preset 4 · 14 Nov" — and nothing shares it now
+       that the sound has moved up. */
+    .lib-slot .patch-sound { grid-column: 4; grid-row: 1; text-align: right; }
+    .lib-slot .lib-origin {
+      grid-column: 2 / -1; grid-row: 2;
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     /* Slot rows carry the sound's kind as a lettered dot next to the sound
        name rather than a pill in the corner — the corner belongs to Assign.
        Hover reveals "Modeled" / "Sampled". */
     .sound-tag { font-style: italic; color: var(--text-dim); }
     .sound-tag.is-warn { color: var(--warn); font-style: normal; }
+    /* ON HOVER, THE WAY "Send to Seven" APPEARS IN PATCHES (Daniel,
+       2026-11-15). Two controls sitting on every row all the time are two
+       controls competing with the thing the row is for. Laid over the row
+       rather than in it, so revealing them reflows nothing — the same shape
+       as .patch-send, which is why they read as the same idea.
+       :focus-within keeps them reachable from the keyboard, where there is no
+       hover to give. */
+    .lib-slot { position: relative; }
     .lib-slot .slot-controls {
-      grid-column: 4; grid-row: 1; align-self: center;
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
       display: flex; align-items: center; gap: 3px; justify-content: flex-end;
+      opacity: 0; transition: opacity .12s ease;
+    }
+    .lib-slot:hover .slot-controls,
+    .lib-slot:focus-within .slot-controls { opacity: 1; }
+    /* AN EMPTY SLOT KEEPS ITS SELECT. Assign is the only thing that can be
+       done to an empty slot, and a row whose single action is invisible until
+       you happen to point at it has no action at all. */
+    .lib-slot-empty .slot-controls { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .lib-slot .slot-controls { transition: none; }
     }
     .slot-undo { grid-column: auto; }
 
