@@ -120,7 +120,7 @@
     const pick = (i) => {
       const opt = options[i];
       api.close();
-      btn.focus();
+      btn.focus({ focusVisible: false });
       if (!opt || opt.value === current) return;
       current = opt.value;
       text.textContent = opt.label;

@@ -368,7 +368,7 @@
   // click handling covers the keyboard with no second copy of the logic.
   function focusControl(svg) {
     const el = svg && svg.querySelector('[data-mp-bank]');
-    if (el) el.focus();
+    if (el) el.focus({ focusVisible: false });
     return !!el;
   }
 

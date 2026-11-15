@@ -114,7 +114,7 @@
       document.body.appendChild(host);
       host.querySelector(
         defaultDeny ? (denyLabel ? '.seven-modal-deny' : '.seven-modal-cancel') : '.seven-modal-ok'
-      ).focus();
+      ).focus({ focusVisible: false });
     });
   }
 
@@ -163,7 +163,7 @@
       // The first choice that can actually be taken: focus on a disabled one
       // would put the keyboard somewhere Enter does nothing.
       const first = host.querySelector('[data-choice]:not([disabled])');
-      if (first) first.focus();
+      if (first) first.focus({ focusVisible: false });
     });
   }
 
@@ -241,7 +241,7 @@
     // Without an affirmative button the keyboard starts on the close control,
     // which is then the only control there is. A dialog that opens with focus
     // on nothing leaves a keyboard user with nothing at all.
-    (okBtn || host.querySelector('.seven-modal-cancel')).focus();
+    (okBtn || host.querySelector('.seven-modal-cancel')).focus({ focusVisible: false });
 
     const actionsEl = host.querySelector('.seven-modal-actions');
     const titleEl = host.querySelector('.seven-modal-title');
@@ -296,7 +296,7 @@
         card.style.height = '';
         card.classList.remove('is-resizing');
         const nextOk = host.querySelector('.seven-modal-ok');
-        if (nextOk) nextOk.focus();
+        if (nextOk) nextOk.focus({ focusVisible: false });
       },
       // Idempotent on purpose: a caller that races this against something else
       // (the transfer walk races it against the instrument) will ask again

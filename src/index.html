@@ -682,6 +682,20 @@
     /* .bank-tabs admits a second instance of the same component — the backup
        detail view's tabs. The tabs themselves are
        .bank-tab either way; only the container needed a class. */
+    /* A REGION IS NOT A CONTROL, so it draws no focus ring.
+       #library and #bank-region carry tabindex="-1" so a click can put focus
+       somewhere sensible. On macOS a click on a <button> does not focus the
+       button, so focus lands on the nearest focusable ANCESTOR — the panel —
+       and Chromium drew its default ring round it: an orange edge down both
+       sides of the library (Daniel, 2026-11-15). Orange because
+       -webkit-focus-ring-color follows the system accent, measured here as
+       rgb(229, 151, 0).
+       Suppressed rather than restyled: there is nothing to indicate. A focused
+       region offers no action of its own, and what it DOES carry — which tab
+       and which row are selected — the tab and the row already show. */
+    #library:focus, #library:focus-visible,
+    #bank-region:focus, #bank-region:focus-visible { outline: none; }
+
     /* NO RULE UNDER THE STRIP. "Lines separate rows. Nothing else" — regions
        are separated by space and type size (the design language agreed 14 Nov
        2026, which also took out the rule under the top tabs and the one above

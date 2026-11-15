@@ -3788,7 +3788,7 @@
       if (existing) {
         console.warn('[seven] Sounds modal asked to open while already open — focusing the existing one');
         const focusable = existing.querySelector('.seven-modal-ok, .seven-modal-cancel, button');
-        if (focusable) focusable.focus();
+        if (focusable) focusable.focus({ focusVisible: false });
         return;
       }
       // The header IS the answer at a glance: how many sounds this instrument
