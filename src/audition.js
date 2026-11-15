@@ -875,6 +875,18 @@
 
     const card = modal.body.closest('.seven-modal');
     let answer = null;
+    // WHICH row was picked. That a row click ANSWERS the dialog is modal.js's
+    // job, via the data-modal-choice marker save-plan.js puts on every row —
+    // this half only records which one, because the destination is ours to know
+    // and the dialog's settling is not.
+    //
+    // THE ORDER IS LOAD-BEARING AND IT IS NOT AN ACCIDENT. This listener is on
+    // the CARD; the one that settles is on the overlay, which is the card's
+    // ancestor. A click bubbles target -> card -> overlay, so `answer` is
+    // always set before the promise resolves. Move either listener to the other
+    // element and the dialog settles with `answer` still null, which
+    // decideSave reads as 'stay' — a click that closes nothing and saves
+    // nothing, the exact bug this pairing replaced.
     card.addEventListener('click', (e) => {
       const row = e.target.closest('[data-sv]');
       if (row) answer = row.dataset.sv;

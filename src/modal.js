@@ -204,6 +204,21 @@
       if (e.target === host || e.target.closest('.seven-modal-cancel') ||
           e.target.closest('.seven-modal-deny')) settle(false);
       else if (e.target.closest('.seven-modal-ok')) settle(true);
+      // A DIALOG WHOSE BODY *IS* ITS BUTTONS. The save flow deliberately has no
+      // affirmative button — "the rows ARE the actions" — so with only the
+      // three controls above, clicking a row set the caller's `answer` variable
+      // and settled nothing. The dialog then sat there, and Daniel reported
+      // that clicking "Overwrite Bank 3 · Preset 5" did nothing at all. It was
+      // not a stacking or a pointer-events fault: measured 2026-11-14, the
+      // backdrop is present at z-index 60 with pointer-events auto, and a click
+      // at the carousel's centre hit-tests to the row button itself.
+      //
+      // `data-modal-choice` is generic ON PURPOSE. Which destination a row
+      // means is the caller's business (save-plan.js writes `data-sv` for
+      // that); whether a click on it ANSWERS the dialog is the modal's. A
+      // dialog built out of choices cannot rely on every caller remembering to
+      // settle it by hand, which is the bug this is.
+      else if (e.target.closest('[data-modal-choice]')) settle(true);
     });
     const onKey = (e) => {
       if (!pending || busy()) return;
@@ -212,6 +227,17 @@
     };
     document.addEventListener('keydown', onKey, true);
     document.body.appendChild(host);
+    // SAY SO, for listeners that only re-evaluate when something moves.
+    //
+    // isOpen() below lets a coordinate-based listener ASK, but asking only
+    // happens when that listener next fires. The carousel's does so on
+    // pointermove, so a dialog opening over an already-hovered carousel left it
+    // sitting open and mid-animation behind the backdrop until the mouse moved
+    // — the same thing Daniel reported, arriving by a different route.
+    //
+    // An event rather than a call into app.js: the modal should not know what a
+    // carousel is, and the carousel should not have to poll.
+    document.dispatchEvent(new CustomEvent('seven-modal-open'));
     // Without an affirmative button the keyboard starts on the close control,
     // which is then the only control there is. A dialog that opens with focus
     // on nothing leaves a keyboard user with nothing at all.
@@ -298,5 +324,21 @@
     };
   }
 
-  global.SevenModal = { confirm, choose, open };
+  // IS A DIALOG UP? Asked by listeners that cannot find out any other way.
+  //
+  // A listener bound to `document` which decides by COORDINATES rather than by
+  // hit-testing an element is invisible to everything painted on top of it: the
+  // event still reaches document, and the coordinates are still inside whatever
+  // box it is comparing against. The carousel's pointermove is exactly that, on
+  // purpose (app.js — its peeks are drawn outside its own box, so an element
+  // big enough to cover them would catch passing traffic). So it kept opening
+  // and animating underneath an open save dialog.
+  //
+  // That is the modal's question to answer, not the carousel's to guess at,
+  // which is why this lives here. Derived from the DOM rather than a counter:
+  // a counter and the overlays it claims to describe can drift apart, and this
+  // cannot.
+  const isOpen = () => !!document.querySelector('.seven-modal-overlay');
+
+  global.SevenModal = { confirm, choose, open, isOpen };
 })(window);

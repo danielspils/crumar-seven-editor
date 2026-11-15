@@ -155,6 +155,41 @@
   }
   document.documentElement.dataset.theme = 'dark';
 
+  // ── A ROW CLICK ANSWERS THE DIALOG ──────────────────────────────────────
+  //
+  // THE ROWS ARE THE ONLY AFFIRMATIVE CONTROL. confirmLabel is '' on purpose,
+  // so there is no OK button — and on 2026-11-14 that meant clicking
+  // "Overwrite Bank 3 · Preset 5" did nothing at all: the row recorded which
+  // destination it meant and settled nothing, so the dialog sat open.
+  //
+  // Diagnosed by measurement rather than by the obvious guess. The reported
+  // symptom looked like clicks falling through to the page behind, and that
+  // was not it: the backdrop is present at z-index 60 with pointer-events
+  // auto, the row is a real <button>, and a click at the carousel's centre
+  // hit-tests to the row itself. Nothing was falling through; the dialog had
+  // no way to be answered.
+  //
+  // This asserts the CONTRACT, not one caller's wiring: modal.js settles on
+  // any [data-modal-choice], and save-plan.js marks every row with it, so a
+  // row-built dialog cannot be left unanswerable by a caller that forgot.
+  const rowBtn = m.body.querySelector('.sv-row[data-sv="hold"]');
+  ui.check(!!rowBtn, 'the overwrite row is a real element to click');
+  ui.check(rowBtn.tagName === 'BUTTON', `and it is a <button> (${rowBtn.tagName})`);
+  ui.check(rowBtn.hasAttribute('data-modal-choice'),
+    'marked as a control that ANSWERS the dialog, not merely as a destination');
+  let settled = null;
+  m.action().then((v) => { settled = v; });
+  await ui.sleep(120);
+  ui.check(settled === null, 'nothing is settled before anything is clicked');
+  rowBtn.click();
+  await ui.sleep(300);
+  ui.check(settled === true,
+    `clicking the overwrite row answers the dialog (settled=${settled})`);
+  // And the row still says WHICH destination it was, which is the caller's
+  // half — the two attributes do two different jobs and both must survive.
+  ui.check(rowBtn.dataset.sv === 'hold',
+    'and still reports which destination was chosen');
+
   m.close();
 
   // ── THE TICK BOX, on the hold screen ───────────────────────────────────

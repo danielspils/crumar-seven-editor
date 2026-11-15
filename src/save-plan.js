@@ -136,9 +136,20 @@
   const esc = (v) =>
     String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // TWO ATTRIBUTES, TWO JOBS, and the second one is not decoration.
+  //
+  //   data-sv            WHICH destination this row means — read by the caller
+  //   data-modal-choice  that clicking it ANSWERS the dialog — read by modal.js
+  //
+  // This dialog has no affirmative button on purpose, so without the second
+  // attribute a row click records the choice and settles nothing: the dialog
+  // stays open and the player's click appears to do nothing, which is exactly
+  // what Daniel reported on 2026-11-14. Letting modal.js settle on a marked
+  // choice means a dialog built out of rows cannot be left unanswerable by a
+  // caller that forgot to wire it up.
   const rowsHtml = (rows) =>
     '<div class="sv-rows">' + rows.map((r) =>
-      `<button type="button" class="sv-row" data-sv="${esc(r.value)}">` +
+      `<button type="button" class="sv-row" data-sv="${esc(r.value)}" data-modal-choice>` +
       `<span class="sv-row-t">${esc(r.title)}</span>` +
       `<span class="sv-row-s">${esc(r.sub)}</span></button>`
     ).join('') + '</div>';

@@ -856,6 +856,27 @@
       pointerQueued = false;
       const car = document.querySelector('[data-carousel]');
       if (!car) { carouselOpen = false; return; }
+      // A DIALOG IS UP: this listener cannot see it any other way.
+      //
+      // The coordinate test a few lines down is deliberate — the peeks are
+      // drawn outside the carousel's box, so hit-testing an element big enough
+      // to cover them would catch passing traffic. What that trade gives up is
+      // the one thing an overlay relies on: a listener on `document` comparing
+      // clientX/clientY against a rect does not care what is painted over that
+      // rect. So the carousel went on opening and animating under an open save
+      // dialog, which Daniel saw and reported (2026-11-14).
+      //
+      // Asking SevenModal is the fix for the cause. Putting pointer-events:
+      // none on the carousel would not be: it would hide this from the mouse
+      // while leaving the actual defect — a coordinate test that believes it is
+      // the frontmost thing on screen — in place for the next listener.
+      //
+      // It also CLOSES one already open, so a dialog opening over a hovered
+      // carousel does not freeze it mid-animation behind the backdrop.
+      if (window.SevenModal && SevenModal.isOpen()) {
+        if (carouselOpen) { carouselOpen = false; car.classList.remove('is-open'); }
+        return;
+      }
       const r = car.getBoundingClientRect();
       const x = e.clientX;
       const y = e.clientY;
@@ -867,6 +888,16 @@
       carouselOpen = want;
       car.classList.toggle('is-open', want);
     });
+  });
+  // A DIALOG JUST OPENED. The guard above only runs when the pointer MOVES, so
+  // a dialog arriving over an already-hovered carousel left it open and
+  // mid-animation behind the backdrop until the mouse happened to move — which
+  // is the same report, by a different route. modal.js announces; this reacts.
+  document.addEventListener('seven-modal-open', () => {
+    if (!carouselOpen) return;
+    carouselOpen = false;
+    const car = document.querySelector('[data-carousel]');
+    if (car) car.classList.remove('is-open');
   });
   // Where the wheel is now: liveSound when the instrument is holding something
   // other than what the file names, otherwise the file's own sound. Counting
