@@ -475,6 +475,12 @@
         // recognisably the same thing.
         // Guarded: renderer.js is loaded in Node by the unit tests, where
         // there is no window and no art module.
+        // THE STAGE: a fixed box the picture lives inside and cannot leave.
+        // Whatever is in the middle — a tall upright, a flat stack of synths —
+        // is fitted to it, and the neighbours that slide out on hover are
+        // CLIPPED to it now (Daniel, 2026-11-15). They used to be drawn
+        // outside, which is what let them cross the parameter rows.
+        '<div class="engine-stage">' +
         (soundArt()
           // CONNECTED, OR IT IS A PICTURE. The wheel changes what the instrument
           // is playing, so with nothing plugged in it can do exactly one thing:
@@ -518,6 +524,7 @@
             : `<div class="engine-art"${view && view.noPickReason ? ` title="${esc(view.noPickReason)}"` : ''}>` +
               `${soundArt().iconFor(patch.soundName, patch.sampled)}</div>`)
           : '') +
+        '</div>' +
         // Name, description and slot in a column, with the instrument BESIDE
         // them rather than above: stacked, the picture pushed every parameter
         // down the page, and the parameters are what the view is for.

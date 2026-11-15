@@ -2380,15 +2380,91 @@
          enough once the picture moved inside the text column — the parameter
          grid below was laying out beside it, squeezed to 132px with the
          labels truncated (Daniel, 2026-08-13). */
+      /* THE NEGATIVE MARGIN IS GONE WITH THE FLOAT. It was -6px to pull back
+         the offset the floated picture was pushed down by; with the picture in
+         a grid cell there is no offset, and the -6 became exactly 6px of
+         parameter row sitting on the stage. Measured: first param y335-367
+         against a stage ending at y341. */
       display: flow-root; margin-bottom: 12px;
-      /* The picture is pushed down, so the row is as tall as the picture's
-         offset plus itself — pull that back off the bottom. */
-      margin-bottom: -6px;
     }
-    .engine-head-text { min-width: 0; }
-    /* The float is cleared by the row below it, not by the head. */
-    .engine-head::after { content: ''; display: block; clear: both; }
-    /* The name and its pill stay on one line together. */
+    /* A GRID, NOT A FLOAT (Daniel, 2026-11-15).
+       The picture used to float right and the text flowed past it, which is
+       what let a long name share its line with an instrument and what let the
+       drawing's neighbours reach the parameter rows. Now:
+
+           name and badge        full width, row 1, nothing beside it
+           engine / Bank·Preset  column 1
+           Save patch            column 1
+           the stage             column 2, spanning those rows
+
+       Every child is placed EXPLICITLY. Auto-placement with one positioned
+       item is where this would silently rearrange the day somebody adds a
+       fourth meta line. Rows are `auto`, so a missing Bank·Preset or Save
+       collapses rather than leaving a gap. */
+    .engine-head-text {
+      min-width: 0;
+      display: grid;
+      /* THE BOX'S SIZE BELONGS TO THE TRACK, not to the box. With `auto` here
+         and `width: min(190px, 48%)` on the stage, the percentage resolved
+         against a track that was sizing itself to the stage — circular, so the
+         track took max-content (358px) and the text column collapsed to 0.
+         Measured, not guessed: `cols=0px 358px`. */
+      grid-template-columns: minmax(0, 1fr) min(190px, 50%);
+      column-gap: 16px;
+    }
+    .engine-sound { grid-column: 1 / -1; grid-row: 1; }
+    .engine-sub   { grid-column: 1; grid-row: 2; }
+    .engine-pos   { grid-column: 1; grid-row: 3; }
+    .save-slot    { grid-column: 1; grid-row: 4; }
+    /* Spanning the meta rows and ALIGNED TO THE TOP of them, so the row's
+       height is the taller of the two and the parameters start below both. */
+    .engine-stage { grid-column: 2; grid-row: 2 / span 3; align-self: start; }
+    /* THE BOX. ~190x120 at the 400 setting, scaling with the column rather
+       than with the window: aspect-ratio keeps the proportion so only one
+       number has to be chosen. overflow:hidden is the whole point — a picture
+       may be any shape and none of them may leave. */
+    .engine-stage {
+      position: relative; isolation: isolate; overflow: hidden;
+      width: 100%; aspect-ratio: 190 / 120;
+    }
+    /* Inside the stage the picture IS the box: no float, no margins of its
+       own, no aspect of its own. Both variants — the carousel and the plain
+       drawing a library patch gets — answer to the stage instead. */
+    .engine-stage .engine-art,
+    .engine-stage .engine-carousel {
+      float: none; width: 100%; height: 100%; margin: 0; aspect-ratio: auto;
+    }
+    /* The peeks were drawn OUTSIDE the box on purpose, so the resting layout
+       kept its height and nothing reflowed when the pointer arrived. The box
+       is fixed either way now, so the reason is gone and the clipping is what
+       keeps a neighbour off the parameters. */
+    .engine-stage .engine-carousel { overflow: hidden; }
+    /* THE PLAIN DRAWING IS FITTED TOO, not merely clipped.
+       The carousel already fitted its faces; the plain variant a library patch
+       gets sized itself to the picture and relied on its own 363/512 slot
+       being tall enough. In a 118px box that meant the tall instruments were
+       CROPPED by the stage rather than scaled down — Venice Grand Open
+       measured 251px inside it, caught by engine-art-slot.js.
+       max-*, not width/height: `contain` needs a box to work against, and
+       these drawings are trimmed tight to their own canvas, so letting them
+       keep their aspect and bounding them is the whole of it. */
+    /* THE CHAIN NEEDS A DEFINITE HEIGHT AT EVERY LINK. `max-height: 100%` on
+       the image resolves against its PARENT, and .sound-art was auto-height —
+       so 100% of auto is no constraint at all and the drawing kept its 251px.
+       Measured twice: the rule was present and doing nothing. */
+    .engine-stage .engine-art:not(.engine-carousel) .sound-art {
+      height: 100%; max-width: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .engine-stage .engine-art:not(.engine-carousel) img,
+    .engine-stage .engine-art:not(.engine-carousel) svg,
+    .engine-stage .engine-art:not(.engine-carousel) .sound-art.is-drawing img,
+    .engine-stage .engine-art:not(.engine-carousel) .sound-art.is-drawing svg {
+      max-width: 100%; max-height: 100%;
+      width: auto; height: auto;
+      object-fit: contain;
+    }
+    /* The name and its pill stay on one line together; the NAME may wrap. */
     .engine-sound .badge { white-space: nowrap; }
     /* 128, not 150: the picture sets the header's height in every case (the
        longest sound name and description together still come in shorter), so
