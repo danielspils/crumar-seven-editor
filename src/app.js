@@ -2724,7 +2724,6 @@
   // events out — and it is still the thing that knows what a setlist row looks
   // like. All that changed is who tells it which of its three views to show.
   const libRoot = document.getElementById('library');
-  const libReveal = document.getElementById('library-reveal');
   const topTabs = document.getElementById('top-tabs');
   const bankAsOf = document.getElementById('bank-asof');
   const footSeven = document.getElementById('foot-seven');
@@ -3381,7 +3380,14 @@
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it
   // opened Finder and where it would have gone, which is for tests. Nothing in
   // the UI changes either way.
-  libReveal.addEventListener('click', () => window.sevenAPI.library.reveal());
+  // BY DELEGATION, because the button is rendered by the library view now and
+  // is destroyed and rebuilt on every render. A listener bound to the node
+  // itself would work exactly once — until the first re-render, which is the
+  // kind of break that looks like "the folder button stopped working
+  // sometimes".
+  libRoot.addEventListener('click', (e) => {
+    if (e.target.closest('[data-reveal]')) window.sevenAPI.library.reveal();
+  });
 
   // WHICH TAB YOU WERE ON, restored at launch. What used to be here was the
   // two-tray state: whether the Library was expanded, and the height you had

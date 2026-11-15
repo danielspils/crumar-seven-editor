@@ -971,6 +971,15 @@
     }
 
     /* ---- the foot: 12px labels, sentence case ---------------------------- */
+    /* THE SEVEN TAB'S ALONE (Daniel, 2026-11-15). The only thing the three
+       list tabs had down here was "Open library folder", which is now an icon
+       on their own top line — so the row is empty for them, and an empty
+       54px-min strip is just the list being shorter for no reason. Hidden
+       rather than removed: the Seven tab still needs it for "Save this bank
+       as a setlist".
+       data-view is already on #library, set by setView, so this needs no new
+       state and cannot disagree with which tab is actually showing. */
+    #library:not([data-view="seven"]) #lib-foot { display: none; }
     #lib-foot {
       display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
       padding: 14px 14px 16px; min-height: 54px; flex: none;
@@ -1101,28 +1110,60 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       font-size: 15px; font-weight: 600; color: var(--text);
     }
-    /* Search is a magnifier until it is wanted. */
-    /* Right-hand end of the bar, away from the tabs it is not part of. */
-    .lib-search-open { margin-left: auto; }
-    .lib-bar > .lib-search { margin-left: auto; }
-    .lib-search-open {
-      flex: none; display: inline-flex; align-items: center; justify-content: center;
-      width: 26px; height: 24px; padding: 0; cursor: pointer;
-      color: var(--text-muted); background: none;
-      border: 1px solid transparent; border-radius: 5px;
-    }
-    .lib-search-open:hover { color: var(--text); border-color: var(--line); }
-    .lib-search {
-      flex: 1; min-width: 0; font: inherit; font-size: 12px;
-      background: var(--bg-panel); color: var(--text);
+    /* ALWAYS OPEN, AND NARROW (Daniel, 2026-11-15).
+       The magnifier used to be a button that revealed the field, so searching
+       cost a click and then a keystroke. It is one keystroke now, and the
+       magnifier is part of the field rather than a control in front of it.
+       flex: none, DELIBERATELY. The old field was `flex: 1` and filled the
+       row, which reads as the row's subject; this one is a tool at the end of
+       it. 180px fits "Search name or sound" comfortably at 12px without
+       taking the line.
+       The wrapper carries the border so the glyph sits INSIDE the field. */
+    .lib-search-wrap {
+      flex: none; display: inline-flex; align-items: center; gap: 6px;
+      width: 180px; max-width: 46%;
+      background: var(--bg-panel); color: var(--text-dim);
       border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
     }
-    .lib-search:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .lib-search-wrap:focus-within { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .lib-search-mag { flex: none; }
+    .lib-search {
+      flex: 1; min-width: 0; font: inherit; font-size: 12px;
+      background: none; color: var(--text); border: 0; padding: 0;
+    }
+    .lib-search:focus { outline: none; }
+    /* The native search clear button is a grey X that does not follow either
+       palette; the field is narrow and Escape already clears it. */
+    .lib-search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+    /* OPEN LIBRARY FOLDER, at the right end of the line. It was a text link in
+       the foot; the foot goes away on these three tabs, and an icon here is
+       where you already are. Icon-only, so the accessible name and the tooltip
+       are the only thing naming it — both are on the button in library-view.js
+       and a scenario asserts them, because an unlabelled icon button is
+       invisible to anyone not using a mouse and eyes. */
+    .lib-folder {
+      flex: none; margin-left: auto;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 26px; padding: 0; cursor: pointer;
+      color: var(--text-dim); background: none;
+      border: 1px solid transparent; border-radius: 5px;
+    }
+    .lib-folder:hover { color: var(--text); border-color: var(--line); }
+    .lib-folder:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
     /* The list is the internal scroller — fixed max height so the bank rows
        above never leave the viewport. The scrollbar is ALWAYS visible
        (custom-drawn, so macOS overlay hiding doesn't apply): without it, a
        320px viewport over 32 rows silently reads as "11 patches, the end". */
     .lib-list { max-height: 320px; overflow-y: auto; scrollbar-gutter: stable; }
+    /* THE LIST TAKES THE HEIGHT on the three list tabs (Daniel, 2026-11-15).
+       The 320px cap exists so the BANK ROWS above the list never leave the
+       viewport — and on these tabs there are no bank rows above it, just the
+       one top line. With the foot gone too, the cap was the only thing left
+       holding the list at six rows while the panel below it sat empty.
+       #library-body is already a flex column with min-height: 0, so removing
+       the cap lets the list fill what is actually there and scroll inside it.
+       The Seven tab keeps the cap, and keeps its reason with it. */
+    #library:not([data-view="seven"]) .lib-list { max-height: none; }
     .lib-list::-webkit-scrollbar { width: 10px; }
     .lib-list::-webkit-scrollbar-track { background: transparent; }
     .lib-list::-webkit-scrollbar-thumb {
@@ -3423,9 +3464,15 @@
       <div id="library-body"></div>
       <!-- The foot. 12px labels in sentence case: uppercase .12em is the
            region-header treatment and does not belong here. -->
+      <!-- THE FOOT IS THE SEVEN TAB'S NOW. "Open library folder" moved up to
+           the list views' own top line as an icon (library-view.js), because
+           that is where you already are — and the three list tabs hide this
+           row entirely so the list takes the height.
+           IT IS NOT DELETED: it still has to hold "Save this bank as a
+           setlist" when that lands, which is a Seven-tab action and belongs
+           nowhere else. -->
       <div id="lib-foot">
         <span id="foot-seven" class="foot-slot"></span>
-        <button type="button" id="library-reveal" class="foot-link" title="Open the library folder in Finder">Open library folder</button>
       </div>
     </div>
     <div id="detail"><div class="placeholder">Select a patch</div></div>

@@ -1312,11 +1312,13 @@
     return renderAllPatches(data, state);
   }
 
-  // `countLabel` is what is on screen, said once on the right of the bar —
-  // "9 patches", "1 setlist". It is passed IN because the filtered count lives
-  // in createLibraryView (visibleCount) and this function is module-level and
-  // exported for tests; computing a second answer here is how two numbers for
-  // one list start to disagree.
+  // THE COUNT IS GONE from the bar (Daniel, 2026-11-15) — "9 patches" and the
+  // "3 of 12" that replaced it. Clutter: the list is its own count. The one
+  // job the number did that the list cannot is telling "nothing matched" apart
+  // from "nothing rendered", and that is now said in words by each list's own
+  // .lib-empty line. The parameter went with it rather than being left as an
+  // ignored argument: a signature that still accepts something it discards is
+  // the next person's wasted hour.
   // THE TOP LINE INSIDE A DETAIL VIEW (Daniel, 2026-11-15).
   //
   // A list view's top line is the search. A single setlist or backup is not a
@@ -1348,7 +1350,7 @@
     return null;
   }
 
-  function renderBody(data, state, sounds, countLabel = '') {
+  function renderBody(data, state, sounds) {
     // THE THREE TABS ARE LEVEL 1 NOW and are not rendered here any more. They
     // were a segmented control inside the tray — Backups | Patches | Setlists
     // — and the four-tab redesign of 14 Nov 2026 raised them to the top level
@@ -1387,27 +1389,46 @@
       // swapped the run for the Patches list. Removing it is a behaviour
       // change rather than a layout one, so it is his to make — the magnifier
       // sits at the right-hand end of the new line until he says otherwise.
+      // ALWAYS OPEN, NO DISCLOSURE (Daniel, 2026-11-15). Searching is one
+      // keystroke now, not a click and then a keystroke. The magnifier is
+      // part of the field rather than a button in front of it.
+      //
+      // NARROW, AND IT DOES NOT FLEX. A field that fills the row reads as the
+      // row's subject; this one is a tool at the end of it.
+      //
+      // NO lib-autofocus. That class exists for a field that has just been
+      // summoned — a rename box, the picker's search — and a permanently
+      // present field wearing it would seize the caret on every render.
+      // Focus is restored after a render only if it was already there; see
+      // render().
       ((state.tab === 'backups' && state.backupRun == null)
       || (state.tab === 'setlists' && state.setlistIndex != null)
         ? ''
-        : (state.searchOpen || state.search
-        ? `<input class="lib-search lib-autofocus" type="search" ` +
-          `placeholder="Search name or sound…" value="${esc(state.search)}">`
-        : '<button type="button" class="lib-search-open" data-search-open ' +
-          'aria-label="Search" title="Search">' +
-          '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" ' +
-          'stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
-          '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button>')) +
-      // WHAT IS ON SCREEN, said once, on the right of the bar. It is the
-      // VISIBLE count, not the folder total: three surfaces filtered the same
-      // files three ways and a header total matched none of them, so "36 patch
-      // files" sat over a list of one (Daniel, 2026-08-14).
+        : '<span class="lib-search-wrap">' +
+          '<svg class="lib-search-mag" viewBox="0 0 16 16" width="13" height="13" ' +
+          'aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+          'stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/>' +
+          '<path d="M10.5 10.5L14 14"/></svg>' +
+          `<input class="lib-search" type="search" placeholder="Search" ` +
+          `aria-label="Search this list" value="${esc(state.search)}"></span>`) +
+      // THE COUNT IS GONE, both "9 patches" and the bare "3 of 12". Daniel:
+      // clutter — the list is its own count. What the number was genuinely
+      // for, telling "nothing matched" apart from "nothing rendered", is now
+      // the list's own empty state, which says it in words.
       //
-      // It used to be written into the library header by app.js through
-      // on.counts. That header is gone with the two-tray layout, so the number
-      // lives beside the list it describes — which is where the reconciling
-      // was always meant to happen.
-      (countLabel ? `<span class="lib-count-right">${esc(countLabel)}</span>` : '') +
+      // OPEN LIBRARY FOLDER, as an icon at the right end of this line rather
+      // than a text link in the foot. Icon-only, so it carries both an
+      // aria-label and a title: it is the one control here with no visible
+      // word. Rendered by this component — app.js reaches it by delegation
+      // (data-reveal), because anything bound directly would be destroyed by
+      // the next render.
+      (head ? '' : '<button type="button" id="library-reveal" class="lib-folder" '
+        + 'data-reveal aria-label="Open library folder" '
+        + 'title="Open the library folder in Finder">'
+        + '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" '
+        + 'stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" '
+        + 'stroke-linecap="round"><path d="M1.8 12.6V3.6a.8.8 0 0 1 .8-.8h3.3l1.5 1.7h5.8a.8.8 0 0 1 .8.8v7.3a.8.8 0 0 1-.8.8H2.6a.8.8 0 0 1-.8-.8Z"/>'
+        + '<path d="M1.8 6.1h12.4"/></svg></button>') +
       `</div>` +
       // ONE LINE, ONCE, FOR THE WHOLE REGION — never a marker per row.
       //
@@ -1443,7 +1464,8 @@
       search: '',
       setlistIndex: null,
       backupRun: null,    // which RUN is open, by its key — not its date
-      searchOpen: false,  // the magnifier has been clicked
+      // `searchOpen` is gone with the disclosure button: the field is always
+      // on screen, so there is no open/closed to remember.
       selected: null,
       renaming: null,
       renamingSetlist: null,
@@ -1464,7 +1486,7 @@
     //
     // Every way INTO or OUT OF a detail view calls this. Typing is a thing you
     // do to a list; going somewhere else ends it.
-    const clearSearch = () => { state.search = ''; state.searchOpen = false; };
+    const clearSearch = () => { state.search = ''; };
 
     let data = { patches: [], setlists: [] };
 
@@ -1502,22 +1524,32 @@
     // reports and everybody notices.
     // ONLY WHILE A SEARCH IS NARROWING SOMETHING (Daniel, 2026-11-15). The bar
     // used to carry "9 patches" / "1 setlist" at all times, which is a number
-    // beside a list you can already see and count. While searching it answers
-    // a question you cannot: how much of the list the search just hid.
-    //
-    // Nothing on a tab whose search narrows nothing. The setlist list does not
-    // filter by state.search at all, so a count there would read "3 of 3"
-    // forever — true, and a lie in shape.
-    function countLabel() {
-      if (state.searchHits == null) return '';
-      return `${state.searchHits} of ${state.searchTotal}`;
-    }
-
     function render() {
       const viewKey = `${state.tab}:${state.setlistIndex}:${state.backupRun}`;
       const prevList = el.querySelector('.lib-list');
       const keepScroll = prevList && lastViewKey === viewKey ? prevList.scrollTop : null;
-      el.innerHTML = renderBody(data, state, on.sounds, countLabel());
+      // THE SEARCH FIELD IS ALWAYS ON SCREEN NOW, so a full render can destroy
+      // the node the player is typing in. Typing itself does not come through
+      // here — the input listener repaints .lib-list alone, for exactly this
+      // reason — but a render triggered by something else (a file landing, a
+      // rename finishing) can, and losing the caret mid-word is the kind of
+      // thing that gets blamed on the keyboard.
+      // `typeof document` because this module is UMD and `npm test` requires
+      // it in plain Node, where there is no document and `el` is a stand-in
+      // with none of this on it. The renderer half cannot be unit-tested; the
+      // pure half must not be made unreachable by reaching for a global.
+      const live = typeof document !== 'undefined' && document.activeElement;
+      const hadFocus = !!live && typeof el.contains === 'function'
+        && el.contains(live) && live.classList.contains('lib-search');
+      const caret = hadFocus ? live.selectionStart : null;
+      el.innerHTML = renderBody(data, state, on.sounds);
+      if (hadFocus) {
+        const box = el.querySelector('.lib-search');
+        if (box) {
+          box.focus();
+          if (caret != null) box.setSelectionRange(caret, caret);
+        }
+      }
       if (keepScroll != null) {
         const list = el.querySelector('.lib-list');
         if (list) list.scrollTop = keepScroll;
@@ -1590,8 +1622,13 @@
       // the results themselves (Daniel, 2026-08-20). The picker is exempt —
       // it has its own search and its own state, and it is answered below.
       let searchEnded = false;
+      // `.lib-search-wrap` rather than `.lib-search`: the field has a border
+      // and a magnifier around it now, and a click on the glyph or the padding
+      // is a click on the search box as far as anyone pressing it is
+      // concerned. The magnifier that used to OPEN the box is gone with the
+      // disclosure — the field is always there.
       if (state.search && state.picking == null
-        && !e.target.closest('.lib-search, [data-search-open], .lib-row')) {
+        && !e.target.closest('.lib-search-wrap, .lib-row')) {
         clearSearch();
         searchEnded = true;
         // Cleared BEFORE the branches run, so whatever this click does, it
@@ -1720,11 +1757,6 @@
         state.backupBank = 0;
         state.lastCleared = null;
         state.picking = null;
-        render();
-        return;
-      }
-      if (e.target.closest('[data-search-open]')) {
-        state.searchOpen = true;
         render();
         return;
       }
@@ -2254,7 +2286,7 @@
         state.tab = tab;
         state.setlistIndex = null;
         state.backupRun = null;
-        if (tab === 'backups') { state.search = ''; state.searchOpen = false; }
+        if (tab === 'backups') state.search = '';
         render();
         return true;
       },

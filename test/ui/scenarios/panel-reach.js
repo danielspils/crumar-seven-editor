@@ -146,9 +146,9 @@
   ui.check(!overlay(), 'and the overlay goes');
 
   // ── SEARCH IT OUT OF THE LIST, then clear ──────────────────────────────
-  // The field is behind a button until it is asked for.
-  const opener = ui.$('#library [data-search-open]');
-  if (opener) { ui.click(opener, 'the search control'); await ui.sleep(400); }
+  // The field is always on screen (2026-11-15) — it used to be behind a
+  // magnifier that had to be clicked first, and that disclosure is gone, so
+  // there is nothing to open before typing.
   const search = ui.$('#library .lib-search');
   ui.check(!!search, 'there is a search field');
   if (search) {

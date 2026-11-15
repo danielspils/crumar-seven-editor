@@ -58,7 +58,7 @@ const target = (map = {}, classes = []) => {
 };
 
 // The guard asks for all three at once; the fake answers by exact selector.
-const AWAY = '.lib-search, [data-search-open], .lib-row';
+const AWAY = '.lib-search-wrap, .lib-row';
 
 const libraryData = () => {
   const patches = [];
@@ -102,6 +102,9 @@ const mount = () => {
   return {
     el,
     list,
+    // Exposed so a test can force a full repaint and ask the bar what the
+    // view currently believes — see `term` below.
+    view,
     async click(map, classes) {
       for (const fn of clicks) await fn({ target: target(map, classes) });
     },
@@ -114,22 +117,55 @@ const mount = () => {
 };
 
 const openRun = (m) => m.click({ '.lib-setlist': { dataset: { backup: 'run-15' } } });
-// The magnifier, then the term — the order a person does it in.
-const openSearch = (m) => m.click({ '[data-search-open]': { dataset: {} } });
-// Only the OPEN field carries lib-autofocus; the closed state is a button
-// whose class starts with the same eleven characters.
-const boxOpen = (m) => /lib-autofocus/.test(m.el.innerHTML);
+// THE FIELD IS ALWAYS THERE NOW (2026-11-15), so there is nothing to open
+// first — typing is the whole gesture. `openSearch` is gone with the
+// disclosure button it clicked.
+//
+// `boxOpen` used to look for lib-autofocus, which only the summoned field
+// carried, and it answered "is there a search running?". A permanent field
+// cannot answer that — it is always on screen — and a permanent field must
+// NOT carry lib-autofocus either, or it would seize the caret on every render.
+//
+// SO THE QUESTION MOVED TO THE TERM. "Is a search running" is now "does the
+// field hold anything", which is what the list is filtered by and what these
+// tests were always really about. Two of them asserted the box had vanished;
+// that was the disclosure closing, which no longer exists, and asserting it
+// against a permanent field would have been a test pinning its own fiction.
+// "IS A SEARCH RUNNING" NEEDS A REPAINT TO ANSWER, and that is a property of
+// the design rather than of the test.
+//
+// It used to be answerable from the bar's own markup: the field was rendered
+// only while `searchOpen || search`, so `lib-autofocus` being present WAS the
+// answer. The field is permanent now, so its presence says nothing, and the
+// term is what distinguishes a running search from an idle one.
+//
+// But typing repaints `.lib-list` alone — deliberately, because a full render
+// would replace the field being typed in and take the caret with it — so the
+// bar in `el.innerHTML` is one render stale mid-search. And the list cannot
+// stand in either: every patch in this fixture carries the same sound name,
+// so "tine" matches all 32 and narrows nothing.
+//
+// So: force a full repaint through the public `update`, then read the field.
+// That is also the honest question — "after a redraw, does the view still
+// think a search is on?" — which is exactly what the two "ends the search"
+// tests are about.
+const fieldPresent = (m) => /class="lib-search"/.test(m.el.innerHTML);
+const term = (m) => {
+  m.view.update(libraryData());
+  const hit = /class="lib-search"[^>]*value="([^"]*)"/.exec(m.el.innerHTML);
+  return hit ? hit[1] : null;
+};
+const searching = (m) => !!term(m);
 
 const startSearch = async (m, term) => {
   await openRun(m);
-  await openSearch(m);
   await m.type(term);
 };
 
 test('a search inside a backup filters it and stays open', async () => {
   const m = mount();
   await startSearch(m, 'preset 3');
-  assert.ok(boxOpen(m), 'the box is open');
+  assert.ok(fieldPresent(m), 'the field is on screen, with nothing to open');
   // Searching a run FLATTENS it across all four banks — the tabs are a filter,
   // and searching inside four filtered lists would ask someone to check four
   // places for their own word. So the result is the matches themselves, with
@@ -144,14 +180,14 @@ test('leaving a run ends the search', async () => {
   const m = mount();
   await startSearch(m, 'tine');
   await m.click({ '.lib-back': { dataset: {} } });
-  assert.ok(!boxOpen(m), 'back to the run list with no search running');
+  assert.ok(!searching(m), 'back to the run list with no search running');
 });
 
 test('opening another run ends the search', async () => {
   const m = mount();
   await startSearch(m, 'tine');
   await openRun(m);
-  assert.ok(!boxOpen(m), 'a run opens unfiltered');
+  assert.ok(!searching(m), 'a run opens unfiltered');
 });
 
 // The one click that must NOT end it: choosing from the results is using the
@@ -163,7 +199,7 @@ test('clicking a result keeps the search', async () => {
     [AWAY]: { dataset: {} },
     '.lib-row': { dataset: { file: 'b1p1.sevenlib.json', pi: '0' } },
   });
-  assert.ok(boxOpen(m), 'the results are still there');
+  assert.ok(searching(m), 'the results are still there');
 });
 
 // And a click on chrome that matches no other branch still ends it — the case
@@ -172,9 +208,9 @@ test('clicking a result keeps the search', async () => {
 test('clicking inert chrome ends the search and redraws', async () => {
   const m = mount();
   await startSearch(m, 'tine');
-  assert.ok(boxOpen(m));
+  assert.ok(searching(m));
   await m.click({});
-  assert.ok(!boxOpen(m), 'search ended, and the body was rebuilt to say so');
+  assert.ok(!searching(m), 'search ended, and the body was rebuilt to say so');
 });
 
 // --- the count beside the search -------------------------------------------
@@ -251,14 +287,54 @@ test('a setlist search that matches nothing says so, and does not claim the libr
   assert.ok(!/No setlists yet/.test(html), 'and never the empty-library state');
 });
 
-test('the label is only drawn when there is one to draw', () => {
+// REPLACED 2026-11-15, with the code. This asserted that the bar drew a count
+// when given one. The count is gone — "9 patches" and the "3 of 12" that
+// replaced it — because the list is its own count (Daniel). What it was
+// genuinely for is kept and asserted below instead: telling "nothing matched"
+// apart from "nothing rendered", which the list now says in words.
+test('the bar carries no count, in any state', () => {
   const data = { patches: twoPatches, setlists: [], files: 2 };
-  const withCount = SevenLibraryView.renderBody(
-    data, { tab: 'patches', patchScope: 'all', search: 'tine' }, [], '1 of 2'
+  for (const state of [
+    { tab: 'patches', patchScope: 'all', search: 'tine' },
+    { tab: 'patches', patchScope: 'all', search: '' },
+    { tab: 'setlists', search: '' },
+  ]) {
+    const html = SevenLibraryView.renderBody(data, state, []);
+    assert.ok(!/lib-count-right/.test(html), `no count span on ${state.tab}/"${state.search}"`);
+    assert.ok(!/\d+ of \d+/.test(html), `and no bare "n of m" either on ${state.tab}`);
+  }
+});
+
+test('a search that matches nothing says so, rather than emptying the panel', () => {
+  // The count was the only thing distinguishing these two, so the empty state
+  // is what replaces it. Same quiet .lib-empty line the rest of the app uses —
+  // no new treatment was invented for this.
+  const data = { patches: twoPatches, setlists: [], files: 2 };
+  const none = SevenLibraryView.renderBody(
+    data, { tab: 'patches', patchScope: 'all', search: 'zzzznope' }, []
   );
-  assert.ok(/lib-count-right[^>]*>1 of 2</.test(withCount), 'the count renders when supplied');
-  const without = SevenLibraryView.renderBody(
-    data, { tab: 'patches', patchScope: 'all', search: '' }, [], ''
+  assert.ok(/lib-empty/.test(none), 'the list draws its empty state');
+  assert.ok(/No patches match/.test(none), 'and says the search is why');
+});
+
+test('the search field is always rendered, with no disclosure button', () => {
+  const data = { patches: twoPatches, setlists: [], files: 2 };
+  const html = SevenLibraryView.renderBody(
+    data, { tab: 'patches', patchScope: 'all', search: '' }, []
   );
-  assert.ok(!/lib-count-right/.test(without), 'and no empty span when there is none');
+  assert.ok(/class="lib-search"/.test(html), 'the field is there without being asked for');
+  assert.ok(!/data-search-open/.test(html), 'and nothing has to be clicked to get it');
+});
+
+test('the list views carry the folder button, and it is named', () => {
+  const data = { patches: twoPatches, setlists: [], files: 2 };
+  const html = SevenLibraryView.renderBody(
+    data, { tab: 'patches', patchScope: 'all', search: '' }, []
+  );
+  // ICON-ONLY, so the accessible name and the tooltip are the only things
+  // naming it. Asserted because an unlabelled icon button is invisible to
+  // anyone not using a mouse and eyes.
+  assert.ok(/data-reveal/.test(html), 'the button is rendered');
+  assert.ok(/aria-label="Open library folder"/.test(html), 'it has an accessible name');
+  assert.ok(/title="Open the library folder in Finder"/.test(html), 'and a tooltip');
 });

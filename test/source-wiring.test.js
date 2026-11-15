@@ -100,9 +100,17 @@ test('the folder button is still wired to library.reveal', () => {
   // discards the answer. A listener quietly dropped would leave that scenario
   // green: it would still click a button, and still get the right path from its
   // own direct call.
+  //
+  // BY DELEGATION SINCE 2026-11-15. The button moved out of the static foot
+  // and into the library view's own top line, so it is destroyed and rebuilt
+  // on every render — a listener bound to the node would work until the first
+  // re-render. The guard moved with it rather than being dropped: what it
+  // pins is unchanged, that a click on that control is what calls reveal().
   const src = code(read('app.js'));
-  assert.match(src, /libReveal\.addEventListener\('click',[\s\S]{0,120}?library\.reveal\(\)/,
-    "#library-reveal's click listener still calls library.reveal()");
+  assert.match(src, /libRoot\.addEventListener\('click',[\s\S]{0,200}?data-reveal[\s\S]{0,120}?library\.reveal\(\)/,
+    'a delegated click on [data-reveal] still calls library.reveal()');
+  assert.doesNotMatch(src, /libReveal\b/,
+    'and nothing is still bound to the old static node');
 });
 
 // ---- The freshness line, in both the places it appears ---------------------

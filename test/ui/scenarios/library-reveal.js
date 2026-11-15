@@ -23,8 +23,15 @@
 // call at all is asserted from source in test/source-wiring.test.js, which runs
 // on `npm test`.
 (async () => {
+  // IT LIVES ON THE LIST VIEWS NOW (2026-11-15), as an icon at the right end
+  // of their top line rather than a text link in the foot. The Seven tab has
+  // no folder behind it — eight slots on hardware — so it has no such button,
+  // and a scenario that looked for one there would be asserting the opposite
+  // of the design.
+  await ui.selectTab('patches');
+  await ui.sleep(500);
   const btn = ui.$('#library-reveal');
-  ui.check(!!btn, 'the reveal button is in the library header');
+  ui.check(!!btn, 'the reveal button is on the list view’s top line');
   if (!btn) return;
   ui.check(!btn.disabled && !!btn.offsetParent, 'and it is visible and enabled');
 
