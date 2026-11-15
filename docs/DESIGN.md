@@ -62,10 +62,10 @@ from a designer's preference.
 
 | Role | Variable | Source | Used for |
 |---|---|---|---|
-| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | anything that DOES something, as a FILL or a MARK: a filled button, a 1px border, a focus ring, a 2px underline |
-| Action, as words | `--action-text` | the same legend, damped (`#63a87a` dark; identical in light) | the LABEL of an action — a button's text, a link, a name going green on hover |
-| Destructive | `--accent` | panel LED red | the selected-row edge, and any confirm that destroys something |
-| Navigation | `--amber` | the panel's amber legends | which tab or segment is selected, focus rings, an open rename field |
+| Action | `--action` | the panel's DEPTH/RATE legend green (`#7f9c78` dark, `#1f6b3d` light) | anything that DOES something, as a FILL or a MARK: a filled button, a 1px border, a focus ring, a 2px underline |
+| Action, as words | `--action-text` | the same legend, damped (`#a9c3a1` dark; identical to `--action` in light) | the LABEL of an action — a button's text, a link, a name going green on hover |
+| Destructive | `--accent` | panel LED red, warmed for the dark palette (`#b5584a` / `#b8362b`) | the selected-row edge, and any confirm that destroys something |
+| Navigation | `--amber` | the panel's amber legends (`#c9a25e` / `#8a5d00`) | which tab or segment is selected, focus rings, an open rename field |
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
 | Sampled | `--sampled` | panel green legend, darker | the Sampled badge, outlined |
 
@@ -141,6 +141,35 @@ already states:
   amber text. Underline already means selection in the vocabulary above, so the
   colour was restating what the shape had said. The word is plain now, and the
   underline carries it alone.
+
+### The dark palette is WARM (approved 2026-11-15)
+
+Dark mode was neutral near-black and is now a warm charcoal. Daniel's
+values, and every dark colour comes from them rather than from a hex typed
+into a rule:
+
+| Role | Token | Dark |
+|---|---|---|
+| Page — deepest, behind artwork | `--page` | `#24211d` |
+| Panel and lists | `--bg` | `#2d2a25` |
+| Raised: selected row, modal body, hover | `--bg-panel`, `--bg-raised` | `#38342e` |
+| Borders and row dividers | `--line` | `#4a443c` |
+| Primary text | `--text` | `#e6dfd2` |
+| Secondary text | `--text-muted`, `--text-dim` | `#9d9484` |
+| Navigation | `--amber` | `#c9a25e` |
+| Destructive | `--accent` | `#b5584a`, with `--accent-ink` `#f6ece2` on a fill |
+| Action / ON / Sampled / the logo | `--action`, `--sampled`, `--logo` | `#7f9c78` |
+| ON pill | `--pill-on-*` | text `#a9c3a1`, border `#56704f`, fill `#2f3a2b` |
+| Outlined amber pill | `--pill-amber-border` | `#7d6a45` |
+
+**TEXT ON A RED FILL IS WARM PAPER, NOT NEAR-BLACK** (`--accent-ink`). Black
+on this red is harder to read than the old one, which is the kind of thing a
+palette change quietly breaks.
+
+**Two text tiers collapsed in dark.** `--text-muted` and `--text-dim` were
+distinct greys and are both `#9d9484` now, because the elements the palette
+names — row numbers, "Empty", inactive tabs — span both. Worth splitting if
+the flattening shows.
 
 ### Both palettes, always
 

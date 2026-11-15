@@ -18,27 +18,36 @@
             --bg-panel  #232326 -> #2a2a2e
             --line      #2e2e33 -> #33333a
          DARK ONLY: the light values below already match the mock. */
-      --bg: #1b1b1e;
-      --bg-raised: #1c1c1f;
-      --bg-panel: #2a2a2e;
-      --line: #33333a;
+      --bg: #2d2a25;
+      --bg-raised: #38342e;
+      --bg-panel: #38342e;
+      --line: #4a443c;
       /* The old ground, kept for what it was always right for: behind the
          instrument artwork, so a drawing still reads as resting on something
          rather than floating on the new lighter surface. */
-      --page: #141416;
-      --text: #e8e8ea;
+      --page: #24211d;
+      --text: #e6dfd2;
       --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%23e8e8ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
-      --text-muted: #8b8b93;
-      --text-dim: #5e5e66;
-      --accent: #ff3b30;      /* panel LED red */
+      --text-muted: #9d9484;
+      --text-dim: #9d9484;
+      --accent: #b5584a;
       /* The same red as channels, for a keyframe that has to fade it. rgba()
          cannot take a hex, and the arrival animation interpolates from fully
          transparent to full chroma on the selected-row edge. */
-      --accent-rgb: 255, 59, 48;
-      --amber: #ffb020;
+      --accent-rgb: 181, 88, 74;
+      /* TEXT ON A RED FILL. Near-black on this red failed to read; warm paper
+         does. Delete buttons and the modal's destructive bar wear it. */
+      --accent-ink: #f6ece2;
+      /* An OUTLINED pill is state, never an action (DESIGN.md). Its border is
+         quieter than its word so the shape reads before the colour. */
+      --pill-amber-border: #7d6a45;
+      --pill-on-text: #a9c3a1;
+      --pill-on-border: #56704f;
+      --pill-on-bg: #2f3a2b;
+      --amber: #c9a25e;
       /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
-      --action: #4fb96a;
+      --action: #7f9c78;
       --action-ink: #08150d;
       /* THE SAME GREEN AS WORDS, damped (DESIGN.md, "full chroma for marks,
          damped for text"). --action is borrowed from a printed legend a few
@@ -47,12 +56,12 @@
          this. A filled control keeps --action; text that acts takes this.
          In LIGHT they are the same value — on paper the legend green is
          already at word strength, so nothing needs damping. */
-      --action-text: #63a87a;
+      --action-text: #a9c3a1;
       /* THE LOGO IS A LIT SIGN, and the one element in the app allowed to
          change value by theme (DESIGN.md, "The one exception"). Dark: the
          panel green, glowing. Unlit: a dark version of its own hue, so an
          unselected sign reads as switched off rather than as grey type. */
-      --logo: #73c98c;
+      --logo: #7f9c78;
       --logo-off: #3a4a3e;
       /* The 1px top highlight on a chosen surface — a tab or a selected row.
          The panel's own cap highlight, which is where "chosen" gets its
@@ -79,7 +88,7 @@
       --inst-stripe: #c0392b;
       --inst-knob: #d98324;
       --warn: #d9a13b;
-      --sampled: #4caf6d;
+      --sampled: #7f9c78;
       --modeled: #5b8fd9;
       --bar: #3a3a3f;
       --bar-fill: #8e8e96;
@@ -104,6 +113,16 @@
       --text-dim: #8a8375;
       --accent: #b8362b;
       --accent-rgb: 184, 54, 43;
+      /* LIGHT IS UNTOUCHED by the dark repaint of 2026-11-15, but every
+         variable must exist in BOTH palettes — test/css-hazards.test.js fails
+         the build otherwise, because a colour defined in one theme is
+         invisible in the other until somebody switches. These are the light
+         values the same elements already used. */
+      --accent-ink: #f8f1ec;
+      --pill-amber-border: #b9a06a;
+      --pill-on-text: #1c7a45;
+      --pill-on-border: #8fb79c;
+      --pill-on-bg: #e4efe6;
       --amber: #8a5d00;
       /* THE LIGHT GROUND IS ALREADY TAME. Change 1 is dark-only: these values
          were measured against the mock and match it, so only --page is new —
@@ -1549,7 +1568,9 @@
     @media (prefers-reduced-motion: reduce) {
       .seven-modal-body, .seven-modal-actions, .seven-modal.is-resizing { transition: none; }
     }
-    .seven-modal.is-warning .seven-modal-ok { background: var(--accent); border-color: var(--accent); }
+    .seven-modal.is-warning .seven-modal-ok {
+      background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+    }
     .seven-modal-ok:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
     /* ── THE MODAL PANEL ────────────────────────────────────────────────
@@ -2848,9 +2869,16 @@
       padding: 2px 9px; border-radius: 9px; margin-left: auto;
       cursor: pointer; flex: none;
     }
-    .fx-state.on { background: rgba(63, 185, 80, .16); color: var(--ok); border: 1px solid transparent; }
+    /* THE ON PILL, through tokens. It was a hardcoded rgba(63,185,80) wash with
+       --ok on top — a green that answered to neither palette and could not
+       follow the dark repaint of 2026-11-15. Outlined means state (DESIGN.md),
+       so the border is quieter than the word. */
+    .fx-state.on {
+      background: var(--pill-on-bg); color: var(--pill-on-text);
+      border: 1px solid var(--pill-on-border);
+    }
     .fx-state.off { background: transparent; color: var(--text-muted); border: 1px solid var(--line); }
-    .fx-state.on:hover { background: rgba(63, 185, 80, .28); }
+    .fx-state.on:hover { filter: brightness(1.12); }
     .fx-state.off:hover { color: var(--text); border-color: var(--text-muted); }
     .fx-state:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
     .fx-head .fx-summary + .fx-state { margin-left: 0; }
