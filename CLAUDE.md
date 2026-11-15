@@ -1035,6 +1035,48 @@ If it happens again, the thing to capture BEFORE power-cycling is whether the
 device still answers `0x70` STRING 4 and whether a fresh recall restores audio
 without a power cycle. Both are one command and neither survives a reboot.
 
+## CoreMIDI REFUSES A CLIENT PART-WAY THROUGH A FULL UI RUN (2026-11-14)
+
+OBSERVED, NOT DIAGNOSED. A third unexplained MIDI-layer state, and the first
+one that is about the HOST rather than the instrument.
+
+Three scenarios in a 44-scenario run died with:
+
+```
+MidiInCore::initialize: error creating OS-X MIDI client object (-304).
+libc++abi: terminating due to uncaught exception of type RtMidiError
+```
+
+exit code 1, in the MIDI layer, before the renderer ran — so the app produced
+no `[ui-test]` line and the runner could only say the app had not reported.
+
+**It is not the scenarios and not any one branch.** Three runs the same
+afternoon hit three different sets: `hold-fake-button` + `switch-patch-guard`,
+then `backup-grid` + `engine-art-slot` + `modal-buttons`, then `backup-grid` +
+`engine-art-slot` + `panel-cc-follow`. Several of those have not been touched
+in months. Every one of them PASSES when run on its own, immediately
+afterwards, with the instrument attached — checked for `backup-grid` and
+`engine-art-slot`.
+
+**What it correlates with is ~44 app launches in a few minutes**, each creating
+and discarding a CoreMIDI client. CLAUDE.md's 2026-11-13 full run was 43/0/3
+with no sign of it, and so was the run before this branch, so it is new as of
+today's working session rather than a property of the suite.
+
+**WHAT IS NOT ESTABLISHED:** that the launch rate causes it. Nothing was
+instrumented, no client count was read, and the error code was not traced to a
+CoreMIDI constant (-304 is not one of the documented `kMIDI*` values).
+
+**It cannot be caught in JS.** RtMidi throws a C++ `RtMidiError` out of
+`MidiInCore::initialize` and nothing catches it, so the process aborts — a
+try/catch around `connect()` would not have seen it, which is worth knowing
+before anyone goes looking for a missing guard in `seven-midi.js`.
+
+So a full-suite red of two or three scenarios with "the app died before
+reporting" is worth re-running the named scenarios individually before
+believing it. If it becomes routine, the thing to capture is whether a pause
+between launches clears it and what `MIDIClientCreate` actually returned.
+
 ## A FIXTURE THAT CANNOT EXPRESS THE THING UNDER TEST (2026-08-23)
 
 Second instance, so it gets a name: **a test is only as honest as the fake it
@@ -1875,10 +1917,24 @@ it's partly programmed in the app and partly on the Seven."
 Save used to write the app's own copy of the patch. That copy is a **belief** —
 the values the app sent, plus whatever panel moves it managed to follow — and a
 belief is not what is sounding. A save now reads the full edit buffer off the
-instrument (`src/param-read.js` → `readBuffer`) and writes **that**. Measured
-cost: see "How long the suites take" above for the method; it is ~1.3s, which is
-why it happens after the player has chosen, never while a dialog is opening and
-never on the way out of a patch.
+instrument (`src/param-read.js` → `readBuffer`) and writes **that**.
+
+**MEASURED ON HARDWARE 2026-11-14**, five consecutive reads on Daniel's unit,
+FW 1.37, timed in the main process around `readBuffer` alone rather than around
+the IPC round trip: **min 1353ms · median 1363ms · max 1372ms**, 110 parameters
+and **0 missing every time**. Wall time came back within 1-2ms of the
+device-side figure, so the bridge is noise. The spread is 19ms across five
+runs, and no reply was dropped in any of them — so this sample contains no
+re-request, and a run that needs one should be expected to cost more.
+
+The estimate this replaces was "around 1.3s", written before anyone measured,
+and it was right. Recorded with its date anyway, because a figure carried
+forward without one is the shape this project has already been wrong about
+twice ("A RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE"). Re-take it if
+the read pattern changes.
+
+That cost is why the read happens after the player has chosen, never while a
+dialog is opening and never on the way out of a patch.
 
 Two rules, both mutation-proven in `test/save-plan.test.js`:
 

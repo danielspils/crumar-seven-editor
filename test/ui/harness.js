@@ -203,12 +203,38 @@ window.ui = (() => {
     // the file between steps.
     const before = first;
     note(`WAITING FOR YOU: ${prompt}`);
-    const ok = await waitFor(async () => {
-      const v = await window.sevenAPI.devSignal();
-      return typeof v === 'string' && v.length > 0 && v !== before;
-    }, { timeout, step: 250, what: `the human step: ${prompt}` });
-    if (ok) note('signal received — carrying on');
-    return ok;
+
+    // AND SAY IT ON SCREEN, because note() only pushes to an array the RUNNER
+    // prints after the child exits. So this asked for a knob turn and then
+    // showed nothing at all for up to three minutes — the person is looking at
+    // the app and the instrument, and the instruction arrived in a terminal
+    // after the window had closed. panel-cc-follow has never been run, and
+    // this is the likeliest reason: there was no way to know what it wanted.
+    //
+    // pointer-events: none, so it cannot swallow a click a scenario still
+    // needs, and it is removed in a finally — a banner left behind after a
+    // timeout would sit over the next assertion's measurements.
+    const banner = document.createElement('div');
+    banner.id = 'ui-human-step';
+    banner.setAttribute('style', [
+      'position:fixed', 'inset:auto 0 0 0', 'z-index:2147483647',
+      'pointer-events:none', 'padding:18px 22px',
+      'background:#ffb020', 'color:#1b1b1e',
+      'font:700 15px/1.45 system-ui,sans-serif',
+      'box-shadow:0 -6px 24px rgba(0,0,0,.45)',
+    ].join(';'));
+    banner.textContent = `UI TEST IS WAITING FOR YOU — ${prompt}`;
+    document.body.appendChild(banner);
+    try {
+      const ok = await waitFor(async () => {
+        const v = await window.sevenAPI.devSignal();
+        return typeof v === 'string' && v.length > 0 && v !== before;
+      }, { timeout, step: 250, what: `the human step: ${prompt}` });
+      if (ok) note('signal received — carrying on');
+      return ok;
+    } finally {
+      banner.remove();
+    }
   }
 
   // The SEVEN_-prefixed environment, handed in by main.js. A scenario cannot
