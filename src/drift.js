@@ -55,5 +55,45 @@
     return false;
   }
 
-  return { hasDrift };
+  // A VALUE READ FROM THE INSTRUMENT IS NOT AN EDIT (Daniel, 2026-11-15).
+  //
+  // The session's baseline is seeded from the patch ON SCREEN — for a bank
+  // slot, the newest backup record. The panel poll then reads six parameters
+  // off the instrument every second and writes what it finds into the working
+  // copy. If the record is out of date for even one of them, the two disagree
+  // and the app reports an unsaved edit nobody made.
+  //
+  // MEASURED, 2026-11-15, Bank 3 Preset 5: exactly one of 110 parameters
+  // differed — zd6_br, record 0, instrument 1 — and the slot came up "unsaved"
+  // within 1.9s of being selected, every time, touching nothing.
+  //
+  // THE FIRST READING ESTABLISHES WHAT THE SESSION STARTED FROM. It is not a
+  // change; it is the truth the file was wrong about. So it moves the baseline
+  // with the working copy. Every reading after that is a change, because by
+  // then the app has seen the parameter and knows what it was.
+  //
+  // NOT A TIME WINDOW. settling() exists for the recall burst and is 700ms,
+  // while the poll's first tick is at 1000ms — so a window would have expired
+  // before the reading it needed to cover, and the bug would have survived the
+  // fix. Measured before relying on it.
+  //
+  // AN EDIT IN FLIGHT IS THE PLAYER'S. A send that has gone out and not yet
+  // been echoed is a value the player asked for, so a reading that arrives
+  // mid-flight must not be mistaken for the state they started in.
+  function absorbPanelRead({
+    firstSeen = false, editInFlight = false, current = null, reading = null,
+  } = {}) {
+    const changed = !same(current, reading);
+    return {
+      // The working copy always follows the instrument: what is sounding is
+      // what the app should believe.
+      param: reading,
+      // The baseline follows it only when this is the first the app has heard
+      // of the parameter and the player has nothing outstanding on it.
+      baseline: firstSeen && !editInFlight,
+      changed,
+    };
+  }
+
+  return { hasDrift, absorbPanelRead };
 });

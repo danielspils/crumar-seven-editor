@@ -324,11 +324,20 @@
       ccTimers.delete(key);
       if (!isLive()) return;
       const r = await window.sevenAPI.midi.readParam(key);
-      if (r && r.ok && liveEdit.params[key] !== r.value) {
+      if (r && r.ok && liveEdit && liveEdit.params[key] !== r.value) {
         liveEdit.params[key] = r.value;
         // Follow the value either way — the panel is the truth about the
         // buffer. But only call it UNSAVED WORK if it was not the recall's own
         // burst describing what it just loaded.
+        //
+        // THAT SENTENCE WAS HERE FROM THE START AND NOTHING DID IT. settling()
+        // was written for exactly this on 2026-08-13, after a recall's 22-CC
+        // burst marked a brand-new session dirty before anyone had touched the
+        // instrument — and it was defined, set, and never called. This is its
+        // caller. Inside the window the reading describes what was just
+        // LOADED, so the baseline moves with the working copy and nothing is
+        // reported as the player's edit.
+        if (settling()) liveEdit.baseline[key] = r.value;
         deps.renderDetail();
       }
     }, 80));
@@ -349,13 +358,33 @@
       let changed = false;
       for (const key of PANEL_OWNED) {
         const r = await window.sevenAPI.midi.readParam(key);
-        if (r && r.ok && liveEdit && liveEdit.params[key] !== r.value) {
-          liveEdit.params[key] = r.value;
-          changed = true;
-        }
+        if (!r || !r.ok || !liveEdit) continue;
+        // SEEN, whether or not it differed. Marking only on a difference would
+        // let a parameter that happened to match at first be absorbed as
+        // "first" later, swallowing a real edit.
+        const firstSeen = !liveEdit.panelSeen[key];
+        liveEdit.panelSeen[key] = true;
+        const verdict = SevenDrift.absorbPanelRead({
+          firstSeen,
+          // Anything outstanding is the player's: a send that has gone out and
+          // not been echoed is a value they asked for.
+          editInFlight: sendInFlight || !!pendingSend,
+          current: liveEdit.params[key],
+          reading: r.value,
+        });
+        if (!verdict.changed) continue;
+        liveEdit.params[key] = verdict.param;
+        // A VALUE READ FROM THE INSTRUMENT IS NOT AN EDIT. The first reading
+        // establishes what this session started from — the record the baseline
+        // was seeded from was simply out of date — so the baseline moves with
+        // it. Without this, one stale parameter in a backup made every visit
+        // to that slot report unsaved changes nobody had made (measured on
+        // Bank 3 Preset 5: zd6_br, record 0, instrument 1).
+        if (verdict.baseline) liveEdit.baseline[key] = verdict.param;
+        changed = true;
       }
-      // A tab move is the PLAYER's edit, not ours — it makes the buffer differ
-      // from the saved patch, so it counts as unsaved work like any other.
+      // A tab move AFTER that is the PLAYER's edit — it makes the buffer differ
+      // from what this session started with, so it counts as unsaved work.
       if (changed) deps.renderDetail();
     }, 1000);
   }
@@ -1188,6 +1217,10 @@
       // sides together when it has better information.
       baseline: { ...(patch.params || {}) },
       baselineSound: patch.soundName || null,
+      // WHICH PANEL PARAMETERS THIS SESSION HAS HEARD FROM. The first reading
+      // of each establishes what the session started from rather than
+      // reporting a change — see the poll, and SevenDrift.absorbPanelRead.
+      panelSeen: {},
     };
     settlingUntil = Date.now() + SETTLE_MS;
     rememberWhereWeWere();
@@ -1244,6 +1277,7 @@
             params: { ...sentValues },
             baseline: { ...sentValues },
             baselineSound: r.soundName || (deps.getPatch() || {}).soundName || null,
+            panelSeen: {},
           };
           rememberWhereWeWere();
           startPanelPoll();
