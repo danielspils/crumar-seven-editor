@@ -751,11 +751,23 @@
        (DESIGN.md's type ladder). It was 13/600 at .08em — a size the ladder
        does not have, which is how 11px and 14px crept in before. The mock has
        carried the ladder's own values since the design was agreed. */
+    /* SENTENCE CASE, BECAUSE THESE ARE CONTROLS (Daniel, 2026-11-15).
+       Caps with tracking means "a label, not a control" everywhere else in
+       this app — SOUND ENGINE, EFFECTS CHAIN, AS OF LAST BACKUP, the effects
+       cards — and not one of those is clickable. The bank tabs are clickable
+       and were wearing the label treatment, which is the one place the rule
+       broke. Both tab rows are navigation, so they look like each other:
+       sentence case, no tracking, a step smaller than the word tabs above.
+       Recorded as a rule in DESIGN.md, not just changed here.
+       The DOM text is already "Bank 1" — it was CSS doing the shouting — so
+       nothing downstream that reads a label has to change.
+       WHAT STAYS: the amber underline on the selected tab, and the lock on
+       Bank 1. The underline is the selection vocabulary, not a caps effect. */
     .bank-tab {
       flex: 1; padding: 9px 0 7px; text-align: center;
       background: transparent; border: none;
       color: var(--text-dim); font: inherit;
-      font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      font-size: 12px; font-weight: 600;
       cursor: pointer;
     }
     .bank-tab:hover { color: var(--text); }

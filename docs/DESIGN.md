@@ -46,6 +46,34 @@ crept in that way and read as "off" without anyone being able to say why.
 | 12px | 700 | uppercase, `.12em` tracking, dim | **Region header.** "ON THE SEVEN", "SOUND ENGINE", "TRANSFER". Labels the thing below it and stays out of the way. |
 | 10px | 700 | uppercase, `.05–.1em` tracking, dim | Micro-labels: badges, chips, counts, the AUDITION MODE chip. |
 
+### CAPS MEAN "LABEL, NOT CONTROL" (Daniel, 2026-11-15)
+
+Read the two uppercase rows above again: every one of their examples is
+something you read, not something you click. SOUND ENGINE, EFFECTS CHAIN, ON
+THE SEVEN, AS OF LAST BACKUP, the effects cards' own headings — none of them
+is clickable. That was true by habit before it was a rule, and it is a rule
+now:
+
+**Uppercase with tracking marks a label. A control never wears it.**
+
+The bank tabs were the one place it broke. BANK 1 / BANK 2 / BANK 3 / BANK 4
+were 12/700 uppercase at `.12em` — the region-header treatment exactly — on
+four buttons that navigate. They are sentence case now, 12/600, no tracking:
+"Bank 1". A step smaller than the word tabs above them, and the same KIND of
+thing, because both rows are navigation and should look like each other.
+
+What this rule does NOT touch:
+
+- **The amber underline** on the selected tab. Selection is the underline's
+  job in this app and has nothing to do with case.
+- **The lock on Bank 1.** It is a note about the bank, not a label treatment.
+- **The panel artwork.** `assets/seven-panel.svg` is a picture of a physical
+  instrument whose legends are silkscreened in caps. It is not type in this
+  ladder and never answers to it — see "What is NOT themed".
+
+The tell, when deciding: if the thing can be clicked, it is not a label, and
+caps would be saying something false about it.
+
 **A header never competes with what it introduces.** The transfer modal first
 set "Transfer" at 15/700 — the same size as the setlist name beneath it — and
 read as two titles arguing. Region-header treatment fixed it: the label went
