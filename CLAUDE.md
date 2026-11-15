@@ -1997,12 +1997,45 @@ Kept here because they otherwise live only in a chat that ends.
   only under a condition nobody has identified. Nothing here establishes any
   of those, and the app is not at fault in any of them.
 
-  THE NEXT STEP, for whoever picks this up: the `0x23` reply's 4th field is
-  the device's own DISPLAY STRING — that is how the enum labels were harvested
-  on 2026-08-09. If the display changes as `egp_pucm` sweeps, the instrument
-  is acknowledging the value internally and the question is purely audio; if
-  it does not, the parameter is a stub on this firmware. `edit:read` does not
-  surface that field today, so it needs the raw reply.
+  **THE DISPLAY STRING MOVES — AND IT PROVES LESS THAN WE EXPECTED IT TO**
+  (measured the same day, straight after). The `0x23` reply's 4th field is the
+  device's own display string, which is how the enum labels were harvested on
+  2026-08-09. Read directly off the wire, reusing probe.js's `Seven` class:
+
+  ```
+  22|egp_pucm|0|000     23|egp_rell|0|000     28|egp_dyna|0|000
+  22|egp_pucm|64|064    23|egp_rell|64|064    28|egp_dyna|64|064
+  22|egp_pucm|127|127   23|egp_rell|127|127   28|egp_dyna|127|127
+  ```
+
+  The field tracks the value for Pickup Compress exactly as it does for both
+  controls. So the instrument stores it, formats it, and reports it back.
+
+  **BUT FOR A CONTINUOUS PARAMETER THE DISPLAY IS JUST `%03d` OF THE VALUE**,
+  and a stub would format its stored number the same way. That is the whole
+  catch: the enum sweep of 2026-08-09 got real evidence from this field
+  because an enum's display is a LABEL — "Default e.piano" — which only
+  something consuming the value can produce. A zero-padded number is produced
+  by the formatter alone. So this test discriminates for enums and does NOT
+  discriminate for 0..127 parameters, which is worth knowing before anyone
+  reaches for it again.
+
+  WHAT IS NOW RULED OUT: the app not sending it, the write being refused, the
+  value not being stored, and the parameter being absent from the device's own
+  table. WHAT REMAINS OPEN, with nothing here favouring any of them: inert on
+  this firmware, inert on this sound, or audible only under some condition
+  nobody has identified. The next real evidence has to come from listening,
+  not from the protocol.
+
+  ONE INCIDENT WORTH RECORDING, because it is a trap with teeth. The id
+  encoding is THREE bytes — `0x00, (id>>7)&0x7F, id&0x7F` — and a two-byte
+  little-endian version of it is not a silent no-op: the instrument read the
+  malformed frame as addressing **id 0** and answered with a `0x23` about
+  `rho_tp`. Nothing was altered (checked afterwards: `rho_tp` 8, "Default
+  e.piano", which is this patch's own value, and a `0x20` touches only the
+  edit buffer) — but a wrong id encoding will quietly address a DIFFERENT
+  parameter rather than failing. Copy `idBytes` from probe.js; do not
+  re-derive it.
 
 ### There are no modes (settled 2026-08-12)
 
