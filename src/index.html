@@ -2647,12 +2647,15 @@
     .engine-head-text {
       min-width: 0;
       display: grid;
-      /* THE BOX'S SIZE BELONGS TO THE TRACK, not to the box. With `auto` here
-         and `width: min(190px, 48%)` on the stage, the percentage resolved
-         against a track that was sizing itself to the stage — circular, so the
-         track took max-content (358px) and the text column collapsed to 0.
-         Measured, not guessed: `cols=0px 358px`. */
-      grid-template-columns: minmax(0, 1fr) min(190px, 50%);
+      /* THE TRACK SIZES TO THE PICTURE, which is 128px and fixed.
+         It was `min(190px, 50%)` — a track sized for the 187px stage, which is
+         reverted. Left at 187 the 128px picture sat at the track's LEFT edge,
+         x607..735, where the float it replaced right-aligned it at x646..774.
+         `auto` is safe HERE and was not before: the circularity that collapsed
+         the text column to 0 (`cols=0px 358px`, measured) came from a
+         PERCENTAGE width resolving against a track sizing itself to it. A
+         fixed 128 resolves in one pass. */
+      grid-template-columns: minmax(0, 1fr) auto;
       column-gap: 16px;
     }
     .engine-sound { grid-column: 1 / -1; grid-row: 1; }
@@ -2670,20 +2673,31 @@
     /* Spanning the meta rows and ALIGNED TO THE TOP of them, so the row's
        height is the taller of the two and the parameters start below both. */
     .engine-stage { grid-column: 2; grid-row: 2 / span 3; align-self: start; }
-    /* THE BOX. ~190x120 at the 400 setting, scaling with the column rather
-       than with the window: aspect-ratio keeps the proportion so only one
-       number has to be chosen. overflow:hidden is the whole point — a picture
-       may be any shape and none of them may leave. */
-    .engine-stage {
-      position: relative; isolation: isolate; overflow: hidden;
-      width: 100%; aspect-ratio: 190 / 120;
-    }
-    /* Inside the stage the picture IS the box: no float, no margins of its
-       own, no aspect of its own. Both variants — the carousel and the plain
-       drawing a library patch gets — answer to the stage instead. */
+    /* THE STAGE IS THE GRID CELL, NOT A BOX THAT SIZES THE PICTURE.
+       It was `width: 100%; aspect-ratio: 190/120; overflow: hidden` — a fixed
+       187x118 that grew the artwork 46% and clipped it. Both are reverted; the
+       cell is now just where fc940cd's grid puts the picture, and the picture
+       brings its own 128px.
+       No overflow, so the peeks are drawn outside it exactly as they were
+       before the stage existed — which is what makes the wheel turnable. */
+    .engine-stage { position: relative; isolation: isolate; }
+    /* 128px, the size the carousel was built around and the one Daniel
+       reported as working. The float is gone because the grid cell places it
+       now; the width is not. */
     .engine-stage .engine-art,
     .engine-stage .engine-carousel {
-      float: none; width: 100%; height: 100%; margin: 0; aspect-ratio: auto;
+      /* The float is gone because the grid cell places it now. The 128px and
+         the 20px of air on its right are the original's, which is what puts
+         the picture back at x646..774 rather than hard against the column. */
+      float: none; width: 128px; margin: 0 20px 6px 14px;
+    }
+    /* THE PLAIN VARIANT KEEPS ITS OWN SHAPE — the one a library patch gets,
+       where there is no picker. 363/512 at 128 wide, as before the stage: the
+       carousel fixed its own proportions on 2026-08-12 with a square box and
+       each instrument fitted inside it, and this one never needed to. */
+    .engine-stage .engine-art:not(.engine-carousel) {
+      aspect-ratio: 363 / 512;
+      display: flex; align-items: center; justify-content: center;
     }
     /* ROOM FOR THE HALO, and it is the halo that drew the box edge.
        The dark theme lifts a cut-out off the page with drop-shadow(0 0 9px
@@ -2707,90 +2721,32 @@
        scan line is unaffected: app.js measures the DRAWN rect at runtime and
        absolute offsets resolve against the padding box, whose origin does not
        move. */
-    .engine-stage .sound-art { box-sizing: border-box; padding: 10px; }
-    /* CLIPPED AT REST, OPEN WHILE TURNING.
-       The neighbours sit at translateX(±72%) and the hero scales to 1.12, so
-       all three leave the box the moment the wheel wakes. fc940cd clipped them
-       outright — to keep a neighbour off the parameter rows — which hid them
-       completely and left the wheel unturnable: the peeks ARE the control,
-       since clicking one brings it to the middle. That is a regression, not a
-       trade (Daniel, 2026-11-15).
-       So the box clips only while the wheel is asleep. Awake, the clipping
-       moves out to the sound engine COLUMN: a peek may cross the meta text
-       beside it, which is what it was always allowed to do, and may never
-       cross into the effects chain. */
-    .engine-stage .engine-carousel { overflow: hidden; }
-    /* THE STAGE NO LONGER OPENS, and no longer lifts above its siblings.
-       Both existed to let a peek reach OUT of column 2 — the lift so the meta
-       lines that follow the stage in the DOM would not paint over it. Nothing
-       reaches out any more, so a lift would only put a picture in front of the
-       Save patch button again, which is the bug it used to cause. */
-    /* THE WHEEL HAS ONE POSITION, AND IT IS THIS ONE (Daniel, 2026-11-15).
-       An earlier pass centred it on the COLUMN while awake, to give the
-       right-hand neighbour room. It worked, and it cost three things that
-       were worse than the problem — all measured in the running app:
-         1. the hero jumped 93.5px the moment the wheel woke, so the resting
-            picture was not where the live one was;
-         2. turning the wheel REBUILDS the faces, and the rebuilt wheel has no
-            .is-open — so at the exact frame the new name landed the hero
-            snapped 607 -> 700.5. Daniel read that as "it skipped forward yet
-            another image. But it hasn't", and he placed the moment exactly.
-            Nothing above it moved: the header held h141.3 and the stage top
-            held 240 for all 80 samples of the turn;
-         3. centred, the wheel sits over column 1, where the meta text AND the
-            Save patch button live — and a click in the overlap hit the peek's
-            image, not the button. Measured, not guessed.
-       So the stage stays where fc940cd put it, which is where Daniel put it:
-       "the stage, column 2", text left and instrument right.
-       WHAT THAT COSTS, kept honest: the right-hand peek is clipped by the
-       column edge. The hero at scale 1.12 is 104.7px half-width with only
-       93.5px to the column edge, so there is no spread that shows it fully
-       without moving the wheel — this is a trade Daniel chose with the
-       numbers in front of him, not an oversight. --peek is 56% rather than
-       the original 72% precisely because it is the better end of that trade:
-       the right peek shows 42% of itself instead of 20%, and the left one
-       stops overlapping the Save patch button entirely. */
-    /* NOTHING ESCAPES THE STAGE ANY MORE, in any state — so these rules are
-       gone rather than left switched off.
-       The wheel used to need `overflow: visible` because its neighbours were
-       drawn outside the box at full size. They are not: the hero pulls back to
-       0.60 while awake and the peeks live in the room it gives up, so all
-       three faces fit inside column 2 at every moment. That is what makes the
-       column-1 overlap and the click-eating impossible BY CONSTRUCTION rather
-       than by a rule somebody has to keep honouring — a peek cannot reach the
-       Save patch button if it cannot leave the stage.
-       The clip stays on .engine-stage, where fc940cd put it. */
-    /* THE COLUMN IS THE OUTER FENCE, and it is safe to be one: overflow:hidden
-       does NOT trap position:fixed children — only transform, filter and
-       will-change do — so the parameter picker still escapes it. That is the
-       same distinction that stopped the library list using a mask
-       (src/scroll-fade.js). */
-    .detail-cols > .col-engine { overflow: hidden; }
-    /* THE PLAIN DRAWING IS FITTED TOO, not merely clipped.
-       The carousel already fitted its faces; the plain variant a library patch
-       gets sized itself to the picture and relied on its own 363/512 slot
-       being tall enough. In a 118px box that meant the tall instruments were
-       CROPPED by the stage rather than scaled down — Venice Grand Open
-       measured 251px inside it, caught by engine-art-slot.js.
-       max-*, not width/height: `contain` needs a box to work against, and
-       these drawings are trimmed tight to their own canvas, so letting them
-       keep their aspect and bounding them is the whole of it. */
-    /* THE CHAIN NEEDS A DEFINITE HEIGHT AT EVERY LINK. `max-height: 100%` on
-       the image resolves against its PARENT, and .sound-art was auto-height —
-       so 100% of auto is no constraint at all and the drawing kept its 251px.
-       Measured twice: the rule was present and doing nothing. */
-    .engine-stage .engine-art:not(.engine-carousel) .sound-art {
-      height: 100%; max-width: 100%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .engine-stage .engine-art:not(.engine-carousel) img,
-    .engine-stage .engine-art:not(.engine-carousel) svg,
-    .engine-stage .engine-art:not(.engine-carousel) .sound-art.is-drawing img,
-    .engine-stage .engine-art:not(.engine-carousel) .sound-art.is-drawing svg {
-      max-width: 100%; max-height: 100%;
-      width: auto; height: auto;
-      object-fit: contain;
-    }
+    /* THE PICTURE IS 128px AND NOTHING CLIPS IT — reverted to the state
+       Daniel reported as working (2026-11-15, after the whole chain below).
+       fc940cd made two sizing decisions on top of its grid layout: it grew the
+       picture into a fixed 187x118 box and it clipped that box. The grid is
+       his and stays. The other two are gone, and with them the four commits
+       that existed only to cope with them.
+       MEASURED, both states, Seven attached:
+         76b2b6b  carousel 128px at x646..774, overflow visible, hero centre
+                  710 at rest AND awake, both peeks drawn
+         fc940cd  stage 187x118, clipped — +46%, and the wheel stopped turning
+       The squared-off glow goes with the clip rather than needing the 10px of
+       padding that was added to cope with it: nothing cuts the halo now.
+       WHAT COMES BACK, deliberately, and is NOT to be fixed: while the wheel
+       is TURNING only, the right-hand peek runs past the engine column's right
+       edge — 94.7px wide at x754.8..849.5 against a column ending at x794, so
+       41% of it stays inside, crossing seven parameter rows and reaching
+       109.6px into the effects column. At rest nothing overlaps anything.
+       That is the one original flaw. A 96px wheel would stop it and would cost
+       a quarter of the resting artwork permanently for something that only
+       exists mid-turn; Daniel is not taking that trade. If it ever bothers him
+       it is one number, and it will be his. */
+    /* The fit-to-the-box rules that lived here are gone with the box. They
+       existed because a 187x118 stage CROPPED the tall drawings — Venice Grand
+       Open measured 251px inside a 118px box, caught by engine-art-slot.js —
+       and nothing crops now: the plain variant carries its own 363/512 above
+       and the carousel fits its faces itself. */
     /* The name and its pill stay on one line together; the NAME may wrap. */
     .engine-sound .badge { white-space: nowrap; }
     /* 128, not 150: the picture sets the header's height in every case (the
@@ -3028,39 +2984,16 @@
        each side, and its hover state at scale .82 still lands 6px inside the
        column. Anything wider escapes on hover before it escapes at rest,
        which is why the bound was taken from the HOVER size, not this one. */
-    /* THE WHEEL PULLS BACK TO SHOW ITS OPTIONS (Daniel, 2026-11-15).
-       At rest the hero is full size and alone. Awake, it scales DOWN, and the
-       room it gives up is what makes two symmetric peeks visible — all of it
-       inside column 2, so the wheel never reaches the meta text or the Save
-       button and the click-eating cannot come back by construction.
-       Size carries meaning here: large is "this is what you have", small is
-       "you are choosing".
-
-       ONE NUMBER, DERIVED, NOT TUNED. The stage is flush to column 2's right
-       edge, so everything must fit within 93.5px of the centre at the measured
-       374px column. A peek shows 93.5(1-h) beyond a hero of scale h; a third
-       of a peek of the same scale needs 93.5(1-h) >= 62.3h, which gives
-       h <= 0.60. At exactly 0.60 the hero, the peeks and the spread are all
-       0.60 and each peek shows 37.4px of its 112.2 — a third, as asked.
-       It is a RATIO of the face, so it holds at every column width: the same
-       run measures 0.60 at the 980px pane as at 1147. */
-    .engine-carousel { --peek: 60%; --awake: .6; }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
-      transform: translateX(calc(-1 * var(--peek))) scale(var(--awake));
+      transform: translateX(-72%) scale(.74);
     }
     .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
-      transform: translateX(var(--peek)) scale(var(--awake));
+      transform: translateX(72%) scale(.74);
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
-    /* DOWN, NOT UP. It grew to 1.12 before, which is what made a visible peek
-       impossible: at 1.12 the hero's own half-width is 104.7px against 93.5px
-       of room, so every peek narrow enough to fit was hidden behind it.
-       transform-origin is `bottom center` (set above), which is what holds
-       condition 1 — the centre x does not move, and the instruments keep the
-       shared floor line they are drawn to stand on. */
     .engine-carousel.is-open .is-hero, .engine-carousel:focus-within .is-hero {
-      transform: scale(var(--awake));
+      transform: scale(1.12);
     }
     /* Turning the wheel: every face moves one position along, so the picture
        you clicked travels INTO the middle and the middle one travels out.
@@ -3071,18 +3004,12 @@
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
-    /* Hover LIFTS without moving: same place, a little larger. It stays on the
-       awake scale's own terms rather than jumping to a third size. */
-    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.66); }
-    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.66); }
-    /* THE INCOMING FACE ARRIVES AT THE AWAKE SIZE, not the resting one. The
-       wheel is still awake while it turns; growing back to full is what
-       SETTLING does, once .is-open goes. Landing at full size mid-turn and
-       then having to shrink again is the double movement Daniel caught. */
+    .engine-carousel.is-open .is-prev:hover { transform: translateX(-72%) scale(.82); }
+    .engine-carousel.is-open .is-next:hover { transform: translateX(72%) scale(.82); }
     .engine-carousel.is-turning.is-turning-next .is-next,
-    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(var(--awake)); opacity: 1; }
-    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(var(--awake)); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(var(--awake)); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
+    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
     /* The one rolling in from beyond, taking the vacated side. */

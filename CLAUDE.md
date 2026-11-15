@@ -1768,6 +1768,62 @@ The five rules that cover what is genuinely left, after the habits above:
 on an interpreter is a blank cheque for arbitrary code. If a script is worth
 running often, give it a name in `scripts/` and allow that name.
 
+### A REPORTED WORKING STATE OUTRANKS A MEASURED IMPROVEMENT (2026-11-15)
+
+Daniel, after a day of carousel work: **"It used to work great except for a
+little overlap."** That sentence was worth more than every measurement taken
+after it, and it took five commits to hear.
+
+What happened, in one line each:
+
+```
+76b2b6b  the working state: wheel 128px, overflow visible, both peeks drawn,
+         hero centre 710 at rest AND awake. One flaw — while TURNING, the
+         right peek runs 55px past the column, over the parameter rows.
+fc940cd  Daniel's grid layout, plus two sizing decisions nobody asked for:
+         the picture grew into a fixed 187x118 box (+46%) and the box clipped.
+         The clip was aimed at the overlap. It hid the peeks, and the peeks
+         ARE the control, so the wheel stopped turning.
+87499c5  un-clip at rest to make it turn again        <- fixing fc940cd
+23e072f  centre the wheel so the right peek fits      <- fixing fc940cd
+5103955  un-centre: it jumped 93.5px and ate clicks   <- fixing 23e072f
+d91980b  shrink the hero so the peeks fit a 187 box   <- fixing fc940cd
+```
+
+**One of five addressed anything Daniel had reported.** The other four were
+repairs to the repair. The revert restored `76b2b6b`'s geometry exactly —
+rest x646..774 w128 centre 710, awake 638.3..781.7, peeks at 570.5..665.2 and
+754.8..849.5 — and the original flaw with it, which he has now priced against
+shrinking the resting artwork by a quarter and kept.
+
+**THE TELL, and it is the transferable part:** each fix was aimed at a symptom
+the previous one introduced. When the thing you are fixing did not exist
+yesterday, you are not fixing the bug — you are paying for the last fix. Stop
+and ask what the last known-good state was.
+
+Three habits that follow:
+
+- **A user's "it used to work" is data, not nostalgia.** Find the commit and
+  RUN it before theorising. A throwaway worktree with `node_modules`
+  symlinked takes two minutes and settles what the commit messages cannot:
+  here it produced the exact numbers above, including the fact that the
+  picture was 128px and not 187.
+- **Don't stack techniques blind.** Clipping, centring and scaling were each
+  defensible. Applied one on top of another without looking in between, they
+  produced three bugs that none of them had alone.
+- **A test written around a fix dies with the fix.** `carousel-peeks.js` was
+  rewritten three times in a day because each version asserted the geometry of
+  whichever attempt was current. What survived is only what holds in the
+  working state: the hero's centre does not move, both peeks are REACHABLE,
+  and a click on Save patch reaches Save patch.
+
+One of those three had to be strengthened before it meant anything: "both
+peeks are drawn" passed with the clip reinstated, because
+`getBoundingClientRect` reports the laid-out box whether or not a pixel is
+painted and `opacity` belongs to the element rather than to what survives an
+ancestor's `overflow`. Asking whether a press at the peek's centre lands on
+the peek fails, correctly, on both.
+
 ### Smaller things still open
 
 Kept here because they otherwise live only in a chat that ends.
