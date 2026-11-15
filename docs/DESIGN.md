@@ -62,7 +62,8 @@ from a designer's preference.
 
 | Role | Variable | Source | Used for |
 |---|---|---|---|
-| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | anything that DOES something: filled buttons, and the Save to Computer link in the engine column |
+| Action | `--action` | the panel's DEPTH/RATE legend green (`#4fb96a`) | anything that DOES something, as a FILL or a MARK: a filled button, a 1px border, a focus ring, a 2px underline |
+| Action, as words | `--action-text` | the same legend, damped (`#63a87a` dark; identical in light) | the LABEL of an action — a button's text, a link, a name going green on hover |
 | Destructive | `--accent` | panel LED red | the selected-row edge, and any confirm that destroys something |
 | Navigation | `--amber` | the panel's amber legends | which tab or segment is selected, focus rings, an open rename field |
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
@@ -90,9 +91,19 @@ chips, the Settings toggles. One radius each, so the two never blur.
 
 **Not every action needs a button, though.** Saving sits in a column of 12px
 labels, and a filled button there was the loudest thing on the panel for
-something you do occasionally — so "Save to Computer · Send to Seven" are text,
-carrying the action green and a heavier weight instead of a fill. A control
-earns chrome by how often it is reached for, not by how important it sounds.
+something you do occasionally. A control earns chrome by how often it is
+reached for, not by how important it sounds.
+
+**That was taken too far once, and the correction is the rule now.** Saving was
+drawn as bare green text, and Daniel took it for leftover UI on his own app
+(2026-08-21) — fairly, since everything else here that writes to disk wears a
+border. `#save-live-btn` has had a 1px outline since, which is the lightest
+chrome that still reads as a control. So the column is 12px labels with ONE
+outlined button in it, not two text actions: "Send to Seven" is not in this
+column at all any more (it moved to the row and the transfer dialog, where the
+destination is named — `audition.js`, "NO 'Send to Seven' HERE, in any
+context"). This paragraph described the 2026-08-21 state for three months after
+it stopped being true.
 
 **Amber is for where you ARE, not for what to press.** The active bank tab, the
 active segment, a focus ring, a field being edited. It was doing double duty as

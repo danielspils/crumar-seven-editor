@@ -665,7 +665,8 @@
       background: none; color: inherit; border: none;
       border-top: 1px solid var(--line);
     }
-    .set-link:hover .set-name, .set-link:focus-visible .set-name { color: var(--action); }
+    /* A NAME, so the damped value — the ring below is the mark and keeps its. */
+    .set-link:hover .set-name, .set-link:focus-visible .set-name { color: var(--action-text); }
     .set-link:focus-visible { outline: 2px solid var(--action); outline-offset: -2px; }
     .set-link .set-chev { flex: none; color: var(--text-dim); font-size: 13px; line-height: 1; }
 
@@ -1112,7 +1113,7 @@
       opacity: 0; transition: opacity .12s;
     }
     .lib-setlist-row:hover .setlist-send { opacity: 1; }
-    .setlist-send:hover { color: var(--action); border-color: var(--action); }
+    .setlist-send:hover { color: var(--action-text); border-color: var(--action); }
     .setlist-send:focus-visible { opacity: 1; }
     .setlist-delete {
       display: flex; align-items: center; justify-content: center;
@@ -1498,7 +1499,7 @@
       display: inline-block; margin: 14px 0 0;
       font: inherit; font-size: 12px; font-weight: 600;
       background: none; border: none; padding: 0; cursor: pointer;
-      color: var(--action); text-decoration: none;
+      color: var(--action-text); text-decoration: none;
     }
     .seven-modal-body .modal-link:hover { text-decoration: underline; text-underline-offset: 2px; }
     .seven-modal-body .modal-link:focus-visible {
@@ -2135,9 +2136,16 @@
        else that writes to disk in this app wears a border. It is the primary
        action of the whole editing feature and now looks like one, borrowing
        the outlined treatment the connection row's buttons use. */
+    /* THE LABEL IS WORDS; THE BORDER IS A MARK. 12px bold green type is the
+       exact case DESIGN.md's "full chroma for marks, damped for text" was
+       written for — the hue is borrowed from a printed legend a few
+       millimetres tall, and at word scale it is many times the ink. The 1px
+       border keeps --action because a hairline is the size the source
+       actually is, and the hover FILL keeps it too. Identical in light,
+       where paper needs no damping. */
     #save-live-btn {
       font: inherit; font-size: 12px; font-weight: 600;
-      color: var(--action); background: none;
+      color: var(--action-text); background: none;
       border: 1px solid var(--action); border-radius: 5px;
       padding: 3px 10px; margin-top: 2px; cursor: pointer;
       text-align: left; text-decoration: none;

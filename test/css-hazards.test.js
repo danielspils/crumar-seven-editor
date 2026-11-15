@@ -65,6 +65,32 @@ test('the stylesheet parses into rules', () => {
   assert.ok(rules.length > 100, `expected a real stylesheet, parsed ${rules.length} rules`);
 });
 
+// FULL CHROMA FOR MARKS, DAMPED FOR TEXT (DESIGN.md). --action is borrowed
+// from a printed legend a few millimetres tall; set as the colour of WORDS it
+// is the same hue at many times the ink, and the first pass of the list design
+// read as neon for exactly this reason. So words take --action-text and marks —
+// fills, 1px borders, focus rings, a 2px underline — keep --action.
+//
+// Asserted rather than remembered, because the two names differ by a suffix and
+// the wrong one is invisible until somebody looks at it in dark mode: the values
+// are IDENTICAL in light, where paper needs no damping. A sweep done once stays
+// done only if something fails when it is undone.
+test('no rule paints text with the undamped action green', () => {
+  const offenders = rules.filter((r) => r.body
+    .split(';')
+    .some((d) => {
+      const [prop, value] = d.split(':');
+      if (!prop || !value) return false;
+      // `color`, not `border-color` / `background-color` / `-webkit-text-fill`.
+      if (prop.trim() !== 'color') return false;
+      return /var\(\s*--action\s*\)/.test(value);
+    }));
+  assert.deepEqual(
+    offenders.map((r) => r.selector), [],
+    'these set text to var(--action); words take var(--action-text)'
+  );
+});
+
 test('no media-query rule is overridden by a later plain rule for the same selector', () => {
   const problems = [];
   for (const inMedia of rules.filter((r) => r.media)) {
