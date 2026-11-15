@@ -1,20 +1,31 @@
 'use strict';
 
-// THE ORIGIN LINE UNDER A PATCH NAME: where this one came from.
+// THE RIGHT-HAND CELL OF A PATCHES ROW: what this patch IS.
 //
-// A save taken off the instrument lands in Patches among patches that were
-// built there. Without this line it arrives unexplained — the thing §3 of
-// out/save-what-you-hear.md asked for, and the half that lives in the view
-// rather than in the file.
+// IT USED TO SAY WHERE IT CAME FROM — "from Bank 3 · Preset 5", the slot a
+// save was taken off — and these tests pinned that. Daniel removed it on
+// 2026-11-15: "I would never care about where it came from." Two reasons, and
+// the second is the one that settles it:
+//
+//   IT DECAYS. His list holds three rows reading "from Bank 3 · Preset 5":
+//   three generations of one slot, two of them naming something that no
+//   longer holds what they say.
+//
+//   THE SAME COLUMN MEANS THE SOUND IN THE SEVEN LIST. One position, two
+//   meanings, which is what DESIGN.md's vocabulary exists to prevent.
+//
+// So the tests below are INVERTED rather than deleted, in the same commit as
+// the change: a test that pins the old behaviour does not merely fail to
+// catch the new one, it argues against it.
+//
+// THE PROVENANCE IS NOT GONE FROM THE DATA. It stays in the patch file and in
+// the detail pane, where putting a patch back where it came from is an action
+// you can take. Asserted below, because "stop showing it" and "stop keeping
+// it" are a single careless edit apart.
 //
 // Asserted through `renderBody`, the real row renderer, rather than by
 // exporting the private helper. A test against a copy of the formatting could
-// not fail when the row stopped printing it, which is the only failure this
-// exists to catch (CLAUDE.md, 2026-08-23).
-//
-// NOT A NEW FIELD. The store has written `origin.copiedFrom.bank` since
-// 2026-08-21 for copies of backup records and nothing ever displayed it, so
-// those rows start saying where they came from too.
+// not fail when the row stopped printing it (CLAUDE.md, 2026-08-23).
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -39,23 +50,35 @@ const render = (...patches) => SevenLibraryView.renderBody(
   { tab: 'patches', patchScope: 'all', search: '' }
 );
 
-test('a patch saved off a slot says which slot', () => {
-  const html = render(row({
+test('a patch saved off a slot names its SOUND, not the slot', () => {
+  const origin = {
     kind: 'created', date: DATE, created: DATE, copiedFrom: { bank: 3, preset: 5 },
-  }));
-  assert.match(html, /from Bank 3 · Preset 5/,
-    'the row names where the values came from');
+  };
+  const entry = row(origin);
+  const html = render(entry);
+  assert.match(html, /<span class="lib-origin">Tine Piano<\/span>/,
+    'the cell answers "what is this"');
+  assert.doesNotMatch(html, /from Bank/,
+    'and no longer says where it came from');
+  // THE DATA IS UNTOUCHED. Unlisting it and discarding it are one careless
+  // edit apart, and only one of them is reversible.
+  assert.deepStrictEqual(entry.origin.copiedFrom, { bank: 3, preset: 5 },
+    'the stored provenance survives the render');
 });
 
 // The common case, and it must not grow a dangling "from" — nor a date. The
 // flat list carries NO context on an ordinary row (Daniel, 2026-08-16: dates
 // live in Backups, where they distinguish one run from another). This change
 // reopens that cell for one thing only.
-test('a patch made in the app still says nothing at all', () => {
+test('a patch made in the app names its sound too', () => {
+  // The cell used to be EMPTY on an ordinary row, because provenance was news
+  // and most rows had none. A sound is not news — every patch has one — so
+  // the column is uniform now, which is what makes it a column rather than an
+  // occasional annotation.
   const html = render(row({ kind: 'created', date: DATE, created: DATE }));
   assert.doesNotMatch(html, /from Bank/, 'no slot is invented');
-  assert.match(html, /<span class="lib-origin"><\/span>/,
-    'and the cell is empty, as it has been since 2026-08-16');
+  assert.match(html, /<span class="lib-origin">Tine Piano<\/span>/,
+    'and it says what the patch is');
 });
 
 // A COPY OF AN ORDINARY PATCH carries a file and a name in `copiedFrom` and no

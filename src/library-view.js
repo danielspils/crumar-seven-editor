@@ -260,7 +260,26 @@
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}"${opts.readOnly ? '' : ' draggable="true"'}${tip ? ` title="${esc(tip)}"` : ''}>` +
       `<span class="patch-num">${lead}</span>` +
       `<span class="patch-name" title="${esc(name)}">${esc(name)}</span>` +
-      `<span class="lib-origin">${esc(context)}</span>` +
+      // THE SOUND, NOT WHERE IT CAME FROM (Daniel, 2026-11-15: "I would never
+      // care about where it came from").
+      //
+      // This cell held fromSlotLine(o) — "from Bank 3 · Preset 5", the slot a
+      // patch was captured from — on the few rows that had one. Two reasons it
+      // is gone, and the second is the one that settles it:
+      //
+      //   IT DECAYS. Daniel's list has three rows reading "from Bank 3 ·
+      //   Preset 5": three generations of one slot, two of them naming
+      //   something that no longer holds what they say.
+      //
+      //   THE SAME COLUMN MEANS THE SOUND IN THE SEVEN LIST. One position,
+      //   two meanings, which is the thing DESIGN.md's vocabulary exists to
+      //   prevent. Now both lists answer "what is this" in the same place.
+      //
+      // THE PROVENANCE IS NOT DELETED — only unlisted. It stays in the patch
+      // file and stays in the detail pane, where putting a patch back where it
+      // came from is an action you can actually take. A list is for telling
+      // rows apart; that is a thing you do to one.
+      `<span class="lib-origin">${esc(entry.soundName || '')}</span>` +
       `<span class="patch-sound"></span>` +
       // The Patches list carries NO pill. Which engine a patch uses is
       // answered the moment you select it — the centre column says it in
