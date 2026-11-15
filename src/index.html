@@ -132,19 +132,29 @@
       --text: #26231f;
       --select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" width="14" height="9"><path d="M2 2 L7 7 L12 2" fill="none" stroke="%2326231f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
       --text-muted: #6a6355;
-      /* BACK WITH THE GROUND IT WAS DARKENED FOR. #78715f existed only because
-         the lifted --bg pushed this ink under AA; the lift is gone, so it goes
-         with it rather than becoming an unreviewed change of its own — Daniel
-         has never seen #78715f on THIS ground.
-         AND IT DOES NOT PASS HERE, which is worth saying plainly rather than
-         filing under "restored". Measured, not assumed: #8a8375 on --bg
-         #f0ebe0 is 3.16:1 and on --bg-raised #f8f5ed is 3.45:1, both under the
-         4.5 small text needs. That is not a regression from the revert — it is
-         what shipped, and what the lift briefly improved to 3.54 before the
-         ink change took it to 4.57. This ink carries the row numbers and the
-         unselected tab labels. It is a live failure waiting on a decision, not
-         a settled value. */
-      --text-dim: #8a8375;
+      /* A CONTRAST FIX, AWAITING DANIEL'S LOOK — not a settled design value.
+         #8a8375 had been failing since long before either palette commit:
+         3.16:1 on --bg and 3.45:1 on --bg-raised, against the 4.5 small text
+         needs. This ink carries the row numbers and the unselected tab
+         labels, so it is not decorative.
+
+         NOT #78715f, which is the value the fix was requested as. That figure
+         (4.57:1) was measured against the LIGHTER ground that has since been
+         reverted. On this ground it is 4.08:1 on --bg and 4.46:1 on
+         --bg-raised — better, and still failing. Shipping it would have been
+         a contrast fix that does not fix the contrast.
+
+         #6e695e is the first value along the SAME warm grey — all three
+         channels scaled together, so the hue and the warmth are untouched —
+         that clears 4.5 on both surfaces: 4.59:1 on --bg, 5.01:1 on
+         --bg-raised.
+
+         THE COST, because it is real: --text-muted is 5.01:1 on --bg, so dim
+         and muted are now 0.42 apart there. The two-step hierarchy is intact
+         but narrow, and on this ground it cannot be wider — anything quieter
+         fails the bar and anything clearer passes --text-muted. That is the
+         trade, and it is Daniel's to accept or drop with one revert. */
+      --text-dim: #6e695e;
       --accent: #b8362b;
       --accent-rgb: 184, 54, 43;
       /* LIGHT IS UNTOUCHED by the dark repaint of 2026-11-15, but every
