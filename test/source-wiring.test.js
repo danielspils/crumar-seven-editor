@@ -1041,3 +1041,50 @@ test('confirmLeave is silent when nothing has changed', () => {
   assert.match(fn[0], /if \(!liveEdit \|\| !driftNow\(\)\) return true;/,
     'no session or no drift means no dialog at all');
 });
+
+// THE BOOT LOADER IS SHOWN BY A REAL CONNECT, which no scenario can observe.
+// By the time a scenario's script runs the read has resolved, so the states
+// it checks are ones it drove itself (test/ui/scenarios/boot-loader.js says
+// so). This is the half that pins the wiring, the same split the project uses
+// for every click whose handler discards its result.
+test('the boot loader is shown before a connect and landed after it', () => {
+  const src = code(read('app.js'));
+  const tick = /async function autoConnectTick\(\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(tick, 'autoConnectTick is still recognisable');
+  const body = tick[1];
+
+  assert.match(body, /const showing = showBootLoader\(\);/,
+    'the loader is shown on the path that is about to read the instrument');
+  assert.ok(
+    body.indexOf('showBootLoader()') < body.indexOf('midi.connect()'),
+    'and shown BEFORE the read, or it would appear after the wait it explains'
+  );
+  // BOTH OUTCOMES. A read that fails still has to give the window back; a
+  // loader landed only on success leaves a bulb warming over a dead app.
+  const lands = body.match(/landBootLoader\(/g) || [];
+  assert.strictEqual(lands.length, 2,
+    `landBootLoader is called on both outcomes (found ${lands.length})`);
+  assert.match(body, /catch \(err\) \{\s*\n\s*if \(showing\) landBootLoader\(null\);/,
+    'including the failure path');
+});
+
+// ONCE PER SESSION. autoConnectTick runs every three seconds, so without a
+// latch a replugged cable would black out an app somebody is already using.
+test('the boot loader is a BOOT loader and cannot run twice', () => {
+  const src = code(read('app.js'));
+  const fn = /function showBootLoader\(\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(fn, 'showBootLoader is still recognisable');
+  assert.match(fn[1], /if \(!el \|\| !mark \|\| bootLoaderUsed\) return false;/,
+    'a second call is refused');
+  assert.match(fn[1], /bootLoaderUsed = true;/, 'and the latch is set');
+});
+
+// THE OVERLAY IS REMOVED, NOT JUST FADED. A transparent sheet left over the
+// app eats every click, which looks exactly like the app hanging.
+test('the boot loader is taken out of the flow when it leaves', () => {
+  const src = code(read('app.js'));
+  const fn = /function landBootLoader\(status\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(fn, 'landBootLoader is still recognisable');
+  assert.match(fn[1], /\.hidden = true;/, 'it ends up hidden');
+  assert.match(fn[1], /classList\.add\('is-lit'\)/, 'after the mark has landed on full');
+});

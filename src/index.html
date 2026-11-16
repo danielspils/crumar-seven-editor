@@ -71,6 +71,18 @@
          unselected sign reads as switched off rather than as grey type. */
       --logo: #7f9c78;
       --logo-off: #3a4a3e;
+      /* THE BOOT FILAMENT'S BLOOM, one value per rung so the keyframes can be
+         themed without being duplicated: `drop-shadow()` takes a custom
+         property as its whole argument list. The rung COLOURS are not here —
+         they are color-mix between --logo-off and --logo in the keyframes, so
+         they cannot drift from the palette they are supposed to be climbing
+         towards. Only the glow needs a theme, because light has nowhere to
+         glow. */
+      --boot-glow-1: 0 0 3px color-mix(in srgb, var(--logo) 12%, transparent);
+      --boot-glow-2: 0 0 5px color-mix(in srgb, var(--logo) 22%, transparent);
+      --boot-glow-3: 0 0 7px color-mix(in srgb, var(--logo) 32%, transparent);
+      --boot-glow-lit: 0 0 7px color-mix(in srgb, var(--logo) 50%, transparent);
+      --boot-glow-wide: 0 0 20px color-mix(in srgb, var(--logo) 26%, transparent);
       /* The 1px top highlight on a chosen surface — a tab or a selected row.
          The panel's own cap highlight, which is where "chosen" gets its
          slight physicality without a second surface tone. */
@@ -204,6 +216,16 @@
          then. */
       --logo: #1f6b3d;
       --logo-off: #b3a994;
+      /* MUCH SMALLER, because paper does not glow. On light the warm-up is
+         carried by the INK darkening from --logo-off towards --logo — the
+         same three rungs, the same keyframes — and the bloom is just enough
+         to stop the mark looking flat at the end. A dark-sized glow here
+         reads as a blur, not a light. */
+      --boot-glow-1: 0 0 1px color-mix(in srgb, var(--logo) 4%, transparent);
+      --boot-glow-2: 0 0 2px color-mix(in srgb, var(--logo) 7%, transparent);
+      --boot-glow-3: 0 0 3px color-mix(in srgb, var(--logo) 10%, transparent);
+      --boot-glow-lit: 0 0 4px color-mix(in srgb, var(--logo) 16%, transparent);
+      --boot-glow-wide: 0 0 9px color-mix(in srgb, var(--logo) 8%, transparent);
       --cap-hi: rgba(255, 255, 255, .6);
 
       --inst-chassis: #3f3f47;
@@ -966,6 +988,125 @@
        (626 units, not 688), so the same number would render ~9.8% larger.
        31 x 626/688 = 28.2 is the size the design was approved at. */
     .top-logo svg { display: inline-block; height: 28.2px; width: auto; }
+    /* ===== THE BOOT LOADER =====================================================
+       Launching with a Seven attached shows nothing while the app reads the
+       instrument, and that read is a MEASURED median of 2072ms (CLAUDE.md,
+       15 Nov 2026) — long enough that a blank window reads as a broken app.
+       The mark warms up like an Edison bulb: strikes, flickers, catches,
+       settles, and reaches full only when the instrument answers.
+
+       BRIGHTNESS IS THE PROGRESS INDICATOR and the curve NEVER COMPLETES ON
+       ITS OWN. It approaches full and stops short, so the last step up only
+       ever happens because the read landed. A fast Seven gets a strike and a
+       jump; a slow one gets a filament taking its time. No duration is chosen
+       in advance and the animation is never the reason anybody waits.
+
+       WHY 3.6s. The curve is shaped against the measured read, not picked:
+       2072ms is 57.5% of 3.6s, which lands a typical boot just short of the
+       third rung (the 62% keyframe). So the normal case shows the whole arc —
+       strike, catch, climb — with headroom left for a slower unit, and the
+       tail from 62% to 100% is the part only a slow instrument ever sees.
+
+       THE FLICKER KEEPS ITS OWN 7s CLOCK, deliberately. It is a separate
+       animation, so the brightness curve could be tuned to the measurement
+       without changing the cadence Daniel approved in out/bulb.html. Its
+       amplitude decreases along ONE keyframe — deep and frequent while
+       striking, shallow and rare once caught, gone by the time it is bright —
+       so nothing has to decide when the flicker stops. */
+    .boot-loader {
+      position: fixed; inset: 0; z-index: 300;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      background: var(--bg);
+    }
+    .boot-loader[hidden] { display: none; }
+    /* Fading the whole overlay out once the mark is lit, so the app does not
+       cut in. The mark's own landing is unaffected — this starts after it. */
+    .boot-loader.is-leaving { opacity: 0; transition: opacity .24s ease-out; }
+    .boot-mark {
+      width: min(420px, 52vw); line-height: 0;
+      color: var(--logo-off);
+    }
+    /* THE SAME INLINED SVG THE HEADER USES, never an <img>: the artwork paints
+       with `fill="currentColor"`, and through an <img> it is its own document
+       and inherits nothing — the reasons are written into the asset itself. */
+    .boot-mark svg { width: 100%; height: auto; display: block; }
+
+    .boot-mark.is-warming {
+      animation: boot-warm 3.6s cubic-bezier(.12, .62, .28, 1) forwards,
+                 boot-flick 7s linear forwards;
+    }
+    /* THE RUNGS ARE MIXED FROM THE PALETTE, not written as hex, so they are
+       always on the line between unlit and lit in whichever theme is running.
+       That is also what makes light mode work with no separate keyframes: on
+       light, --logo-off is a pale warm grey and --logo is a dark green, so the
+       identical mix DARKENS the ink instead of brightening it. */
+    @keyframes boot-warm {
+      0%   { color: var(--logo-off); filter: none; }
+      12%  { color: color-mix(in srgb, var(--logo) 28%, var(--logo-off));
+             filter: drop-shadow(var(--boot-glow-1)); }
+      34%  { color: color-mix(in srgb, var(--logo) 58%, var(--logo-off));
+             filter: drop-shadow(var(--boot-glow-2)); }
+      62%  { color: color-mix(in srgb, var(--logo) 82%, var(--logo-off));
+             filter: drop-shadow(var(--boot-glow-3)); }
+      100% { color: color-mix(in srgb, var(--logo) 88%, var(--logo-off));
+             filter: drop-shadow(var(--boot-glow-3)); }
+    }
+    /* Paired stops a fraction apart read as an instant drop rather than a
+       fade. The gaps widen and the dips shallow as it goes. */
+    @keyframes boot-flick {
+      0%    { opacity: .10 }
+      1.2%  { opacity: .74 }  1.5%  { opacity: .14 }
+      2.6%  { opacity: .86 }  2.9%  { opacity: .20 }
+      3.3%  { opacity: .68 }  3.6%  { opacity: .12 }
+      5.4%  { opacity: .92 }  5.7%  { opacity: .26 }
+      6.1%  { opacity: .80 }  6.4%  { opacity: .18 }
+      9.0%  { opacity: 1 }    9.4%  { opacity: .30 }
+      10.2% { opacity: .88 }  10.6% { opacity: .22 }
+      13.5% { opacity: 1 }    13.9% { opacity: .38 }
+      15.8% { opacity: .94 }  16.1% { opacity: .44 }
+      20.4% { opacity: 1 }    20.8% { opacity: .42 }
+      24.9% { opacity: 1 }    25.3% { opacity: .56 }
+      31.2% { opacity: 1 }    31.5% { opacity: .62 }
+      38.6% { opacity: 1 }    38.9% { opacity: .70 }
+      47.1% { opacity: 1 }    47.4% { opacity: .78 }
+      57.3% { opacity: 1 }    57.6% { opacity: .86 }
+      69.0% { opacity: 1 }    69.3% { opacity: .92 }
+      82.5% { opacity: 1 }    82.7% { opacity: .96 }
+      100%  { opacity: 1 }
+    }
+    /* THE CONNECTION LANDING ALWAYS WINS. `animation: none` cancels both the
+       climb and the flicker wherever they happen to be — mid-dip included —
+       and the transition carries the mark from there to full in one steady
+       move. Nothing waits for the curve to reach a tidy point first. */
+    .boot-mark.is-lit {
+      animation: none;
+      opacity: 1;
+      color: var(--logo);
+      filter: drop-shadow(var(--boot-glow-lit)) drop-shadow(var(--boot-glow-wide));
+      transition: color .4s ease-out, filter .4s ease-out, opacity .4s ease-out;
+    }
+
+    .boot-status {
+      font-size: 10px; font-weight: 700; line-height: 1;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--text-dim); min-height: 12px;
+      transition: color .4s ease;
+    }
+    .boot-status.is-done { color: var(--logo); }
+
+    /* THE INFORMATION SURVIVES; ONLY THE MOTION GOES. The mark sits unlit
+       while the read runs and goes to full when it lands, so the two states
+       that carry the meaning are both still there — there is simply nothing
+       between them. No climb, no flicker, and the landing is immediate rather
+       than a 400ms move. */
+    @media (prefers-reduced-motion: reduce) {
+      .boot-mark.is-warming { animation: none; opacity: 1; }
+      .boot-mark.is-lit { transition: none; }
+      .boot-loader.is-leaving { transition: none; }
+      .boot-status { transition: none; }
+    }
+
     .top-logo:hover { color: var(--logo); }
     .top-logo[aria-selected="true"] {
       color: var(--logo);
@@ -3545,6 +3686,16 @@
   </style>
 </head>
 <body>
+  <!-- THE BOOT LOADER. Hidden in the markup and shown by app.js only when
+       there is an instrument to read — no Seven, no loader, because a
+       flourish over an empty library is a flourish about nothing. The mark is
+       filled from assets/seven-logo.svg at that moment rather than inlined
+       here, so there is one copy of the artwork and it is the same one the
+       header uses. -->
+  <div id="boot-loader" class="boot-loader" hidden>
+    <span class="boot-mark" id="boot-mark"></span>
+    <div class="boot-status" id="boot-status"></div>
+  </div>
   <div id="panel-strip"></div>
   <div id="connection-row">
     <span class="conn-status">

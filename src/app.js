@@ -4292,6 +4292,72 @@
     let lastPresence = false;
     let failedWhilePresent = false;
 
+    // ---- THE BOOT LOADER ----------------------------------------------------
+    //
+    // Launching with a Seven attached shows a blank window while the app reads
+    // the instrument, and that read is a MEASURED median of 2072ms. The mark
+    // warms up like a bulb for exactly as long as the read takes; index.html
+    // carries the whole animation and every rule behind it.
+    //
+    // THIS HALF DOES THREE THINGS AND NOTHING ELSE: show it when a read is
+    // about to start, light it when the read lands, and take it away. The
+    // timing of the climb is not decided here — that is the point of the
+    // design, and a JS timer driving brightness would be the thing it avoids.
+    //
+    // ONCE PER SESSION. It is a BOOT loader: a reconnect three seconds later,
+    // or after a cable is replugged, must not black out an app somebody is
+    // already using.
+    let bootLoaderUsed = false;
+    const bootEl = () => document.getElementById('boot-loader');
+    const bootMark = () => document.getElementById('boot-mark');
+    const bootStatus = () => document.getElementById('boot-status');
+
+    function showBootLoader() {
+      const el = bootEl();
+      const mark = bootMark();
+      if (!el || !mark || bootLoaderUsed) return false;
+      bootLoaderUsed = true;
+      // The same artwork the header inlines. Never an <img>: the paths are
+      // `fill="currentColor"` and an <img> is its own document.
+      mark.innerHTML = window.sevenAPI.getLogoSvg();
+      mark.classList.add('is-warming');
+      const st = bootStatus();
+      if (st) st.textContent = 'Reading the instrument…';
+      el.hidden = false;
+      return true;
+    }
+
+    // Lands the mark on full and then removes the overlay. Called on BOTH
+    // outcomes — a read that fails still has to give the window back, or a
+    // failure to connect would leave a bulb warming over a dead app forever.
+    function landBootLoader(status) {
+      const el = bootEl();
+      const mark = bootMark();
+      if (!el || el.hidden) return;
+      if (mark) mark.classList.add('is-lit');
+      const st = bootStatus();
+      if (st) {
+        const sounds = status && status.soundTable && status.soundTable.sounds;
+        st.textContent = sounds
+          ? `Crumar Seven · ${sounds.length} sounds`
+          : 'Crumar Seven';
+        st.classList.add('is-done');
+      }
+      // Long enough for the landing to be seen as a landing (the mark takes
+      // 400ms to reach full), then out. The overlay is REMOVED from the flow,
+      // not just faded: a transparent sheet over the app would eat every
+      // click, which is the kind of bug that looks like the app hanging.
+      setTimeout(() => {
+        const node = bootEl();
+        if (!node) return;
+        node.classList.add('is-leaving');
+        setTimeout(() => {
+          const gone = bootEl();
+          if (gone) { gone.hidden = true; gone.classList.remove('is-leaving'); }
+        }, 260);
+      }, 560);
+    }
+
     async function autoConnectTick() {
       if (connRow.classList.contains('connecting')) return;
       const connected = connRow.classList.contains('connected');
@@ -4320,9 +4386,16 @@
       const justAppeared = !lastPresence;
       lastPresence = true;
       if (failedWhilePresent && !justAppeared) return;
+      // ONLY WHEN THERE IS SOMETHING TO READ. Everything above has already
+      // established that: `present` is true, nothing is connected yet, and a
+      // connect is about to run. With no instrument this line is never
+      // reached, so there is no loader over an empty library.
+      const showing = showBootLoader();
       try {
-        await window.sevenAPI.midi.connect();
+        const status = await window.sevenAPI.midi.connect();
+        if (showing) landBootLoader(status);
       } catch (err) {
+        if (showing) landBootLoader(null);
         failedWhilePresent = true;
         showStatus({ state: 'disconnected' }, err.message.replace(/^.*Error: /, ''));
       }

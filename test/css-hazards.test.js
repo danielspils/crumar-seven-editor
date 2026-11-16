@@ -320,6 +320,62 @@ test('no carousel peek can land on Save patch, at any window width', () => {
     'a wide window keeps the approved spread');
 });
 
+// THE BOOT LOADER HONOURS prefers-reduced-motion, asserted here because a UI
+// scenario cannot ask for it: the media query is a property of the window the
+// app was launched into, and the runner cannot launch one that reports
+// reduced motion. Reading the rules is the only way to check it at all, and a
+// rule nobody can test is a rule that quietly stops being true.
+//
+// The requirement is not "no animation". It is that the INFORMATION survives
+// and only the motion goes: the mark sits unlit while the read runs and goes
+// to full when it lands, so both states that carry meaning are still there.
+test('reduced motion removes the boot loader climb and flicker, not its states', () => {
+  const reduced = rules.filter((r) => r.media && /prefers-reduced-motion/.test(r.media));
+  assert.ok(reduced.length, 'there is a prefers-reduced-motion block');
+
+  const warming = reduced.find((r) => /\.boot-mark\.is-warming/.test(r.selector));
+  assert.ok(warming, '.boot-mark.is-warming is addressed under reduced motion');
+  assert.match(warming.body, /animation\s*:\s*none/,
+    'the climb and the flicker are both off — they are one animation shorthand');
+  assert.match(warming.body, /opacity\s*:\s*1/,
+    'and the mark is left fully opaque: the flicker drives opacity, so without '
+    + 'this the mark would sit at the keyframe default of .10 and be invisible');
+
+  const lit = reduced.find((r) => /\.boot-mark\.is-lit/.test(r.selector));
+  assert.ok(lit, '.boot-mark.is-lit is addressed under reduced motion');
+  assert.match(lit.body, /transition\s*:\s*none/, 'the landing is immediate rather than a move');
+
+  // The lit state itself must still exist OUTSIDE the media query, or there
+  // would be no "full" to land on and the information would not survive.
+  const litAlways = rules.find(
+    (r) => !r.media && /\.boot-mark\.is-lit/.test(r.selector) && /color\s*:/.test(r.body)
+  );
+  assert.ok(litAlways, 'the lit mark still takes its colour outside the reduced-motion block');
+  assert.match(litAlways.body, /var\(--logo\)/, 'and that colour is the palette\'s lit logo');
+});
+
+// THE CURVE MUST NOT REACH FULL ON ITS OWN. Brightness is the progress
+// indicator, and the whole design rests on the climb approaching full without
+// arriving: the last step up may only ever happen because the instrument
+// answered. A keyframe that ended at var(--logo) would make the loader claim
+// a finished read that had not finished.
+test('the boot warm-up never reaches the lit colour by itself', () => {
+  const warm = (css.match(/@keyframes\s+boot-warm\s*\{([\s\S]*?)\n\s*\}/) || [])[1];
+  assert.ok(warm, 'the boot-warm keyframes are in the stylesheet');
+  // Every colour stop mixes TOWARDS --logo without being it.
+  const stops = warm.match(/color\s*:\s*[^;]+;/g) || [];
+  assert.ok(stops.length >= 4, `expected the rungs, found ${stops.length} colour stops`);
+  for (const stop of stops) {
+    assert.doesNotMatch(stop, /color\s*:\s*var\(--logo\)\s*;/,
+      `a warm-up keyframe reaches the lit colour outright: ${stop.trim()}`);
+  }
+  const last = stops[stops.length - 1];
+  assert.match(last, /color-mix/, `the final rung should still be a mix, not the lit colour: ${last}`);
+  const pct = Number((last.match(/var\(--logo\)\s*(\d+)%/) || [])[1]);
+  assert.ok(pct > 0 && pct < 100,
+    `the final rung should be short of full (is ${pct}% of --logo)`);
+});
+
 // EVERY source file must PARSE. The unit suite exercises the modules it can
 // require, but src/main.js needs Electron and is never loaded here — so a
 // syntax error in it passed every test and only showed up as a crash dialog on
