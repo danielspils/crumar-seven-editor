@@ -61,16 +61,64 @@
   // instrument answered at. This is the one number that says whether the
   // curve was shaped correctly against the measured 2072ms read, and it can
   // only be taken during a real boot.
+  //
+  // AND WHAT THE LOADER COSTS A BOOT. Four moments, on one clock — the two
+  // figures reported before were on DIFFERENT clocks (the animation's own
+  // currentTime against time since this script began) and the ~850ms between
+  // them was not a gap, it was a comparison that did not mean anything.
+  //
+  // The budget is Daniel's: a little is fine, more than about a second is
+  // not, and the animation must never be the reason he waits.
   let lastWarm = null;
+  let saidSomething = null; // any status text seen at any moment of the boot
+  let tLit = null;          // the read resolved: landBootLoader adds is-lit
+  let tFly = null;          // the flight to the nav begins
+  let tGone = null;         // the overlay leaves the DOM; the app is usable
   if (startedUp) {
     while (!el().hidden && performance.now() - t0 < 15000) {
-      const anims = mark() ? mark().getAnimations() : [];
+      const m0 = mark();
+      const anims = m0 ? m0.getAnimations() : [];
       const climb = anims.find((a) => a.animationName === 'boot-warm');
       if (climb && typeof climb.currentTime === 'number') lastWarm = climb.currentTime;
-      await ui.sleep(16);
+      if (tLit == null && m0 && m0.classList.contains('is-lit')) tLit = performance.now();
+      if (tFly == null && el().classList.contains('is-flying')) tFly = performance.now();
+      // A NORMAL BOOT SAYS NOTHING, AT ANY POINT. Sampled throughout rather
+      // than checked at the end, because the failure this guards against is a
+      // line that appears for a moment and goes — which an end-state check
+      // cannot see at all.
+      const stNow = status();
+      if (stNow && stNow.textContent.trim() !== '') saidSomething = stNow.textContent.trim();
+      await ui.sleep(8);
     }
-    waited = Math.round(performance.now() - t0);
+    tGone = performance.now();
+    waited = Math.round(tGone - t0);
   }
+  if (tLit != null) {
+    const g = (a, b) => (a == null || b == null ? '?' : `${Math.round(b - a)}ms`);
+    ui.note('WHAT THE LOADER COSTS AFTER THE INSTRUMENT ANSWERS:');
+    ui.note(`  connect resolved / lit begins -> flight begins : ${g(tLit, tFly)}`);
+    ui.note(`  flight begins -> overlay gone                  : ${g(tFly, tGone)}`);
+    ui.note(`  TOTAL after the read resolves                  : ${g(tLit, tGone)}`);
+    // The read itself, for context: how long the mark was climbing before the
+    // instrument answered. That part is the wait, not the animation.
+    if (lastWarm != null) ui.note(`  (the read itself ran ${Math.round(lastWarm)}ms)`);
+    // DANIEL'S BUDGET, asserted rather than admired.
+    if (tGone != null) {
+      ui.check(tGone - tLit < 1000,
+        `the loader costs under a second after the instrument answers`
+        + ` (${Math.round(tGone - tLit)}ms)`);
+    }
+  }
+  if (startedUp) {
+    ui.note(`status text seen during the boot: ${saidSomething ? `"${saidSomething}"` : 'none'}`);
+    ui.check(saidSomething === null,
+      `a normal boot says nothing — the warm-up carries it`
+      + (saidSomething ? ` (saw "${saidSomething}")` : ''));
+  }
+  const stEnd = status();
+  ui.check(!stEnd || stEnd.textContent.trim() === '',
+    `and the settled state says nothing either`
+    + (stEnd ? ` (is "${stEnd.textContent.trim()}")` : ''));
   if (lastWarm != null) {
     // Read from the stylesheet rather than written here, or the two drift and
     // the percentage quietly starts describing a curve that no longer exists.

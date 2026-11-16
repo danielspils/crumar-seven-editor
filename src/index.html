@@ -1068,9 +1068,20 @@
        that after the landing would be a second movement, which is the thing
        Daniel has caught twice today. Same duration and same easing as the
        flight, so colour and position arrive together. */
+    /* THE TRANSFORM IS ON THE SVG, SO ITS TRANSITION MUST BE TOO. This was
+       declared on .boot-mark — the span — while app.js sets the transform on
+       the svg inside it. The svg therefore had no transition at all: the mark
+       TELEPORTED to the nav, no transitionend ever fired, and the 700ms
+       safety timeout became the flight's duration. Measured before the fix:
+       703ms and 707ms for a journey specified at 380ms, and a motionless
+       overlay sitting on the app for most of it.
+       Colour and filter stay on the span, which is what currentColor and the
+       glow belong to. */
+    .boot-mark.is-flying svg {
+      transition: transform 380ms cubic-bezier(.4, 0, .2, 1);
+    }
     .boot-mark.is-flying {
-      transition: transform 380ms cubic-bezier(.4, 0, .2, 1),
-                  color 380ms cubic-bezier(.4, 0, .2, 1),
+      transition: color 380ms cubic-bezier(.4, 0, .2, 1),
                   filter 380ms cubic-bezier(.4, 0, .2, 1);
     }
     .boot-mark.is-flying.to-resting { color: var(--logo-off); filter: none; }
@@ -1080,6 +1091,10 @@
     @media (prefers-reduced-motion: reduce) {
       .boot-loader.is-flying { transition: none; }
       .boot-mark.is-flying { transition: none; }
+      /* The svg carries the transform's transition, so it needs the same
+         cancelling — reduced motion must reach the end state with no journey,
+         and a rule that only quiets the span would leave the flight running. */
+      .boot-mark.is-flying svg { transition: none; }
     }
     .boot-mark {
       width: min(420px, 52vw); line-height: 0;
@@ -1145,13 +1160,27 @@
       transition: color .4s ease-out, filter .4s ease-out, opacity .4s ease-out;
     }
 
+    /* SILENT ON A NORMAL BOOT. The line starts invisible and stays that way
+       unless the read runs long — the warm-up already says the app is busy,
+       and a caption repeating it for three seconds is noise. It keeps its
+       height either way so nothing shifts when it does arrive.
+       It FADES IN rather than snapping: by the time it appears, somebody is
+       already wondering what is wrong, and a line flicking into existence
+       reads as another fault. */
     .boot-status {
       font-size: 10px; font-weight: 700; line-height: 1;
       letter-spacing: .14em; text-transform: uppercase;
       color: var(--text-dim); min-height: 12px;
-      transition: color .4s ease;
+      opacity: 0;
     }
-    .boot-status.is-done { color: var(--logo); }
+    .boot-status.is-late { opacity: 1; transition: opacity .42s ease-out; }
+    /* AFTER the rule it overrides, not with the other reduced-motion rules
+       further up: same selector, same specificity, so source order decides.
+       Written in that block it lost silently, and css-hazards.test.js said so
+       by name — the second time that guard has caught this exact mistake. */
+    @media (prefers-reduced-motion: reduce) {
+      .boot-status.is-late { transition: none; }
+    }
 
     /* THE INFORMATION SURVIVES; ONLY THE MOTION GOES. The mark sits unlit
        while the read runs and goes to full when it lands, so the two states

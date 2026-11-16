@@ -70,6 +70,21 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // rather than redrawing it: two drawings of one object drift, and the one
   // used less is the one that is wrong when you look at it.
   getLogoSvg: () => readText('assets/seven-logo.svg'),
+  // THE ONE FLAG THE RENDERER NEEDS AT STARTUP, read here because this is the
+  // only seam that runs BEFORE app.js. The harness also hands SEVEN_-prefixed
+  // flags across as window.__SEVEN_ENV, but it does that on did-finish-load —
+  // after the renderer's scripts have run and, measured, after the boot loader
+  // has already decided its timings. A flag that arrives late is not a flag.
+  //
+  // SEVEN_BOOT_STATUS_MS moves the threshold at which the loader starts
+  // saying what it is waiting on. Development only: it exists because the
+  // real threshold is 4000ms and the alternative way to reach that path is to
+  // half-unplug a cable by hand. Absent, it answers null and app.js keeps its
+  // own default — a forgotten flag cannot silently change the shipped timing.
+  bootStatusAfterMs: () => {
+    const raw = Number(process.env.SEVEN_BOOT_STATUS_MS);
+    return Number.isFinite(raw) && raw >= 0 ? raw : null;
+  },
   // Instrument illustrations, inlined. They must be INLINE for their CSS
   // variables to resolve: an SVG loaded through <img> is a separate document
   // and inherits nothing from the page, so it would render its fallback

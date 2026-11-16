@@ -18,6 +18,42 @@ the panel photographs) and are not ours to write.
 
 ---
 
+## 0. The boot loader
+
+The Seven logo warming up over the whole window while the instrument is read,
+on a launch with a Seven attached. It says **nothing at all on a normal boot**
+and that is the point: the warm-up already shows the app is busy, and a
+caption repeating it for three seconds is noise in a moment nobody is reading.
+
+| String | Where | When |
+|---|---|---|
+| `Reading the instrument…` | app.js, `showBootLoader` | ⚑ **Conditional.** Only if the read is still running **4000ms** after the loader appears |
+
+**The threshold is measured, not chosen.** Six cold boots with the Seven
+attached read 2634, 2642, 2958, 2967, 2975 and 3007ms, so the slow end of a
+healthy launch is just over three seconds. 4000ms sits about a third above
+that: far enough that a normal boot never trips it — including on a unit with
+more expansions, since the sound table is read per id and grows with them, or
+a machine under load — and close enough that somebody looking at a
+wrong-looking screen is told within a second or so of starting to wonder.
+A cable half in or an instrument switched off is what it is for.
+
+It **fades in** over 420ms rather than appearing. By the time it shows,
+something is already wrong; a line flicking into existence reads as another
+fault.
+
+It is cleared the moment the instrument answers, so a read resolving at 3.9s
+is never followed at 4.0s by a line saying it is still waiting.
+
+**REMOVED 16 Nov 2026 (Daniel):** the settled line, which read
+`Crumar Seven · 27 sounds`. The toolbar already says
+`Pronto · CRUMAR SEVEN 1.37`, better and permanently, so the loader was
+repeating it for a fraction of a second before the flight took it away.
+Nothing replaces it. `test/ui/scenarios/boot-loader.js` asserts the silence by
+sampling throughout the boot rather than at the end — a line that appears for
+a moment and goes is invisible to an end-state check.
+`boot-status-late.js` covers the conditional path.
+
 ## 1. Connection row
 
 The strip under the panel. One line, left, plus buttons.

@@ -4312,9 +4312,40 @@
     // or after a cable is replugged, must not black out an app somebody is
     // already using.
     let bootLoaderUsed = false;
+    let bootStatusTimer = null;
     const bootEl = () => document.getElementById('boot-loader');
     const bootMark = () => document.getElementById('boot-mark');
     const bootStatus = () => document.getElementById('boot-status');
+
+    // THE STATUS LINE ONLY APPEARS IF SOMETHING IS WRONG.
+    //
+    // A normal boot says nothing: the mark warming up already says the app is
+    // busy, and a line repeating it is noise in a moment that lasts three
+    // seconds. The line is for the case where the warm-up stops being
+    // reassuring — a cable half in, the instrument switched off — and then it
+    // says what is being waited on.
+    //
+    // 4000ms, CHOSEN FROM THE MEASUREMENTS AND NOT ROUNDED TO TASTE. Six cold
+    // boots with the Seven attached read 2634, 2642, 2958, 2967, 2975 and
+    // 3007ms, so the slow end of a NORMAL boot is just over three seconds.
+    // 4000 sits a third above that: far enough that a healthy launch never
+    // trips it, including on a unit with more expansions installed (the sound
+    // table is read per id, so it grows with them) or a machine under load,
+    // and close enough that somebody staring at a wrong-looking screen is
+    // told within a second or so of starting to wonder.
+    //
+    // The override is the test seam, the same one the harness uses to hand
+    // SEVEN_-prefixed flags to the renderer. Without it the late path could
+    // only be reached by breaking a cable by hand.
+    // It comes through PRELOAD, not window.__SEVEN_ENV: the harness injects
+    // that on did-finish-load, which is after this file has run and — measured
+    // — after the loader has already set its timers. Preload is the only seam
+    // that runs first.
+    const BOOT_STATUS_AFTER_MS = (() => {
+      const override = window.sevenAPI.bootStatusAfterMs
+        && window.sevenAPI.bootStatusAfterMs();
+      return typeof override === 'number' ? override : 4000;
+    })();
 
     function showBootLoader() {
       const el = bootEl();
@@ -4325,8 +4356,18 @@
       // `fill="currentColor"` and an <img> is its own document.
       mark.innerHTML = window.sevenAPI.getLogoSvg();
       mark.classList.add('is-warming');
-      const st = bootStatus();
-      if (st) st.textContent = 'Reading the instrument…';
+      // Nothing is said yet. If the read runs long the line arrives on its
+      // own; the class is what fades it in, so it does not snap on.
+      clearTimeout(bootStatusTimer);
+      bootStatusTimer = setTimeout(() => {
+        const st = bootStatus();
+        const m = bootMark();
+        // Only while still reading. A landing that beat the timer by a
+        // millisecond must not be followed by a line saying it is waiting.
+        if (!st || !m || m.classList.contains('is-lit')) return;
+        st.textContent = 'Reading the instrument…';
+        st.classList.add('is-late');
+      }, BOOT_STATUS_AFTER_MS);
       el.hidden = false;
       return true;
     }
@@ -4408,14 +4449,19 @@
       const mark = bootMark();
       if (!el || el.hidden) return;
       if (mark) mark.classList.add('is-lit');
+      // NOTHING IS SAID ON THE WAY OUT. This used to read "Crumar Seven · 27
+      // sounds" — which the toolbar already says, better and permanently, as
+      // "Pronto · CRUMAR SEVEN 1.37". The loader was repeating it for a
+      // fraction of a second before the flight took it away, so there was
+      // nothing worth reading in that moment (Daniel, 16 Nov 2026). Nothing
+      // replaces it.
+      //
+      // And the late line is cancelled wherever it is: a read that resolves
+      // at 3.9 seconds must not be followed at 4.0 by a line saying it is
+      // still waiting.
+      clearTimeout(bootStatusTimer);
       const st = bootStatus();
-      if (st) {
-        const sounds = status && status.soundTable && status.soundTable.sounds;
-        st.textContent = sounds
-          ? `Crumar Seven · ${sounds.length} sounds`
-          : 'Crumar Seven';
-        st.classList.add('is-done');
-      }
+      if (st) { st.textContent = ''; st.classList.remove('is-late'); }
       // Long enough for the landing to be seen as a landing (the mark takes
       // 400ms to reach full), then it flies into the nav.
       setTimeout(flyBootLoaderToNav, 560);
