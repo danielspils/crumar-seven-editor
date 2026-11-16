@@ -2966,6 +2966,39 @@
     .engine-carousel .is-far-prev { transform: translateX(-140%) scale(.6); }
     .engine-carousel .is-far-next { transform: translateX(140%) scale(.6); }
 
+    /* A NARROW WINDOW TUCKS THE PEEKS IN, because below a certain width the
+       LEFT one lands on the Save patch button — a picture taking a press meant
+       for a control.
+       DANIEL CANNOT SEE THIS. main.js sets minWidth: Math.min(1280,
+       work.width) and his work area is 1147, so his default IS his floor and
+       the window never gets narrow enough. Anyone on a smaller display meets
+       it immediately, which is why it is fixed rather than watched.
+       THE BREAKPOINT IS MEASURED, NOT ROUNDED. Swept with the Seven attached,
+       the room between the left peek and the button's right edge crosses zero
+       between 1100px (+21.1) and 1060px (-4.5) — a linear crossing at 1067.
+       So 1068 and up keep the 72% he approved, untouched, and the override
+       starts exactly where the collision does.
+       44% CLEARS FROM 1067 DOWN TO ~1011px, AND NO FURTHER. The largest
+       spread that still clears the button falls with the width, linearly, at
+       half a percentage point per pixel — 68.4% at 1060, 58.4% at 1040, 48.4%
+       at 1020, 38.4% at 1000, 28.4% at 980 — and 44% runs out where that
+       ceiling meets it. Measured at a real 1020px window: the peek starts at
+       479.3 against a button ending at 473.6, so 5.7px to spare, with 42% of
+       the instrument showing beyond the hero.
+       TWO WIDTHS BELOW IT ARE NOT FIXED HERE, deliberately, and they are
+       different problems:
+         ~994-1010px  44% is too wide but a smaller value would still clear.
+                      Not covered, because every value that fits leaves 3px or
+                      less of margin — a guarantee that a longer button label
+                      or a different font would quietly cancel. A breakpoint
+                      that clears by 3px is a claim, not a fix.
+         below ~994px nothing works at all. Clearing the control needs a
+                      spread under 35.2%, and showing 30% of the peek needs
+                      one over it, so the two requirements cross and the
+                      window has to give up one of them.
+       That band wants a different answer — no peeks at all, most likely — and
+       it is Daniel's call, not this file's. */
+
     .engine-carousel.is-open .is-peek, .engine-carousel:focus-within .is-peek {
       opacity: .38; pointer-events: auto;
       /* ABOVE the hero while open, so the whole neighbour is a target. The
@@ -2984,11 +3017,24 @@
        each side, and its hover state at scale .82 still lands 6px inside the
        column. Anything wider escapes on hover before it escapes at rest,
        which is why the bound was taken from the HOVER size, not this one. */
+    /* THE SPREAD, AS ONE VALUE, so a narrow window can change it in one place.
+       72% is Daniel's approved geometry and is what every width at or above
+       1068px gets — unchanged. The override below is for widths he cannot
+       reach on his own display. */
+    .engine-carousel { --peek: 72%; }
+    /* AFTER the declaration it overrides, not before. Same selector, same
+       specificity, so source order decides — and written above it the media
+       query lost silently: the window really was 1020px and --peek still
+       computed 72%. css-hazards.test.js caught it by itself, which is the
+       whole reason that test exists. */
+    @media (max-width: 1067px) {
+      .engine-carousel { --peek: 44%; }
+    }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
-      transform: translateX(-72%) scale(.74);
+      transform: translateX(calc(-1 * var(--peek))) scale(.74);
     }
     .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
-      transform: translateX(72%) scale(.74);
+      transform: translateX(var(--peek)) scale(.74);
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
@@ -3021,21 +3067,24 @@
        you want IS the button — one target instead of a control pointing at a
        control. It lifts on hover to say it can be reached. */
     .engine-carousel .is-peek:hover { opacity: .82; }
-    .engine-carousel.is-open .is-prev:hover { transform: translateX(-72%) scale(.82); }
-    .engine-carousel.is-open .is-next:hover { transform: translateX(72%) scale(.82); }
+    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.82); }
+    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.82); }
     /* THE LANDING FACE MATCHES. These two are a separate literal from the rule
        above, not a shared variable — but they have to agree, or the incoming
        instrument arrives at 1.12 and then shrinks to 1 once the turn settles,
        which is the double movement Daniel caught earlier in the day. */
     .engine-carousel.is-turning.is-turning-next .is-next,
     .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1); opacity: 1; }
-    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
     /* The one rolling in from beyond, taking the vacated side. */
-    .engine-carousel.is-turning.is-turning-next .is-far-next { transform: translateX(72%) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-far-prev { transform: translateX(-72%) scale(.74); opacity: .38; }
+    /* The far faces land in the peek positions as a turn completes, so they
+       answer to the same value — otherwise a narrow window would pull the
+       peeks in and then throw the incoming one back out to 72%. */
+    .engine-carousel.is-turning.is-turning-next .is-far-next { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
+    .engine-carousel.is-turning.is-turning-prev .is-far-prev { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-far-prev { transform: translateX(-210%) scale(.5); opacity: 0; }
     .engine-carousel.is-turning.is-turning-prev .is-far-next { transform: translateX(210%) scale(.5); opacity: 0; }
 

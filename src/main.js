@@ -1011,11 +1011,25 @@ function createWindow() {
   // Fit the primary display: never open larger than the work area, and never
   // let the minimum width exceed the screen itself.
   const work = screen.getPrimaryDisplay().workAreaSize;
+  // SEVEN_WINDOW_WIDTH — development only, and it exists because otherwise a
+  // whole class of bug is untestable here.
+  //
+  // The carousel's narrow-width rule is a media query on the VIEWPORT, and
+  // `window.resizeTo` is ignored in Electron's renderer (CLAUDE.md). A
+  // scenario can squeeze #main, but that changes no media query — so the one
+  // thing that needed proving, that a narrow window tucks the peeks away from
+  // the Save patch button, could only be reasoned about.
+  //
+  // It lowers minWidth with the width, because minWidth would otherwise clamp
+  // the window straight back up and the test would silently measure the
+  // default. Clamped to 480 so a typo cannot open an unusable window.
+  const asked = Number(process.env.SEVEN_WINDOW_WIDTH) || 0;
+  const forced = asked > 0 ? Math.max(480, asked) : 0;
   const win = new BrowserWindow({
     useContentSize: true,
-    width: Math.min(1440, work.width),
+    width: forced || Math.min(1440, work.width),
     height: Math.min(900, work.height),
-    minWidth: Math.min(1280, work.width),
+    minWidth: forced || Math.min(1280, work.width),
     backgroundColor: '#141416',
     title: 'Crumar Seven Editor',
     webPreferences: {
