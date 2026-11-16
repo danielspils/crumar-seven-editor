@@ -108,6 +108,43 @@
   ui.check(box.width === 0 && box.height === 0,
     'it has no box, so nothing of it is left over the app');
 
+  // ---- THE LANDING: IT BECAME THE NAV LOGO -------------------------------
+  //
+  // The mark flies to where the logo lives and hands over. What is checkable
+  // afterwards is the END STATE: exactly one mark on screen, in the nav, at
+  // its normal size and position, with no leftover transform from the
+  // flight. A stuck transform would leave the nav logo displaced or the wrong
+  // size, which is the failure this shape can produce.
+  const navInk = ui.$('.top-logo .top-logo-ink');
+  const navSvg = navInk && navInk.querySelector('svg');
+  ui.check(!!navSvg, 'the nav carries the inlined logo');
+  if (navSvg) {
+    const nr = navSvg.getBoundingClientRect();
+    const cs = getComputedStyle(navSvg);
+    ui.note(`nav logo x${px(nr.left)}..${px(nr.right)} y${px(nr.top)}`
+      + ` ${px(nr.width)}x${px(nr.height)} · transform ${cs.transform}`
+      + ` · ink visibility ${getComputedStyle(navInk).visibility}`);
+    ui.check(nr.width > 0 && nr.height > 0, 'and it is on screen');
+    ui.check(cs.transform === 'none',
+      `with no transform left over from the flight (${cs.transform})`);
+    ui.check(getComputedStyle(navInk).visibility === 'visible',
+      'and it is visible again — the flight hides it and must give it back');
+    // 28.2px is the approved height (the asset is cropped to the baseline).
+    ui.check(Math.abs(nr.height - 28.2) < 1.5,
+      `at its normal size (${px(nr.height)}px against 28.2)`);
+  }
+
+  // EXACTLY ONE MARK. Two would be a double image, none would be a flash.
+  // Asked of the whole document rather than of the two places it could be.
+  const marksOnScreen = ui.$$('svg').filter((s) => {
+    const r = s.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && !!s.closest('.top-logo, #boot-loader');
+  });
+  ui.note(`logo marks rendered right now: ${marksOnScreen.length}`
+    + ` (${marksOnScreen.map((s) => (s.closest('#boot-loader') ? 'loader' : 'nav')).join(', ') || 'none'})`);
+  ui.check(marksOnScreen.length === 1,
+    `exactly one logo mark is rendered after the landing (${marksOnScreen.length})`);
+
   // THE ONLY ASSERTION THAT NEEDS HARDWARE. With an instrument attached the
   // loader really ran during this launch, so the mark carries the artwork it
   // was filled with — evidence the boot path executed, not just that the

@@ -1033,8 +1033,54 @@
     }
     .boot-loader[hidden] { display: none; }
     /* Fading the whole overlay out once the mark is lit, so the app does not
-       cut in. The mark's own landing is unaffected — this starts after it. */
+       cut in. The mark's own landing is unaffected — this starts after it.
+       Kept for the reduced-motion path and as the fallback if the nav logo
+       cannot be found. */
     .boot-loader.is-leaving { opacity: 0; transition: opacity .24s ease-out; }
+
+    /* ===== THE LANDING: IT FLIES INTO THE NAV ==================================
+       Daniel: "it booting up, then quickly settling into place in the live
+       software … as the Seven nav in the toolbar." So the mark does not fade
+       out. It travels to where the logo normally lives and becomes it.
+
+       FLIP, AND TRANSFORM ONLY. The nav logo is already in the DOM behind the
+       overlay, so its final rect is measured and inverted onto the loader's
+       mark — there is nothing to match by hand and no second asset, because
+       both are the same inlined artwork painting with currentColor. Width,
+       height, top and left are never animated: those are layout, and layout
+       animation leaves the compositor and judders.
+
+       THE BACKGROUND GOES FIRST so the app is revealed to fly over, and the
+       overlay stops taking clicks the moment the journey starts rather than
+       when it ends. */
+    .boot-loader.is-flying {
+      background: transparent;
+      transition: background 200ms linear;
+      pointer-events: none;
+    }
+    .boot-loader.is-flying .boot-status {
+      opacity: 0; transition: opacity 160ms linear;
+    }
+    /* IT ARRIVES AT THE RIGHT BRIGHTNESS rather than landing bright and then
+       changing. The app opens on whichever tab it was left on (persisted), and
+       the nav logo is lit only while the Seven tab is selected — so on any
+       other tab the mark has to settle DOWN to the unlit resting state. Doing
+       that after the landing would be a second movement, which is the thing
+       Daniel has caught twice today. Same duration and same easing as the
+       flight, so colour and position arrive together. */
+    .boot-mark.is-flying {
+      transition: transform 380ms cubic-bezier(.4, 0, .2, 1),
+                  color 380ms cubic-bezier(.4, 0, .2, 1),
+                  filter 380ms cubic-bezier(.4, 0, .2, 1);
+    }
+    .boot-mark.is-flying.to-resting { color: var(--logo-off); filter: none; }
+
+    /* NO FLIGHT. The loader goes, the nav logo is there — the same end state
+       with no journey. */
+    @media (prefers-reduced-motion: reduce) {
+      .boot-loader.is-flying { transition: none; }
+      .boot-mark.is-flying { transition: none; }
+    }
     .boot-mark {
       width: min(420px, 52vw); line-height: 0;
       color: var(--logo-off);

@@ -1127,10 +1127,45 @@ test('the boot loader is a BOOT loader and cannot run twice', () => {
 
 // THE OVERLAY IS REMOVED, NOT JUST FADED. A transparent sheet left over the
 // app eats every click, which looks exactly like the app hanging.
-test('the boot loader is taken out of the flow when it leaves', () => {
+test('the boot loader lands on full, then hands over to the nav', () => {
   const src = code(read('app.js'));
-  const fn = /function landBootLoader\(status\)\s*\{([\s\S]*?)\n    \}/.exec(src);
-  assert.ok(fn, 'landBootLoader is still recognisable');
-  assert.match(fn[1], /\.hidden = true;/, 'it ends up hidden');
-  assert.match(fn[1], /classList\.add\('is-lit'\)/, 'after the mark has landed on full');
+  const land = /function landBootLoader\(status\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(land, 'landBootLoader is still recognisable');
+  assert.match(land[1], /classList\.add\('is-lit'\)/, 'the mark lands on full');
+  assert.match(land[1], /flyBootLoaderToNav/, 'and then flies into the nav');
+
+  const fly = /function flyBootLoaderToNav\(\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(fly, 'flyBootLoaderToNav is still recognisable');
+  assert.match(fly[1], /\.hidden = true/, 'the overlay ends up out of the flow');
+});
+
+// THE HANDOFF, WHICH IS THE WHOLE PROBLEM. One frame with neither mark
+// visible is a flash; one frame with both is a double image. The guarantee is
+// that revealing the nav ink and hiding the overlay happen in ONE SYNCHRONOUS
+// BLOCK — a browser cannot paint between two statements in the same task, so
+// this is same-frame by construction rather than by a tuned delay.
+//
+// A runtime scenario cannot check it: by the time any script looks, the frame
+// in question is long gone, and sampling for it would be a race. So the
+// property is pinned where it lives.
+test('the nav reveal and the loader hide are in the same synchronous block', () => {
+  const src = code(read('app.js'));
+  const fly = /function flyBootLoaderToNav\(\)\s*\{([\s\S]*?)\n    \}/.exec(src);
+  assert.ok(fly, 'flyBootLoaderToNav is still recognisable');
+  const finish = /const finish = \(\) => \{([\s\S]*?)\n      \};/.exec(fly[1]);
+  assert.ok(finish, 'the handoff still happens in one finish()');
+
+  const reveal = finish[1].indexOf("navInk.style.visibility = ''");
+  const hide = finish[1].indexOf('.hidden = true');
+  assert.ok(reveal >= 0, 'the nav ink is revealed');
+  assert.ok(hide >= 0, 'the loader is hidden');
+  assert.ok(reveal < hide,
+    'the nav mark is revealed BEFORE the loader goes, so there is never a '
+    + 'frame with neither');
+  // NOTHING MAY SEPARATE THEM. An await, a timeout or a rAF between the two
+  // yields to the compositor, and the frame in between shows one mark or
+  // none — which is exactly the flash this guards against.
+  const between = finish[1].slice(reveal, hide);
+  assert.doesNotMatch(between, /await|setTimeout|requestAnimationFrame/,
+    'with nothing between them that could yield a frame');
 });

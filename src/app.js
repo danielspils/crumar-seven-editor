@@ -4327,6 +4327,75 @@
       return true;
     }
 
+    // THE MARK FLIES TO WHERE THE LOGO LIVES AND BECOMES IT.
+    //
+    // FLIP: the nav logo is already in the DOM behind the overlay, so its
+    // final rect is measured and inverted onto the loader's mark, then played
+    // back to identity. Both are the same inlined artwork, so nothing is
+    // matched by hand. Transform only — width/height/top/left are layout and
+    // would leave the compositor.
+    //
+    // THE HANDOFF IS THE WHOLE PROBLEM. One frame with neither mark visible
+    // is a flash; one frame with both is a double image. The guarantee is
+    // that the two mutations happen in ONE SYNCHRONOUS BLOCK — the browser
+    // cannot paint between two statements in the same task, so revealing the
+    // nav ink and hiding the overlay in adjacent lines is the same frame by
+    // construction. It is not a timing coincidence and no delay is tuned.
+    //
+    // The nav ink is hidden for the whole flight rather than at the end, so
+    // there is never a moment where both exist on screen.
+    function flyBootLoaderToNav() {
+      const el = bootEl();
+      const mark = bootMark();
+      const navInk = document.querySelector('.top-logo .top-logo-ink');
+      const navSvg = navInk && navInk.querySelector('svg');
+      const markSvg = mark && mark.querySelector('svg');
+      const navTab = document.querySelector('.top-logo');
+
+      // THE SAME END STATE EITHER WAY. No nav logo to fly to, or the player
+      // asked for less motion: the loader simply goes.
+      const reduced = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const finish = () => {
+        if (navInk) navInk.style.visibility = '';   // reveal the nav mark …
+        const node = bootEl();
+        if (node) { node.hidden = true; node.classList.remove('is-flying'); }  // … and drop the loader, same frame
+        if (markSvg) { markSvg.style.transition = ''; markSvg.style.transform = ''; markSvg.style.transformOrigin = ''; }
+        if (mark) mark.classList.remove('is-flying', 'to-resting');
+      };
+      if (!el || el.hidden) return;
+      if (!navSvg || !markSvg || reduced) return finish();
+
+      const from = markSvg.getBoundingClientRect();
+      const to = navSvg.getBoundingClientRect();
+      if (!from.width || !to.width) return finish();
+      const scale = to.width / from.width;
+
+      // The nav logo is lit only while the Seven tab is selected, and the app
+      // opens on whichever tab it was left on. Arriving at the wrong
+      // brightness and correcting afterwards would be a second movement.
+      const lands = navTab && navTab.getAttribute('aria-selected') === 'true';
+
+      navInk.style.visibility = 'hidden';
+      markSvg.style.transformOrigin = 'top left';
+      void markSvg.offsetWidth;                       // settle the origin before animating
+      mark.classList.add('is-flying');
+      if (!lands) mark.classList.add('to-resting');
+      el.classList.add('is-flying');
+      markSvg.style.transform =
+        `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
+
+      // transitionend is the signal; the timeout is the guarantee. A dropped
+      // transition (a backgrounded window will do it) must not leave the app
+      // under a sheet it cannot click.
+      let done = false;
+      const land = () => { if (done) return; done = true; finish(); };
+      markSvg.addEventListener('transitionend', (e) => {
+        if (e.propertyName === 'transform') land();
+      }, { once: true });
+      setTimeout(land, 700);
+    }
+
     // Lands the mark on full and then removes the overlay. Called on BOTH
     // outcomes — a read that fails still has to give the window back, or a
     // failure to connect would leave a bulb warming over a dead app forever.
@@ -4344,18 +4413,8 @@
         st.classList.add('is-done');
       }
       // Long enough for the landing to be seen as a landing (the mark takes
-      // 400ms to reach full), then out. The overlay is REMOVED from the flow,
-      // not just faded: a transparent sheet over the app would eat every
-      // click, which is the kind of bug that looks like the app hanging.
-      setTimeout(() => {
-        const node = bootEl();
-        if (!node) return;
-        node.classList.add('is-leaving');
-        setTimeout(() => {
-          const gone = bootEl();
-          if (gone) { gone.hidden = true; gone.classList.remove('is-leaving'); }
-        }, 260);
-      }, 560);
+      // 400ms to reach full), then it flies into the nav.
+      setTimeout(flyBootLoaderToNav, 560);
     }
 
     async function autoConnectTick() {
