@@ -2973,31 +2973,48 @@
        work.width) and his work area is 1147, so his default IS his floor and
        the window never gets narrow enough. Anyone on a smaller display meets
        it immediately, which is why it is fixed rather than watched.
-       THE BREAKPOINT IS MEASURED, NOT ROUNDED. Swept with the Seven attached,
-       the room between the left peek and the button's right edge crosses zero
-       between 1100px (+21.1) and 1060px (-4.5) — a linear crossing at 1067.
-       So 1068 and up keep the 72% he approved, untouched, and the override
-       starts exactly where the collision does.
-       44% CLEARS FROM 1067 DOWN TO ~1011px, AND NO FURTHER. The largest
-       spread that still clears the button falls with the width, linearly, at
-       half a percentage point per pixel — 68.4% at 1060, 58.4% at 1040, 48.4%
-       at 1020, 38.4% at 1000, 28.4% at 980 — and 44% runs out where that
-       ceiling meets it. Measured at a real 1020px window: the peek starts at
-       479.3 against a button ending at 473.6, so 5.7px to spare, with 42% of
-       the instrument showing beyond the hero.
-       TWO WIDTHS BELOW IT ARE NOT FIXED HERE, deliberately, and they are
-       different problems:
-         ~994-1010px  44% is too wide but a smaller value would still clear.
-                      Not covered, because every value that fits leaves 3px or
-                      less of margin — a guarantee that a longer button label
-                      or a different font would quietly cancel. A breakpoint
-                      that clears by 3px is a claim, not a fix.
-         below ~994px nothing works at all. Clearing the control needs a
-                      spread under 35.2%, and showing 30% of the peek needs
-                      one over it, so the two requirements cross and the
-                      window has to give up one of them.
-       That band wants a different answer — no peeks at all, most likely — and
-       it is Daniel's call, not this file's. */
+       THE CEILING IS MEASURED AND LINEAR. Swept with the Seven attached, the
+       largest spread that still clears the button falls with the width at half
+       a percentage point per pixel — 68.4% at 1060, 58.4% at 1040, 48.4% at
+       1020, 38.4% at 1000, 28.4% at 980 — so
+
+           ceiling%(w)       = 48.4 + 0.5 x (w - 1020)
+           margin(spread, w) = (ceiling%(w) - spread) x 1.28px
+
+       since the faces are 128px and one per cent of that is 1.28px. Checked
+       against a real forced-width window rather than trusted: predicted 5.63px
+       at 1020 and 44%, measured 5.7px.
+       BOTH THRESHOLDS ARE THE 8px BAR, NOT THE CROSSING POINT. A spread keeps
+       clearing by SOMETHING for a while after the margin stops being real —
+       44% down to ~1011px, 72% down to ~1067 — but a bound met by a hair is
+       not met, and two or three pixels is a guarantee a longer button label or
+       a different font would quietly cancel (Daniel, 2026-11-15). Requiring
+       8px means ceiling - spread >= 6.25pp, which lands both thresholds on the
+       same 6.4pp gap and the same 8.19px:
+
+           72% needs w >= 1079.7  ->  the tuck starts at 1080
+           44% needs w >= 1023.7  ->  the peeks go at 1024
+
+       THE FIRST NUMBER MOVED BECAUSE OF THE BAR. It was 1068 — where the 72%
+       overlap actually begins — and at 1068 the approved geometry clears by
+       0.5px. That is the bar's own argument applied to the band it was not
+       aimed at, and it costs nothing Daniel can see: his default is 1147.
+       BELOW 1024 NO SPREAD WORKS, so nothing is tried. Clearing the control
+       needs a spread under 35.2% by 994px; showing 30% of the peek needs one
+       over it. The two requirements cross, so the window has to give up one of
+       them, and Daniel's call is to give up the peeks: a missing invitation
+       beats a picture sitting on a button. Note that between ~1011 and 1024 a
+       value would still technically clear — it is the 8px bar that puts that
+       slice in the no-peek band rather than an impossibility.
+       WHAT THAT COSTS, because it is more than an invitation: clicking a peek
+       is the ONLY thing that turns the wheel (src/app.js, the single caller of
+       turnCarousel). The Select button under it confirms the middle; it does
+       not move. So below 1024 the hero is visible and selectable and the
+       sound cannot be CHANGED from this view at all. Flagged to Daniel
+       2026-11-15 with the one-sided alternative — the collision is with Save
+       patch on the LEFT, and the right-hand peek lands on no interactive
+       element — so keeping only .is-next would preserve turning, forwards
+       only. His call, not this file's. */
 
     .engine-carousel.is-open .is-peek, .engine-carousel:focus-within .is-peek {
       opacity: .38; pointer-events: auto;
@@ -3019,7 +3036,7 @@
        which is why the bound was taken from the HOVER size, not this one. */
     /* THE SPREAD, AS ONE VALUE, so a narrow window can change it in one place.
        72% is Daniel's approved geometry and is what every width at or above
-       1068px gets — unchanged. The override below is for widths he cannot
+       1080px gets — unchanged. The overrides below are for widths he cannot
        reach on his own display. */
     .engine-carousel { --peek: 72%; }
     /* AFTER the declaration it overrides, not before. Same selector, same
@@ -3027,8 +3044,21 @@
        query lost silently: the window really was 1020px and --peek still
        computed 72%. css-hazards.test.js caught it by itself, which is the
        whole reason that test exists. */
-    @media (max-width: 1067px) {
+    @media (max-width: 1079px) {
       .engine-carousel { --peek: 44%; }
+    }
+    /* ONE RULE, AND IT TAKES OUT EVERY NON-HERO FACE — peeks, far faces,
+       their hover positions and their turning positions. Scoping it to
+       .is-peek would leave the far faces to fly across Save patch during a
+       turn, which is the same bug arriving 400ms later. `display: none` is
+       deliberate over `visibility` or `opacity`: it takes the box with it, so
+       nothing can be measured, hovered, pressed or focused there, and a test
+       asking "is a peek rendered" gets an unambiguous answer.
+       SAFE AGAINST THE TURN LOGIC, checked rather than assumed: turnCarousel
+       advances on a fixed setTimeout(TURN_MS) and never waits for a
+       transitionend, so faces that cannot animate do not wedge it. */
+    @media (max-width: 1023px) {
+      .engine-carousel .car-face:not(.is-hero) { display: none; }
     }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
       transform: translateX(calc(-1 * var(--peek))) scale(.74);

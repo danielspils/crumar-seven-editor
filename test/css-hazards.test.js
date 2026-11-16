@@ -235,6 +235,91 @@ test('elements with a display rule also have a [hidden] rule', () => {
   assert.deepStrictEqual(broken, [], `these are hidden in markup but have a display rule that overrides it: ${broken.join(', ')}`);
 });
 
+// THE CAROUSEL CLEARS SAVE PATCH AT EVERY WIDTH, checked here because the
+// alternative is one app launch per width.
+//
+// A UI scenario can only ask this question at the width it was launched at —
+// the rule is a media query on the viewport, so SEVEN_WINDOW_WIDTH is set
+// before the window opens and cannot change afterwards. Two scenarios cover
+// the two tight points with real layout (carousel-narrow.js at 1024,
+// carousel-no-peek.js at 800). This covers the RANGE, from the arithmetic
+// those two validate.
+//
+// The ceiling — the largest spread whose left peek still clears the Save patch
+// button — was swept on hardware and is linear in the window width at half a
+// percentage point per pixel: 68.4% at 1060, 58.4% at 1040, 48.4% at 1020,
+// 38.4% at 1000, 28.4% at 980. One per cent of the 128px face is 1.28px.
+// Validated against real forced-width windows at 1020 (predicted 5.63px,
+// measured 5.7) and at 1024, where carousel-narrow.js asserts the margin.
+//
+// WHAT WOULD MAKE THIS TEST LIE: a change to the engine column's layout that
+// moves the button or the carousel relative to the window. The ceiling is a
+// property of that geometry, not of the stylesheet, so the two scenarios are
+// what keep this honest — if either stops agreeing with the model, the model
+// is what is wrong.
+test('no carousel peek can land on Save patch, at any window width', () => {
+  const MIN_MARGIN = 8;
+  const FACE = 128;
+  const ceilingAt = (w) => 48.4 + 0.5 * (w - 1020);
+
+  // The spread in force at width w: the last rule that applies wins, and a
+  // media-gated one applies only when w is inside its bound.
+  const spreadRules = rules.filter(
+    (r) => /^\.engine-carousel$/.test(r.selector) && /--peek\s*:/.test(r.body)
+  );
+  assert.ok(spreadRules.length >= 2,
+    `expected a base --peek and at least one override, found ${spreadRules.length}`);
+
+  const boundOf = (media) => {
+    if (!media) return Infinity;
+    const m = media.match(/max-width\s*:\s*(\d+)px/);
+    assert.ok(m, `--peek override has no max-width bound: "${media}"`);
+    return Number(m[1]);
+  };
+  const spreadAt = (w) => {
+    let value = null;
+    for (const r of spreadRules) {
+      if (w > boundOf(r.media)) continue;
+      value = Number((r.body.match(/--peek\s*:\s*([\d.]+)%/) || [])[1]);
+    }
+    assert.ok(value != null, `no --peek applies at ${w}px`);
+    return value;
+  };
+
+  // The width at or below which no non-hero face renders at all.
+  const hideRules = rules.filter(
+    (r) => /\.car-face:not\(\.is-hero\)/.test(r.selector) && /display\s*:\s*none/.test(r.body)
+  );
+  assert.strictEqual(hideRules.length, 1,
+    `expected exactly one rule hiding the non-hero faces, found ${hideRules.length}`);
+  const hiddenUpTo = boundOf(hideRules[0].media);
+  assert.ok(Number.isFinite(hiddenUpTo),
+    'the rule hiding the peeks must be inside a max-width media query, or it hides them always');
+
+  // Every width from the forced-width floor in main.js to well past any real
+  // display. The floor matters: a window cannot actually open below the
+  // display's own width, but the plumbing clamps at 480 and the invariant
+  // should hold wherever the rules can be evaluated.
+  const thin = [];
+  for (let w = 480; w <= 1600; w += 1) {
+    if (w <= hiddenUpTo) continue;          // nothing is drawn to collide
+    const margin = (ceilingAt(w) - spreadAt(w)) * (FACE / 100);
+    if (margin < MIN_MARGIN) thin.push(`${w}px: ${Math.round(margin * 10) / 10}px`);
+  }
+  assert.deepStrictEqual(thin.slice(0, 6), [],
+    'these widths render a peek with less than '
+    + `${MIN_MARGIN}px of clearance over Save patch (first few of ${thin.length}): `
+    + thin.slice(0, 6).join(', '));
+
+  // AND THE BANDS MUST TILE. A gap would be a width with no rule at all; the
+  // check above would not notice, because it only looks at what the rules say.
+  assert.strictEqual(spreadAt(hiddenUpTo + 1), 44,
+    `the width just above the hide threshold (${hiddenUpTo + 1}px) should get the`
+    + ' tucked spread — otherwise the two overrides do not meet');
+  assert.strictEqual(spreadAt(1600), 72,
+    'a wide window keeps the approved spread');
+});
+
 // EVERY source file must PARSE. The unit suite exercises the modules it can
 // require, but src/main.js needs Electron and is never loaded here — so a
 // syntax error in it passed every test and only showed up as a crash dialog on
