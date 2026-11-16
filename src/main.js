@@ -13,6 +13,7 @@ const { Donations } = require('./donations');
 const { Telemetry } = require('./telemetry');
 const { buildCcMap } = require('./cc-map');
 const demoCleanup = require('./demo-cleanup');
+const libraryMigrate = require('./library-migrate');
 const globalsCleanup = require('./globals-cleanup');
 const { buildReport, reportFileName } = require('./instrument-report');
 const { formatSetlist } = require('./setlist-text');
@@ -1240,20 +1241,20 @@ function checkForUpdates({ manual = false } = {}) {
 // across, ONCE, and only by copying: if any of this is wrong, the original is
 // still sitting where it was. Guarded, because failing to find an old library
 // must never stop the app opening.
+// THE DECISION IS IN src/library-migrate.js, where `npm test` can reach it.
+// This is a data migration that runs once on a real library, so the four
+// rules it has to keep — never touch an existing destination, copy rather
+// than move, no-op on a missing source, never stop the app opening — are
+// pinned in test/library-migrate.test.js against a real temporary directory.
+// Main only supplies the paths.
 function migrateLegacyLibrary() {
-  if (process.env.SEVEN_LIBRARY_DIR) return;
-  try {
-    const dest = path.join(app.getPath('userData'), 'Library');
-    if (fs.existsSync(dest)) return;
-    const legacy = path.join(
-      path.dirname(app.getPath('userData')), 'Crumar Seven Editor', 'Library'
-    );
-    if (!fs.existsSync(legacy)) return;
-    fs.cpSync(legacy, dest, { recursive: true });
-    console.log(`[library] carried over from ${legacy}`);
-  } catch (err) {
-    console.warn(`[library] could not carry over the old folder: ${err.message}`);
-  }
+  const r = libraryMigrate.migrateLegacyLibrary({
+    userDataDir: app.getPath('userData'),
+    libraryOverride: process.env.SEVEN_LIBRARY_DIR || null,
+    log: (line) => console.log(line),
+  });
+  if (!r.ran && r.error) console.warn(`[library] ${r.reason}`);
+  return r;
 }
 
 // What the cleanup did, for the renderer to say once. Held in memory: if the

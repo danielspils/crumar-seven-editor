@@ -91,6 +91,8 @@ export default [
       'src/param-read.js',
       'src/telemetry.js', 'src/cc-map.js',
       'src/demo-cleanup.js', 'src/donations.js', 'src/mailto.js',
+      // A data migration, extracted from main.js so `npm test` can reach it.
+      'src/library-migrate.js',
       'src/setlist-text.js', 'src/format/*.js',
       'tools/**/*.js', 'scripts/**/*.js', 'fixtures/**/*.js',
     ],

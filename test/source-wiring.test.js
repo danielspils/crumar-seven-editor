@@ -1253,6 +1253,33 @@ test('both readers absorb an instrument value through the same function', () => 
     'and does not reach past it to the decision directly');
 });
 
+// THE LIBRARY MIGRATION IS WIRED TO THE REAL PATHS.
+//
+// test/library-migrate.test.js pins the four rules against a real temporary
+// directory, and every one of them passes with the module called on paths a
+// test made up. What it cannot see is whether MAIN hands it the right ones —
+// the same split as the Telemetry `packaged` option, where a default and a
+// correct injection are identical in dev and differ in exactly the case that
+// matters. main.js cannot be required here: it pulls in Electron.
+test('main hands the migration the real userData path and the real override', () => {
+  const src = code(read('main.js'));
+  const fn = /function migrateLegacyLibrary\(\) \{([\s\S]*?)\n\}/.exec(src);
+  assert.ok(fn, 'migrateLegacyLibrary is still recognisable');
+  assert.match(fn[0], /libraryMigrate\.migrateLegacyLibrary\(\{/,
+    'it delegates rather than keeping a second copy of the logic');
+  assert.match(fn[0], /userDataDir: app\.getPath\('userData'\)/,
+    "the real userData folder, not a literal");
+  // RULE 7: a test must never write to the real library. Every test run and
+  // every UI scenario sets SEVEN_LIBRARY_DIR, and this is the wire that makes
+  // the override reach the guard. Passing it as anything else — or forgetting
+  // it — would let a scenario's launch migrate a real library.
+  assert.match(fn[0], /libraryOverride: process\.env\.SEVEN_LIBRARY_DIR \|\| null/,
+    'and SEVEN_LIBRARY_DIR reaches the guard that honours it');
+  // The copy itself must not come back into main.
+  assert.doesNotMatch(fn[0], /cpSync|renameSync/,
+    'main does no copying of its own');
+});
+
 // NAVIGATING AWAY ASKS FIRST — both doors, and before any state moves.
 //
 // "Navigating away discards" was settled on 2026-08-12 with a warning
