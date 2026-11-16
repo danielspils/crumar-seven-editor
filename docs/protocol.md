@@ -780,13 +780,66 @@ The July 2021 manual documents v1.22. On v1.37:
      phaser row leaks into Delay. This needed its own probe: a by-the-seam
      test writes by KEY and so cannot see a row carrying the wrong one.
 
-   **The display discrepancy above is now reproducible on demand** and has
-   grown into its own bug — B7 in `out/next-1.5.7.md`, which outranks this
-   item. The panel is a cached view; when the instrument moves without the app
-   originating it, the slider is stale, and a drag writes the pointer's
-   ABSOLUTE position. Measured: panel 0, device 113, drag to 25% wrote 32, so
-   the instrument moved −81 while the player aimed +32. It self-corrects on
-   that same write, which is why this item sat here for three months.
+   **The display discrepancy above became its own bug and is now FIXED** —
+   B7 in `out/next-1.5.7.md`. The panel is a cached view; when the instrument
+   moved without the app originating it, the slider was stale, and a drag
+   wrote the pointer's ABSOLUTE position. Measured: panel 0, device 113, drag
+   to 25% wrote 32, so the instrument moved −81 while the player aimed +32. It
+   self-corrected on that same write, which is why this item sat here for
+   three months. Since 16 Nov 2026 grabbing a bar reads that one parameter
+   first, so the value a player aims from is the instrument's own.
+
+   **THAT MATTERS HERE, and it is the part to carry forward:** one of the two
+   explanations for "I moved Max Feedback and heard nothing" has now been
+   removed. Dragging from a value that was never there is no longer possible.
+   A fourth report of silence would therefore be better evidence than the
+   first three were.
+
+   ---
+
+   **SETTLED 16 Nov 2026 — THE APP LEAVES THEM ALONE. Daniel's call.**
+
+   `dly_mf` and `dly_ml` stay as ordinary controls. No dimming, no badge, no
+   note on the row. **Do not re-open this a fourth time without new evidence
+   from the instrument.**
+
+   **Why not dim them, which was the obvious thing and was considered and
+   dropped:** that panel ALREADY dims something, and nobody has ever
+   established what the existing dimming means. A second reason to dim would
+   make the first ambiguous — the reader would no longer know whether a dim
+   row meant "switched off", "not applicable in this mode" or "we think this
+   does nothing". And the case that kills it outright: **Stereo Spread is
+   dimmed too, and Stereo Spread demonstrably WORKS.** A treatment that
+   already contains a counter-example cannot be given a new meaning.
+
+   **WHAT IS AND IS NOT KNOWN, in one place, so the next session starts from
+   here rather than from the instrument:**
+
+   - **Three sessions of silence**, by the owner, on the instrument: 12 Aug
+     2026 twice and 15 Nov 2026. Not one of them a measurement — they are
+     reports of not hearing something, which is the only kind of evidence
+     available for an audible effect.
+   - **The write path is not in question.** Read, written, echoed, read back
+     on a fresh `0x22`, restored — twice, on different patches and different
+     starting values.
+   - **No id offset and no mis-wired row**, both measured (17 writes across
+     four modes; every rendered label matches its own `data-key`).
+   - **The manual says they are ceilings DEPTH moves within** (§20.5), which
+     makes the first half of the original report — "Depth changes the
+     feedback" — correct behaviour rather than a defect.
+   - **The manual documents FW 1.22 and the unit runs 1.37**, fifteen
+     revisions apart, and by the order of authority the device wins.
+   - **NOTHING IN ANY RELEASE NOTE HAS EVER MENTIONED THE DELAY** — not
+     feedback, level, the maxima, stereo spread or delay time, across ten
+     releases and four years (`docs/MANUAL.md` §5 of the firmware history).
+     So §20.5 is the ONLY statement about these two that exists anywhere, and
+     it describes a firmware nobody here is running.
+
+   **So the honest position is that this is not knowable from reading.** Every
+   document has been read; the remaining question is audible and belongs to
+   the instrument. **Still do not label them inert in the UI** — the device
+   reports them as ordinary controls, and an app that says otherwise would be
+   asserting something no measurement supports.
 
    Scope, from the code rather than guessed: 25 of 110 parameters carry a CC
    and ARE followed (`audition.js onPanelCc` reads the value back); the other
