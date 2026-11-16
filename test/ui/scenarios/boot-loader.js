@@ -1,4 +1,11 @@
+// @env SEVEN_UI_WATCH_BOOT=1
+//
 // THE BOOT LOADER, WITH AN INSTRUMENT ATTACHED.
+//
+// THE DECLARATION ABOVE IS WHY THIS FILE CAN SEE ITS SUBJECT. The runner
+// waits for the loader to clear before starting a scenario, because every
+// other scenario needs an app it can click. This one needs the opposite, and
+// says so in its own source rather than relying on a race.
 //
 // Launching with a Seven attached reads it for a measured median of 2072ms
 // (CLAUDE.md, 15 Nov 2026), and the window used to be blank for all of it.

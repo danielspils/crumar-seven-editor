@@ -1068,6 +1068,35 @@ function createWindow() {
           `window.__SEVEN_ENV = ${JSON.stringify(testEnv)};\n`
           + `${fs.readFileSync(path.join(root, 'test', 'ui', 'harness.js'), 'utf8')}\n;true;`
         );
+        // THE BOOT LOADER COVERS THE APP WHILE THE INSTRUMENT IS READ, and
+        // did-finish-load fires long before that read resolves. A scenario
+        // starting there meets a full-window overlay: measured 16 Nov 2026,
+        // picker-caret.js failed with "a click at its centre lands on
+        // <boot-loader>, not the control" — the scenario was right and the
+        // app was fine.
+        //
+        // So the suite waits for the app to be ready for a gesture, which is
+        // what every scenario has always assumed. This is the runner's job
+        // and not each scenario's: a starting state every one of them needs
+        // is infrastructure, and sixty copies of a poll is sixty chances to
+        // forget one.
+        //
+        // SEVEN_UI_WATCH_BOOT opts out, for the one scenario whose SUBJECT is
+        // the loader — it has to see it up, and waiting would hide the thing
+        // it measures. It changes the starting state rather than disarming an
+        // assertion, which is the distinction @env exists for.
+        if (!process.env.SEVEN_UI_WATCH_BOOT) {
+          await win.webContents.executeJavaScript(
+            'new Promise((done) => {'
+            + ' const t0 = Date.now();'
+            + ' (function poll() {'
+            + '   const n = document.getElementById("boot-loader");'
+            + '   if (!n || n.hidden || Date.now() - t0 > 20000) return done(true);'
+            + '   setTimeout(poll, 50);'
+            + ' })();'
+            + '})'
+          );
+        }
         const outcome = await win.webContents.executeJavaScript(
           `Promise.resolve(${fs.readFileSync(process.env.SEVEN_UI_TEST, 'utf8')})` +
             '.then((r) => (r && r.skipped ? { skipped: String(r.skipped) } : null))'
