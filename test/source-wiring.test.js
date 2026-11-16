@@ -58,9 +58,16 @@ const code = (src) => src
 test('the transfer step dialog still passes denyLabel', () => {
   // "Stop" during the walk is a step in the task rather than a way out of a
   // dialog, and it is the only thing in the app that renders .seven-modal-deny.
+  //
+  // NARROWED 16 Nov 2026. It used to ask whether app.js contains a denyLabel
+  // ANYWHERE, which a brand-new dialog in an unrelated feature would satisfy
+  // while the transfer walk lost its Stop — the test passing for a reason
+  // that has nothing to do with what it is named after. It is now tied to the
+  // transfer dialog by its own tone, so it fails for its own reason.
   const src = code(read('app.js'));
-  assert.match(src, /denyLabel:\s*'[^']+'/,
-    'app.js passes a denyLabel — without it the deny branch of the modal router is dead');
+  assert.match(src, /denyLabel:\s*'[^']+',[\s\S]{0,160}?tone:\s*'is-transfer'/,
+    'the TRANSFER step dialog passes a denyLabel — without it the deny branch '
+    + 'of the modal router is dead');
 });
 
 test('the send flow still passes secondaryLabel', () => {
@@ -73,23 +80,28 @@ test('the send flow still passes secondaryLabel', () => {
   // passes one — so the guard follows the surviving caller rather than being
   // deleted. If that one goes too, .seven-modal-second and the whole
   // 'secondary' answer are dead code and this should fail, not be retired.
+  //
+  // NARROWED 16 Nov 2026, same reason as the deny guard above: tied to the
+  // "Send to Seven" dialog that is the surviving caller, so another dialog
+  // gaining a secondaryLabel cannot stand in for this one losing it.
   const src = code(read('app.js'));
-  assert.match(src, /secondaryLabel:\s*(?:'[^']+'|`[^`]+`)/,
-    'app.js passes a secondaryLabel — without it the secondary branch is dead');
+  assert.match(src, /title: 'Send to Seven',[\s\S]{0,500}?secondaryLabel:\s*(?:'[^']+'|`[^`]+`)/,
+    'the SEND dialog passes a secondaryLabel — without it the secondary branch is dead');
 });
 
-test('the caller that handles the secondary answer still checks for it', () => {
-  // The label and the branch that reads its answer are two separate things to
-  // lose. A dialog offering a second action whose caller no longer tests for
-  // 'secondary' would fall through to the confirm path — the answer being a
-  // string rather than `true` is the only thing standing between the two.
-  //
-  // send-choice.js is where that branch lives now, for the same reason as
-  // above. It is also where it belongs: a pure module `npm test` can drive.
-  const src = code(read('send-choice.js'));
-  assert.match(src, /!==\s*'secondary'|===\s*'secondary'/,
-    "send-choice.js still branches on the 'secondary' answer");
-});
+// DELETED 16 Nov 2026 — "the caller that handles the secondary answer still
+// checks for it".
+//
+// It read send-choice.js as text and asked whether the string 'secondary'
+// appeared in a comparison. That module is PURE and `npm test` drives it
+// directly, so the branch is covered by behaviour rather than by spelling.
+// MUTATION-PROVED before deleting rather than argued: changing the compared
+// string in send-choice.js fails THREE tests in test/send-choice.test.js
+// ("save edits to a new patch", and the two that walk the other answers).
+//
+// The two guards above stay, because they are a different question. A label
+// is passed from app.js, which `npm test` cannot run; the branch that reads
+// the answer lives in a module it can.
 
 // ---- The library folder button --------------------------------------------
 
