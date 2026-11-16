@@ -854,6 +854,22 @@
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
+    /* NOT HEARD FROM THIS SESSION, so what the row shows is the backup's
+       account of the slot rather than the instrument's. Selecting it recalls
+       it and the row comes up to full by itself.
+       OPACITY ON THE ROW, not a colour per span: the row has four of them and
+       a faded version of each is four more values to keep in step across two
+       themes. One multiplier fades the number, the name and the sound
+       together, and both palettes are already legible under it.
+       NOT APPLIED TO AN EMPTY SLOT — "Not backed up" is not a stale claim
+       about the past, it is the absence of one, and it says so in words.
+       NO EXCEPTION FOR HOVER OR SELECTION, and the first version had both.
+       They drew a stale row at full opacity, which is the exact claim the
+       fade exists to deny — the app opens with slot 1 selected and nothing
+       heard from, so the one row a player looks at first was the one lying.
+       Neither gesture reads the instrument, so neither may clear the fade.
+       Caught by the scenario, at opacity 1 on row 1. */
+    .patch-row.is-stale { opacity: .58; }
     /* --shade-hard, not --bg-raised: a translucent overlay lifts a row on
        WHATEVER it sits on. The library's rows are already the raised colour,
        so hovering them to that same colour did nothing at all, and the two

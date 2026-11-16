@@ -1875,6 +1875,43 @@
             `</button>`
       )
       .join('');
+
+    // ---- STEP 2: DRAW THE FRESHNESS -------------------------------------
+    //
+    // A slot the app has not heard from THIS SESSION is showing the past: a
+    // backup record, which may or may not still be what the Seven holds. It
+    // is drawn faded. Selecting it recalls it, the 0x45 names the sound,
+    // recordSlotSound files it and renderList() runs again — so the row comes
+    // up to full on its own, with no refresh path of its own to maintain.
+    //
+    // THE VERDICT COMES FROM src/ots-freshness.js, which is step 1 and is
+    // where this decision is unit-tested. The rule drawn here is only
+    // "from-backup is faded": a live-read row is current, and an EMPTY row is
+    // not claiming anything about the past to be stale about — it already
+    // says "Not backed up" in words.
+    //
+    // THE CLASS IS APPLIED AFTER THE MARKUP rather than threaded through
+    // renderer.js's renderPatchRow: three of the four row shapes are built
+    // here and one is built there, and a parameter added to the shared
+    // renderer for a state only this list has would be the wrong place for
+    // it.
+    //
+    // NO SHIMMER. 0bf1c9b carries a `pending` flag for the ~1.4s while the
+    // parameters arrive, and drawing it would mean tracking liveParams per
+    // slot — a second piece of session state to keep. It is not free, so it
+    // is not here. Daniel, 16 Nov: "It's such a short period of time that the
+    // FX chain will be wrong. Let's not over-engineer this."
+    for (const row of listEl.querySelectorAll('.patch-row')) {
+      const i = Number(row.dataset.index);
+      const slot = bank.patches[i];
+      const seen = verifiedSlots.get(`${bankIndex}:${i}`);
+      const view = SevenOtsFreshness.slotView({
+        backupName: slot ? slot.name : null,
+        backupSound: slot ? slot.soundName : null,
+        liveSound: seen ? seen.soundName : null,
+      });
+      row.classList.toggle('is-stale', view.state === 'from-backup');
+    }
   }
 
   let lastDetailKey = null;
