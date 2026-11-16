@@ -527,100 +527,150 @@ Noted so that a future reader does not mistake one for a finding.
 
 ---
 
-# Firmware after the manual: 1.22 → 1.37
+# Firmware version history, 1.0 → 1.37
 
-Researched 15 Nov 2026 from Crumar's own news archive, support downloads and
-help desk. **Crumar publishes no changelog for the Seven.** What exists is a
-handful of news posts, most of which announce a release without saying what is
-in it.
+**Source: `README.txt` inside `Crumar_Seven_Update_v1.37.zip`, downloaded from
+Crumar 15 Nov 2026.** This is the only complete record that exists. Crumar's web
+site publishes change lists for two versions only; everything else below is
+found nowhere online. Keep this file — the zip is not archived anywhere else and
+the download link may not outlive the product.
 
-| Version | Date | Change list published? |
-|---|---|---|
-| v1.10 | 11 Oct 2018 | news item, not read |
-| v1.11 | 17 Nov 2018 | **yes** |
-| **v1.22** | 2 Jun 2019 | **no** — "a new firmware update has just been released", nothing more. **This is the version the manual documents.** |
-| v1.23 – v1.35 | — | **nothing published at all** |
-| v1.36 | 22 Mar 2022 | **partial** |
-| **v1.37** | 16 May 2022 | **no** — a download listing only. **This is Daniel's firmware.** |
+**Daniel's unit runs 1.37. The manual documents 1.22.** Five releases and four
+years separate them.
 
-## v1.11 (17 Nov 2018)
+## v1.37 — May 2022 · DANIEL'S FIRMWARE
 
-- Added the **Memory Protect** option, enabled from the editor.
-- Added a **Panel Lock** function that disables all panel interaction. Toggled by
-  **holding FX2 SELECT for 3 seconds**; off by default.
-- Fixed a problem that could make the instrument reload the first preset
-  unexpectedly.
+- Added a global option for turning the **MIDI Soft-Thru** function on or off,
+  the function having been added in 1.36.
 
-**Panel Lock is not in the July 2021 manual.** A function added in 2018 is absent
-from a manual published three years later, which is a measure of how much the
-manual can be trusted to be complete.
+That is the entire release.
 
-## v1.36 (22 Mar 2022)
+## v1.36 — March 2022
 
-The only post-manual change list, and it is two lines:
+- **Velocity Curve** settings, 5 variations, where "Normal" means no change from
+  previous firmware.
+- **Phaser MIX parameter** — "for more phasing flavors".
+- **MIDI Soft-Thru**, passing everything arriving on USB-MIDI straight to the
+  MIDI outputs.
+- On some units the install recovers about 260 MB of unused flash.
+- Improved recall time for big sampled sounds.
+- Fixed a rare glitch when sampled sounds were switched rapidly from the editor.
 
-- Adds **5 velocity curves**.
-- Adds a new **"mix" parameter to the Phaser effect**.
-- "Among a few fixes and optimizations" — unenumerated.
-- The download "comes with a README.txt".
+## v1.35 — December 2021
 
-**The Phaser gained a parameter after the manual was written.** That is direct
-evidence that the FX2 parameter set in 1.37 is not the set the manual describes,
-and it is the reason not to treat the manual's FX2 chapter as current.
+- "Minor yet required improvements and fixes." Nothing enumerated.
 
-## v1.37 (16 May 2022)
+## v1.30 — November 2021 · THE BIG ONE, AND IT IS AFTER THE MANUAL
 
-Listed on the support page as "Seven - Firmware v.1.37", download `?a=dl&b=126`.
-**No notes of any kind.**
+- Improvements to installing sample expansions, including a check on available
+  memory.
+- **Improved the Tine Piano, Reed Piano, Acoustic Piano, Electric Grand Piano and
+  Vibraphone physical models.**
+- **"New improved EQ (replaces the old one) - Beware: some presets may sound
+  differently now"** — Crumar's own warning, verbatim.
+- Added Preset Import/Export and Expansion Install/Uninstall to the **USB editor**
+  at gsidsp.com (they already existed in the Wi-Fi editor).
+- **All encoders now respond to rotation acceleration** — 1.5 turns covers the
+  full range.
+- Optimisations to the internal web server and the control panel.
+- Fixed a panel button glitch that occurred while the panel was locked.
 
-## The one source not yet read
+The manual is dated **July 2021**. This release is **November 2021**. Five of the
+instrument's engines and its entire EQ changed *after* the manual was printed.
 
-**`README.txt` inside `Crumar_Seven_Update_v1.37.zip`.** Crumar's own news post
-for 1.36 says the download ships with a README, so 1.37's probably does too. That
-file is the most likely place a real change list exists, and nothing on the web
-site reproduces it.
+## v1.22 — June 2019 · THE VERSION THE MANUAL DOCUMENTS
 
-Getting it means downloading the firmware zip and opening the README **without
-installing anything**. Not done — it is a download onto Daniel's machine and is
-his call.
+- Improved the Tine EP engine's low notes.
+- Stability, optimisations, minor bug fixes.
 
-## Sample expansions listed on the support page
+## v1.21 — February 2019
 
-Titles and listing dates only; contents not read. "Sample expansions for Seven
-and Seventeen."
+- Workaround for Chrome failing to open the editor after an update.
 
-| Expansion | Listed |
-|---|---|
-| Electric Grand 70BXL | 10 Nov 2021 |
-| Venice Grand D-274 | 10 Nov 2021 |
-| Venice Grand Breeze | 15 Nov 2021 |
-| Venice Grand C5 | 24 Mar 2022 |
-| Venice Upright K8 | 16 Sep 2022 |
-| Venice Grand CFX | 29 Mar 2023 |
-| Venice Grand CB1898 | 4 Apr 2024 |
-| Venice Upright U1 / Felt | 4 Apr 2024 |
+## v1.20 — January 2018
 
-## The editor, from the Crumar help desk
+- Further improvements to the Physical Modeling Acoustic Piano.
+- Added Install / Uninstall for optional **wavetable expansions**.
+- Improved the firmware update process.
 
-The USB editor at `gsidsp.com/Seven` **requires the latest firmware** — the help
-desk states the wired editor does not work with old firmwares — and **requires
-Google Chrome**. It does not work on iPad or iPhone. No firmware version number
-is given for that requirement.
+## v1.11 — November 2018
 
-## What this means for this project
+- **Memory Protect**, enabled from the editor.
+- **Panel Lock** — hold **FX2 SELECT for 3 seconds**. Disables all panel
+  interaction **except the volume knob** and turns all lights off. Off by
+  default.
+- Fixed a problem that could make the instrument reload the first preset.
 
-1. **The manual's FX2 chapter describes FW 1.22.** A parameter was added to the
-   Phaser in 1.36. Treat the manual's effect parameter lists as a starting point,
-   never as the current set. `schema/seven-1.37.json` is what the device says it
-   has today.
-2. **Nothing published explains the Delay maxima.** No release note mentions
-   feedback, level, or the delay at all. The disagreement between the manual's
-   described ceilings and what Daniel can hear on 1.37 is not resolved by
-   anything Crumar has put in public.
-3. **Fifteen revisions are undocumented.** 1.23 through 1.35 have no public
-   record whatsoever. Any behaviour this project observes that the manual does
-   not describe may have arrived in that gap, and there is no way to check.
+## v1.10 — October 2018
 
-Sources: `https://www.crumar.it/?a=news&b=93` · `?a=news&b=95` · `?a=news&b=100` ·
-`https://www.crumar.it/?a=support` · `https://lnx.crumar.it/help/` ·
-`https://lnx.crumar.it/help/knowledgebase.php?article=21`
+The release that explains several things this project relies on.
+
+- A global option to **unlink volume from presets** and make it a global setting.
+  This is the manual's "Volume Type".
+- Export / import presets to USB memory.
+- **"MIDI TX Channel selection can now be set on TX OFF"**, disabling everything
+  going to the MIDI outputs. Crumar's stated reason: so messages generated during
+  Local-ON do not interfere with other connected gear. **MIDI transmission is
+  always active when LOCAL is OFF.** This is `glb[0] = 16` in this project's
+  globals.
+- Improved the Acoustic Piano and Electric Grand models.
+- **"Replaced the parameter 'Fundamental Level' with 'Duplex Scale' in the AP
+  Editing page."**
+- **Pitch bend support for Clavi and DX EP**, recognised from MIDI.
+- Fixed instability after changing global tuning.
+- Introduced the **wired Online Editor** at gsidsp.com/Seven, described as
+  experimental, based on the Web MIDI API, Chrome/Opera/Firefox only, and *not* a
+  replacement for the internal Wi-Fi editor.
+- Slight improvements to the Tine and Reed models.
+
+## v1.0 — March 2018
+
+First public release.
+
+---
+
+# What the version history changes about the manual
+
+## 1. The manual documents a parameter that was renamed three years earlier
+
+v1.10 (October 2018) **replaced FUNDAMENTAL LEVEL with DUPLEX SCALE** on the
+Acoustic Piano page. The July 2021 manual still lists **FUNDAMENTAL LEVEL** in
+chapter 18. **Check what `schema/seven-1.37.json` calls it and make sure this app
+uses the device's name, not the manual's.**
+
+## 2. The Phaser has a parameter the manual does not mention
+
+**Phaser MIX**, added in 1.36. The manual's §20.4 lists stages, LFO offset and
+feedback only. If this app does not expose MIX, it is missing a parameter the
+instrument has.
+
+## 3. Soft-Thru postdates the manual entirely
+
+Added as a function in 1.36 and given its on/off global in 1.37. The manual
+never mentions it. This project reads it as `glb[4]`, which it learned from the
+instrument, not from any document.
+
+## 4. Five engines and the EQ were rebuilt after the manual
+
+v1.30 improved the Tine, Reed, Acoustic, Electric Grand and Vibraphone models and
+**replaced the EQ outright**, with Crumar warning that presets may sound
+different. Any sonic description in the manual's engine chapters predates that
+work.
+
+## 5. Nothing, in any release, ever mentions the Delay
+
+Not feedback, not level, not the maxima, not stereo spread, not delay time. Over
+ten releases and four years, the delay section is never touched in a published
+note. So the manual's account of the maxima as ceilings is the **only** statement
+that exists anywhere, and it describes FW 1.22.
+
+That leaves `docs/protocol.md` item 5b where it was: the instrument takes and
+holds `dly_mf` and `dly_ml`, nobody has heard them do anything, and no
+documentation explains why. **It is not knowable from reading. Only the
+instrument can answer it.**
+
+## 6. Encoder acceleration, since it affects what a panel move means
+
+From 1.30, the panel encoders respond to rotation speed — 1.5 turns covers the
+full range. A fast turn moves a parameter much further than a slow one. Worth
+knowing when reasoning about what the instrument reports during a panel move.
