@@ -697,6 +697,46 @@ The July 2021 manual documents v1.22. On v1.37:
    possible cause that has nothing to do with the delay: dragging from a value
    that was never there. Establish which panel state produced that before
    attributing any of it to the instrument.
+
+   **Third confirmation, 2026-11-15.** Daniel, playing the instrument with the
+   app connected, FX2 in Delay: moving DEPTH changes what sounds like
+   feedback, moving MAX FEEDBACK appears to change nothing. Panel at the time:
+   Depth 34, Speed 27, Max Feedback 127, Max Level 0, Stereo Spread 127.
+
+   The first half is not a defect: `docs/DEVICE.md` already records that in
+   Delay the DEPTH control scales max feedback and max level together, so
+   Depth driving the feedback is the documented design. The second half is
+   this item, unchanged after three sessions — `dly_mf` and `dly_ml` take,
+   echo and hold, and nothing is audible. **Still do not label them inert in
+   the UI**; the device reports them as ordinary controls.
+
+   Two things were ruled out this session rather than assumed, both measured
+   with the Seven attached (`test/ui/scenarios/fx2-delay-map.js`,
+   `fx2-delay-rows.js`):
+
+   - **No id offset anywhere in FX2.** 17 writes across all four modes: every
+     write moved exactly the id it was aimed at and no other. `pha_st`
+     correctly clamped 119 → 3 at its max.
+   - **No mis-wired control.** Every rendered row's label matches its own
+     `data-key` — Depth→`fx2_dp`, Max Feedback→`dly_mf` and so on — and no
+     phaser row leaks into Delay. This needed its own probe: a by-the-seam
+     test writes by KEY and so cannot see a row carrying the wrong one.
+
+   **The display discrepancy above is now reproducible on demand** and has
+   grown into its own bug — B7 in `out/next-1.5.7.md`, which outranks this
+   item. The panel is a cached view; when the instrument moves without the app
+   originating it, the slider is stale, and a drag writes the pointer's
+   ABSOLUTE position. Measured: panel 0, device 113, drag to 25% wrote 32, so
+   the instrument moved −81 while the player aimed +32. It self-corrects on
+   that same write, which is why this item sat here for three months.
+
+   Scope, from the code rather than guessed: 25 of 110 parameters carry a CC
+   and ARE followed (`audition.js onPanelCc` reads the value back); the other
+   85, `dly_mf` and `dly_ml` among them, carry `cc: -1`, have no entry in the
+   map, and cannot be followed at all. **Whether the instrument emits anything
+   when a `cc: -1` parameter is moved on its own front panel is still
+   unknown** — one session with `tools/listen.js` and a hand on Max Feedback
+   would settle it, and if something does arrive the fix gets much cheaper.
 6. The `0x45` recall frame's second byte: single ASCII char equal to the first decimal
    digit of the sound ID in all 23 captured frames — rendering quirk or something else?
    Also unexplained: the doubled `B0 01` pair closing every recall burst.
