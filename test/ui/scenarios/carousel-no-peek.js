@@ -1,15 +1,20 @@
 // @env SEVEN_WINDOW_WIDTH=1000
 //
-// BELOW 1024px THE PEEKS DO NOT RENDER, AND THAT IS THE FIX.
+// BELOW 1032px THE PEEKS DO NOT RENDER, AND THAT IS THE FIX.
 //
 // The companion to carousel-narrow.js, which carries the full derivation of
 // both thresholds and the geometry behind them. The short version: clearing
-// Save patch needs a spread under 35.2% by 994px, and showing 30% of a peek
-// needs one over it, so below ~1024 (the 8px-margin bar) the two requirements
-// cross and no value satisfies both. Daniel's call, 2026-11-15: give up the
-// peeks. A missing invitation beats a picture sitting on a button.
+// Save patch needs a spread under 35.2% by 1002px, and showing 30% of a peek
+// needs one over it, so below 1032 (the 8px-margin bar, measured on the
+// HOVERED peek) the two requirements cross and no value satisfies both.
+// Daniel's call, 2026-11-15: give up the peeks. A missing invitation beats a
+// picture sitting on a button.
 //
-// WHY 1000px. The band is 1023 and below, and 1000 is inside it with room to
+// THE NUMBER WAS 1024 UNTIL 16 Nov 2026, when the bar was re-derived on the
+// hovered peek rather than the resting one — hovering grows the face 10.24px
+// and moves its left edge 5.12px left, which is 8px of window width.
+//
+// WHY 1000px. The band is 1031 and below, and 1000 is inside it with room to
 // spare while still being a width somebody really has — the band only exists
 // on a DISPLAY narrower than 1280, because main.js sets minWidth:
 // Math.min(1280, work.width). 480 is only the guard in the SEVEN_WINDOW_WIDTH
@@ -48,9 +53,9 @@
 
   const vw = document.documentElement.clientWidth;
   ui.note(`viewport ${vw}px`);
-  ui.check(vw <= 1023,
+  ui.check(vw <= 1031,
     `the window is inside the no-peek band (${vw}px) — otherwise this proves nothing`);
-  if (vw > 1023) return;
+  if (vw > 1031) return;
 
   await ui.selectTab('seven');
   await ui.sleep(800);

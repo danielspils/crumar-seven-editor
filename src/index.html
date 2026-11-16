@@ -3245,31 +3245,52 @@
        against a real forced-width window rather than trusted: predicted 5.63px
        at 1020 and 44%, measured 5.7px.
        BOTH THRESHOLDS ARE THE 8px BAR, NOT THE CROSSING POINT. A spread keeps
-       clearing by SOMETHING for a while after the margin stops being real —
-       44% down to ~1011px, 72% down to ~1067 — but a bound met by a hair is
-       not met, and two or three pixels is a guarantee a longer button label or
-       a different font would quietly cancel (Daniel, 2026-11-15). Requiring
-       8px means ceiling - spread >= 6.25pp, which lands both thresholds on the
-       same 6.4pp gap and the same 8.19px:
+       clearing by SOMETHING for a while after the margin stops being real, but
+       a bound met by a hair is not met, and two or three pixels is a guarantee
+       a longer button label or a different font would quietly cancel (Daniel,
+       2026-11-15).
 
-           72% needs w >= 1079.7  ->  the tuck starts at 1080
-           44% needs w >= 1023.7  ->  the peeks go at 1024
+       AND THE BAR IS MEASURED ON THE HOVERED PEEK, RE-DERIVED 2026-11-16.
+       The note above this one already said the bound belongs to the hover
+       size — "anything wider escapes on hover before it escapes at rest" —
+       and both thresholds were nevertheless derived from the RESTING peek.
+       Hovering takes the face from scale .74 to .82, so it grows
+       128 x 0.08 = 10.24px and its left edge moves 5.12px further LEFT:
 
-       THE FIRST NUMBER MOVED BECAUSE OF THE BAR. It was 1068 — where the 72%
-       overlap actually begins — and at 1068 the approved geometry clears by
-       0.5px. That is the bar's own argument applied to the band it was not
-       aimed at, and it costs nothing Daniel can see: his default is 1147.
-       BELOW 1024 NO SPREAD WORKS, so nothing is tried. Clearing the control
-       needs a spread under 35.2% by 994px; showing 30% of the peek needs one
+           hover margin(spread, w) = rest margin(spread, w) - 5.12px
+
+       which is 8px of window width at the measured 0.64px per px. So each
+       threshold moved up by exactly 8:
+
+           72% needs w >= 1088  (measured 8.28px; 7.65px at 1087)
+           44% needs w >= 1032  (measured 8.29px; 7.65px at 1031)
+
+       SWEPT, NOT MODELLED (test/ui/scenarios/carousel-ceiling.js, a probe
+       that applies the hover transform inline and reads the real boxes at
+       every whole per cent). At 1024 the hovered 44% peek clears by 3.17px,
+       which is the number a full-suite run of 16 Nov produced by accident —
+       the pointer happened to be parked on that peek, and carousel-narrow.js
+       measured 3.2px and went red. The same scenario passes standalone at
+       8.29px, because nothing was hovering it. A REAL FAULT FOUND BY A STRAY
+       MOUSE: at any width in 1024..1031 the resting picture clears the button
+       and the hovered one does not.
+
+       THE FIRST NUMBER HAD ALREADY MOVED ONCE FOR THE BAR. It was 1068 —
+       where the 72% overlap actually begins — then 1080 for the 8px bar, and
+       1088 once the bar was put on the hovered size. It costs nothing Daniel
+       can see: his default is 1147.
+       BELOW 1032 NO SPREAD WORKS, so nothing is tried. Clearing the control
+       needs a spread under 35.2% by 1002px; showing 30% of the peek needs one
        over it. The two requirements cross, so the window has to give up one of
        them, and Daniel's call is to give up the peeks: a missing invitation
-       beats a picture sitting on a button. Note that between ~1011 and 1024 a
-       value would still technically clear — it is the 8px bar that puts that
-       slice in the no-peek band rather than an impossibility.
+       beats a picture sitting on a button. Note that below 1032 a value would
+       still technically clear for a while — it is the 8px bar, on the hovered
+       peek, that puts that slice in the no-peek band rather than an
+       impossibility.
        WHAT THAT COSTS, because it is more than an invitation: clicking a peek
        is the ONLY thing that turns the wheel (src/app.js, the single caller of
        turnCarousel). The Select button under it confirms the middle; it does
-       not move. So below 1024 the hero is visible and selectable and the
+       not move. So below 1032 the hero is visible and selectable and the
        sound cannot be CHANGED from this view at all. Flagged to Daniel
        2026-11-15 with the one-sided alternative — the collision is with Save
        patch on the LEFT, and the right-hand peek lands on no interactive
@@ -3296,7 +3317,7 @@
        which is why the bound was taken from the HOVER size, not this one. */
     /* THE SPREAD, AS ONE VALUE, so a narrow window can change it in one place.
        72% is Daniel's approved geometry and is what every width at or above
-       1080px gets — unchanged. The overrides below are for widths he cannot
+       1088px gets — unchanged. The overrides below are for widths he cannot
        reach on his own display. */
     .engine-carousel { --peek: 72%; }
     /* AFTER the declaration it overrides, not before. Same selector, same
@@ -3304,7 +3325,7 @@
        query lost silently: the window really was 1020px and --peek still
        computed 72%. css-hazards.test.js caught it by itself, which is the
        whole reason that test exists. */
-    @media (max-width: 1079px) {
+    @media (max-width: 1087px) {
       .engine-carousel { --peek: 44%; }
     }
     /* ONE RULE, AND IT TAKES OUT EVERY NON-HERO FACE — peeks, far faces,
@@ -3317,7 +3338,7 @@
        SAFE AGAINST THE TURN LOGIC, checked rather than assumed: turnCarousel
        advances on a fixed setTimeout(TURN_MS) and never waits for a
        transitionend, so faces that cannot animate do not wedge it. */
-    @media (max-width: 1023px) {
+    @media (max-width: 1031px) {
       .engine-carousel .car-face:not(.is-hero) { display: none; }
     }
     /* AND THE WHEEL STILL TURNS THERE. Hiding the peeks took the function with
@@ -3340,7 +3361,7 @@
        has to clear, and the gap between them is what the measured 8px bar is
        spent on. carousel-no-peek.js asserts it. */
     .car-step { display: none; }
-    @media (max-width: 1023px) {
+    @media (max-width: 1031px) {
       .car-step {
         position: absolute; top: 50%; z-index: 4;
         display: flex; align-items: center; justify-content: center;

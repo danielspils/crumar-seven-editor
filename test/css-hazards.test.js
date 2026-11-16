@@ -241,16 +241,28 @@ test('elements with a display rule also have a [hidden] rule', () => {
 // A UI scenario can only ask this question at the width it was launched at —
 // the rule is a media query on the viewport, so SEVEN_WINDOW_WIDTH is set
 // before the window opens and cannot change afterwards. Two scenarios cover
-// the two tight points with real layout (carousel-narrow.js at 1024,
-// carousel-no-peek.js at 800). This covers the RANGE, from the arithmetic
+// the two tight points with real layout (carousel-narrow.js at 1032,
+// carousel-no-peek.js at 1000). This covers the RANGE, from the arithmetic
 // those two validate.
+//
+// WHAT IT CANNOT DO, said plainly: it knows about Save patch, because Save
+// patch is what the ceiling was swept against and it is the tightest control
+// in the column. A static read of the stylesheet cannot know what else is
+// laid out there or where. The scenario is the half that checks EVERY
+// interactive element in column 1 — it loops over them and asserts both the
+// overlap and the press — and it can only do that at the width it was
+// launched at. Neither half is the whole guarantee.
 //
 // The ceiling — the largest spread whose left peek still clears the Save patch
 // button — was swept on hardware and is linear in the window width at half a
 // percentage point per pixel: 68.4% at 1060, 58.4% at 1040, 48.4% at 1020,
 // 38.4% at 1000, 28.4% at 980. One per cent of the 128px face is 1.28px.
 // Validated against real forced-width windows at 1020 (predicted 5.63px,
-// measured 5.7) and at 1024, where carousel-narrow.js asserts the margin.
+// measured 5.7) and at 1032, where carousel-narrow.js asserts the margin.
+// Re-validated 16 Nov 2026 by test/ui/scenarios/carousel-ceiling.js, a sweep
+// of every whole per cent at four widths: the RESTING model holds to a tenth
+// of a pixel, and the ceiling is unchanged. What was wrong was not the sweep
+// but what the bar was applied to — see HOVER_LOSS below.
 //
 // WHAT WOULD MAKE THIS TEST LIE: a change to the engine column's layout that
 // moves the button or the carousel relative to the window. The ceiling is a
@@ -261,6 +273,49 @@ test('no carousel peek can land on Save patch, at any window width', () => {
   const MIN_MARGIN = 8;
   const FACE = 128;
   const ceilingAt = (w) => 48.4 + 0.5 * (w - 1020);
+
+  // THE BOUND IS THE HOVERED PEEK, AND LEAVING THAT OUT IS THE BUG THIS
+  // VERSION EXISTS FOR (16 Nov 2026).
+  //
+  // `ceilingAt` was swept with the peek at REST. The stylesheet's own note
+  // says the bound belongs to the hover size — "anything wider escapes on
+  // hover before it escapes at rest" — and both thresholds were nonetheless
+  // derived without it, so every width in 1024..1031 drew a resting picture
+  // that cleared the button and a hovered one that did not.
+  //
+  // It took a stray mouse to find: a full-suite run on 16 Nov happened to
+  // have the pointer parked on that peek, and carousel-narrow.js measured
+  // 3.2px where it passes at 8.29px standalone.
+  //
+  // THE TWO SCALES ARE READ FROM THE RULES, not written down here, so
+  // changing either one moves this bound with it. A hover state that grew the
+  // face further would otherwise re-open the same gap silently.
+  // The selectors are comma lists (`.is-open .is-prev, :focus-within .is-prev`),
+  // so these match on CONTENT rather than on an exact string — and the resting
+  // one excludes `:hover` explicitly, or it would find whichever came first.
+  const scaleOf = (pick, what) => {
+    const r = rules.find((x) => pick(x) && /scale\(/.test(x.body));
+    assert.ok(r, `${what} is still a recognisable rule`);
+    const m = r.body.match(/scale\(([\d.]+)\)/);
+    assert.ok(m, `${what} still carries a scale()`);
+    return Number(m[1]);
+  };
+  const restScale = scaleOf(
+    (x) => /\.is-prev\b/.test(x.selector) && !/:hover/.test(x.selector)
+      && /translateX/.test(x.body),
+    "the peek's resting rule"
+  );
+  const hoverScale = scaleOf(
+    (x) => /\.is-prev:hover/.test(x.selector) && /translateX/.test(x.body),
+    "the peek's hover rule"
+  );
+  assert.ok(hoverScale > restScale,
+    `hovering must enlarge the peek (rest ${restScale}, hover ${hoverScale})`);
+  // Both boxes share a centre, so half the growth is taken off the left edge.
+  const HOVER_LOSS = FACE * (hoverScale - restScale) / 2;
+  assert.ok(Math.abs(HOVER_LOSS - 5.12) < 0.01,
+    `hovering costs ${HOVER_LOSS}px of clearance — measured 5.12px on hardware,`
+    + ' so a different figure means a scale changed and the thresholds want re-deriving');
 
   // The spread in force at width w: the last rule that applies wins, and a
   // media-gated one applies only when w is inside its bound.
@@ -303,11 +358,17 @@ test('no carousel peek can land on Save patch, at any window width', () => {
   const thin = [];
   for (let w = 480; w <= 1600; w += 1) {
     if (w <= hiddenUpTo) continue;          // nothing is drawn to collide
-    const margin = (ceilingAt(w) - spreadAt(w)) * (FACE / 100);
+    // THE HOVERED margin, which is the smaller of the two and so the one the
+    // bar is spent on. Measured against this model at four widths on 16 Nov:
+    // 1031 predicted 7.55 / measured 7.65, 1032 predicted 8.19 / measured
+    // 8.29, 1087 predicted 7.55 / measured 7.65, 1088 predicted 8.19 /
+    // measured 8.28 — the model runs a tenth of a pixel pessimistic, which is
+    // the safe direction for a bound.
+    const margin = (ceilingAt(w) - spreadAt(w)) * (FACE / 100) - HOVER_LOSS;
     if (margin < MIN_MARGIN) thin.push(`${w}px: ${Math.round(margin * 10) / 10}px`);
   }
   assert.deepStrictEqual(thin.slice(0, 6), [],
-    'these widths render a peek with less than '
+    'these widths render a HOVERED peek with less than '
     + `${MIN_MARGIN}px of clearance over Save patch (first few of ${thin.length}): `
     + thin.slice(0, 6).join(', '));
 

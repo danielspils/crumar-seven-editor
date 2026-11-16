@@ -1,4 +1,4 @@
-// @env SEVEN_WINDOW_WIDTH=1024
+// @env SEVEN_WINDOW_WIDTH=1032
 //
 // A NARROW WINDOW MUST NOT PUT A PICTURE ON A BUTTON.
 //
@@ -7,22 +7,32 @@
 // whole range by changing one number — and so a launch into the wrong band
 // fails loudly instead of quietly checking nothing:
 //
-//   1080px and up   --peek 72%, Daniel's approved geometry, untouched.
+//   1088px and up   --peek 72%, Daniel's approved geometry, untouched.
 //                   Also covered at the default width by carousel-peeks.js.
-//   1024..1079      --peek 44%. The peeks still render and must clear Save
+//   1032..1087      --peek 44%. The peeks still render and must clear Save
 //                   patch by at least 8px. This file's declared width is the
-//                   TIGHT end of that band, 1024, because a bound is only
+//                   TIGHT end of that band, 1032, because a bound is only
 //                   worth testing where it is nearly met.
-//   1023 and below  no peek renders at all. Covered by carousel-no-peek.js.
+//   1031 and below  no peek renders at all. Covered by carousel-no-peek.js.
 //
 // WHERE THE THRESHOLDS COME FROM. The largest spread whose left peek still
 // clears the button was swept on hardware and is linear in the width at half
 // a percentage point per pixel: ceiling%(w) = 48.4 + 0.5(w - 1020), and one
-// per cent of the 128px face is 1.28px. A spread keeps clearing by SOMETHING
-// well past the point where the margin is real — 44% to ~1011px, 72% to
-// ~1067 — but a bound met by a hair is not met (Daniel, 2026-11-15), so both
-// thresholds are where 8px of margin runs out: 1024 for 44%, 1080 for 72%.
-// Both land on the same 6.4pp gap and the same 8.19px.
+// per cent of the 128px face is 1.28px.
+//
+// AND THE BAR IS ON THE HOVERED PEEK, re-derived 16 Nov 2026. Hovering takes
+// the face from scale .74 to .82, so it grows 10.24px and its left edge moves
+// 5.12px further left — 8px of window width at the measured 0.64px per px. So
+// each threshold moved up by exactly 8: 1032 for 44%, 1088 for 72%, both
+// measured at 8.29/8.28px with 7.65px one pixel below.
+//
+// THAT FAULT WAS FOUND BY A STRAY MOUSE. The thresholds before it were
+// derived from the RESTING peek, so 1024..1031 drew a resting picture that
+// cleared the button and a hovered one that did not. A full-suite run on
+// 16 Nov happened to have the pointer parked on this peek and measured
+// 3.2px, where this file passes at 8.29px standalone — which is why the
+// guard in css-hazards.test.js now carries the hover term rather than
+// trusting a scenario to be unlucky again.
 //
 // EVERY WIDTH BETWEEN THEM is covered by the arithmetic instead, in
 // test/css-hazards.test.js, because a scenario can only ask at the width it
@@ -53,8 +63,8 @@
   const box = (el) => (el ? el.getBoundingClientRect() : null);
 
   const MIN_MARGIN = 8;   // Daniel's bar: a bound met by a hair is not met.
-  const PEEK_GONE = 1023; // at or below this, no peek renders at all.
-  const SPREAD_TO = 1079; // at or below this, the tucked-in spread applies.
+  const PEEK_GONE = 1031; // at or below this, no peek renders at all.
+  const SPREAD_TO = 1087; // at or below this, the tucked-in spread applies.
 
   const vw = document.documentElement.clientWidth;
   const band = vw <= PEEK_GONE ? 'no-peek' : vw <= SPREAD_TO ? 'tucked' : 'wide';
@@ -186,12 +196,31 @@
     // threshold fails here if it is wrong.
     const leftPeek = ui.$('#detail .car-face.is-peek.is-prev');
     if (save && leftPeek) {
-      const margin = box(leftPeek).left - box(save).right;
-      ui.note(`left peek clears Save patch by ${px(margin)}px`
-        + ` (bar is ${MIN_MARGIN}px)`);
-      ui.check(margin >= MIN_MARGIN,
-        `the left peek clears Save patch by at least ${MIN_MARGIN}px at ${vw}px`
-        + ` (${px(margin)}px)`);
+      const rest = box(leftPeek).left - box(save).right;
+
+      // THE HOVERED PEEK IS THE REAL BOUND, and measuring only the resting one
+      // is what let 1024 ship. The hover rule enlarges the face from scale .74
+      // to .82, so its left edge moves 5.12px further left — and on 16 Nov a
+      // full-suite run with the pointer parked here measured 3.2px where this
+      // file, with nothing hovering, measured 8.29px and passed.
+      //
+      // APPLIED INLINE, because CSS :hover cannot be driven by a synthetic
+      // event. The value is the hover rule's own, copied from index.html; if
+      // that rule changes, css-hazards.test.js fails on the scale it reads
+      // from the stylesheet, which is the half that cannot go stale here.
+      leftPeek.style.transform = 'translateX(calc(-1 * var(--peek))) scale(.82)';
+      await ui.sleep(60);
+      const hovered = box(leftPeek).left - box(save).right;
+      leftPeek.style.removeProperty('transform');
+      await ui.sleep(60);
+
+      ui.note(`left peek clears Save patch by ${px(hovered)}px hovered,`
+        + ` ${px(rest)}px at rest (bar is ${MIN_MARGIN}px)`);
+      ui.check(hovered >= MIN_MARGIN,
+        `the HOVERED left peek clears Save patch by at least ${MIN_MARGIN}px`
+        + ` at ${vw}px (${px(hovered)}px)`);
+      ui.check(rest >= MIN_MARGIN,
+        `and so does the resting one at ${vw}px (${px(rest)}px)`);
     }
 
     // THE STEP BUTTONS BELONG TO THE OTHER BAND ONLY. Above the no-peek width
