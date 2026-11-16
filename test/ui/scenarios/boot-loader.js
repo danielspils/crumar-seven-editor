@@ -24,23 +24,77 @@
 // read is gated, and it says so where it is gated.
 (async () => {
   const px = (n) => Math.round(n * 10) / 10;
-  // NOT ui.requireDevice(). That one WAITS for a connection and records a
-  // failure when none arrives — it is built for scenarios that return
-  // immediately and skip. This file keeps going either way, so it asks a
-  // question instead of making a demand.
-  const st0 = await window.sevenAPI.midi.status();
-  const attached = !!st0 && st0.state === 'connected';
 
   const el = () => ui.$('#boot-loader');
   const mark = () => ui.$('#boot-mark');
   const status = () => ui.$('#boot-status');
 
+  ui.check(!!el(), 'the boot loader markup exists in the document');
+  if (!el()) return;
+
   // ---- 1. IT IS GONE, and it does not persist ----------------------------
   //
-  // By the time a scenario runs, the read has resolved. A loader still up at
-  // this point is the failure that matters most: a sheet over the whole app.
-  ui.check(!!el(), 'the boot loader markup exists in the document');
-  ui.check(el().hidden, 'the boot loader is hidden once the read has resolved');
+  // THE FIRST VERSION ASSUMED THE READ WAS ALREADY OVER, and with an
+  // instrument attached it is not. Measured 16 Nov 2026 on the first real
+  // hardware run: the scenario found the loader UP at 1147x687 with the
+  // window's centre belonging to the logo path, because the runner starts the
+  // script as soon as the renderer is ready and the connect takes ~2.1s. The
+  // test was wrong, not the loader — but "still up" and "stuck up" are the
+  // same observation at one instant, and only one of them is a bug.
+  //
+  // So it WAITS, and the wait is the measurement. A loader that never goes
+  // fails here with a number saying how long it was given.
+  const startedUp = !el().hidden;
+  const t0 = performance.now();
+  let waited = 0;
+  // WHERE ON THE CURVE DID THE READ LAND? The climb is a CSS animation, so it
+  // carries its own clock: getAnimations()[].currentTime is how far into the
+  // 3.6s it had travelled. Sampled until the landing cancels it — the last
+  // value before `animation: none` empties the list IS the point the
+  // instrument answered at. This is the one number that says whether the
+  // curve was shaped correctly against the measured 2072ms read, and it can
+  // only be taken during a real boot.
+  let lastWarm = null;
+  if (startedUp) {
+    while (!el().hidden && performance.now() - t0 < 15000) {
+      const anims = mark() ? mark().getAnimations() : [];
+      const climb = anims.find((a) => a.animationName === 'boot-warm');
+      if (climb && typeof climb.currentTime === 'number') lastWarm = climb.currentTime;
+      await ui.sleep(16);
+    }
+    waited = Math.round(performance.now() - t0);
+  }
+  if (lastWarm != null) {
+    // Read from the stylesheet rather than written here, or the two drift and
+    // the percentage quietly starts describing a curve that no longer exists.
+    const climbEl = mark();
+    const durMs = (() => {
+      const d = climbEl ? getComputedStyle(climbEl).animationDuration.split(',')[0].trim() : '';
+      return /ms$/.test(d) ? parseFloat(d) : parseFloat(d) * 1000;
+    })() || 4800;
+    const pct = lastWarm / durMs * 100;
+    const rung = pct < 12 ? 'still striking, below the first rung'
+      : pct < 34 ? 'between the first and second rung'
+        : pct < 62 ? 'between the second and third rung'
+          : pct < 100 ? 'past the third rung, on the tail'
+            : 'the curve had run out before the read landed';
+    ui.note(`THE READ LANDED AT ${Math.round(lastWarm)}ms of the`
+      + ` ${Math.round(durMs)}ms curve (${Math.round(pct)}%) — ${rung}`);
+    // THE CURVE MUST NOT HAVE FINISHED FIRST. If it had, brightness stopped
+    // being a progress indicator before the progress ended.
+    ui.check(lastWarm < durMs,
+      `the instrument answered before the climb ran out`
+      + ` (${Math.round(lastWarm)}ms of ${Math.round(durMs)}ms)`);
+  }
+  const st0 = await window.sevenAPI.midi.status();
+  const attached = !!st0 && st0.state === 'connected';
+  ui.note(startedUp
+    ? `the loader was UP when this script began, and cleared ${waited}ms later`
+    : 'the loader had already cleared before this script began');
+
+  ui.check(el().hidden,
+    `the boot loader is hidden once the read has resolved`
+    + (startedUp ? ` (waited ${waited}ms)` : ''));
   const box = el().getBoundingClientRect();
   ui.note(`loader box ${px(box.width)}x${px(box.height)} · hidden=${el().hidden}`
     + ` · instrument ${attached ? 'attached' : 'NOT attached'}`);
@@ -78,6 +132,18 @@
   if (!m || !st) { ui.check(false, 'the loader has a mark and a status line'); return; }
 
   // WARMING. The overlay is shown the way app.js shows it.
+  //
+  // THE STARTING STATE IS CHOSEN, NOT INHERITED (CLAUDE.md). After a REAL
+  // boot the mark is still carrying is-lit, and is-lit sets `animation: none`
+  // — so adding is-warming on top of it produced no animation at all and the
+  // mark was already at --logo. Measured on the first hardware run: the
+  // climb and flicker assertions failed with animation-name "none" against a
+  // loader that was working perfectly. Offline this never showed, because
+  // offline nothing ever lights the mark.
+  m.classList.remove('is-lit', 'is-warming');
+  el().classList.remove('is-leaving');
+  if (st) st.classList.remove('is-done');
+  void m.offsetWidth; // settle the removal before the animation is re-added
   m.innerHTML = window.sevenAPI.getLogoSvg();
   m.classList.add('is-warming');
   st.textContent = 'Reading the instrument…';

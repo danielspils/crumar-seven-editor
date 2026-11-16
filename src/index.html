@@ -1001,11 +1001,23 @@
        jump; a slow one gets a filament taking its time. No duration is chosen
        in advance and the animation is never the reason anybody waits.
 
-       WHY 3.6s. The curve is shaped against the measured read, not picked:
-       2072ms is 57.5% of 3.6s, which lands a typical boot just short of the
-       third rung (the 62% keyframe). So the normal case shows the whole arc —
-       strike, catch, climb — with headroom left for a slower unit, and the
-       tail from 62% to 100% is the part only a slow instrument ever sees.
+       WHY 4.8s, AND WHY IT WAS 3.6s FIRST. The curve is shaped against the
+       measured read — but the first version was shaped against the WRONG
+       measurement, and only a real boot could show that.
+
+       CLAUDE.md records midi.connect() at a median of 2072ms. That figure is
+       a RE-connect: five runs, each preceded by a disconnect and a 900ms
+       settle. A COLD BOOT is slower, and nobody had measured one. Measured
+       16 Nov 2026 by reading the climb's own animation currentTime at the
+       instant the landing cancelled it, three real launches with the Seven
+       attached: 2958ms, 2958ms, 2634ms.
+
+       At 3.6s those land at 82%, 82% and 73% — past the third rung and onto
+       the tail, so the arc was spent near the top and the climb was mostly
+       over before the instrument answered. At 4.8s they land at 62%, 62% and
+       55%: right at or just short of the third rung, which is where the
+       design wants them. The tail from there to 100% is the part only a
+       slower unit ever sees.
 
        THE FLICKER KEEPS ITS OWN 7s CLOCK, deliberately. It is a separate
        animation, so the brightness curve could be tuned to the measurement
@@ -1033,7 +1045,7 @@
     .boot-mark svg { width: 100%; height: auto; display: block; }
 
     .boot-mark.is-warming {
-      animation: boot-warm 3.6s cubic-bezier(.12, .62, .28, 1) forwards,
+      animation: boot-warm 4.8s cubic-bezier(.12, .62, .28, 1) forwards,
                  boot-flick 7s linear forwards;
     }
     /* THE RUNGS ARE MIXED FROM THE PALETTE, not written as hex, so they are
