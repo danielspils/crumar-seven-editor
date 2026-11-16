@@ -1164,6 +1164,34 @@ IS NOT A DEMONSTRATED ONE**. All four are a confident statement nobody checked.
 This one is the reminder that this file is a source like any other, and gets
 checked like any other.
 
+### HOW TO RETIRE AN ENTRY: STRIKE THE CLAIM, KEEP THE MEASUREMENT (2026-11-16)
+
+The convention this file had been using without stating, made explicit after
+the audit of 16 Nov found five headings reading as open when the work was done.
+
+**Strike the claim through, name the commit that settled it, and keep the
+evidence under it.** Do not delete the entry.
+
+- **A deleted entry cannot be told from one that was never written.** The next
+  reader meets silence and has no way to know whether a thing was fixed,
+  decided against, or simply forgotten — which is how a closed question gets
+  re-opened and a session spent re-deriving an answer that already existed.
+- **The measurement usually outlives the claim**, and is the part worth
+  keeping. `.top-tab`'s entry is the example: the claim ("NOT fixed —
+  Daniel's call") was a day stale, but the measurement under it — the parsed
+  rule carrying no `font-size` at all, the tabs computing to 400 13.333px —
+  is why anyone believes the diagnosis at all.
+- **SAY WHEN THE ANSWER CONTRADICTED THE ENTRY'S OWN PREDICTION.** That entry
+  said two things "must be re-derived when it is fixed" and implied they would
+  move. Re-derived, the baseline moved **0.2px** — because the nav row is
+  baseline-aligned to the LOGO, whose height is a fixed 28.2px drawing rather
+  than type, so the word tabs were always aligning to it and not the reverse.
+  An entry retired without that would leave the wrong model of the layout
+  standing while looking tidy.
+- **A struck entry is how a later audit tells a fixed thing from a forgotten
+  one.** That is the whole point: the record of the decision is the deliverable,
+  not the tidiness of the file.
+
 ## THE APP MEASURES ITSELF, SO DEVELOPMENT MUST NOT COUNT (2026-08-25)
 
 The daily ping shipped with `src/telemetry.js` deciding and `main.js` sending
