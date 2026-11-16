@@ -465,6 +465,10 @@ test('the hold screen shows the instrument\'s own drawing', () => {
     'without the choosing brackets — nothing is being chosen at a hold');
   assert.match(walk[0], /setStage\(panel, 'hold'\)/,
     "and puts it at the hold stage, which is what shows the HOLD legend");
+  // WHOLE-FILE BY NATURE, and deliberately left that way: "the second drawing
+  // is gone" is a claim about the whole app, and scoping it to any function
+  // would make it strictly weaker — the thing it forbids could come back one
+  // line outside and the test would pass.
   assert.doesNotMatch(src, /SevenPanelMini/,
     'and the second drawing is gone from the app entirely');
 });
@@ -497,6 +501,9 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
   assert.ok(hint, 'wireHoldHint is still recognisable');
   assert.match(hint[0], /panel\.addEventListener\('click'/,
     'the panel answers a click');
+  // WHOLE-FILE BY NATURE: a hover handler added anywhere in modal-panel.js
+  // would change the line for people who did nothing, so the denial has to
+  // cover the file rather than wireHoldHint alone.
   assert.doesNotMatch(mp, /panel\.addEventListener\('(?:mouseover|mouseenter|pointerover|pointerenter)'/,
     'and never a hover');
   assert.match(hint[0], /closest\('\[data-mp-preset\]'\)/,
@@ -573,6 +580,8 @@ test('every path that writes a new patch says so the same way', () => {
 
   // And the link is gone from the app, not merely unused: it pointed at where
   // the player now already is.
+  // WHOLE-FILE BY NATURE, both of them: "no link survives" is the claim, and
+  // it is checked in both files because the markup could be built in either.
   assert.doesNotMatch(src, /data-goto-patch/, 'no "go to your new patch" link survives');
   assert.doesNotMatch(code(read('app.js')), /data-goto-patch/, 'and none in app.js');
 });
@@ -768,6 +777,8 @@ test('a whole-bank send chooses on the panel too', () => {
   assert.ok(setlist, 'sendSetlist is still recognisable');
   assert.match(setlist[0], /const bank = await chooseBank\(name\)/,
     'and sendSetlist uses it');
+  // WHOLE-FILE BY NATURE: the generic chooser coming back anywhere in app.js
+  // is the regression, not its coming back in one named function.
   assert.doesNotMatch(src, /SevenModal\.choose\({\s*\n\s*title: 'Send to Seven'/,
     'the four generic bank buttons are gone from the send path');
 });
@@ -836,6 +847,8 @@ test('auditioning a sound claims no destination', () => {
   // Patches and Backups. Nothing else on that path reads deviceSel.
   assert.doesNotMatch(fn[0], /deviceSel/,
     'auditioning needs no preset selected — it has no destination to need one');
+  // WHOLE-FILE BY NATURE: the toast is gone from the app, not merely from
+  // this handler.
   assert.doesNotMatch(app, /Choose a preset to try an instrument on it/,
     'and the toast that said otherwise is gone');
 
@@ -915,6 +928,8 @@ test('the picker caret is drawn, not typed', () => {
 
   // THE MUTATION THIS EXISTS TO CATCH: putting a character back. Any of them —
   // the original U+2304, or the commoner substitutes somebody would reach for.
+  // WHOLE-FILE BY NATURE, and the only shape it can have: a character assigned
+  // to the caret ANYWHERE in picker.js is the bug, wherever it is written.
   for (const glyph of ['\u2304', '\u25BE', '\u25BC', '\u02C5', '\u2228', 'v']) {
     assert.doesNotMatch(src, new RegExp(`caret\\.textContent\\s*=\\s*['"\`]${glyph}`),
       `the caret must not be the character ${JSON.stringify(glyph)} — a font decides where its ink sits`);
@@ -1117,6 +1132,8 @@ test('the save flow shows the SAME hold instruction as the transfer', () => {
     'the instruction comes from modal-panel.js');
   assert.match(hold[0], /SevenModalPanel\.wireHoldHint/,
     'and so does the answer to pressing the picture');
+  // WHOLE-FILE BY NATURE: a second copy of the instruction anywhere in
+  // audition.js is the drift this guards against.
   assert.doesNotMatch(src, /Hold for 3 seconds/,
     'audition.js does not write its own copy of the sentence');
 });
@@ -1276,6 +1293,9 @@ test('clearing the copy box is remembered, and only for that session', () => {
   // for the rest of the run, which is the dangerous version of this change.
   // Hung on liveEdit it dies with the session and there is no clearing code to
   // lose, so nothing here may declare one.
+  // WHOLE-FILE BY NATURE, and this one most of all: the hazard IS a
+  // declaration somewhere else in the module, so a scoped denial would be
+  // blind to exactly the thing it forbids.
   assert.doesNotMatch(src, /let holdDeclined/,
     'and NOT in a module variable somebody has to remember to clear');
 
