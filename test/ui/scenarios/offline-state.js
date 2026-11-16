@@ -1,6 +1,13 @@
+// @env SEVEN_NO_DEVICE=1
+//
 // THE DISCONNECTED APP, ON PURPOSE.
 //
-//   SEVEN_NO_DEVICE=1 npm run test:ui offline-state
+// IT DECLARES ITS OWN PRECONDITION, like every other scenario with one. Until
+// 16 Nov 2026 it did not: it waited for an operator to type the flag, and
+// skipped in every full-suite run that nobody typed it for — including the
+// runs this file exists to make routine. "A state nobody chooses is a state
+// nobody tests" is the sentence it was written under, and it was one `@env`
+// line away from obeying it.
 //
 // WHY THIS EXISTS. Ten of seventeen scenarios don't call requireDevice(), so
 // they run in whatever state the desk happens to be in — and on the only desk
