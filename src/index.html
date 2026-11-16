@@ -2809,12 +2809,46 @@
        already measured, and the engine column takes whatever is left — which
        is where the long sound names, the carousel and the parameter rows all
        compete (Daniel, 2026-11-15). */
+    /* BELOW THE NARROW BAND THE COLUMNS STACK, because side by side they
+       stop being two columns and become one column painting over another
+       (B6, measured 16 Nov 2026).
+       WHAT WAS MEASURED, at a forced width with the Seven attached
+       (test/ui/scenarios/engine-column-narrow.js): the effects chain holds
+       its fixed 294px and the engine column is `minmax(0, 1fr)`, so it takes
+       whatever is left and keeps shrinking — 139px at 800. Its contents do
+       NOT shrink with it: a 128px carousel with step buttons hanging 22px
+       outside each side, the Type picker, Save patch. At 800 the content
+       spans 246.5px and runs 107.5px past the column's own right edge,
+       straight under the chain column, which paints over it. Seventeen
+       presses did not land on the control they were aimed at.
+       IT IS NOT FIXABLE BY FINDING A WIDTH WHERE BOTH FIT. Swept: 800 over
+       by 107.5px, 950 over by 11.5px, 968 still over by 2px with twelve
+       presses blocked — the picker alone is wider than the column it is in.
+       The two requirements cross, the same way the carousel's spread and its
+       clearance do.
+       SO IT STACKS, AND AT THE BAND THAT ALREADY EXISTS. 1031 is the
+       carousel's no-peek boundary, derived by sweeping for its own reason —
+       reusing it means one narrow layout rather than two overlapping ones,
+       and no second invented number to keep in step. Above it the engine
+       column measured 287.5px at 1032 against 248.5px of content, so the
+       side-by-side layout has room from the first pixel it applies.
+       DANIEL CANNOT REACH ANY OF THIS: main.js sets
+       `minWidth: Math.min(1280, work.width)` and his work area is 1147, so
+       his default is his floor. The band only exists on a display narrower
+       than 1280. */
     .detail-cols {
       display: grid; grid-template-columns: minmax(0, 1fr) 294px;
       gap: 24px; align-items: start;
       /* For the overlay below. Absolutely positioned, so it takes no grid
          cell and the two columns are laid out exactly as before. */
       position: relative;
+    }
+    /* AFTER the declaration it overrides, not before. Same selector, same
+       specificity, so SOURCE ORDER decides — written above it this media
+       query would lose silently, which is the trap css-hazards.test.js
+       exists for and has already caught twice in one day. */
+    @media (max-width: 1031px) {
+      .detail-cols { grid-template-columns: minmax(0, 1fr); }
     }
 
     /* ── THE PANEL IS DESCRIBING SOMETHING YOU CANNOT SEE ────────────────
