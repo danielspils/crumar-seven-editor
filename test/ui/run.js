@@ -161,18 +161,11 @@ function runScenario(file, libraryDir) {
 // instance answers the device and the suite's does not — scenarios then fail
 // for a reason that has nothing to do with the code. Say so instead of
 // producing a flaky red.
-function appAlreadyRunning() {
-  const { execSync } = require('node:child_process');
-  try {
-    const out = execSync('ps -Ao command', { encoding: 'utf8' });
-    return out.split('\n').some(
-      (line) => line.includes('crumar-seven-editor') && line.includes('Electron') &&
-        !line.includes('SEVEN_UI_TEST') && !line.includes('ps -Ao')
-    );
-  } catch {
-    return false;
-  }
-}
+//
+// The detection lives in its own module because it is worth testing and this
+// file cannot be required without running the suite. See the comment there for
+// why a command-line substring was the wrong thing to match.
+const { appAlreadyRunning } = require('./app-running');
 
 (async () => {
   if (appAlreadyRunning()) {
