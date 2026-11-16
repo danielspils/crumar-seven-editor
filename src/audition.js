@@ -1055,6 +1055,23 @@
     const box = modal.body.querySelector('.sv-copy');
     await modal.action();
     resetHoldLine();
+    // THE APP NO LONGER KNOWS WHAT IS IN THAT SLOT — whichever way this screen
+    // was left. Done, the corner X, Escape, the backdrop, and the cleared-tick
+    // path that leads to Discarding Edits all arrive here, because every one of
+    // them settles the same action(). Each leaves the preset in a state the app
+    // cannot vouch for: the player was sent to overwrite it and only they can
+    // see whether they held the button for three seconds.
+    //
+    // BEFORE THE TICK BOX IS READ, deliberately. This is about the slot on the
+    // instrument; whether a copy is kept on the computer is a different
+    // question with a different answer, and tying the two would mean a player
+    // who declined the copy kept a stale reading as well.
+    //
+    // ONLY A SLOT THE APP CANNOT NAME STOPS IT, and that is holdSlot()
+    // answering null — Send PC off, so the app never knew which preset the
+    // hold would land on. Nothing to forget, and nothing it could honestly
+    // guess: see out/next-1.5.7.md for that limit written down beside this one.
+    if (slot && deps.forgetSlot) deps.forgetSlot(slot);
     // Only the ANSWER. Whether a copy is then written, and from what, is
     // SevenSavePlan's — this screen's job is to teach the hold and to carry
     // the tick box.

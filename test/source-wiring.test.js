@@ -956,6 +956,56 @@ test('the save flow shows the SAME hold instruction as the transfer', () => {
     'audition.js does not write its own copy of the sentence');
 });
 
+// AN ATTEMPTED OVERWRITE FORGETS THE SLOT — the app no longer knows it.
+//
+// The app started the attempt, so it knows one was made; it cannot know whether
+// the three-second hold followed, because there is no store opcode and no
+// acknowledgement. Recording the sent values would claim a store happened;
+// leaving the slot marked live claims the OLD values are current, and the row
+// then draws them at full strength under the backup's name. Forgetting is the
+// only honest answer, and the freshness work already draws it.
+//
+// `test/ui/scenarios/overwrite-forgets-slot.js` drives the real gesture, but it
+// needs the instrument and Send PC on. This is the half that runs by itself,
+// and it is three separate wires: the call, the conversion, and the delete.
+test('dismissing the hold screen forgets what the app knew about that slot', () => {
+  const aud = code(read('audition.js'));
+  const hold = /async function runHoldScreen\(([\s\S]*?)\n  \}/.exec(aud);
+  assert.ok(hold, 'runHoldScreen is still recognisable');
+  assert.match(hold[0], /deps\.forgetSlot\(slot\)/,
+    'the hold screen tells the app to forget the slot it just named');
+  // EVERY ROUTE OUT, which is only true if this sits after the one await that
+  // all of them settle. Before it, the forget would happen while the screen was
+  // still up — and the tick box is read after it, so a check on ordering
+  // against `box.checked` is the one that cannot pass by accident.
+  assert.ok(
+    hold[0].indexOf('await modal.action()') < hold[0].indexOf('deps.forgetSlot'),
+    'after the dialog is answered, so Done, the X and Escape all reach it'
+  );
+  assert.ok(
+    hold[0].indexOf('deps.forgetSlot') < hold[0].indexOf('box.checked'),
+    'and before the tick box is read — keeping a copy is a different question'
+  );
+
+  const app = code(read('app.js'));
+  // THE CONVERSION IS THE PART THAT CAN BE SILENTLY WRONG. holdSlot() hands
+  // over a 1-based slot so the dialog prints what the panel prints;
+  // verifiedSlots is keyed the way the rows are indexed. Off by one, nothing
+  // fails — the app forgets a slot nobody touched and keeps the stale one.
+  assert.match(app, /forgetSlot: \(slot\) => forgetSlot\(slot\.bank - 1, slot\.preset - 1\)/,
+    'app.js converts the 1-based slot to the 0-based key');
+  const fn = /const forgetSlot = \(bank, preset\) => \{([\s\S]*?)\n  \};/.exec(app);
+  assert.ok(fn, 'forgetSlot is still recognisable');
+  assert.match(fn[0], /verifiedSlots\.delete\(`\$\{bank\}:\$\{preset\}`\)/,
+    'and the reading is actually dropped');
+  // A FORGOTTEN SLOT THAT STILL LOOKS LIVE IS THE BUG WITH AN EXTRA STEP.
+  // Nothing else re-renders on this path: with the tick box cleared the save
+  // flow answers 'stay' and writes nothing, so there is no refreshLibrary
+  // behind it.
+  assert.match(fn[0], /renderList\(\)/, 'the rows are redrawn, so the fade comes back');
+  assert.match(fn[0], /updateFreshLine\(\)/, 'and the line that counts them agrees');
+});
+
 // NAVIGATING AWAY ASKS FIRST — both doors, and before any state moves.
 //
 // "Navigating away discards" was settled on 2026-08-12 with a warning

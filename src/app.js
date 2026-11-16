@@ -136,6 +136,41 @@
     return seen ? seen.soundName : null;
   };
 
+  // AFTER AN OVERWRITE WAS ASKED FOR, THE APP NO LONGER KNOWS THIS SLOT.
+  //
+  // The app knows the attempt happened because it STARTED it: Save patch,
+  // "Overwrite Bank 2 · Preset 5", and a hold screen naming that slot. What it
+  // cannot know is whether the three-second hold followed — there is no store
+  // opcode and no acknowledgement, which is the whole reason the Discarding
+  // Edits dialog has to say "this app can't tell if you have".
+  //
+  // Neither confident answer is available, and both are wrong in a way that
+  // reads as certainty:
+  //
+  //   - recording the values that were sent CLAIMS A STORE HAPPENED
+  //   - leaving it marked live CLAIMS THE OLD VALUES ARE CURRENT, and the row
+  //     goes on drawing them at full strength with the backup's name on it
+  //
+  // "I no longer know what is in this slot" is the only honest state, and the
+  // freshness work of 16 Nov already draws it: forget the reading, the row
+  // falls back to faded, and selecting it reads it fresh for free.
+  //
+  // 0-BASED, like every other key in verifiedSlots. The hold screen's slot is
+  // 1-based, and the conversion happens at the seam that hands it over — see
+  // the `forgetSlot` dep below, and CLAUDE.md's "Two coordinate conventions,
+  // one seam apart".
+  const forgetSlot = (bank, preset) => {
+    if (!verifiedSlots.delete(`${bank}:${preset}`)) return;
+    // NOTHING ELSE REDRAWS ON THIS PATH. With the tick box cleared the save
+    // flow answers 'stay' and writes nothing, so there is no refreshLibrary
+    // behind this — the row would keep its old look until something unrelated
+    // happened to re-render. The rows carry the fade and the line above them
+    // counts what is verified; renderDetail is deliberately not called, since
+    // a dialog is on screen and the detail pane says nothing about freshness.
+    renderList();
+    updateFreshLine();
+  };
+
   function rebuildBanks(entries) {
     banks = emptyBanks();
     banksAsOf = null;
@@ -2323,6 +2358,18 @@
     // The app's own recalls do NOT make this true. They put the instrument
     // somewhere, but say nothing about where it has been moved to since.
     slotIsKnown: () => !!(lastStatus && lastStatus.sendPc === 1),
+    // AN OVERWRITE WAS ATTEMPTED HERE, so the app's reading of that slot is no
+    // longer good for anything. See forgetSlot above for why forgetting is the
+    // only honest answer.
+    //
+    // 1-BASED IN, 0-BASED OUT, converted here rather than at either end: the
+    // hold screen's slot comes from holdSlot(), which adds one so the dialog
+    // can print what the instrument's own panel prints, and verifiedSlots is
+    // keyed the way the bank rows are indexed. This project already has two
+    // bank/preset conventions one IPC call apart, and a slot that lands on the
+    // wrong one does not fail — it answers about somebody else's preset
+    // (CLAUDE.md, "Two coordinate conventions, one seam apart").
+    forgetSlot: (slot) => forgetSlot(slot.bank - 1, slot.preset - 1),
     // Whether Send CC could not be borrowed, so the save modal can say that
     // panel moves may not have reached the screen. See ccFailed above: the
     // alternative was a toast at a moment when it did not yet matter.
