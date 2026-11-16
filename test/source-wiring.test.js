@@ -62,10 +62,17 @@ test('the transfer step dialog still passes denyLabel', () => {
   // NARROWED 16 Nov 2026. It used to ask whether app.js contains a denyLabel
   // ANYWHERE, which a brand-new dialog in an unrelated feature would satisfy
   // while the transfer walk lost its Stop — the test passing for a reason
-  // that has nothing to do with what it is named after. It is now tied to the
-  // transfer dialog by its own tone, so it fails for its own reason.
+  // that has nothing to do with what it is named after.
+  //
+  // NARROWED AGAIN, 16 Nov. The first narrowing tied it to the dialog's tone
+  // through a `[\s\S]{0,160}?` window, which is a DISTANCE and not a
+  // containment: `is-transfer` is the tone of three dialogs in this file, and
+  // a denyLabel in a neighbouring one would have satisfied it. It reads the
+  // walk's own function now, so nothing outside transferWalk can stand in.
   const src = code(read('app.js'));
-  assert.match(src, /denyLabel:\s*'[^']+',[\s\S]{0,160}?tone:\s*'is-transfer'/,
+  const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(walk, 'transferWalk is still recognisable');
+  assert.match(walk[0], /denyLabel:\s*'[^']+'/,
     'the TRANSFER step dialog passes a denyLabel — without it the deny branch '
     + 'of the modal router is dead');
 });
@@ -84,8 +91,17 @@ test('the send flow still passes secondaryLabel', () => {
   // NARROWED 16 Nov 2026, same reason as the deny guard above: tied to the
   // "Send to Seven" dialog that is the surviving caller, so another dialog
   // gaining a secondaryLabel cannot stand in for this one losing it.
+  //
+  // NARROWED AGAIN, 16 Nov, and the first attempt was tied to the wrong thing.
+  // `title: 'Send to Seven'` appears FOUR times in app.js — this dialog, the
+  // destination chooser, the bank chooser and the walk — so the anchor did not
+  // identify the caller, and the 500-character window could have run from one
+  // dialog into another's options. It reads confirmSendWhenEdited's own
+  // function now, which is the surviving caller by name.
   const src = code(read('app.js'));
-  assert.match(src, /title: 'Send to Seven',[\s\S]{0,500}?secondaryLabel:\s*(?:'[^']+'|`[^`]+`)/,
+  const fn = /async function confirmSendWhenEdited\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'confirmSendWhenEdited is still recognisable');
+  assert.match(fn[0], /secondaryLabel:\s*(?:'[^']+'|`[^`]+`)/,
     'the SEND dialog passes a secondaryLabel — without it the secondary branch is dead');
 });
 
@@ -619,15 +635,23 @@ test('the send flow chooses on the panel, not on generic buttons', () => {
   // functions and clicks its real hit rects, but it builds the modal body
   // itself — reaching the real one needs a connected instrument — so this
   // pins that the app still builds that shape.
+  // NARROWED 16 Nov 2026. The test already extracted sendPatchToSlot for its
+  // negative and then asserted the two positives against the whole file — so
+  // the half that says "this flow does it" was the half left unscoped. app.js
+  // calls SevenModalPanel.buildPanel in four places, and the chooser could
+  // have lost its picture entirely with this green.
   const src = code(read('app.js'));
-  assert.match(src, /chooseDestination\(entry\)/, 'sendPatchToSlot uses the chooser');
-  assert.match(src, /SevenModalPanel\.buildPanel/, 'which draws the panel from the dashboard artwork');
+  const single = /async function sendPatchToSlot\(entry\)[\s\S]*?\n  \}/.exec(src);
+  assert.ok(single, 'sendPatchToSlot is still recognisable');
+  assert.match(single[0], /chooseDestination\(entry\)/, 'sendPatchToSlot uses the chooser');
+  const chooser = /async function chooseDestination\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(chooser, 'chooseDestination is still recognisable');
+  assert.match(chooser[0], /SevenModalPanel\.buildPanel/,
+    'which draws the panel from the dashboard artwork');
   // Scoped to the SINGLE-PATCH path. "Select which bank to send" still exists
   // for the SETLIST send, which is a different flow and deliberately
   // untouched — asserting against the whole file would have demanded a change
   // nobody asked for.
-  const single = /async function sendPatchToSlot\(entry\)[\s\S]*?\n  \}/.exec(src);
-  assert.ok(single, 'sendPatchToSlot is still recognisable');
   assert.doesNotMatch(single[0], /SevenModal\.choose/,
     'the single-patch send no longer asks with generic buttons');
 });
@@ -635,10 +659,18 @@ test('the send flow chooses on the panel, not on generic buttons', () => {
 test('NEXT is gated on a real destination, Bank 1 excluded', () => {
   // Advancing with half a destination should not be possible, and Bank 1 is
   // not a destination at all — the button says so as well as the message.
+  //
+  // NARROWED 16 Nov 2026 to the chooser's own function. Both lines are
+  // distinctive enough that a file-wide search found the right ones today —
+  // but chooseBank has a `nextBtn.disabled` line of its own, one bank-only
+  // clause away from this one, and the whole point of the pair is that the
+  // SAME rule guards the button and the return value of THIS dialog.
   const src = code(read('app.js'));
-  assert.match(src, /nextBtn\.disabled = !\(bank && bank !== 1 && preset\)/,
+  const fn = /async function chooseDestination\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'chooseDestination is still recognisable');
+  assert.match(fn[0], /nextBtn\.disabled = !\(bank && bank !== 1 && preset\)/,
     'the button is disabled unless a sendable bank AND a preset are chosen');
-  assert.match(src, /return ok && bank && bank !== 1 && preset \? \{ bank, preset \} : null/,
+  assert.match(fn[0], /return ok && bank && bank !== 1 && preset \? \{ bank, preset \} : null/,
     'and the same rule guards what the chooser returns');
 });
 
@@ -653,7 +685,11 @@ test('a whole-bank send chooses on the panel too', () => {
   assert.match(fn[0], /brackets: \['bank'\]/, 'with only the bank bracket — one question is asked');
   assert.match(fn[0], /setStage\(svg, bank \? 'row' : 'bank'\)/,
     'and the row stage once a bank is chosen');
-  assert.match(src, /const bank = await chooseBank\(name\)/,
+  // NARROWED 16 Nov 2026: read out of sendSetlist, so "the setlist flow calls
+  // it" cannot be satisfied by a call from anywhere else in a 4300-line file.
+  const setlist = /async sendSetlist\(index, name\) \{([\s\S]*?)\n      \},/.exec(src);
+  assert.ok(setlist, 'sendSetlist is still recognisable');
+  assert.match(setlist[0], /const bank = await chooseBank\(name\)/,
     'and sendSetlist uses it');
   assert.doesNotMatch(src, /SevenModal\.choose\({\s*\n\s*title: 'Send to Seven'/,
     'the four generic bank buttons are gone from the send path');
@@ -685,9 +721,23 @@ test('the panel follows the instrument as well as the mouse', () => {
   // With Send PC on, a bank or preset pressed on the Seven arrives as a
   // slot-identified Program Change. The picture has to keep up, or it would
   // disagree with the machine in front of the player.
+  //
+  // NARROWED 16 Nov 2026 to chooseDestination, which is where `follow` lives
+  // and the only dialog that follows the hardware. `ev.type !== 'program-
+  // change'` is a shape app.js uses in several listeners, so the whole-file
+  // version could have been satisfied by the status handler while the chooser
+  // had stopped following anything.
   const src = code(read('app.js'));
-  assert.match(src, /ev\.type !== 'program-change'/, 'it listens for panel presses');
-  assert.match(src, /midi\.onEvent\(follow\)/, 'and subscribes while the chooser is open');
+  const fn = /async function chooseDestination\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'chooseDestination is still recognisable');
+  assert.match(fn[0], /ev\.type !== 'program-change'/, 'it listens for panel presses');
+  assert.match(fn[0], /midi\.onEvent\(follow\)/, 'and subscribes while the chooser is open');
+  // AND NOT ITS OWN ECHO. The instrument echoes every Program Change it
+  // receives, so an app-initiated recall arrives looking exactly like a hand
+  // on the panel — reproduced on hardware, BANK 3 · PRESET 5 became BANK 2 ·
+  // PRESET 1 with nobody near the instrument (2026-08-22).
+  assert.match(fn[0], /if \(ev\.echo\) return;/,
+    'and ignores the echo of its own recall');
 });
 
 test('auditioning a sound claims no destination', () => {
