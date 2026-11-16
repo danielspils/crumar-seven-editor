@@ -138,7 +138,7 @@ bank choosers, both walk dialogs.
 Most need a blocked plan, a missing file, or a sound this instrument lacks.
 
 - `Cannot send this setlist` / `This instrument is missing sounds` — app.js:2074
-- `Bank 1 holds the factory presets and cannot be written to.` — transfer-runner.js:105
+- The Bank 1 lock sentence — transfer-runner.js, three refusals. See **One sentence for Bank 1** below; it is one shared string and is not written here.
 - `There is no bank 5.` / `There is no preset 9.` — transfer-runner.js:108, :257
 - `The Seven is not connected.` — transfer-runner.js:111 and five other layers
 - `That setlist no longer exists.` — transfer-runner.js:114
@@ -180,7 +180,7 @@ Most need a blocked plan, a missing file, or a sound this instrument lacks.
 
 ### Badges and row tooltips
 
-- Bank 1 tab lock (icon only, no label) — app.js, tooltip `Crumar reserves Bank 1 for its 8 models — they can not be overwritten.` Daniel's words, 2026-08-16, verbatim. It replaces the `Crumar preset` badge, which sat on all eight Bank 1 rows and no others.
+- Bank 1 tab lock (icon only, no label) — app.js; its tooltip is the shared Bank 1 sentence, see **One sentence for Bank 1** below. It replaces the `Crumar preset` badge, which sat on all eight Bank 1 rows and no others.
 - `⚠ Not installed` — renderer.js:640, tooltip `Sound not installed on this instrument`
 - `(!)` on a setlist slot — library-view.js:887, same meaning
 - `Model` / `Sample` — renderer.js:631
@@ -357,15 +357,43 @@ is the question that used to be a second dialog behind "save to computer"
     bank cannot be stored to (hardware, 2026-08-13). A hardware run offered
     `Overwrite Bank 1 · Preset 1` before this was caught, which would have sent
     the player to hold a button the instrument refuses.
-- Note — in the Seven row's place on Bank 1: `Bank 1 holds the factory presets and cannot be written to.` — save-plan.js
+### One sentence for Bank 1
+
+> `Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.`
+
+**Daniel's wording, 16 Nov 2026.** His 16 Aug 2026 tab-lock tooltip with
+"can not" corrected to "cannot" — his call, today.
+
+Defined ONCE, as `BANK1_LOCKED` in `src/save-plan.js`. Everywhere this fact
+appears reads that constant:
+
+| where | what shows it |
+|---|---|
+| the Bank 1 tab's lock | tooltip — `app.js`, `BANK1_LOCK_TIP` |
+| the save dialog | the note in the Seven row's place — `save-plan.js` |
+| the transfer runner | three refusals — `transfer-runner.js` |
+
+**It replaced TWO phrasings of one fact**, which is why the entry is written
+this way. `save-plan.js` said "Bank 1 holds the factory presets and cannot be
+written to." while `app.js` kept its own copy of the tooltip. An inventory
+carrying both implies there are two rules; there is one, and it is the
+instrument's rather than the app's — the sentence says *Crumar* reserves the
+bank, so the app is reporting behaviour rather than announcing a policy.
+
+`test/bank1-locked.test.js` pins it: the exact wording including the em dash
+and the numeral, that it is a literal in `save-plan.js` alone, that no older
+phrasing survives anywhere in `src/`, and that each surface reads the shared
+constant. Mutation-checked — a second copy of the sentence, even the CORRECT
+sentence, fails two of them.
+
+- Note — in the Seven row's place on Bank 1, showing the sentence above:
   - **SETTLED 2026-11-15 (Daniel).** This was OPEN: the row was removed and
     nothing said why, so a player who pressed Save while on Bank 1 saw only
     "Save to computer" and was not told where the Seven had gone.
   - **The wording is REUSED, not written.** Daniel had already written this
     sentence three times — transfer-runner.js held three copies of the literal
     — and his reason for reusing it was that a fourth phrasing would have been
-    a fourth thing to keep in sync. It is now defined once, as `BANK1_LOCKED`
-    in save-plan.js, and the runner takes its three from there.
+    a fourth thing to keep in sync.
   - Placed where the row would have been, so it reads as the reason there are
     fewer options rather than as a warning about something the player did.
   - A NOTE, not a row: no border, no hover, no cursor, nothing clickable, and

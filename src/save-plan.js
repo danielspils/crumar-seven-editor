@@ -42,7 +42,20 @@
   // this is the definition and transfer-runner takes its three from here.
   // The direction is deliberate: this is user-facing COPY, and a runner that
   // happens to need the same words should not be the thing that owns them.
-  const BANK1_LOCKED = 'Bank 1 holds the factory presets and cannot be written to.';
+  // DANIEL'S WORDING, 16 Nov 2026, and the ONE place this fact is written.
+  // It is his 16 Aug 2026 tab-lock tooltip with "can not" corrected to
+  // "cannot" — his call, today.
+  //
+  // It replaced two phrasings that said the same thing differently: this
+  // note, which read "Bank 1 holds the factory presets and cannot be written
+  // to.", and the tab-lock tooltip in app.js, which had its own copy. Two
+  // sentences for one fact is how an inventory starts implying there are two
+  // rules. app.js now reads this constant rather than keeping its own.
+  //
+  // It says WHOSE decision it is, which the other phrasing did not: Crumar
+  // reserves the bank, so the app is reporting the instrument's behaviour
+  // rather than announcing a rule of its own.
+  const BANK1_LOCKED = 'Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.';
 
   // The overwrite row is ABSENT with nothing changed: there is no slot to
   // overwrite, and a row offering to replace a preset with its own contents is

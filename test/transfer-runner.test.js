@@ -15,6 +15,13 @@ const { EventEmitter } = require('node:events');
 
 const { TransferRunner } = require('../src/transfer-runner');
 const { LibraryStore } = require('../src/library-store');
+// THE SOURCE, NOT A COPY OF IT. These assertions used to match /factory
+// presets/ — a fragment of the sentence as it was worded on the day they were
+// written — and all three went red when Daniel chose a different wording on
+// 16 Nov 2026. A test that pins the SPELLING of a string fights every future
+// edit to it; what is load-bearing here is that the refusal is THE Bank 1
+// refusal, so they compare against the constant the app itself uses.
+const { BANK1_LOCKED } = require('../src/save-plan');
 const schema = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'schema', 'seven-1.37.json'), 'utf8')
 );
@@ -100,7 +107,7 @@ test('Bank 1 is refused — it holds the factory presets', () => {
   const list = setlistWith(store, [entries[0].file]);
   const r = new TransferRunner({ midi, store, sender }).preflight(list, 1);
   assert.strictEqual(r.ok, false);
-  assert.match(r.error, /factory presets/);
+  assert.strictEqual(r.error, BANK1_LOCKED);
 });
 
 test('a sound this instrument lacks blocks the run before anything is sent', () => {
@@ -280,7 +287,8 @@ test('picking a bank moves the instrument to it, before anything is decided', as
 
 test('picking a bank refuses Bank 1 and a missing instrument', async () => {
   const { store, midi, sender } = setup();
-  assert.match((await new TransferRunner({ midi, store, sender }).selectBank(1)).error, /factory/);
+  assert.strictEqual(
+    (await new TransferRunner({ midi, store, sender }).selectBank(1)).error, BANK1_LOCKED);
   const off = setup({ connected: false });
   const r = await new TransferRunner({ midi: off.midi, store: off.store, sender }).selectBank(2);
   assert.match(r.error, /not connected/);
@@ -522,7 +530,7 @@ test('a single send touches the target slot and NOTHING else', async () => {
 test('a single slot refuses Bank 1, a bad preset, and a sound this unit lacks', () => {
   const { store, midi, sender, entries } = setup({ sounds: ['Tine Piano'] }); // no Clavi
   const runner = new TransferRunner({ midi, store, sender });
-  assert.match(runner.preflightSlot(1, 3, entries[0].file).error, /factory presets/);
+  assert.strictEqual(runner.preflightSlot(1, 3, entries[0].file).error, BANK1_LOCKED);
   assert.match(runner.preflightSlot(2, 9, entries[0].file).error, /no preset 9/);
   const missing = runner.preflightSlot(2, 3, entries[1].file); // Beta = Clavi Piano
   assert.strictEqual(missing.ok, false);
@@ -612,7 +620,7 @@ test('a bare sound is allowed in Bank 1; a patch is not', () => {
     'hearing an instrument on a factory preset is allowed');
   const patch = runner.preflightSlot(1, 1, entries[0].file);
   assert.strictEqual(patch.ok, false, 'sending a patch to Bank 1 is still refused');
-  assert.match(patch.error, /factory presets/);
+  assert.strictEqual(patch.error, BANK1_LOCKED);
 });
 
 // Two Sevens can hold different VERSIONS of one sample set under the same

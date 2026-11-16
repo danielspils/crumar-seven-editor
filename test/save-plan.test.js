@@ -122,7 +122,12 @@ test('no note on a bank that CAN be written to', () => {
 
 test('the note is rendered as a note, not as a row', () => {
   const html = rowsHtml(saveRows({ changed: true, slot: { bank: 1, preset: 1 } }));
-  assert.match(html, /<p class="sv-note">Bank 1 holds the factory presets/);
+  // THE CONSTANT, NOT ITS SPELLING. This matched a fragment of the sentence
+  // as worded on the day it was written and went red when Daniel chose a
+  // different wording on 16 Nov 2026. What is load-bearing is that the note
+  // carries THE Bank 1 sentence, whatever it currently says.
+  assert.ok(html.includes(`<p class="sv-note">${BANK1_LOCKED}</p>`),
+    `the note renders the shared Bank 1 sentence — got: ${html}`);
   // The properties that matter are the absences: a dialog of buttons with one
   // unclickable button in it would be worse than either.
   const noteTag = /<p class="sv-note">[^<]*<\/p>/.exec(html)[0];

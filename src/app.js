@@ -1808,8 +1808,12 @@
   // the bank, worn by the presets. It belongs on the tab, once
   // (Daniel, 2026-08-16). The lock is decoration for the label beside it, so
   // it is hidden from the accessibility tree and the tab keeps its own name.
-  // Daniel's words, 2026-08-16. Verbatim.
-  const BANK1_LOCK_TIP = 'Crumar reserves Bank 1 for its 8 models — they can not be overwritten.';
+  // Daniel's words, 2026-08-16, corrected to "cannot" on 16 Nov 2026 — and no
+  // longer written here. ONE DEFINITION: save-plan.js owns the sentence and
+  // every surface that states this fact reads it, so the tab lock, the save
+  // dialog's note and the transfer runner's three refusals cannot drift into
+  // three phrasings of one rule. They already had two.
+  const BANK1_LOCK_TIP = SevenSavePlan.BANK1_LOCKED;
   const LOCK =
     '<svg class="bank-tab-lock" viewBox="0 0 12 14" width="10" height="12" aria-hidden="true" ' +
     'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" ' +

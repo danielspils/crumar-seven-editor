@@ -87,8 +87,20 @@
     // feature built because that loss happened twice.
     ui.check(!holdRow,
       'Bank 1 is locked, so the Seven is NOT offered as a destination');
-    ui.check(!/Bank 1/.test(dialog.textContent),
-      'and Bank 1 is not named as somewhere to overwrite');
+    // NARROWED 16 Nov 2026. This used to forbid the words "Bank 1" anywhere
+    // in the dialog, which was a proxy for "it is not offered as a
+    // destination" — and the line above already checks that properly, by
+    // looking for the row. The proxy became wrong the moment the dialog
+    // started EXPLAINING why the row is missing: the note in the Seven row's
+    // place names Bank 1 on purpose, because a player who saw only "Save to
+    // computer" was not told where the Seven had gone.
+    //
+    // So it asks the real question instead: no OVERWRITE offer may name
+    // Bank 1. The explanation may, and should.
+    const offersBank1 = rows.some((x) => /Bank 1/.test(x.textContent));
+    ui.check(!offersBank1,
+      'and no offered row names Bank 1 as somewhere to overwrite'
+      + ' (the note explaining the lock may name it, and does)');
     ui.check(rows.length >= 1 && rows.some(
       (x) => /Save to computer/.test(x.querySelector('.sv-row-t').textContent)),
     'the computer is still offered, which is the only place a Bank 1 edit can go');

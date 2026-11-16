@@ -17,7 +17,28 @@
   ui.click(await ui.waitEl('[data-pick-mode="sounds"]', 'the Instruments tab'), 'the Instruments tab');
   await ui.waitFor(() => ui.$$('.pick-tile-art').length > 0, { what: 'the instrument tiles' });
   const tiles = ui.$$('.pick-tile-art');
-  ui.check(tiles.length === 24, `every sound is offered as a tile (${tiles.length})`);
+  // THE INSTRUMENT'S OWN COUNT, not a number written here. This asserted 24,
+  // which was true of a Seven with no expansions on the day it was written
+  // and false the moment one was installed — it failed on 16 Nov 2026 against
+  // a unit reporting 27, with all 27 tiles rendering perfectly.
+  //
+  // A count is a measurement and a measurement has a date (CLAUDE.md, "A
+  // RECORDED FACT MUST NOT STAND IN FOR CURRENT STATE"). What is load-bearing
+  // is that EVERY sound the instrument has is offered — so the expectation
+  // comes from the connected unit's own sound table, whatever it currently
+  // holds. Offline there is no table to ask, and the check says so rather
+  // than inventing a number.
+  const st = await window.sevenAPI.midi.status();
+  const sounds = st && st.soundTable && st.soundTable.sounds;
+  if (sounds) {
+    ui.note(`the instrument reports ${sounds.length} sounds`);
+    ui.check(tiles.length === sounds.length,
+      `every sound this instrument has is offered as a tile`
+      + ` (${tiles.length} tiles against ${sounds.length} sounds)`);
+  } else {
+    ui.note('no sound table to compare against — nothing connected');
+    ui.check(tiles.length > 0, `sounds are offered as tiles (${tiles.length})`);
+  }
   // Art is either a drawn illustration — a full-colour PNG, or an inlined SVG
   // for the ones still drawn as line work — or the line-art mark for
   // instruments with nothing to photograph. All three count; what matters is
