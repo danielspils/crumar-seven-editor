@@ -178,5 +178,43 @@
     return `${verified} of ${total} as of ${when} - ${total - verified} as of last backup`;
   }
 
-  return { slotState, asOfLabel, slotView, liveCount };
+  // WHEN A BACKUP IS OLD ENOUGH TO MENTION.
+  //
+  // Two weeks, Daniel's call, 16 Nov 2026. A NAMED VALUE rather than a literal
+  // inside a condition: the number is a decision about how much drift is
+  // tolerable, and a decision buried in an `if` is one nobody can find to
+  // change. It lives here because this module is already where the app
+  // reasons about how old a reading is.
+  const BACKUP_STALE_DAYS = 14;
+
+  // CALENDAR DAYS, counted the way ago() counts them — midnight to midnight,
+  // rounded. Not 24-hour blocks: a stamp from Tuesday evening is "2 days ago"
+  // on Thursday morning to a person, and dividing elapsed milliseconds says
+  // one. The two must agree, because the offer's sentence is built from ago()
+  // and gated by this. If they disagreed, a backup could read "2 weeks ago"
+  // in the dialog that was not stale enough to have produced it.
+  //
+  // NEVER BACKED UP IS NOT STALE. There is nothing to be old. That case has
+  // its own empty state telling the player to connect and back up, and an
+  // offer on top of it would be the app saying the same thing twice in one
+  // launch.
+  function backupIsStale({ asOf = null, now = new Date(), days = BACKUP_STALE_DAYS } = {}) {
+    if (asOf == null || asOf === '') return false;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(asOf));
+    // THE SHAPE MATCHING IS NOT THE SAME AS BEING A DATE. "0000-00-00" passes
+    // the regex and `new Date(0, -1, 0)` turns it into 30 November 1899 — a
+    // perfectly valid Date, 46,000 days old, which then reads as "stale" with
+    // total confidence. Measured: it returned true. Same family as
+    // `new Date(null)` being the epoch rather than invalid, which once
+    // rendered "57 years ago" from a missing stamp.
+    if (m && (Number(m[2]) < 1 || Number(m[2]) > 12
+      || Number(m[3]) < 1 || Number(m[3]) > 31)) return false;
+    const then = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(asOf);
+    if (Number.isNaN(then.getTime())) return false;
+    const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const elapsed = Math.round((midnight(now) - midnight(then)) / 86400000);
+    return elapsed >= days;
+  }
+
+  return { slotState, asOfLabel, slotView, liveCount, backupIsStale, BACKUP_STALE_DAYS };
 });

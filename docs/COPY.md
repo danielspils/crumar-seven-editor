@@ -54,6 +54,48 @@ sampling throughout the boot rather than at the end — a line that appears for
 a moment and goes is invisible to an end-state check.
 `boot-status-late.js` covers the conditional path.
 
+## 0b. The stale-backup offer
+
+Once per session, after the app is up, if the last backup is older than
+**`BACKUP_STALE_DAYS` (14)** in `src/ots-freshness.js`.
+
+> `Your last backup was 2 weeks ago. Back up the Seven now?`
+>
+> `[ Continue ]` `[ Back up now ]`
+
+**Daniel's wording, 16 Nov 2026.**
+
+**THE AGE IS LIVE, and at the threshold it reads "2 weeks ago" — never
+"14 days ago".** The sentence is built with `SevenLibraryView.ago()`, the same
+helper every dated row uses, which switches from days to weeks at exactly 14.
+So the first version of this sentence anyone can ever see says "2 weeks ago".
+Daniel's "14 days ago" was the example, not the output. Using days here would
+have meant a second relative-time helper disagreeing with the line under the
+slot list.
+
+It also cannot say **"1 days ago"** — `ago()` answers `yesterday` at one day —
+though that case is unreachable anyway at a fourteen-day threshold.
+
+**"Back up" is the VERB, two words. "backup" is the NOUN, one.** Corrected
+16 Nov 2026 from "Backup the Seven now", Daniel's call. The toolbar button has
+always read `Back up instrument`, so the app is now consistent with itself.
+**Do not revert this.**
+
+**"Continue", not "Not now" or "Skip"** — declining is not a deferral, it is
+carrying on with what you opened the app to do. There is deliberately **no
+"don't ask again" box**: the once-per-session rule already keeps that promise,
+and a checkbox would be a second mechanism for it.
+
+**It is the deny slot, not the cancel one.** `cancelLabel` draws no button —
+it names the corner ✕ (`modal.js`, `shell()`). `denyLabel` is what renders a
+second button, so the two-button layout needs it. Both resolve `false`.
+`cancelLabel` carries the same word so the ✕ means the same thing.
+
+Covered by `test/ui/scenarios/backup-offer.js` (it appears, says the agreed
+sentence with a live age, has exactly two buttons, dismisses in one click and
+does not return) and `backup-offer-fresh.js` (a recent backup is not mentioned
+at all). The threshold itself is pinned in `test/backup-stale.test.js`.
+
 ## 1. Connection row
 
 The strip under the panel. One line, left, plus buttons.

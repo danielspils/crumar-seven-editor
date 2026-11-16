@@ -4271,12 +4271,12 @@
       if (!ev.cancelled) await maybeAsk();
     };
 
-    backupBtn.addEventListener('click', async () => {
-      if (backupRunning) {
-        await window.sevenAPI.midi.cancelBackup();
-        backupBtn.textContent = 'Cancelling…';
-        return;
-      }
+    // THE ONE WAY TO READ 32 SLOTS. Extracted from the button's own listener
+    // on 16 Nov 2026 so the stale-backup offer can call it rather than
+    // growing a second path: the confirm dialog, the session end, the plan,
+    // the progress grid and the Cancel state are all here, and a copy of them
+    // would be five things to keep in step instead of none.
+    async function startBackupRun() {
       // End any live session FIRST, and let its recall land. A backup recalls
       // each slot and reads the edit buffer — so if something is auditioning
       // when the run reaches that slot, the buffer's contents get written down
@@ -4306,6 +4306,95 @@
         connText.textContent = 'Backing up… starting';
         openBackupProgress();
       }
+    }
+
+    // ---- THE STALE-BACKUP OFFER ------------------------------------------
+    //
+    // A full read of 32 slots is 45-50 seconds. Far too long to do on every
+    // launch, and it is the same operation the toolbar's "Back up instrument"
+    // already performs — so the app OFFERS it rather than doing it.
+    //
+    // IT NEVER BLOCKS THE BOOT. It is not awaited by anything on the startup
+    // path and it appears AFTER the app is up, over a window the player can
+    // already use. Declining costs one click and nothing else; accepting runs
+    // the ordinary backup, with its own confirm and its own progress grid.
+    //
+    // ONCE PER SESSION, WHATEVER THE ANSWER. The flag is set before the
+    // dialog opens, not after it is answered: set afterwards, a second
+    // trigger arriving while the first dialog was still on screen would open
+    // a second one. There is no "don't ask again" box — once a session is
+    // already the whole rule, and a checkbox would be a second mechanism for
+    // a promise the first one keeps (Daniel, 16 Nov 2026).
+    let backupOfferMade = false;
+    async function maybeOfferStaleBackup() {
+      if (backupOfferMade) return false;
+      backupOfferMade = true;
+      if (backupRunning) return false;
+      // A BACKUP NEEDS THE INSTRUMENT. The loader only appears when there is
+      // one to read, but a connect can still fail, and offering to back up
+      // something that is not answering would be an offer the app cannot
+      // keep.
+      if (!connRow.classList.contains('connected')) return false;
+      // THE THRESHOLD, with a development override. Read at CALL time rather
+      // than at startup, so window.__SEVEN_ENV is already there — the harness
+      // injects it on did-finish-load, which is long before this fires. (The
+      // boot loader's own flag could not use this seam for exactly that
+      // reason and goes through preload instead.)
+      //
+      // It exists because the alternative way to reach this path in a test is
+      // to wait two weeks. Absent, the named default stands.
+      const envDays = Number((window.__SEVEN_ENV || {}).SEVEN_BACKUP_STALE_DAYS);
+      const days = Number.isFinite(envDays) && envDays >= 0
+        ? envDays : SevenOtsFreshness.BACKUP_STALE_DAYS;
+      if (!SevenOtsFreshness.backupIsStale({ asOf: banksAsOf, now: new Date(), days })) {
+        return false;
+      }
+      // THE NUMBER IS LIVE. Built from the same ago() every dated row in the
+      // app uses, so this sentence cannot drift from the one under the slot
+      // list — and cannot say "1 days ago", because ago() answers "yesterday"
+      // there. At exactly the threshold it reads "2 weeks ago".
+      const age = SevenLibraryView.ago(banksAsOf);
+      if (!age) return false;
+      const go = await SevenModal.confirm({
+        title: `Your last backup was ${age}. Back up the Seven now?`,
+        confirmLabel: 'Back up now',
+        // "Continue", not "Not now" or "Skip": declining is not a deferral,
+        // it is carrying on with what you opened the app to do.
+        //
+        // IT IS THE DENY SLOT, NOT THE CANCEL ONE, and the difference is not
+        // cosmetic: `cancelLabel` does not draw a button at all — it names
+        // the corner X (modal.js, shell()). Daniel's layout is two buttons
+        // side by side, and `denyLabel` is the one that renders a second
+        // button. Both resolve false, so the branch below is unchanged.
+        // cancelLabel carries the same word so the X means the same thing.
+        denyLabel: 'Continue',
+        cancelLabel: 'Continue',
+        // ENTER MUST NOT START A 50-SECOND READ. Without this, Enter resolves
+        // true wherever focus is — and this dialog arrives unbidden, over an
+        // app somebody was about to use, which is exactly when a stray
+        // keypress happens. Focus starts on the way out instead.
+        defaultDeny: true,
+        tone: 'is-announce',
+      });
+      if (go) await startBackupRun();
+      return true;
+    }
+
+    // NOT AWAITED, which is the never-blocks rule written as code. The boot
+    // path dispatches and carries on; whether this opens a dialog, and what
+    // the player does with it, cannot hold anything up.
+    document.addEventListener('seven-boot-settled', () => { maybeOfferStaleBackup(); });
+
+    backupBtn.addEventListener('click', async () => {
+      // CANCELLING STAYS ON THE BUTTON. It is what the button means while a
+      // run is going, and nothing else offers it — the stale-backup offer
+      // starts runs, it does not stop them.
+      if (backupRunning) {
+        await window.sevenAPI.midi.cancelBackup();
+        backupBtn.textContent = 'Cancelling…';
+        return;
+      }
+      await startBackupRun();
     });
 
     connBtn.addEventListener('click', async () => {
@@ -4444,6 +4533,16 @@
         if (node) { node.hidden = true; node.classList.remove('is-flying'); }  // … and drop the loader, same frame
         if (markSvg) { markSvg.style.transition = ''; markSvg.style.transform = ''; markSvg.style.transformOrigin = ''; }
         if (mark) mark.classList.remove('is-flying', 'to-resting');
+        // THE APP IS NOW USABLE. Announced rather than called directly: what
+        // listens for it is the stale-backup offer, which lives with the
+        // backup code it reuses and not with the loader. An event keeps the
+        // loader ignorant of what comes after it, which is why it can be read
+        // on its own.
+        //
+        // Dispatched AFTER the overlay is gone, so anything it opens appears
+        // over a window the player can already use — the offer must never be
+        // a gate on the boot.
+        document.dispatchEvent(new CustomEvent('seven-boot-settled'));
       };
       if (!el || el.hidden) return;
       if (!navSvg || !markSvg || reduced) return finish();
