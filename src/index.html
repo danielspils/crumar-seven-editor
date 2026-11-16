@@ -2422,10 +2422,26 @@
     /* In-column: left-aligned with the bank line above, and every decoration
        the old full-width bar carried is undone here or it draws a stray rule
        across the column. */
+    /* PROXIMITY: THE BUTTON BELONGS TO THE BLOCK ABOVE IT, which is what it
+       acts on. One group reads name · sub-line · location · action, then air,
+       then Type and the parameters.
+       4px IS THE BLOCK'S OWN RHYTHM, not a new number: .engine-sub and
+       .engine-pos are both margin-top 4px, so the button becomes the fourth
+       line of the thing it belongs to rather than a fifth element floating
+       between two groups. It was 12px, which put the button 14px below the
+       bank line against the block's own 4px — three times the block's
+       internal spacing, and it read as detached (Daniel: "looks floating out
+       in space").
+       THE GAP BELOW IS NOT SET HERE AND CANNOT BE. .save-slot is a grid cell
+       whose height is dictated by the PICTURE beside it — .engine-stage spans
+       rows 2-4 and is the taller of the two — so the cell has slack, and
+       whatever is not spent above the bar falls below it automatically. That
+       is the behaviour this change wants: tightening above widens below by
+       exactly as much, without touching the grid. */
     .save-slot .audition-bar,
     .save-slot .audition-bar.is-live {
       display: block; position: static; z-index: auto; text-align: left;
-      margin: 12px 0 0; padding: 0;
+      margin: 4px 0 0; padding: 0;
       background: none; border: none; box-shadow: none;
     }
     .save-slot .audition-bar .audition-note {
