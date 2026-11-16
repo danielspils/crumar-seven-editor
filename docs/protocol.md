@@ -633,10 +633,45 @@ The July 2021 manual documents v1.22. On v1.37:
    `0` for the rest. `flag=1` = fixed CC, `flag=0` = user-assignable. The manual's fixed-CC
    table lists exactly the same 22 parameters, so observation and manufacturer documentation
    agree. See the `0x15` spec table above; per-parameter values in schema.
-2. ~~`pdl_exp` CC values~~ **RESOLVED.** `pdl_exp` params have `flag=0` (user-assignable) while
-   holding live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot
-   with a current assignment, not an inconsistency — no contradiction with the `-1` seen on
-   unassigned params. `ccUnverified` dropped from these three in the schema.
+2. ~~`pdl_exp` CC values~~ **RE-RESOLVED 2026-11-15, AND THE EARLIER ANSWER WAS WRONG.**
+
+   The earlier entry read: "`pdl_exp` params have `flag=0` (user-assignable) while holding
+   live CC assignments (`exp_fn`=1, `exp_mn`=0, `exp_mx`=1). That is an assignable slot with
+   a current assignment, not an inconsistency." Reasonable when written; it does not survive
+   counting.
+
+   **The `cc` field is MEANINGLESS for ids 107-109.** Four independent tells, none needing
+   hardware:
+
+   1. **`-1` is the sentinel everywhere else.** 85 of the 88 `flag=0` parameters report
+      `cc: -1`. These three are the only exceptions in the table. If `-1` meant "assignable
+      but unassigned", then 85 assignable parameters are unassigned and exactly three carry
+      assignments — two of them the SAME CC. That is the sentence the old answer needed to
+      be true and it is not.
+   2. **`flag=1` is exactly 22 parameters, and they are exactly the manual's 22 fixed CCs**
+      (§10.4). All three of these are `flag=0`. So **`flag` is what marks a real CC, and `cc`
+      is only meaningful when `flag=1`** — which is the actual finding here, and it was not
+      known before.
+   3. **0 and 1 are Bank Select MSB and Modulation Wheel**, implausible as factory
+      assignments for a pedal's function and range.
+   4. **The manual lists the expression pedal as ABSENT from the CC map**, and says anything
+      not in the map is unassigned by default (`docs/MANUAL.md` §10.4).
+
+   **Consequence for the app, not yet acted on.** `src/main.js` builds `ccMap` from
+   `p.cc >= 0`, so these three are in it, and `map[p.cc] = p.key` makes CC 1 resolve to
+   `exp_mx` (the later id overwrites `exp_fn`). An incoming **CC 1 from any mod wheel**, or
+   **CC 0 Bank Select** from anything sharing the port, is therefore treated as a panel move
+   and triggers a SysEx read-back of a pedal parameter. Nothing is corrupted — the read
+   returns the true value — but it is a wrong mapping firing real traffic on unrelated
+   messages. **Build the map from `p.flag === 1` instead.** Reported, not changed.
+
+   Full comparison in `docs/SCHEMA-VS-MANUAL.md`. `tools/probe.js` open item 4 covers the
+   same question and closes with this.
+
+   **Why this is recorded as a correction rather than edited away:** a wrong conclusion
+   marked RESOLVED is worse than an open question, because it stops the next person looking
+   (CLAUDE.md, "A WRONG CONCLUSION RECORDED AS SETTLED"). The old text is quoted above so
+   that anyone who read it can tell they were misled and by what.
 3. ~~`0x46` (set sound) unobserved~~ **CLOSED (2026-08-09).** Captured from the editor's
    SELECT PIANO page for modeled and sampled sounds — see the set-sound section above.
    **Every named opcode has now been observed on the wire.** ~~`0x70`/`0x72` unobserved~~ **OBSERVED

@@ -85,6 +85,58 @@
   ui.check(strays.length === 0,
     `no phaser row is rendered in Delay mode (${strays.map((r) => r.dataset.key).join(', ') || 'none'})`);
 
+  // PHASER MIX, which the manual does not describe because it arrived in
+  // FIRMWARE 1.36 — four years after the July 2021 manual's FW 1.22
+  // (docs/MANUAL.md, version history from the v1.37 README). The schema has
+  // it, so the instrument has it, and the question is whether this app ever
+  // puts it on screen. A parameter the device has and the editor cannot reach
+  // is a real gap rather than a documentation one.
+  // RE-QUERIED. The first mode change re-rendered the section, so the select
+  // captured above is DETACHED — and setting .value on a detached node and
+  // dispatching at it does nothing at all, silently. The first version of
+  // this block did exactly that and reported the Delay rows twice, which
+  // reads as "Phaser renders Delay's parameters" rather than "the test never
+  // changed anything".
+  const modeSel2 = ui.$('#detail select.param-select[data-key="fx2_md"]');
+  ui.check(!!modeSel2 && modeSel2.isConnected,
+    'the mode select is re-queried and still in the document');
+  modeSel2.value = '1';
+  modeSel2.dispatchEvent(new Event('change', { bubbles: true }));
+  await ui.sleep(1600);
+  ui.check(ui.$('#detail select.param-select[data-key="fx2_md"]').value === '1',
+    'the mode really is Phaser now — otherwise the rows below prove nothing');
+
+  const fx2Pha = ui.$('#detail .fx-section[data-group="efx_fx2"]');
+  const phaRows = [...fx2Pha.querySelectorAll('.param[data-key]')];
+  ui.note('--- rows rendered under FX2 with Mode = Phaser ---');
+  for (const r of phaRows) {
+    ui.note(`${label(r).trim().padEnd(16)} | ${String(r.dataset.key).padEnd(8)}`
+      + ` | ${String(ID[r.dataset.key] === undefined ? '?' : ID[r.dataset.key]).padStart(3)}`
+      + ` | ${value(r).trim()}`);
+  }
+  for (const [text, key] of [
+    ['Stages', 'pha_st'], ['Offset', 'pha_of'],
+    ['Feedback', 'pha_fb'], ['Phaser Mix', 'pha_mx'],
+  ]) {
+    const row = phaRows.find((r) => r.dataset.key === key);
+    ui.check(!!row,
+      `the app exposes ${key} (id ${ID[key]}) in Phaser mode`
+      + (key === 'pha_mx' && !row
+        ? ' — the instrument has it as of firmware 1.36 and the editor cannot reach it'
+        : ''));
+    if (row) {
+      ui.check(label(row).trim() === text,
+        `${key} is labelled "${text}" (is "${label(row).trim()}")`);
+    }
+  }
+
+  const modeSel3 = ui.$('#detail select.param-select[data-key="fx2_md"]');
+  if (modeSel3) {
+    modeSel3.value = '3';
+    modeSel3.dispatchEvent(new Event('change', { bubbles: true }));
+    await ui.sleep(900);
+  }
+
   // The dimming Daniel described, recorded rather than asserted: it is the
   // at-default muting, not a disabled control, and it is worth having in the
   // same table so the next reader does not read "dimmed" as "inactive".
