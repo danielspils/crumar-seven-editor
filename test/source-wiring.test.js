@@ -134,9 +134,26 @@ test('the folder button is still wired to library.reveal', () => {
   // on every render — a listener bound to the node would work until the first
   // re-render. The guard moved with it rather than being dropped: what it
   // pins is unchanged, that a click on that control is what calls reveal().
+  //
+  // NARROWED 16 Nov 2026, and the old form was two distance windows end to
+  // end: a libRoot listener, then `data-reveal` within 200 characters, then
+  // `library.reveal()` within another 120. Nothing tied the three together —
+  // libRoot handles several controls, so a [data-reveal] test in one branch
+  // and a reveal() call in a different one satisfied it, which is a wire that
+  // does not exist.
+  //
+  // The claim is that ONE STATEMENT tests the control and calls reveal, so
+  // that is what is asserted: the statement itself, out of the listener's own
+  // body. No window at all.
   const src = code(read('app.js'));
-  assert.match(src, /libRoot\.addEventListener\('click',[\s\S]{0,200}?data-reveal[\s\S]{0,120}?library\.reveal\(\)/,
+  const listener = /libRoot\.addEventListener\('click', \(e\) => \{([\s\S]*?)\n  \}\);/.exec(src);
+  assert.ok(listener, 'the delegated library click listener is still recognisable');
+  assert.match(listener[1],
+    /if \(e\.target\.closest\('\[data-reveal\]'\)\) window\.sevenAPI\.library\.reveal\(\);/,
     'a delegated click on [data-reveal] still calls library.reveal()');
+  // WHOLE-FILE BY NATURE: a denial that the old static binding survives
+  // anywhere. There is no narrower place to look for something that should
+  // not exist.
   assert.doesNotMatch(src, /libReveal\b/,
     'and nothing is still bound to the old static node');
 });
@@ -349,11 +366,27 @@ test('the connect path offers the SEND PC prompt, and the function exists', () =
   // It was called on every connect and defined nowhere — a ReferenceError out
   // of the 'connected' branch, which also skipped connBtn.disabled,
   // backupBtn.hidden and the write-gate banner.
+  //
+  // NARROWED 16 Nov 2026 to the CONNECTED branch. File-wide, "the status
+  // handler still offers the prompt on connect" was satisfied by a call from
+  // anywhere — including from a function that nothing calls, which is the
+  // original bug one level up.
   const src = code(read('app.js'));
-  assert.match(src, /maybeOfferSendPc\(s\)/,
+  const branch = /if \(s\.state === 'connected'\)[\s\S]*?\n      \} else if \(s\.state === 'connecting'\)/.exec(src);
+  assert.ok(branch, 'the connected branch is still recognisable');
+  assert.match(branch[0], /maybeOfferSendPc\(s\)/,
     'the status handler still offers the prompt on connect');
-  assert.match(src, /(?:async\s+)?function maybeOfferSendPc\s*\(/,
-    'and app.js still defines it');
+
+  // DELETED 16 Nov 2026 — "and app.js still defines it".
+  //
+  // Covered, and by something stronger. The test below walks every name the
+  // connected branch calls and asserts each is defined in app.js, so with the
+  // line above green the definition is already required. Both run in
+  // `npm test`, so this is not a guard traded for a scenario somebody has to
+  // remember to run.
+  // MUTATION-PROVED before deleting rather than argued: removing the
+  // definition fails 'every function the connect branch calls is defined in
+  // app.js' by name, quoting maybeOfferSendPc.
 });
 
 test('every function the connect branch calls is defined in app.js', () => {
@@ -613,12 +646,20 @@ test('the daily ping sends only what main states, and never blocks a launch', ()
     'and never in the catch');
 
   // IT CANNOT SIT IN FRONT OF THE APP. Deferred, not awaited at startup.
-  assert.match(src, /setTimeout\(\s*\(\) => \{\s*sendDailyPing\(\)\.catch\(/,
-    'the launch does not wait for a counter, and the promise cannot reject unhandled');
-  // The catch must SAY something. A bare `.catch(() => {})` would satisfy the
-  // line above while rebuilding the silent-failure shape it exists to prevent.
-  assert.match(src, /sendDailyPing\(\)\.catch\(\(err\) => console\.log\(/,
-    'and it logs the reason rather than swallowing it');
+  //
+  // NARROWED 16 Nov 2026 into ONE assertion on one statement. It was two
+  // whole-file searches — a setTimeout wrapping a .catch, and a .catch that
+  // logs — which between them claimed "the deferred call logs its failure"
+  // and asserted "something defers it" and "something logs", two statements
+  // that need not be about the same call. A second ping added anywhere in
+  // main.js would have satisfied both with this one unguarded.
+  assert.match(
+    src,
+    /setTimeout\(\s*\(\) => \{\s*sendDailyPing\(\)\.catch\(\(err\) => console\.log\(/,
+    'the launch does not wait for a counter, the promise cannot reject unhandled, '
+    + 'and the failure is logged rather than swallowed'
+  );
+  // WHOLE-FILE BY NATURE: a denial that any caller awaits it.
   assert.doesNotMatch(src, /await sendDailyPing/, 'and never awaits it');
 
   // THE DEV GATE IS WIRED TO THE REAL THING. `packaged` defaults to true in
@@ -626,7 +667,12 @@ test('the daily ping sends only what main states, and never blocks a launch', ()
   // that default also means a dev run and a correctly-wired one look identical
   // from inside the module. Only reading main.js can tell they are connected.
   // Delete the option and this fails; the unit tests do not (checked).
-  assert.match(src, /new Telemetry\(app\.getPath\('userData'\), \{ packaged: app\.isPackaged \}\)/,
+  // NARROWED 16 Nov 2026 to getTelemetry, which is the one place the instance
+  // is made — and the place a second, wrongly-configured one would be made
+  // instead of.
+  const get = /function getTelemetry\(\) \{([\s\S]*?)\n\}/.exec(src);
+  assert.ok(get, 'getTelemetry is still recognisable');
+  assert.match(get[0], /new Telemetry\(app\.getPath\('userData'\), \{ packaged: app\.isPackaged \}\)/,
     'main passes the real app.isPackaged, not a literal — a dev build must not '
     + 'check in to the production relay');
 
