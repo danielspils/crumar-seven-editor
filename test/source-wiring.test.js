@@ -1190,6 +1190,69 @@ test('dismissing the hold screen forgets what the app knew about that slot', () 
   assert.match(fn[0], /updateFreshLine\(\)/, 'and the line that counts them agrees');
 });
 
+// B7: A DRAG ASKS THE INSTRUMENT BEFORE IT WRITES.
+//
+// A bar writes the pointer's ABSOLUTE position, so a stale panel turns an aim
+// at 32 into a move from 113 to 32 — the opposite direction, by 81 (measured
+// 15 Nov 2026). The fix reads that ONE parameter at the grab.
+//
+// `test/ui/scenarios/grab-reads-param.js` proves the behaviour on hardware by
+// watching the number go stale -> TRUE -> dragged, and it needs the
+// instrument. These are the parts that run by themselves, and the timeout is
+// the one no scenario here can reach: making the instrument fail to answer
+// inside 120ms is not something a test can arrange on a working cable.
+test('grabbing a live bar reads that parameter, and cannot hang on it', () => {
+  const src = code(read('audition.js'));
+
+  const fn = /async function readBeforeDrag\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(fn, 'readBeforeDrag is still recognisable');
+  assert.match(fn[0], /midi\.readParam\(key\)/,
+    'it reads the one parameter being grabbed, not the whole buffer');
+  // THE RACE IS THE WHOLE GUARANTEE. Without it a lost reply leaves the press
+  // waiting forever, which is a control that sometimes does not work — worse
+  // than the rare wrong value it was protecting against (Daniel, 16 Nov).
+  assert.match(fn[0], /Promise\.race\(/,
+    'raced against a timeout, so a slow instrument cannot swallow the gesture');
+  assert.match(fn[0], /setTimeout\(\(\) => res\(null\), GRAB_READ_MS\)/,
+    'and the timeout RESOLVES rather than rejecting — carrying on is the '
+    + 'decision, not an error');
+
+  // AND THE DRAG IS WIRED TO IT. The function could be perfect and never
+  // called, which is the shape this file exists for.
+  const down = /el\.addEventListener\('pointerdown', async \(e\) => \{([\s\S]*?)\n  \}\);/.exec(src);
+  assert.ok(down, 'the pointerdown handler is still recognisable');
+  assert.match(down[0], /await readBeforeDrag\(info\.key\)/,
+    'the grab awaits the read');
+  // BEFORE THE FIRST WRITE, which is the entire point: reading after the
+  // press would correct the display having already sent the wrong value.
+  assert.ok(
+    down[0].indexOf('readBeforeDrag') < down[0].indexOf('move({ clientX: downX })'),
+    'and does so BEFORE the press writes anything'
+  );
+  // preventDefault cannot move below the await: it is only honoured while the
+  // event is still being dispatched.
+  assert.ok(
+    down[0].indexOf('e.preventDefault()') < down[0].indexOf('readBeforeDrag'),
+    'preventDefault stays above the await, where it still has an effect'
+  );
+});
+
+// ONE RULE FOR WHAT A READING DOES TO THE WORKING COPY, not two.
+test('both readers absorb an instrument value through the same function', () => {
+  const src = code(read('audition.js'));
+  const uses = src.match(/absorbOneRead\(/g) || [];
+  assert.ok(uses.length >= 3,
+    `absorbOneRead is defined and used by both readers (found ${uses.length})`);
+  // The poll must not carry its own copy of the baseline rule. Two copies
+  // drift, and the one that drifts is the one nobody is looking at.
+  const poll = /function startPanelPoll\(\) \{([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(poll, 'startPanelPoll is still recognisable');
+  assert.match(poll[0], /absorbOneRead\(key, r\.value\)/,
+    'the poll goes through it');
+  assert.doesNotMatch(poll[0], /SevenDrift\.absorbPanelRead/,
+    'and does not reach past it to the decision directly');
+});
+
 // NAVIGATING AWAY ASKS FIRST — both doors, and before any state moves.
 //
 // "Navigating away discards" was settled on 2026-08-12 with a warning

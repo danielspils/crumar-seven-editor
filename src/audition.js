@@ -343,6 +343,91 @@
     }, 80));
   }
 
+  // WHAT A READING OFF THE INSTRUMENT DOES TO THE WORKING COPY — in one
+  // place, because there are now two callers and the rule is subtle enough
+  // that two copies of it would drift. The decision itself is in
+  // src/drift.js (absorbPanelRead) and is unit-tested there; this is the part
+  // that touches `liveEdit`.
+  //
+  // A VALUE READ FROM THE INSTRUMENT IS NOT AN EDIT. The first reading of a
+  // parameter establishes what this session started from — the record the
+  // baseline was seeded from was simply out of date — so the baseline moves
+  // with it. Without that, one stale parameter in a backup made every visit to
+  // that slot report unsaved changes nobody had made (measured on Bank 3
+  // Preset 5: zd6_br, record 0, instrument 1).
+  //
+  // SEEN, whether or not it differed. Marking only on a difference would let a
+  // parameter that happened to match at first be absorbed as "first" later,
+  // swallowing a real edit.
+  function absorbOneRead(key, reading) {
+    if (!liveEdit) return false;
+    const firstSeen = !liveEdit.panelSeen[key];
+    liveEdit.panelSeen[key] = true;
+    const verdict = SevenDrift.absorbPanelRead({
+      firstSeen,
+      // Anything outstanding is the player's: a send that has gone out and not
+      // been echoed is a value they asked for.
+      editInFlight: sendInFlight || !!pendingSend,
+      current: liveEdit.params[key],
+      reading,
+    });
+    if (!verdict.changed) return false;
+    liveEdit.params[key] = verdict.param;
+    if (verdict.baseline) liveEdit.baseline[key] = verdict.param;
+    return true;
+  }
+
+  // ---- B7: THE PANEL IS A CACHED VIEW, SO ASK BEFORE A DRAG WRITES ---------
+  //
+  // THE BUG. A bar writes the pointer's ABSOLUTE position (intentFrom:
+  // `pct * max`). When the instrument has moved without the app originating
+  // the change, the number on screen is stale — so a player who sees 0 and
+  // aims for 32 moves the device from 113 to 32: the opposite direction from
+  // what they asked, by 81. Measured 15 Nov 2026 on hardware
+  // (test/ui/scenarios/fx2-delay-display.js). It self-corrects on the write
+  // that does the damage, which is why three sessions on B5 never caught it.
+  //
+  // THE FIX, Daniel's call 16 Nov 2026: read THAT ONE PARAMETER at the moment
+  // the slider is grabbed, put the true value on screen, and let the drag
+  // start from there. One parameter, at the grab — not on hover, not on view
+  // entry, not the whole panel. A single read is ~13ms measured
+  // (param-read-cost.js, median of 25), which is inside the 100ms a press
+  // absorbs; the whole buffer is ~1437ms and would be a stall.
+  //
+  // NOT A RELATIVE DRAG. That fixes the symptom and adds a new lie — the
+  // handle at 0 while the device holds 113, so dragging to the far right
+  // stops meaning 127. A control that looks absolute and behaves relative is
+  // worse than one that is briefly wrong, and it would cost the deliberate
+  // "press anywhere on the track, no handle to hunt for" interaction across
+  // every control in the app.
+  //
+  // A FAILED READ MUST NOT SWALLOW THE GESTURE. If the instrument does not
+  // answer inside the budget the drag proceeds on the old behaviour: a rare
+  // wrong value beats a control that sometimes does not work because MIDI
+  // hiccuped. The timeout is what makes that true — without it a lost reply
+  // leaves the press waiting forever.
+  const GRAB_READ_MS = 120;
+
+  async function readBeforeDrag(key) {
+    if (!isLive()) return false;
+    let r = null;
+    try {
+      r = await Promise.race([
+        window.sevenAPI.midi.readParam(key),
+        // Resolves null rather than rejecting: a timeout here is not an error,
+        // it is the decision to carry on. The abandoned read settles later and
+        // is ignored, which is harmless — readParam has no side effect.
+        new Promise((res) => { setTimeout(() => res(null), GRAB_READ_MS); }),
+      ]);
+    } catch {
+      return false;                       // the same answer as a timeout
+    }
+    if (!r || !r.ok || !liveEdit) return false;
+    const moved = absorbOneRead(key, r.value);
+    if (moved) deps.renderDetail();
+    return moved;
+  }
+
   // The six panel-owned Clavi tabs announce nothing (flag=0, cc=-1), so the
   // only way to follow them is to look. While a Clavi patch is live, poll them
   // about once a second — six reads, well inside what the port carries (a
@@ -362,26 +447,10 @@
         // SEEN, whether or not it differed. Marking only on a difference would
         // let a parameter that happened to match at first be absorbed as
         // "first" later, swallowing a real edit.
-        const firstSeen = !liveEdit.panelSeen[key];
-        liveEdit.panelSeen[key] = true;
-        const verdict = SevenDrift.absorbPanelRead({
-          firstSeen,
-          // Anything outstanding is the player's: a send that has gone out and
-          // not been echoed is a value they asked for.
-          editInFlight: sendInFlight || !!pendingSend,
-          current: liveEdit.params[key],
-          reading: r.value,
-        });
-        if (!verdict.changed) continue;
-        liveEdit.params[key] = verdict.param;
-        // A VALUE READ FROM THE INSTRUMENT IS NOT AN EDIT. The first reading
-        // establishes what this session started from — the record the baseline
-        // was seeded from was simply out of date — so the baseline moves with
-        // it. Without this, one stale parameter in a backup made every visit
-        // to that slot report unsaved changes nobody had made (measured on
-        // Bank 3 Preset 5: zd6_br, record 0, instrument 1).
-        if (verdict.baseline) liveEdit.baseline[key] = verdict.param;
-        changed = true;
+        // THE SAME RULE THE GRAB READ USES — absorbOneRead above, which is
+        // where the reasoning lives. Two copies of it would drift, and the
+        // half that drifted would be the one nobody was looking at.
+        if (absorbOneRead(key, r.value)) changed = true;
       }
       // A tab move AFTER that is the PLAYER's edit — it makes the buffer differ
       // from what this session started with, so it counts as unsaved work.
@@ -541,7 +610,7 @@
 
   // Bars: press or drag anywhere along the track. Value follows the pointer,
   // rounded to the parameter's own range — no separate handle to hunt for.
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', async (e) => {
     const idleBar = e.target.closest('.param:not(.is-live) .param-bar');
     if (idleBar) {
       // Remember where on the bar they pressed; the click handler that follows
@@ -551,11 +620,46 @@
     }
     const bar = e.target.closest('.param.is-live .param-bar');
     if (!bar) return;
+    // BEFORE ANY await. preventDefault is only honoured while the event is
+    // still being dispatched, so it cannot move below the read.
     e.preventDefault();
     const info = rowKeyOf(bar);
     if (!info) return;
-    e.preventDefault();
-    const rect = bar.getBoundingClientRect();
+    // The press position, taken now: `e` survives the await but the element
+    // may not, and reading it here keeps the two independent.
+    const downX = e.clientX;
+
+    // ---- B7: ASK THE INSTRUMENT WHAT THIS PARAMETER ACTUALLY IS ----------
+    //
+    // ~13ms measured, and the drag proceeds either way (readBeforeDrag).
+    //
+    // A RELEASE DURING THE READ IS A CLICK, NOT A DRAG. Watched for while the
+    // read is in flight, because the move/up listeners cannot be registered
+    // until after it — registering them first would let a pointermove land
+    // mid-read and write from exactly the stale value this is correcting.
+    // Without this watch, a press and release inside 13ms would arm a drag
+    // with no gesture left to end it.
+    let released = false;
+    const earlyUp = () => { released = true; };
+    window.addEventListener('pointerup', earlyUp, { once: true });
+    const corrected = await readBeforeDrag(info.key);
+    window.removeEventListener('pointerup', earlyUp);
+    // The session can end while the read is in flight — the cable is one
+    // thing Daniel moves between this app and his JUNO-X rig.
+    if (!isLive()) return;
+
+    // RE-MEASURED AFTER THE READ, because a correction re-renders the detail
+    // pane and the node measured before it is detached — and a detached node
+    // reports zeros from getBoundingClientRect rather than throwing, which
+    // reads as a bar that teleported to the origin. The geometry is the same
+    // either way; what matters is that the box belongs to an element that is
+    // still in the document.
+    const live = corrected
+      ? (el.querySelector(`.param.is-live[data-key="${info.key}"] .param-bar`) || bar)
+      : bar;
+    const rect = live.getBoundingClientRect();
+    if (!rect.width) return;
+
     const valueAt = (clientX) => {
       const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       return Math.round(pct * info.max);
@@ -569,9 +673,14 @@
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
+
+    // THE PRESS ITSELF, from a panel that now agrees with the instrument.
+    // This is the write B7 is about, and the only thing that changed is what
+    // the player could see when they aimed it.
+    move({ clientX: downX });
+    if (released) return;            // it was a click; there is no drag to arm
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
-    move(e);
   });
 
   // Switches, choice tabs and segmented selectors all carry their target value.

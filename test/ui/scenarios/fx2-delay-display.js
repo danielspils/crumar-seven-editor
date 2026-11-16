@@ -194,9 +194,23 @@
   // THE CONSEQUENCE, stated as a number rather than left to the reader: how
   // far the instrument moved versus how far the player asked it to move from
   // what they could see.
+  //
+  // READ THIS LINE AS HISTORY, NOT AS WHAT THE APP DOES NOW (16 Nov 2026).
+  // `shownBefore` is sampled BEFORE the press, and since B7 was fixed the
+  // grab itself reads the parameter and puts the true value on screen — so
+  // the number the player actually sees at the moment they aim is the
+  // instrument's, not this one. The sequence is stale -> TRUE -> dragged, and
+  // a before/after sample cannot see the middle of it.
+  //
+  // This scenario is kept as the MECHANISM's record: that a bar writes the
+  // pointer's absolute position, which is still true and is what made the
+  // stale display dangerous. The fix is proved by
+  // test/ui/scenarios/grab-reads-param.js, which samples through the gesture.
   if (shownBefore !== null && before !== null) {
-    ui.note(`  the player saw ${shownBefore} and aimed at ${expected}`
-      + ` (a move of ${expected - shownBefore});`
+    ui.note(`  BEFORE THE FIX this read: the player saw ${shownBefore} and aimed`
+      + ` at ${expected} (a move of ${expected - shownBefore});`
       + ` the instrument moved ${after - before}`);
+    ui.note('  NOW the grab reads first, so what they see when they aim is the'
+      + ' instrument\'s own value — see grab-reads-param.js');
   }
 })()
