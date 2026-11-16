@@ -145,6 +145,37 @@
     return n;
   }
 
+  // ---- BANK 1 IS FACTORY, SO IT CANNOT GO STALE ---------------------------
+  //
+  // The Seven refuses a store into Bank 1 — owner-confirmed on hardware
+  // 2026-08-13, and the manual says it too — so what a backup recorded there
+  // is still what the instrument holds. "as of last backup · 14 Nov" is a
+  // caveat about drift that cannot happen, which makes it simply false.
+  //
+  // 0-BASED, like the bank index the rows are drawn from. The instrument's
+  // own panel calls it Bank 1 and every user-facing string does too; this is
+  // the one place the two conventions meet, so it is named rather than
+  // written as a bare 0 at the call site (CLAUDE.md, "Two coordinate
+  // conventions, one seam apart").
+  const FACTORY_BANK = 0;
+  const bankIsFactory = (bankIndex) => bankIndex === FACTORY_BANK;
+
+  // WHAT THE LINE SAYS ABOVE A FACTORY BANK.
+  //
+  // Two different claims, and only one of them is wrong there:
+  //
+  //   "as of last backup · <date>"  says this MAY be out of date. On Bank 1
+  //                                 it cannot be, so the line comes off.
+  //   "not yet backed up"           says the app has no record at all. That
+  //                                 is about the LIBRARY, not about drift,
+  //                                 and it stays true whatever the bank.
+  //
+  // So a factory bank with a record says nothing, and one without a record
+  // says the same thing every other bank would.
+  function factoryBankLabel({ hasRecord = false } = {}) {
+    return hasRecord ? '' : 'not yet backed up';
+  }
+
   // NO "as of now". It is true for one instant and then decays silently, and
   // the app would go on saying it for an hour. A clock time cannot rot that
   // way: it says when it was true and lets the reader judge. Relative time
@@ -216,5 +247,8 @@
     return elapsed >= days;
   }
 
-  return { slotState, asOfLabel, slotView, liveCount, backupIsStale, BACKUP_STALE_DAYS };
+  return {
+    slotState, asOfLabel, slotView, liveCount, backupIsStale, BACKUP_STALE_DAYS,
+    bankIsFactory, factoryBankLabel, FACTORY_BANK,
+  };
 });

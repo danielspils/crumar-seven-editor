@@ -1945,7 +1945,12 @@
         backupSound: slot ? slot.soundName : null,
         liveSound: seen ? seen.soundName : null,
       });
-      row.classList.toggle('is-stale', view.state === 'from-backup');
+      // BANK 1 NEVER FADES. The fade says "this describes the past and may
+      // have moved since". A factory bank cannot be stored to, so its record
+      // is still current however old it is — fading it would be the same
+      // false caveat the line above the rows just stopped making.
+      row.classList.toggle('is-stale',
+        view.state === 'from-backup' && !SevenOtsFreshness.bankIsFactory(bankIndex));
     }
   }
 
@@ -2439,7 +2444,18 @@
   const fmtClock = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     .replace(/\s?([AP])M/i, (m, p) => `${p.toLowerCase()}m`);
 
+  // Has THIS bank got a backup record behind any of its slots? Per bank,
+  // because `banksAsOf` is the newest date across all four and says nothing
+  // about which ones are covered.
+  const bankHasRecord = (b) => !!(banks[b] && banks[b].patches.some(Boolean));
+
   function asOfText() {
+    // BANK 1 IS FACTORY AND CANNOT GO STALE. The decision and both of its
+    // cases are in src/ots-freshness.js, where they are unit-tested; this
+    // only supplies which bank is on screen and whether it has a record.
+    if (SevenOtsFreshness.bankIsFactory(bankIndex)) {
+      return SevenOtsFreshness.factoryBankLabel({ hasRecord: bankHasRecord(bankIndex) });
+    }
     const d = banksAsOf ? new Date(banksAsOf) : null;
     const age = banksAsOf ? SevenLibraryView.ago(banksAsOf) : '';
     // Same day, nothing verified: the age IS the answer, and printing the date

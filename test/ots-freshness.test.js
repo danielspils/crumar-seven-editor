@@ -189,3 +189,48 @@ test('the header counts slots heard from, not slots fully read', () => {
   assert.strictEqual(liveCount([]), 0);
   assert.strictEqual(liveCount(), 0);
 });
+
+// ---- BANK 1 IS FACTORY, SO IT CANNOT GO STALE -----------------------------
+//
+// The Seven refuses a store into Bank 1 (owner-confirmed on hardware
+// 2026-08-13), so what a backup recorded there is still what the instrument
+// holds. Every freshness claim about it is a caveat about drift that cannot
+// happen.
+const { bankIsFactory, factoryBankLabel, FACTORY_BANK } = require('../src/ots-freshness.js');
+
+test('only Bank 1 is the factory bank, and it is named 0-based', () => {
+  // 0-BASED, matching the index the rows are drawn from — not the "1" the
+  // instrument's panel prints. This project already has two bank conventions
+  // one seam apart, so the constant is asserted rather than assumed.
+  assert.strictEqual(FACTORY_BANK, 0);
+  assert.strictEqual(bankIsFactory(0), true, 'Bank 1 (index 0) is factory');
+  for (const b of [1, 2, 3]) {
+    assert.strictEqual(bankIsFactory(b), false, `bank index ${b} is not factory`);
+  }
+});
+
+test('a factory bank with a record says nothing at all', () => {
+  // "as of last backup · 14 Nov" is a promise that this MAY have moved. On a
+  // bank that cannot be written to, it is simply false — so the line comes
+  // off rather than being reworded.
+  assert.strictEqual(factoryBankLabel({ hasRecord: true }), '');
+});
+
+test('but "not yet backed up" is a different claim, and it survives', () => {
+  // That one is about the LIBRARY — the app has no record — and it is true
+  // whatever the bank. Collapsing the two would delete a true statement to
+  // be rid of a false one.
+  assert.strictEqual(factoryBankLabel({ hasRecord: false }), 'not yet backed up');
+  assert.strictEqual(factoryBankLabel(), 'not yet backed up',
+    'and no argument at all means no record, not "has one"');
+});
+
+test('the factory label never says "as of", in either case', () => {
+  // The one phrase that must not survive, asserted on its own: a reword that
+  // kept "as of last backup" while changing the date format would pass the
+  // two checks above.
+  for (const hasRecord of [true, false]) {
+    assert.doesNotMatch(factoryBankLabel({ hasRecord }), /as of/i,
+      `a factory bank never claims a reading time (hasRecord=${hasRecord})`);
+  }
+});
