@@ -289,9 +289,24 @@ test('the new-patch writer is handed that provenance', () => {
   // which teaches nobody anything and costs a reader the real question. What
   // is load-bearing is that the writer is handed slotProvenance(), and that
   // is what is asserted.
-  assert.match(src, /saveLiveAsNewPatch\(params, \{[^}]*fromSlot: slotProvenance\(\)/,
+  //
+  // NARROWED 16 Nov 2026. Both were whole-file: the first is the SAVE FLOW's
+  // call and belongs inside openSaveFlow, and the second ran a
+  // `[\s\S]{0,200}?` window forward from createFromLive — a distance that
+  // crosses the end of the options object happily, so a `fromSlot,` in the
+  // next statement would have satisfied it.
+  //
+  // `[^}]*` is real containment inside a FLAT object literal, which the first
+  // one is. The second is not flat — `params: { ...params }` carries braces of
+  // its own — so it forbids the call's own `});` instead, the same technique
+  // the transfer slot uses to forbid a closing tag.
+  const flow = /async function openSaveFlow\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(flow, 'openSaveFlow is still recognisable');
+  assert.match(flow[0], /saveLiveAsNewPatch\(params, \{[^}]*fromSlot: slotProvenance\(\)/,
     'the save flow passes it');
-  assert.match(src, /createFromLive\(\{[\s\S]{0,200}?fromSlot,/,
+  const writer = /async function saveLiveAsNewPatch\(([\s\S]*?)\n  \}/.exec(src);
+  assert.ok(writer, 'saveLiveAsNewPatch is still recognisable');
+  assert.match(writer[0], /createFromLive\(\{(?:(?!\}\);)[\s\S])*?fromSlot,/,
     'and it reaches the store through the IPC call');
 });
 
@@ -309,8 +324,14 @@ test('the save modal says a failed borrow, and app.js no longer toasts it', () =
     'the dialog asks whether the borrow failed');
   assert.match(flow[0], /\$\{ccNote\}/, 'and renders the answer in its body');
 
+  // NARROWED 16 Nov 2026 to the deps object app.js hands the audition module.
+  // That is where the answer has to BE — a `sendCcFailed` defined anywhere
+  // else in app.js is not wired to anything.
   const app = code(read('app.js'));
-  assert.match(app, /sendCcFailed: \(\) => ccFailed/, 'app.js answers it');
+  const deps = /const audition = SevenAudition\.create\(\{([\s\S]*?)\n  \}\);/.exec(app);
+  assert.ok(deps, 'the audition deps object is still recognisable');
+  assert.match(deps[0], /sendCcFailed: \(\) => ccFailed/, 'app.js answers it');
+  // WHOLE-FILE BY NATURE: this is a denial that the toast exists anywhere.
   assert.doesNotMatch(app, /toast\([^)]*Send CC/,
     'and does not also toast it — one place, at the moment it applies');
 });
@@ -476,14 +497,20 @@ test('the naming modal names where the patch goes', () => {
   // The other caller of the same helper writes to the same place, so no path
   // is left saying something different. Checked rather than assumed: it was
   // the one thing that could have made one heading right and another wrong.
+  // NARROWED 16 Nov 2026 to generateFromInstrument, which is the other caller
+  // by name. Read file-wide, "generateFromInstrument keeps its own heading"
+  // was satisfied by any dialog in app.js carrying that title.
   const app = code(read('app.js'));
-  assert.match(app, /title: 'Name this patch'/,
+  const gen = /async function generateFromInstrument\(([\s\S]*?)\n  \}/.exec(app);
+  assert.ok(gen, 'generateFromInstrument is still recognisable');
+  assert.match(gen[0], /title: 'Name this patch'/,
     'generateFromInstrument keeps its own heading');
-  assert.match(app, /library\.generateFromSound\(/,
+  assert.match(gen[0], /library\.generateFromSound\(/,
     'and writes through generateFromSound, which also makes a library patch');
 
   // askForName must not grow an HTML door. The modal escapes its title on
   // purpose — patch names go through there elsewhere.
+  // WHOLE-FILE BY NATURE: a denial that the option exists anywhere to be passed.
   assert.doesNotMatch(app, /titleHtml/, 'no titleHtml option exists to pass markup through');
 });
 
@@ -531,9 +558,13 @@ test('the summary knows which flow it is ending', () => {
   assert.match(finish[0], /name: single &&/, 'the single send names its patch');
   assert.match(finish[0], /preset: single &&/, 'and its preset');
 
+  // NARROWED 16 Nov 2026 to transferDone, the one function that ends a walk.
   const app = code(read('app.js'));
-  assert.match(app, /SevenTransferSummary\.body\(report\)/, 'app.js asks the module');
-  assert.match(app, /SevenTransferSummary\.title\(report\)/, 'for both halves');
+  const done = /async function transferDone\(report, modal\) \{([\s\S]*?)\n  \}/.exec(app);
+  assert.ok(done, 'transferDone is still recognisable');
+  assert.match(done[0], /SevenTransferSummary\.body\(report\)/, 'app.js asks the module');
+  assert.match(done[0], /SevenTransferSummary\.title\(report\)/, 'for both halves');
+  // WHOLE-FILE BY NATURE: a denial that the inline body survives anywhere.
   assert.doesNotMatch(app, /preset\$\{report\.total === 1/,
     'and does not still build the body itself');
 });
@@ -1080,8 +1111,10 @@ test('dismissing the hold screen forgets what the app knew about that slot', () 
   // over a 1-based slot so the dialog prints what the panel prints;
   // verifiedSlots is keyed the way the rows are indexed. Off by one, nothing
   // fails — the app forgets a slot nobody touched and keeps the stale one.
-  assert.match(app, /forgetSlot: \(slot\) => forgetSlot\(slot\.bank - 1, slot\.preset - 1\)/,
-    'app.js converts the 1-based slot to the 0-based key');
+  const deps = /const audition = SevenAudition\.create\(\{([\s\S]*?)\n  \}\);/.exec(app);
+  assert.ok(deps, 'the audition deps object is still recognisable');
+  assert.match(deps[0], /forgetSlot: \(slot\) => forgetSlot\(slot\.bank - 1, slot\.preset - 1\)/,
+    'app.js converts the 1-based slot to the 0-based key, in the deps it hands over');
   const fn = /const forgetSlot = \(bank, preset\) => \{([\s\S]*?)\n  \};/.exec(app);
   assert.ok(fn, 'forgetSlot is still recognisable');
   assert.match(fn[0], /verifiedSlots\.delete\(`\$\{bank\}:\$\{preset\}`\)/,
