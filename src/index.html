@@ -2992,8 +2992,25 @@
     }
     .engine-carousel .is-peek:hover { opacity: .72; }
     .engine-carousel .is-hero { cursor: pointer; }
+    /* THE OPEN HERO NO LONGER GROWS (Daniel, 2026-11-15): it was scale(1.12)
+       and he reported it overlapping the Sample badge and the tail of the
+       sound name above it.
+       IT IS NOT A TUNING PROBLEM. The resting hero has ZERO headroom — its top
+       sits exactly on y240, which is where the name row ends — so every scale
+       above 1 goes into the header, measured: 1.12 overlaps by 15.4px, 1.08 by
+       10.2, 1.04 by 5.1. 1.00 is the only one that clears, and it clears by
+       exactly 0. Growing it at all would need headroom the layout does not
+       have, which is a layout change and not this one.
+       THE HIERARCHY SURVIVES WITHOUT THE GROWTH: the peeks are scale(.74), so
+       the hero still reads 1.35x its neighbours, and the open state is now
+       signalled by the peeks arriving and SELECT appearing rather than by the
+       middle swelling into the title.
+       WHAT THIS DOES NOT FIX, and must not be credited with: the right-hand
+       peek still runs 55.5px past the column. Its transform is
+       translateX(±92.16px), computed from the FACE width — it does not depend
+       on the hero's scale at all, so no change here could move it. */
     .engine-carousel.is-open .is-hero, .engine-carousel:focus-within .is-hero {
-      transform: scale(1.12);
+      transform: scale(1);
     }
     /* Turning the wheel: every face moves one position along, so the picture
        you clicked travels INTO the middle and the middle one travels out.
@@ -3006,8 +3023,12 @@
     .engine-carousel .is-peek:hover { opacity: .82; }
     .engine-carousel.is-open .is-prev:hover { transform: translateX(-72%) scale(.82); }
     .engine-carousel.is-open .is-next:hover { transform: translateX(72%) scale(.82); }
+    /* THE LANDING FACE MATCHES. These two are a separate literal from the rule
+       above, not a shared variable — but they have to agree, or the incoming
+       instrument arrives at 1.12 and then shrinks to 1 once the turn settles,
+       which is the double movement Daniel caught earlier in the day. */
     .engine-carousel.is-turning.is-turning-next .is-next,
-    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1.12); opacity: 1; }
+    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1); opacity: 1; }
     .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(-72%) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(72%) scale(.74); opacity: .38; }
     .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
