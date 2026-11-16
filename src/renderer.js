@@ -95,9 +95,9 @@
       // glyph: see picker.js for the two rounds that cost, and .fx-chevron for
       // the first.
       `<button type="button" class="car-step is-step-prev" data-car-step="-1"` +
-      ` aria-label="Previous sound" title="Previous sound">${STEP_CHEVRON}</button>` +
+      ` aria-label="Previous" title="Previous">${STEP_CHEVRON}</button>` +
       `<button type="button" class="car-step is-step-next" data-car-step="1"` +
-      ` aria-label="Next sound" title="Next sound">${STEP_CHEVRON}</button>` +
+      ` aria-label="Next" title="Next">${STEP_CHEVRON}</button>` +
       // Under the wheel, and only while the middle is something other than
       // what the instrument holds: with nothing to install, a Select button
       // would be a control that does nothing.
