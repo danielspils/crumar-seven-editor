@@ -848,8 +848,9 @@ not add machinery for it. If this ever stops being true — a firmware update
 putting engine parameters on the panel, say — this section is the thing that
 was relied on, and it is where the change belongs.
 
-**The `pdl_exp` group's CC data is wrong and nothing should be counted from it
-until it is fixed.** As of 14 Nov 2026 the schema reads:
+**The `pdl_exp` group's CC data is wrong — but it is not what blocks a count,
+and that correction is at the end of this section (16 Nov 2026).** As of
+14 Nov 2026 the schema reads:
 
     exp_fn  Function    cc: 1   max: 9
     exp_mn  Range min.  cc: 0   max: 127
@@ -863,9 +864,44 @@ can never be followed. And `exp_mn` claims CC 0, which is Bank Select MSB.
 Daniel confirmed the behaviour on 14 Nov: the pedal's position transmits, but
 you cannot assign the pedal without software.
 
-This is why a parameter count has been left out of this section. Any
-"N of 110 carry a CC" figure inherits these three entries and is wrong by an
-unknown amount. Fix the group, then count.
+**THE COUNT IS 22 OF 110, AND B8 IS WHAT MADE IT STATEABLE (16 Nov 2026).**
+
+This section used to end "a parameter count has been left out… any
+'N of 110 carry a CC' figure inherits these three entries and is wrong by an
+unknown amount. Fix the group, then count." That was right about the symptom
+and wrong about the remedy: the group did not need fixing, because **`cc` is
+only meaningful when `flag === 1`.**
+
+`flag=1` covers exactly **22** parameters, and they are exactly the 22 fixed
+CCs the manual lists in §10.4. The three entries above are all `flag=0`, so
+their `cc` values were never part of the map and never had to be — `-1` is the
+sentinel for the other 85 `flag=0` parameters, and these three simply carry
+stale numbers instead. They are not a corruption to be repaired; they are a
+field nobody should have been reading.
+
+So:
+
+| | |
+|---|---|
+| parameters the device reports | **110** |
+| carrying a real CC (`flag === 1`) | **22** |
+| editor-only (`flag === 0`) | **88** |
+
+`src/cc-map.js` builds the map from `p.flag === 1` as of `5f0694f`, with
+`test/cc-map.test.js` asserting that the 22 are exactly the manual's 22 and
+that nothing from the pedal leaks in. Full reasoning in
+`docs/SCHEMA-VS-MANUAL.md` §2.
+
+**WHAT IS STILL TRUE ABOVE, and is a different complaint:** the three `cc`
+values really are nonsense, and `exp_fn` really cannot be assigned without
+software. That is worth knowing when reading the schema by eye. It is simply
+not a reason to refuse a count.
+
+**AND THE COUNT IS A MEASUREMENT, so it has a date.** Re-derive it from the
+schema rather than quoting this table if it is ever used to decide work —
+`node tools/b10-write-paths.js` prints it, among other things. A firmware
+whose parameter set differs will give a different answer, which is the whole
+reason the schema is version-gated.
 
 ### Scope: this app is USB-only
 
