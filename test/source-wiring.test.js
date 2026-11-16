@@ -863,10 +863,19 @@ test('the picker caret is drawn, not typed', () => {
 test('something actually opens the backup grid, and paints it from the feed', () => {
   const src = read('app.js');
 
-  assert.match(src, /SevenModalPanel\.buildGrid\(/,
-    'app.js builds the grid from the one drawing');
-  assert.match(src, /SevenModalPanel\.paintBackup\(/,
-    'and paints it');
+  // NARROWED 16 Nov 2026. These two asked whether app.js mentions buildGrid
+  // and paintBackup ANYWHERE, which is the weakest form of a consumer check:
+  // paintBackup is called in three places, so the one that matters — the
+  // repaint driven by the FEED — could have gone with the other two green.
+  // Each is now read out of the function whose job it is.
+  const opened = /const openBackupProgress = \(\) => \{([\s\S]*?)\n    \};/.exec(src);
+  assert.ok(opened, 'openBackupProgress is still recognisable');
+  assert.match(opened[0], /SevenModalPanel\.buildGrid\(/,
+    'the during view builds its grid from the one drawing');
+  const painted = /const showBackupProgress = \(ev\) => \{([\s\S]*?)\n    \};/.exec(src);
+  assert.ok(painted, 'showBackupProgress is still recognisable');
+  assert.match(painted[0], /SevenModalPanel\.paintBackup\(/,
+    'and the progress feed is what paints it');
 
   // IT OPENS WHEN A RUN STARTS. The grid built in a function nothing calls is
   // the same bug one level up.
@@ -893,20 +902,34 @@ test('something actually opens the backup grid, and paints it from the feed', ()
   // what a keyboard or screen-reader user is told about stopping a 48-second
   // run. The default is 'Close', and reverting to it would be silent: the
   // dialog would look and behave identically.
-  const opened = /const openBackupProgress = \(\) => {[\s\S]{0,1400}?\}\);/.exec(src);
-  assert.ok(opened, 'openBackupProgress still opens a modal in a recognisable way');
+  // The whole function, not a {0,1400} window from its head: the window was a
+  // distance that happened to reach the options object and would have stopped
+  // short the moment anything was added above it.
   assert.match(opened[0], /confirmLabel: ''/, 'it asks for no affirmative button');
   assert.match(opened[0], /cancelLabel: 'Cancel backup'/,
     "and the X says it cancels the backup, not 'Close'");
   // Cancelling must still MEAN cancelling — the runner's own cancel, which
   // finishes the slot in flight rather than aborting mid-read.
-  assert.match(src, /await window\.sevenAPI\.midi\.cancelBackup\(\);[\s\S]{0,200}bk-where/,
+  //
+  // NARROWED 16 Nov 2026, and this one had a live decoy: app.js calls
+  // cancelBackup in TWO places, so a file-wide `cancelBackup ... {0,200} ...
+  // bk-where` could be satisfied with the dialog's own way out gone.
+  assert.match(opened[0], /await window\.sevenAPI\.midi\.cancelBackup\(\);/,
     'leaving the dialog still cancels the run through the runner');
+  assert.match(opened[0], /bk-where/,
+    'and says so in the dialog that is still on screen');
 
-  assert.match(src, /finishBackupProgress\(ev\)/, 'backup-done closes the during view');
-  const done = /const showBackupDone = async \(ev\) => {[\s\S]{0,500}/.exec(src);
-  assert.ok(done, 'showBackupDone is still recognisable');
-  assert.match(done[0], /await finishBackupProgress\(ev\)/,
+  // ON THE backup-done EVENT, not merely somewhere in the file. The during
+  // view closing is the listener's job, and the listener is where it can be
+  // lost.
+  const doneBranch = /\} else if \(ev\.type === 'backup-done'\)([^\n]*)/.exec(src);
+  assert.ok(doneBranch, 'the backup-done branch is still recognisable');
+  assert.match(doneBranch[0], /showBackupDone\(ev\)/, 'backup-done is handled');
+  const showDone = /const showBackupDone = async \(ev\) => \{([\s\S]*?)\n    \};/.exec(src);
+  assert.ok(showDone, 'showBackupDone is still recognisable');
+  assert.match(showDone[0], /finishBackupProgress\(ev\)/,
+    'and it closes the during view');
+  assert.match(showDone[0], /await finishBackupProgress\(ev\)/,
     'and it is awaited, so the last light is on screen before the dialog goes');
 });
 
@@ -920,11 +943,19 @@ test('something actually opens the backup grid, and paints it from the feed', ()
 // somebody reads afterwards.
 test('the backup still ends in its own dialog, with its own words', () => {
   const src = read('app.js');
-  const summary = /title: ev\.cancelled \? 'Backup cancelled' : '([^']+)'/.exec(src);
+  // NARROWED 16 Nov 2026 to showBackupDone, which is the one function that
+  // ends a run. Everything this test is about lives there — the dialog, the
+  // split it must not carry, and the connection row that must — so reading
+  // the whole file for any of them was asking a weaker question than the test
+  // is named after.
+  const fn = /const showBackupDone = async \(ev\) => \{([\s\S]*?)\n    \};/.exec(src);
+  assert.ok(fn, 'showBackupDone is still recognisable');
+  const summary = /title: ev\.cancelled \? 'Backup cancelled' : '([^']+)'/.exec(fn[0]);
   assert.ok(summary, 'the completion dialog still names itself');
   assert.strictEqual(summary[1], 'Backup completato!',
     'and it is still the Castelfidardo one');
-  assert.match(src, /backed up<br>to your computer/, 'with the count it has always carried');
+  assert.match(fn[0], /backed up<br>to your computer/,
+    'with the count it has always carried');
 
   // AND NOT THE DEDUPE SPLIT, which Daniel removed from this dialog on
   // 14 Nov 2026 as unreadable. Pinned from THIS dialog's own body rather than
@@ -947,10 +978,17 @@ test('the backup still ends in its own dialog, with its own words', () => {
   // The split itself is not deleted. The grid lights an unchanged slot exactly
   // like a new one, so the distinction has to live somewhere; it is the
   // connection row's line.
-  assert.match(src, /counts = `\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new`/,
+  //
+  // BOTH READ OUT OF showBackupDone, and the second one had been a distance
+  // window: `connText.textContent = ev.cancelled ... {0,300} ... ${counts}`
+  // ran forward through whatever followed, and app.js writes connText in a
+  // dozen places. Asserted inside the function that owns both halves instead.
+  assert.match(fn[0], /counts = `\$\{ev\.unchanged\} unchanged, \$\{ev\.created\} new`/,
     'the split is still computed');
-  assert.match(src, /connText\.textContent = ev\.cancelled[\s\S]{0,300}\$\{counts\}/,
-    'and still shown in the connection row');
+  assert.match(fn[0], /connText\.textContent = ev\.cancelled/,
+    'and the connection row is what reports it');
+  assert.match(fn[0], /\$\{counts\} · \$\{where\}/,
+    'carrying the split and where the instrument was left');
 });
 
 // ---- Saving what you hear (out/save-what-you-hear.md §8) -------------------
