@@ -1883,9 +1883,35 @@ the peek fails, correctly, on both.
 
 Kept here because they otherwise live only in a chat that ends.
 
+**THIS IS THE SECOND PUNCH LIST, AND THE OTHER ONE IS `out/next-1.5.7.md`.**
+Read both. Neither referenced the other until 16 Nov 2026, and that is the
+root cause of the audit taken that day: `out/next-1.5.7.md` had five headings
+reading as open when the work was done, and this list held at least one item
+— the search count — that was **logged FOR 1.5.7 and does not appear in the
+1.5.7 file at all**. Two lists means the one nobody is reading is the one
+that rots.
+
+**WHICH LIST A THING BELONGS ON.** This one is for standing facts about the
+repo that outlive a release: a hazard, a known gap, a thing that will bite
+somebody again. `out/next-1.5.7.md` is for the work of ONE release and dies
+with it. An item that is "fix this before shipping" goes there; an item that
+is "this has always been true and will be after the release" stays here. An
+item that is both — the search count is — goes on the release list **and
+keeps a line here saying so**.
+
+**AND A FIXED ITEM GETS STRUCK, NOT DELETED**, with the commit that fixed it.
+The `.top-tab` entry below sat here saying "NOT fixed" for a day after
+`022e615` fixed it, which is this file being the thing CLAUDE.md warns about
+in "A RULE IN THIS FILE IS NOT A RECORD THAT IT WAS DONE".
+
 - **THE SEARCH COUNT NEVER REFRESHES WHILE YOU TYPE** — on any tab. Logged for
   1.5.7 (Daniel, 2026-11-15); deliberately NOT fixed in the four-tab branch,
   which is visual-only, because the fix is in the shared search paint path.
+
+  **ALSO ON THE RELEASE LIST NOW — `out/next-1.5.7.md` item 9a** (16 Nov
+  2026). It was logged FOR 1.5.7 and lived only here for a day, which is the
+  single clearest thing the audit of 16 Nov went looking for. The full
+  reasoning stays below; the release list carries the work.
 
   The count ("3 of 12") is drawn into `.lib-bar` by `renderBody`, and it only
   appears WHILE a search is narrowing something — that was the point of it
@@ -1899,9 +1925,37 @@ Kept here because they otherwise live only in a chat that ends.
   ARGUMENT to `renderBody`, so it reports the hits the PREVIOUS render left on
   `state`. Both halves want fixing together, and the fix has to keep the caret.
 
-- **`.top-tab`'s font shorthand is invalid, so the word tabs render at the
-  browser default** (found 2026-11-15, NOT fixed — Daniel's call, since it
-  changes the most prominent type in the app).
+- ~~**`.top-tab`'s font shorthand is invalid**~~ **FIXED the same day it was
+  found — `022e615`, 2026-11-15.** This entry said "NOT fixed — Daniel's
+  call" for a day after it had been fixed, and the 16 Nov audit found it. It
+  is kept, struck through, because the measurement under it is the useful
+  part and because this is what the audit was looking for.
+
+  **BOTH THINGS THAT RESTED ON THE BROKEN NUMBER WERE RE-DERIVED** in that
+  commit, and the answer was not what this entry predicted:
+
+  - **The 33.5px baseline offset did NOT have to change.** The word tab went
+    from 400 13.333px to 700 17px/18.7px and its baseline moved **0.2px**, in
+    both themes. That is not luck: the nav row is baseline-aligned and its
+    baseline is set by the LOGO, whose height comes from a fixed 28.2px
+    drawing rather than from type — the word tabs were always aligning to it,
+    not the reverse. `one-header-line.js` went green on the new numbers
+    without being touched.
+  - **The bank tabs now land as the mock drew them**: 14/700 against a real
+    17/700, where the day before they were 14/700 against an accidental
+    13.333/400 and looked larger and bolder than the row above them. Nothing
+    in that commit changed; it simply lands correctly.
+
+  **And a guard went in so it cannot come back:** `css-hazards.test.js` fails
+  on any `font:` shorthand that MIXES `inherit` with other values — that
+  exact shape, not every use of `inherit`, because condemning the ~30 correct
+  `font: inherit` lines in this file is how a check becomes one people skim.
+  Two rules were wrong, `.top-tab` and `.top-strut`, and they were wrong
+  TOGETHER — the strut carries a word tab's metrics on purpose, so the logo
+  kept lining up while both sat at the default. That is why nothing ever
+  looked broken enough to chase.
+
+  The original finding, kept for the measurement:
 
   ```css
   .top-tab { font: 700 17px/1.1 inherit; font-family: inherit; }
@@ -1919,11 +1973,9 @@ Kept here because they otherwise live only in a chat that ends.
   compute to **400 13.333px**, the UA button default; and the valid shorthand
   applied inline takes them straight to 17px/700.
 
-  So the type ladder's top rung has never been on screen. Two things rest on
-  the broken number and must be re-derived when it is fixed: the 33.5px
-  baseline offset that puts SOUND ENGINE on the word tabs' baseline
-  (`one-header-line.js` will fail loudly, which is what it is for), and the
-  bank tabs' size, which was chosen to sit a step below the word tabs.
+  So the type ladder's top rung had never been on screen. Two things rested
+  on the broken number and were re-derived when it was fixed — see above for
+  what the re-derivation actually found.
 
 - **UI STATE LEAKS BETWEEN SCENARIOS, and it cost two days of calling two
   tests "flaky"** (settled 2026-08-22). The runner copies a fresh LIBRARY per
