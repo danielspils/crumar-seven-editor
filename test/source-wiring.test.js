@@ -345,11 +345,34 @@ test('the transfer walk builds ONE slot with both faces in it', () => {
   // the app still builds the same shape. Without it, app.js could go back to
   // two bare paragraphs and the scenario would stay green measuring its own
   // markup.
+  //
+  // NARROWED 16 Nov 2026, and the old version did not check its own claim.
+  // It was four independent substring searches over the whole file: a
+  // tx-slot, a hold face, a skip face and the word "auto-advancing", each
+  // free to be anywhere. app.js builds THREE tx-slots — the destination
+  // chooser and the bank chooser have one each — so the slot those searches
+  // found was not necessarily the walk's, and the faces were not necessarily
+  // inside any slot at all. The test is named "builds ONE slot with both
+  // faces in it" and that containment was the one thing it did not assert.
+  //
+  // One structural match now: a tx-slot, then both faces, then the aside,
+  // inside a bounded window. Nothing distant can stand in for it.
   const src = code(read('app.js'));
-  assert.match(src, /class="tx-slot"/, 'the slot is still there');
-  assert.match(src, /data-face="hold"/, 'with the hold face');
-  assert.match(src, /data-face="skip"/, 'and the skip face');
-  assert.match(src, /auto-advancing/, 'which says the walk is about to move on');
+  // THE FIRST STEP FORBIDS A CLOSING TAG. A plain `[\s\S]{0,400}?` window
+  // between the slot and the hold face looks like containment and is not: it
+  // crosses `</div>` happily, so a slot closed immediately and the faces left
+  // outside it still matched. Measured — that mutation PASSED the first
+  // version of this narrowing, which is why it is written this way.
+  assert.match(
+    src,
+    /<div class="tx-slot">(?:(?!<\/div>)[\s\S]){0,400}?data-face="hold"/,
+    'the hold face is INSIDE the slot, with no closing tag between them'
+  );
+  assert.match(
+    src,
+    /data-face="hold"[\s\S]{0,500}?data-face="skip"[\s\S]{0,500}?auto-advancing/,
+    'and the skip face and the auto-advancing aside follow it in the same slot'
+  );
 });
 
 test('the hold screen shows the instrument\'s own drawing', () => {
@@ -561,8 +584,19 @@ test('the daily ping sends only what main states, and never blocks a launch', ()
     + 'check in to the production relay');
 
   // THE OPT-OUT IS REACHABLE. A switch nobody can find is not a choice.
-  assert.match(src, /label: 'Send anonymous daily ping'/, 'the menu carries the opt-out');
-  assert.match(src, /type: 'checkbox'/, 'as a checkbox that shows its state');
+  //
+  // NARROWED 16 Nov 2026. The second line asked whether main.js contains
+  // `type: 'checkbox'` ANYWHERE — satisfied by any checkbox in a 1200-line
+  // file that builds the whole application menu, including ones added years
+  // from now for something else. The two lines together claimed "the opt-out
+  // is a checkbox" and asserted "there is a label" and "there is a checkbox",
+  // which are not the same statement. One match now, so the checkbox has to
+  // be THIS item's.
+  assert.match(
+    src,
+    /label: 'Send anonymous daily ping',[\s\S]{0,200}?type: 'checkbox'/,
+    "the menu carries the opt-out AS a checkbox, so it shows its own state"
+  );
 });
 
 test('a face is hidden by CLASS, never by `hidden`', () => {
