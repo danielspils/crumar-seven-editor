@@ -24,6 +24,37 @@
 // So a row can say "this is no longer what your backup recorded" and can name
 // the SOUND — but never the patch name, because the Seven stores no names and
 // the app has no way to know what the slot is called now.
+//
+// ---------------------------------------------------------------------------
+// STILL TO BUILD, decided 2026-11-15 and written here because this is the file
+// the next step extends.
+//
+// AN INCOMING PANEL PROGRAM CHANGE MUST ARM THE SAME SLOT READ AS AN APP
+// RECALL — the 0x45 sound and the 110-parameter read, with the same
+// coalescing. Today only the app's own recalls arm it: expectSlotRead() has
+// three callers (the bank row, the panel preset button, the bank-tab arrow
+// walk) and recordSlotSound() rejects anything it did not ask for.
+//
+// THIS COVERS STORES WITH NO SEPARATE WATCHER, which is why the fingerprint
+// watcher that was proposed is NOT being built. Measured on hardware,
+// 2026-11-15, Bank 4 Preset 5 (program 28), Send PC on, with a real
+// three-second hold:
+//
+//   16:27:19.327  program-change  program=28 bank=4 preset=5 echo=false
+//   16:27:19.337  recall-burst    program=28 soundId=10 fingerprint=10|7:127,...
+//
+// A store is followed by exactly such a recall. The frames already reach the
+// renderer and carry the slot; nothing consumes them, so the slot's own 0x45
+// arrived and was dropped, and the app went on showing a row whose preset had
+// changed underneath it.
+//
+// AND THE FULL READ CLOSES THE FINGERPRINT HOLE. The burst's fingerprint is
+// the sound id plus the 22 panel CCs, so a slot differing only in CC-less
+// parameters reads as unchanged. Re-reading all 110 does not care.
+//
+// IT NEEDS SEND PC ON. Without it a panel press carries no program number and
+// the app cannot know which slot moved — the same condition slotIsKnown()
+// already gates the save flow's slot naming on.
 
 (function (root, factory) {
   const api = factory();
@@ -42,6 +73,76 @@
     if (!verifiedSound) return 'unknown';
     if (!backupSound) return 'unrecorded';
     return verifiedSound === backupSound ? 'match' : 'changed';
+  }
+
+  // ---- WHAT ONE ROW SHOWS -------------------------------------------------
+  //
+  // "On the Seven" shows the live instrument as far as it is known (Daniel,
+  // 2026-11-15). Each row is one of three things, and the difference is what
+  // the app has actually been told:
+  //
+  //   live-read    a slot the app has heard from THIS SESSION. The 0x45 that
+  //                answers a recall names the SOUND, which is enough to say
+  //                the row is live; the patch NAME needs the parameters.
+  //   from-backup  no reading this session: all there is, is the backup
+  //                record. Drawn faded, because it describes the past.
+  //   empty        no reading and no backup. The honest answer is nothing.
+  //
+  // THE NAME ARRIVES AFTER THE ROW GOES LIVE, which is the whole shape of
+  // this. A slot move already costs a recall; a 110-parameter read costs
+  // ~1.4s on top (measured 2026-11-14: min 1353, median 1363). Waiting for it
+  // before showing anything would make every arrow-press feel broken, so the
+  // row goes live on the sound and the name fills in when the read lands.
+  // `pending` is what the view shimmers on — and it is a SHIMMER, not a glow:
+  // a glow means a value on the panel knobs and that meaning is taken.
+  //
+  // "(UNSAVED)" IS A CLAIM, and only the parameters can support it. It says
+  // these values match no patch in your library — which the app cannot know
+  // from the sound alone, because two different patches can share a sound and
+  // two files captured from different slots have been found differing in 0 of
+  // 110 parameters. So a read that FAILED or was abandoned settles on the bare
+  // sound name: it is live, it is named as far as anyone knows, and nothing is
+  // claimed about the library. Guessing there is how "verified" became a lie
+  // once already.
+  function slotView({
+    backupName = null,
+    backupSound = null,
+    // The sound this slot broadcast when the app recalled it. Null until the
+    // app has heard from the slot at all.
+    liveSound = null,
+    // True once the 110-parameter read has landed for this slot.
+    liveParams = false,
+    // The read was abandoned or failed. Distinct from "not yet": one settles,
+    // the other is still coming.
+    readFailed = false,
+    // What the library matched those parameters to, or null for no match.
+    // Meaningless until liveParams — a caller passing it early is asserting a
+    // match it cannot have made.
+    matchedName = null,
+  } = {}) {
+    if (!liveSound) {
+      if (backupName || backupSound) {
+        return {
+          state: 'from-backup', name: backupName, sound: backupSound, pending: false,
+        };
+      }
+      return { state: 'empty', name: null, sound: null, pending: false };
+    }
+    const pending = !liveParams && !readFailed;
+    let name = liveSound;
+    if (liveParams) name = matchedName || `${liveSound} (unsaved)`;
+    return { state: 'live-read', name, sound: liveSound, pending };
+  }
+
+  // HOW MANY SLOTS HAVE BEEN HEARD FROM THIS SESSION — the header's <n>.
+  //
+  // Counted on the SOUND, not on the parameter read, because that is the
+  // moment the row becomes live on screen. A count that waited for the
+  // parameters would disagree with what the player can see.
+  function liveCount(records = []) {
+    let n = 0;
+    for (const r of records) if (r && r.liveSound) n += 1;
+    return n;
   }
 
   // NO "as of now". It is true for one instant and then decays silently, and
@@ -77,5 +178,5 @@
     return `${verified} of ${total} as of ${when} - ${total - verified} as of last backup`;
   }
 
-  return { slotState, asOfLabel };
+  return { slotState, asOfLabel, slotView, liveCount };
 });
