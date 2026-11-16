@@ -57,6 +57,29 @@ Treat **all documentation as stale and unverified** — the manual, forum posts,
 web-editor labels, everything. Documentation may suggest what to look for in a
 capture; it may never stand in for one.
 
+### 1b. READ `docs/MANUAL.md` BEFORE INVESTIGATING THE INSTRUMENT'S BEHAVIOUR
+
+The official manual (ENG, July 2021, **FW v1.22**), digested in full. It does
+not outrank the device — see the order of authority below — but it is free to
+read and a hardware session is not.
+
+**It was written because two investigations on 15 Nov 2026 each re-derived a
+fact the manual states plainly**, both with the Seven attached and both
+costing a session: which parameters the FX2 Delay actually has, and what DEPTH
+does in Delay mode (§20.5 answers the second in one sentence — DEPTH varies
+feedback and level together, and the two maxima are the ceilings it varies
+them within).
+
+It is equally useful for what it does NOT say. Ranges, defaults, units, SysEx
+of any kind, and the names of several parameters are simply absent, and the
+file records each absence as **not stated** — which is how you know to go to
+the instrument rather than back to the PDF.
+
+**Authority is unchanged and the manual is third:** the instrument, then
+`schema/seven-1.37.json` (what the device reports about itself), then the
+manual, which is fifteen firmware revisions behind. Where they disagree,
+assume the firmware moved.
+
 ### 2. Protocol facts come from the device: `docs/protocol.md` and `schema/seven-1.37.json`
 
 Both files were derived from **live device interrogation on FW 1.37** — a

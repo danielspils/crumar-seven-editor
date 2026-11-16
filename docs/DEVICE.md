@@ -19,6 +19,21 @@ and its group. It does not tell us what the parameter does, whether it
 applies to the currently loaded sound, or how the hardware behaves around
 it. That is what's collected here.
 
+**Read `docs/MANUAL.md` before investigating anything about the instrument's
+behaviour.** It is the official manual (ENG, July 2021, FW v1.22) digested in
+full, and it sits at the same precedence level as this file — below the
+captures and the schema. This file is *curated*: it carries the parts of the
+manufacturer's account this project has had a use for. `MANUAL.md` is the
+manual's own account kept faithful, including the parts nobody has needed yet
+and, importantly, the places where the manual says nothing at all.
+
+It exists because on 15 Nov 2026 two investigations each re-derived a fact the
+manual states plainly, both with the Seven attached: which parameters the FX2
+Delay has, and what DEPTH does in Delay mode. §20.5 answers the second
+outright — DEPTH varies delay feedback and level together, and Max Feedback
+and Max Level are the ceilings it varies them within. A hardware session is
+scarce; reading is not.
+
 ## Sources
 
 | Document | Version | URL |

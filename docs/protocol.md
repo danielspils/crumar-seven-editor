@@ -703,12 +703,35 @@ The July 2021 manual documents v1.22. On v1.37:
    feedback, moving MAX FEEDBACK appears to change nothing. Panel at the time:
    Depth 34, Speed 27, Max Feedback 127, Max Level 0, Stereo Spread 127.
 
-   The first half is not a defect: `docs/DEVICE.md` already records that in
-   Delay the DEPTH control scales max feedback and max level together, so
-   Depth driving the feedback is the documented design. The second half is
-   this item, unchanged after three sessions — `dly_mf` and `dly_ml` take,
-   echo and hold, and nothing is audible. **Still do not label them inert in
-   the UI**; the device reports them as ordinary controls.
+   The first half is not a defect, and the manual settles it outright.
+   **§20.5, verbatim** (`docs/MANUAL.md`):
+
+   > "When the Delay effect is selected, the DEPTH parameter varies both the
+   > delay feedback and level at the same time."
+
+   > "This section allows to establish the maximum amount of feedback and
+   > level that can be varied by the DEPTH parameter."
+
+   So DEPTH **is** the feedback amount in Delay mode, by design, and `dly_mf`
+   and `dly_ml` are **CEILINGS on what DEPTH can reach** rather than amounts
+   in their own right. Not a mislabelling and not a mis-wiring.
+
+   **THAT SHARPENS THIS ITEM RATHER THAN CLOSING IT.** What is left is a
+   genuine manual-versus-device disagreement: the manual says the maxima bound
+   DEPTH, and on FW 1.37 Daniel cannot hear them do it, across three sessions.
+   By the authority rule the device wins and the manual is fifteen revisions
+   stale — but "the manual says it should" is now a documented expectation
+   this item is measured against, which it never had before.
+   **Still do not label them inert in the UI**; the device reports them as
+   ordinary controls.
+
+   Two details from the manual that bear on how this can ever be observed, and
+   both make it harder: the manual gives **no front-panel or menu route** to
+   either maximum, and lists **no CC** for them — §10.4's fixed map has
+   nothing for feedback, level, spread or Delay TIME. They are editor-only
+   parameters with no controller. That is exactly the B7 mechanism below: a
+   parameter with no CC and no panel control cannot be followed when it moves,
+   because there is no route by which it CAN move except an editor.
 
    Two things were ruled out this session rather than assumed, both measured
    with the Seven attached (`test/ui/scenarios/fx2-delay-map.js`,
