@@ -3060,6 +3060,55 @@
     @media (max-width: 1023px) {
       .engine-carousel .car-face:not(.is-hero) { display: none; }
     }
+    /* AND THE WHEEL STILL TURNS THERE. Hiding the peeks took the function with
+       the hint: clicking a peek is the only caller of turnCarousel, so without
+       them the sound could not be changed from this view at all. These two
+       replace it, and ONLY in that band — above it the peeks are the control
+       Daniel approved, and an arrow next to a picture you can click yourself
+       is the thing renderer.js's own comment refuses.
+       FLANKING THE HERO, NOT ON IT — where a peek would be, which is the
+       whole point: the control that replaces the peeks should sit where the
+       peeks sat, because that is what says which way the wheel goes. The
+       first version put them at left: 0 / right: 0, INSIDE the 128px box, and
+       they ate the hero's edges while giving no sense of direction (Daniel's
+       screenshot, 2026-11-15).
+       Negative offsets rather than a flex row, because the carousel is a
+       fixed 128px with asymmetric margins (14px left, 20px right) and the
+       hero must stay exactly where it is — it is the picture, and moving it
+       to make room for a button would be the tail wagging the dog.
+       THE LEFT ONE IS THE TIGHT SIDE, always: Save patch is the control it
+       has to clear, and the gap between them is what the measured 8px bar is
+       spent on. carousel-no-peek.js asserts it. */
+    .car-step { display: none; }
+    @media (max-width: 1023px) {
+      .car-step {
+        position: absolute; top: 50%; z-index: 4;
+        display: flex; align-items: center; justify-content: center;
+        width: 20px; height: 20px; padding: 0;
+        border-radius: 50%;
+        /* Its own ground, because it sits on a photograph. Palette variables
+           in both themes — nothing here invents a colour (DESIGN.md, "Both
+           palettes, always"). */
+        background: var(--bg-raised); border: 1px solid var(--line);
+        color: var(--text); cursor: pointer;
+        opacity: .85;
+      }
+      .car-step:hover { opacity: 1; border-color: var(--text-dim); }
+      .car-step:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+      .car-step svg { display: block; }
+      /* DIRECTION, WHICH IS THE PART THAT WAS WRONG ON SCREEN. The shared
+         path is a V with its apex at the BOTTOM, so a quarter turn clockwise
+         swings the apex to the left and reads "‹", and a quarter the other
+         way reads "›". A downward chevron means "expand" everywhere else in
+         this app — the fx sections and the picker — so leaving it unrotated
+         both pointed the wrong way and spent a treatment that already has a
+         meaning.
+         translateY(-50%) centres on the box and the rotation is composed with
+         it: written as two declarations, the second would replace the first
+         and the buttons would sit low. */
+      .car-step.is-step-prev { left: -22px; transform: translateY(-50%) rotate(90deg); }
+      .car-step.is-step-next { right: -22px; transform: translateY(-50%) rotate(-90deg); }
+    }
     .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
       transform: translateX(calc(-1 * var(--peek))) scale(.74);
     }

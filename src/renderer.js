@@ -29,6 +29,14 @@
   // Only instruments: the modeled engines and the sampled sets the connected
   // unit has. Not patches — a patch is a set of SETTINGS, and this control
   // changes which instrument plays them.
+  // The same shape as .fx-chevron and the picker's caret, in its own constant
+  // so the two step buttons cannot drift apart. CSS rotates it; the path
+  // itself always points down, which is why its optical centre is its box
+  // centre in every rotation.
+  const STEP_CHEVRON = '<svg viewBox="0 0 14 9" width="13" height="8" aria-hidden="true">'
+    + '<path d="M2 2 L7 7 L12 2" fill="none" stroke="currentColor" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function soundCarousel(patch, view) {
     const art = soundArt();
     const sounds = (view && view.sounds) || [];
@@ -71,6 +79,25 @@
       face(here, 'is-hero') +
       face(wrap(at + 1), 'is-peek is-next') +
       face(wrap(at + 2), 'is-far is-far-next') +
+      // TURNING WITHOUT THE PEEKS. Below the no-peek width the neighbours do
+      // not render, and clicking a neighbour is the ONLY thing that turns the
+      // wheel — so hiding them removed the function and not just the hint
+      // (found 2026-11-15; Daniel's correction the same day). These are that
+      // function's replacement and CSS shows them only in that band, because
+      // above it the peeks are the control and an arrow pointing at a picture
+      // you could click yourself is what the comment above refuses.
+      //
+      // Always in the DOM, shown by media query alone: the band is a property
+      // of the window and not of the patch, so nothing here needs to know the
+      // width — and a JS answer would have to re-render on resize.
+      //
+      // The chevron is the app's geometric one, rotated by CSS. Not a font
+      // glyph: see picker.js for the two rounds that cost, and .fx-chevron for
+      // the first.
+      `<button type="button" class="car-step is-step-prev" data-car-step="-1"` +
+      ` aria-label="Previous sound" title="Previous sound">${STEP_CHEVRON}</button>` +
+      `<button type="button" class="car-step is-step-next" data-car-step="1"` +
+      ` aria-label="Next sound" title="Next sound">${STEP_CHEVRON}</button>` +
       // Under the wheel, and only while the middle is something other than
       // what the instrument holds: with nothing to install, a Select button
       // would be a control that does nothing.

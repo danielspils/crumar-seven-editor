@@ -1002,6 +1002,16 @@
   });
 
   document.addEventListener('click', (e) => {
+    // THE STEP BUTTONS, which exist only below the no-peek width — see
+    // index.html. They go through turnCarousel exactly as a peek click does,
+    // deliberately: the turn has a guard against re-entry, an open-state
+    // reapplication after the rebuild, and a no-anim window, and a second
+    // path into it would be a second place for all of that to be wrong.
+    const step = e.target.closest('[data-car-step]');
+    if (step && step.closest('[data-carousel]')) {
+      turnCarousel(Number(step.dataset.carStep) > 0 ? 1 : -1);
+      return;
+    }
     // The Select button under the wheel does what clicking the middle does.
     const sel = e.target.closest('[data-car-select]');
     if (sel) {

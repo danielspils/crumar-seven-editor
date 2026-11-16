@@ -194,6 +194,25 @@
         + ` (${px(margin)}px)`);
     }
 
+    // THE STEP BUTTONS BELONG TO THE OTHER BAND ONLY. Above the no-peek width
+    // the peeks are the control Daniel approved, and an arrow beside a picture
+    // you can click yourself is what renderer.js's own comment refuses. They
+    // are in the DOM at every width — the media query is what decides — so
+    // this asks about the rendering and not about the markup.
+    const steps = ui.$$('#detail .engine-carousel [data-car-step]');
+    ui.check(steps.length > 0,
+      `the step buttons are in the DOM at ${vw}px (${steps.length}) — they are`
+      + ' hidden by a media query, so their absence here would mean the markup'
+      + ' changed rather than the rule');
+    for (const s of steps) {
+      const cs = getComputedStyle(s);
+      ui.check(cs.display === 'none',
+        `the step button ${s.dataset.carStep} is not rendered at ${vw}px`
+        + ` (display "${cs.display}")`);
+      ui.check(box(s).width === 0,
+        `the step button ${s.dataset.carStep} has no box at ${vw}px`);
+    }
+
     // THE PEEKS MUST STILL BE INSTRUMENTS, not grey lines. Tucking them in is
     // only a fix while they remain an invitation to turn — and the moment it
     // stops being one is the moment the band below takes over.
@@ -207,6 +226,27 @@
         `the ${which} peek is still recognisable at ${vw}px`
         + ` (${Math.round(shown / pr.width * 100)}% showing)`);
     }
+
+    // AND THE PEEK IS STILL WHAT TURNS IT. The band's whole claim is that the
+    // original control is intact here, so it is pressed rather than inspected.
+    //
+    // LAST IN THIS BRANCH, DELIBERATELY. A turn REBUILDS the faces, so every
+    // node measured above is detached afterwards — and a detached node reports
+    // zeros from getBoundingClientRect rather than throwing, which reads as a
+    // picture that teleported to the origin. Anything added after this has to
+    // re-query.
+    const prevFace = ui.$('#detail .car-face.is-peek.is-prev');
+    if (prevFace) {
+      const was = ui.$('#detail .car-face.is-hero').dataset.carName;
+      prevFace.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await ui.sleep(900);
+      const after = ui.$('#detail .car-face.is-hero');
+      const now = after && after.dataset.carName;
+      ui.note(`  peek click: "${was}" -> "${now}"`);
+      ui.check(!!now && now !== was,
+        `the carousel can be turned by its peek at ${vw}px — the middle moved`
+        + ` from "${was}" to "${now}"`);
+    }
   }
 
   // WHAT THIS SCENARIO DOES NOT COVER, said out loud so nobody reads a green
@@ -219,5 +259,8 @@
   // "A REPORTED WORKING STATE OUTRANKS A MEASURED IMPROVEMENT"), and transient
   // rather than resting. Recorded, not asserted. In the NO-PEEK band it cannot
   // happen at all, because the rule takes the far faces too.
-  car.classList.remove('is-open', 'no-anim');
+  //
+  // Re-queried, because a turn above has rebuilt the element `car` pointed at.
+  const end = ui.$('#detail .engine-carousel');
+  if (end) end.classList.remove('is-open', 'no-anim');
 })()
