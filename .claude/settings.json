@@ -1,0 +1,49 @@
+{
+  "$comment": [
+    "PERMISSION RULES FOR THIS PROJECT, so Daniel stops clicking 'Always'.",
+    "",
+    "CLAUDE.md's 'Working without prompts' section measured the cause on",
+    "2026-11-15: 1,944 allow entries in the user-level settings, 87% of them",
+    "exact one-off strings with no wildcard, each captured by an 'Always' click",
+    "on a command that can never occur again. Adding more of those does not",
+    "help, because A COMPOUND COMMAND CANNOT MATCH ANY RULE.",
+    "",
+    "These rules only cover the half that IS matchable. The other half is",
+    "habit, and it is the larger one: the shell already starts in this repo,",
+    "so every `cd ~/crumar-seven-editor && npm test` turns a rule-matchable",
+    "simple command into a compound one that nothing can ever allow. Same for",
+    "`npm test 2>&1 | tail -8` — the pipe makes it a different command.",
+    "",
+    "Run them bare. Read the output.",
+    "",
+    "DELIBERATELY NOT HERE: node, python3, npx, or any shell. A wildcard on an",
+    "interpreter is a blank cheque for arbitrary code. A script worth running",
+    "often gets a name in scripts/ or package.json and that name gets a rule.",
+    "Nothing that writes to the instrument or the library is here either."
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:ui)",
+      "Bash(npm run test:ui *)",
+      "Bash(npm run fixtures)",
+      "Bash(pkill -f MacOS/Electron)",
+      "Bash(./scripts/dev-offline.sh *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git rev-list *)",
+      "Bash(git rev-parse *)",
+      "Bash(git blame *)",
+      "Bash(git ls-files *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(ps *)"
+    ]
+  }
+}

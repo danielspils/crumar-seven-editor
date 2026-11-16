@@ -1791,6 +1791,38 @@ The five rules that cover what is genuinely left, after the habits above:
 on an interpreter is a blank cheque for arbitrary code. If a script is worth
 running often, give it a name in `scripts/` and allow that name.
 
+#### THIS REPO CARRIES ITS OWN PERMISSION RULES (2026-11-16)
+
+`.claude/settings.json`, committed. Twenty-one entries: the test runners, the
+read-only git subcommands, `grep`/`rg`/`ls`/`wc`/`ps`, `npm start` and the
+`pkill` that frees the instrument. Nothing that writes to the instrument or the
+library, no interpreter, no push. It is in the repo rather than in somebody's
+user settings so it applies to every session here and survives a clean-up.
+
+**A COMMAND GETS A RULE ONLY IF IT IS BARE AND WILL RECUR.** Not a path, not a
+redirect, not a pipe, not an `&&` chain — those can never match any rule, so
+an entry for one is a line that does nothing. That is not a theory: the
+user-level file holds **1,944 entries, 87% of them exact one-off strings**, 291
+over 120 characters and 378 naming an absolute path. Every one was captured by
+an "Always" click on a command that can never occur again.
+
+**SO THE HABIT IS THE LARGER HALF, AND IT IS CLAUDE'S TO KEEP.** The shell
+already starts in this repo: `cd ~/crumar-seven-editor && npm test` turns a
+rule-matchable command into a compound one that nothing can ever allow, and so
+does `npm test 2>&1 | tail -8`. Run it bare and read the output — the harness
+persists a long one to a file and gives you the path. Measured 2026-11-16:
+**1 of the last 120 calls matched a rule**, and the cause was almost entirely
+self-inflicted prefixes and pipes.
+
+**WHAT DANIEL SHOULD DO INSTEAD OF CLICKING "ALWAYS": say so.** Tell Claude
+the prompts are piling up. The fix is to rewrite the command bare and then give
+THAT a rule — which costs one approval and holds forever, against an "Always"
+click that buys one unrepeatable string and leaves the next one asking.
+
+Session permission MODE is the other lever and it is a different thing: Auto
+decides per call instead of asking. It is the user's to set, and bypass mode
+is off for this account by policy.
+
 ### A REPORTED WORKING STATE OUTRANKS A MEASURED IMPROVEMENT (2026-11-15)
 
 Daniel, after a day of carousel work: **"It used to work great except for a
