@@ -2440,8 +2440,25 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
+    /* A FIFTH COLUMN, AND IT IS THE CONTROLS' OWN (16 Nov 2026).
+       The trash and Select were `position: absolute; right: 6px`, so they
+       took no grid cell and drew on top of whatever was at the row's right
+       end — striking through "Combo Piano" on a patch row and covering the
+       end of the filename on a missing one. Measured: controls x299.3..383
+       against patch-sound x307..383, and a press in the middle of the sound
+       hit `.slot-assign` instead.
+       RESERVING THE SPACE, NOT YIELDING IT ON HOVER. The overlap is there at
+       every pane width — 640, 520, 420 and 340 all measured OVERLAP — so a
+       hover-time yield would have to reflow the row at every one of them,
+       and "the row must not move when the controls appear" is the other half
+       of the requirement. A column that is always allocated costs the same
+       pixels whether or not anything is drawn in it, so revealing the
+       controls changes opacity and nothing else.
+       `auto` rather than a measured width: the column sizes itself to
+       whatever the controls are, so a relabelled button cannot silently
+       re-open the overlap. */
     .lib-slot {
-      display: grid; grid-template-columns: 24px 1fr auto auto;
+      display: grid; grid-template-columns: 24px 1fr auto auto auto;
       column-gap: 10px; row-gap: 3px; align-items: baseline;
       width: 100%; padding: 7px 6px;
       background: none; border: none; border-bottom: 1px solid var(--line);
@@ -2462,6 +2479,35 @@
     }
     .slot-undo:hover { color: var(--text); }
     .lib-slot-missing .slot-text { color: var(--warn); }
+    /* MIDDLE TRUNCATION, IN CSS. A head that shrinks with its own ellipsis
+       beside a tail that never shrinks — so `shapes-clav-3-2` becomes
+       "shapes-c…-3-2" rather than "shapes-clav…", which is what
+       `text-overflow` alone would give and which renders two different
+       missing files identically.
+       The browser measures, at every width, with no resize listener and no
+       font assumptions. min-width: 0 on both the flex container and the head
+       is what actually lets the head shrink — without it a flex item refuses
+       to go below its content width and the whole thing overflows instead. */
+    .lib-slot .slot-text {
+      display: flex; min-width: 0; white-space: nowrap; overflow: hidden;
+    }
+    /* THE LABEL CLIPS BEFORE THE FILENAME DOES. Measured: squeezed hard, the
+       head collapsed to 0 and the raw "Missing file: " text — which has no
+       box of its own and so cannot shrink — pushed the TAIL outside the
+       clipped box, cutting off the one part that identifies the file. The
+       label is a span now, and it yields first: the colour already says this
+       row is a warning, so the filename is the part worth keeping. */
+    .tm-label {
+      flex: 0 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .trunc-mid { display: inline-flex; min-width: 0; overflow: hidden; flex: 0 1 auto; }
+    .tm-head {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    /* `pre` so a leading or trailing hyphen is never collapsed away — the
+       tail is the part that has to be exact. */
+    .tm-tail { flex: 0 0 auto; white-space: pre; }
     /* Setlist editing */
     /* Pinned to the bottom of the scroller. It sat at the end of the list, so
        with enough setlists it fell below the fold and could not be clicked at
@@ -2540,8 +2586,11 @@
        runs long — "Bank 2 · Preset 4 · 14 Nov" — and nothing shares it now
        that the sound has moved up. */
     .lib-slot .patch-sound { grid-column: 4; grid-row: 1; text-align: right; }
+    /* STOPS BEFORE THE CONTROLS' COLUMN. It was `2 / -1`, which with the new
+       fifth column would run the meta line straight under the trash and
+       Select — the same overlap one row down. */
     .lib-slot .lib-origin {
-      grid-column: 2 / -1; grid-row: 2;
+      grid-column: 2 / 5; grid-row: 2;
       min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     /* Slot rows carry the sound's kind as a lettered dot next to the sound
@@ -2556,9 +2605,16 @@
        as .patch-send, which is why they read as the same idea.
        :focus-within keeps them reachable from the keyboard, where there is no
        hover to give. */
-    .lib-slot { position: relative; }
+    /* IN FLOW, IN THEIR OWN COLUMN. Out of flow they painted over the row's
+       own text at every width — see the grid note above. The column is
+       always allocated, so `opacity` is the only thing hover changes and the
+       row cannot move. */
     .lib-slot .slot-controls {
-      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      /* ROW 1 ONLY. Spanning both rows forces row 2 to EXIST even when the
+         meta line is empty, which grew every missing-file row from 36.9px to
+         55.7px — a density change nobody asked for, on the rows this work is
+         about. */
+      grid-column: 5; grid-row: 1; align-self: center;
       display: flex; align-items: center; gap: 3px; justify-content: flex-end;
       opacity: 0; transition: opacity .12s ease;
     }

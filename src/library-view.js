@@ -25,6 +25,39 @@
 
   const rowKey = (e) => `${e.file} ${e.patchIndex}`;
 
+  // THE FILENAME WITHOUT ITS EXTENSION, for display only. Fifteen characters
+  // identical on every missing-file row, and the full name is still on the
+  // row's title.
+  const stemOf = (file) => String(file).replace(/\.sevenlib\.json$/i, '');
+
+  // TRUNCATE IN THE MIDDLE, NEVER AT THE END.
+  //
+  // The two in front of Daniel were `shapes-clav-3-2` and `shapes-clav-4-2`:
+  // they share a prefix, so end-truncation renders BOTH as "shapes-clav…" and
+  // the row stops identifying which file it lost — which is the only thing it
+  // is for. `text-overflow: ellipsis` cannot do this; it only clips the end.
+  //
+  // CSS, NOT A MEASURED JS TRUNCATION, because it is less machinery and it
+  // cannot go stale: a head that shrinks with its own ellipsis beside a tail
+  // that never shrinks. The browser does the measuring, at every width, with
+  // no resize listener and no font assumptions. A JS version would have to
+  // measure text, re-run on every resize and re-render, and be wrong between
+  // the two.
+  //
+  // THE TAIL IS THE LAST SIX CHARACTERS, which is what carries a dedupe
+  // suffix (`-3-2`, `-12`). A shorter stem keeps all of itself.
+  const TAIL_CHARS = 6;
+  const midTruncate = (text) => {
+    const s = String(text);
+    if (s.length <= TAIL_CHARS + 1) return `<span class="tm-whole">${esc(s)}</span>`;
+    const head = s.slice(0, s.length - TAIL_CHARS);
+    const tail = s.slice(s.length - TAIL_CHARS);
+    return '<span class="trunc-mid">'
+      + `<span class="tm-head">${esc(head)}</span>`
+      + `<span class="tm-tail">${esc(tail)}</span>`
+      + '</span>';
+  };
+
   // Four banks of eight. A backup run cannot capture more than this many.
   const SLOT_COUNT = 32;
 
@@ -1202,11 +1235,29 @@
         const entry = byFile.get(file);
         if (!entry) {
           return (
-            `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Referenced file is not in the library folder">` +
-            `${num}<span class="slot-text">Missing file: ${esc(file)}</span>` +
+            // ONE VOICE, NOT THREE (Daniel, 16 Nov 2026). This row used to
+            // say "Missing file: <name>.sevenlib.json", a `(missing)`
+            // sound-tag AND two tooltips wording the same fact differently.
+            // The sentence in var(--warn) is the statement; the badge was
+            // the second voice and most of what crowded the right-hand end.
+            //
+            // THE EXTENSION IS DROPPED FROM THE DISPLAY — fifteen characters
+            // identical on every one of these rows — and the row's own title
+            // becomes the FULL filename. That title is now the only place
+            // the exact name exists, so it has to stay reachable.
+            //
+            // NO NAME IS DERIVED FROM THE SLUG. A setlist slot holds a
+            // filename and nothing else, so once the file is gone the patch
+            // name is genuinely gone. Guessing from the stem guesses wrong:
+            // `shapes-clav-3-2` is "Shapes Clav 3" with a dedupe suffix, not
+            // "Shapes Clav 2".
+            `<div class="lib-slot lib-slot-missing" data-slot="${i}" draggable="true" title="Missing file: ${esc(file)}">` +
+            `${num}<span class="slot-text">` +
+            '<span class="tm-label">Missing file:&nbsp;</span>' +
+            `${midTruncate(stemOf(file))}</span>` +
             `<span class="lib-badges"></span>` +
             `<span class="lib-origin"></span>` +
-            `<span class="patch-sound"><span class="sound-tag is-warn" title="Referenced file is missing">(missing)</span></span>` +
+            `<span class="patch-sound"></span>` +
             `<span class="slot-controls">${clearBtn(i)}${assignBtn(i)}</span></div>`
           );
         }
