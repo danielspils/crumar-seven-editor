@@ -85,6 +85,29 @@ contextBridge.exposeInMainWorld('sevenAPI', {
     const raw = Number(process.env.SEVEN_BOOT_STATUS_MS);
     return Number.isFinite(raw) && raw >= 0 ? raw : null;
   },
+  // IS A SEVEN ON THE BUS, ANSWERED BEFORE THE FIRST PAINT.
+  //
+  // Read by boot-flag.js, a blocking script in <head> that runs before <body>
+  // is parsed — which is the only moment early enough to decide whether the
+  // boot loader covers the window or never appears at all.
+  //
+  // SYNCHRONOUS ON PURPOSE. Every other call here is `invoke`, which is a
+  // promise, and a promise resolves after the paint this exists to get in
+  // front of. It asks for port NAMES only: nothing is opened, nothing is sent,
+  // and the instrument is not touched.
+  //
+  // It answers "is it worth showing a loader", never "is the instrument
+  // alive" — connect()'s liveness probe is what decides that, and it runs
+  // later as it always did.
+  instrumentAttached: () => {
+    try {
+      return ipcRenderer.sendSync('midi:port-present') === true;
+    } catch {
+      // A false answer costs the loader; a throw would stop the page's first
+      // script and with it the whole app.
+      return false;
+    }
+  },
   // Instrument illustrations, inlined. They must be INLINE for their CSS
   // variables to resolve: an SVG loaded through <img> is a separate document
   // and inherits nothing from the page, so it would render its fallback

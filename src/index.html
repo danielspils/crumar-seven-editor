@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;">
   <title>Crumar Seven Editor</title>
+  <!-- BEFORE <body> IS PARSED, AND THEREFORE BEFORE ANYTHING PAINTS. A
+       classic <script> with no `defer` blocks parsing, which is the whole
+       point: it decides whether the boot loader covers the window before
+       there is a frame to be wrong in. It must stay in <head> and must not
+       gain `defer` or `async`. -->
+  <script src="boot-flag.js"></script>
   <style>
     /* Two themes, one variable set. Everything below the aluminium divider
        reads from these; the panel strip is artwork and stays as it is in
@@ -1048,6 +1054,16 @@
       background: var(--bg);
     }
     .boot-loader[hidden] { display: none; }
+    /* NOTHING TO WAIT FOR, SO NOTHING TO SHOW. boot-flag.js sets this on
+       <html> before <body> is parsed, so an offline launch never paints a
+       loader for even one frame — the trade Daniel accepted (a brief loader
+       when nothing is plugged in) turned out not to be necessary, because
+       portPresent() can answer before the window loads.
+       A SECOND `display: none` ALONGSIDE THE [hidden] ONE, not instead of it:
+       that rule is how app.js puts the loader away when the read lands, and
+       css-hazards.test.js requires a display rule to have a [hidden] rule
+       beside it. */
+    html[data-seven-boot="none"] .boot-loader { display: none; }
     /* Fading the whole overlay out once the mark is lit, so the app does not
        cut in. The mark's own landing is unaffected — this starts after it.
        Kept for the reduced-motion path and as the fallback if the nav logo
@@ -3916,7 +3932,11 @@
        filled from assets/seven-logo.svg at that moment rather than inlined
        here, so there is one copy of the artwork and it is the same one the
        header uses. -->
-  <div id="boot-loader" class="boot-loader" hidden>
+  <!-- NO `hidden`. It starts VISIBLE so the app paints behind it rather than
+       in front of it — see boot-flag.js, which removes it again when there is
+       no instrument to wait for, before this element is even parsed. app.js
+       still sets `.hidden = true` to put it away when the read lands. -->
+  <div id="boot-loader" class="boot-loader">
     <span class="boot-mark" id="boot-mark"></span>
     <div class="boot-status" id="boot-status"></div>
   </div>

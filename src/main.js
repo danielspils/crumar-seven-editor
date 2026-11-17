@@ -274,6 +274,33 @@ function getMidi() {
 function registerMidiIpc() {
   ipcMain.handle('midi:connect', () => getMidi().connect());
   ipcMain.handle('midi:disconnect', () => getMidi().disconnect());
+  // IS A SEVEN ON THE BUS? Asked SYNCHRONOUSLY, before the window paints.
+  //
+  // The app used to paint its full DISCONNECTED state for over a second on
+  // launch — "No instrument connected", a Connect button, empty lists — while
+  // the Seven was plugged in and already being read. The first thing it said
+  // was false.
+  //
+  // The boot loader covers the window and so hides that, but it was shown by
+  // the renderer a beat later, which is the beat you could see. The answer has
+  // to be available BEFORE first paint, and `portPresent()` can give it:
+  // port NAMES only, opening nothing and sending nothing, so it is safe to ask
+  // at any moment and costs no round trip to the instrument.
+  //
+  // sendSync, deliberately. `invoke` is a promise, and a promise resolves after
+  // the paint this exists to get in front of. This is the one place in the app
+  // that needs an answer before a frame, and it is a two-field boolean rather
+  // than anything that could block.
+  ipcMain.on('midi:port-present', (e) => {
+    try {
+      e.returnValue = getMidi().portPresent();
+    } catch {
+      // NEVER THROWS INTO THE RENDERER'S FIRST SCRIPT. A failure here would
+      // stop the page before anything rendered at all; a false answer only
+      // costs the loader.
+      e.returnValue = false;
+    }
+  });
   ipcMain.handle('midi:status', () => getMidi().status());
   // "Is one plugged in?" — port names only, nothing opened or sent, so the
   // renderer can ask on a timer while disconnected.

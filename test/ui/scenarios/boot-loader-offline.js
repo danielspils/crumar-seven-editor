@@ -28,10 +28,28 @@
   // one full interval means a loader that appears late still fails this.
   await ui.sleep(3600);
 
-  ui.note(`hidden=${el.hidden} · mark innerHTML ${mark.innerHTML.length} chars`
+  const box = el.getBoundingClientRect();
+  const shown = getComputedStyle(el).display;
+  ui.note(`hidden=${el.hidden} · display "${shown}" · box ${Math.round(box.width)}x${Math.round(box.height)}`
+    + ` · data-seven-boot "${document.documentElement.getAttribute('data-seven-boot')}"`
+    + ` · mark innerHTML ${mark.innerHTML.length} chars`
     + ` · status "${status ? status.textContent : ''}"`);
 
-  ui.check(el.hidden, 'the loader is hidden with no instrument attached');
+  // NOT VISIBLE, ASKED AS A MEASUREMENT RATHER THAN AS A FLAG (16 Nov 2026).
+  //
+  // This asserted `el.hidden` until the loader was made to start VISIBLE so
+  // the app cannot paint its disconnected state in front of it. With nothing
+  // attached it is now hidden by boot-flag.js's attribute and a CSS rule
+  // instead of by the `hidden` property — the loader is just as absent and
+  // the old assertion failed anyway, because it was testing one particular
+  // MECHANISM rather than the thing that matters.
+  //
+  // display and the box together: a rule that only set `visibility` would
+  // leave a full-window sheet over the app with a box to prove it.
+  ui.check(shown === 'none' || el.hidden,
+    `the loader is not rendered with no instrument attached (display "${shown}")`);
+  ui.check(box.width === 0 && box.height === 0,
+    `and it has no box at all (${Math.round(box.width)}x${Math.round(box.height)})`);
   ui.check(mark.innerHTML.trim() === '',
     'the mark was never filled with the artwork — so the loader was never shown,'
     + ' not merely shown and hidden again');

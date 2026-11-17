@@ -464,3 +464,63 @@ test('every source file parses', () => {
     );
   }
 });
+
+// THE BOOT LOADER IS VISIBLE FROM THE INITIAL HTML (2026-11-16).
+//
+// Launching with the Seven plugged in painted the app's full DISCONNECTED
+// state for over a second — "No instrument connected", a Connect button,
+// empty lists — while the instrument was attached and already being read. The
+// first thing the app said was false.
+//
+// THE FIX IS STRUCTURAL AND SO IS THIS TEST. The loader covers the window, so
+// it hides the false state too — but only if it is on screen in the FIRST
+// frame. Anything that needs a script to run has already lost: that beat is
+// the one you could see.
+//
+// A UI SCENARIO CANNOT CHECK THIS. Its script runs after the document has
+// loaded, so the earliest paints are past — measured, by putting `hidden`
+// back and watching test/ui/scenarios/boot-no-false-state.js pass anyway.
+// Reading the markup is the only way to ask the question at all, which is
+// what this whole file is for.
+test('the boot loader paints with the first frame, not when a script says so', () => {
+  const tag = /<div id="boot-loader"[^>]*>/.exec(html);
+  assert.ok(tag, 'the boot loader element is still in index.html');
+  assert.doesNotMatch(tag[0], /\shidden\b/,
+    'it carries no `hidden` attribute — with one, the window paints the app '
+    + 'first and the loader arrives a beat later, which is the bug');
+
+  // AND SOMETHING MUST STILL BE ABLE TO PUT IT AWAY. Removing `hidden` from
+  // the markup is only safe while the [hidden] rule survives: app.js sets
+  // `.hidden = true` to land it, and without that rule the loader would never
+  // leave.
+  const rule = rules.find((r) => /\.boot-loader\[hidden\]/.test(r.selector));
+  assert.ok(rule, 'the [hidden] rule survives, or the loader could never be put away');
+  assert.match(rule.body, /display\s*:\s*none/, 'and it is what hides it');
+
+  // THE OFFLINE SWITCH-OFF, which is what keeps an offline launch from
+  // trading an app-flash for a loader-flash. boot-flag.js sets the attribute
+  // before <body> is parsed; this is the rule that acts on it.
+  const off = rules.find((r) => /data-seven-boot="none"/.test(r.selector)
+    && /\.boot-loader/.test(r.selector));
+  assert.ok(off, 'a rule switches the loader off when no instrument was seen');
+  assert.match(off.body, /display\s*:\s*none/, 'by not rendering it at all');
+});
+
+// THE DECISION HAS TO BE MADE BEFORE <body> EXISTS.
+test('boot-flag.js is a blocking script in the head', () => {
+  const head = /<head>([\s\S]*?)<\/head>/.exec(html);
+  assert.ok(head, '<head> is still recognisable');
+  const tag = /<script[^>]*boot-flag\.js[^>]*>/.exec(head[1]);
+  assert.ok(tag, 'boot-flag.js is loaded in <head>, not at the end of <body>');
+  // `defer` or `async` would run it after parsing, which is after <body> has
+  // painted — the exact beat this exists to get in front of.
+  assert.doesNotMatch(tag[0], /\sdefer\b/, 'without `defer`');
+  assert.doesNotMatch(tag[0], /\sasync\b/, 'and without `async`');
+
+  // AND IT MUST BE A FILE. The page's CSP has no script-src 'unsafe-inline',
+  // so an inline <head> script is blocked outright — a detail worth pinning,
+  // because "just inline it" is the obvious simplification.
+  assert.match(html, /Content-Security-Policy/, 'the CSP is still declared');
+  assert.doesNotMatch(html, /script-src[^"]*unsafe-inline/,
+    'and still forbids inline script, which is why boot-flag is a file');
+});
