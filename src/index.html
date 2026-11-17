@@ -72,11 +72,40 @@
          already at word strength, so nothing needs damping. */
       --action-text: #a9c3a1;
       /* THE LOGO IS A LIT SIGN, and the one element in the app allowed to
-         change value by theme (DESIGN.md, "The one exception"). Dark: the
-         panel green, glowing. Unlit: a dark version of its own hue, so an
-         unselected sign reads as switched off rather than as grey type. */
-      --logo: #7f9c78;
-      --logo-off: #3a4a3e;
+         change value by theme (DESIGN.md, "The one exception"). Unlit: a dark
+         version of its own hue, so an unselected sign reads as switched off
+         rather than as grey type.
+         AMBER SINCE 17 NOV 2026 (Daniel), AND THE SAME VALUE IN BOTH THEMES.
+         It was the panel green — #7f9c78 dark, #1f6b3d light — chosen on 14
+         Nov from six candidates in the panel drawing. The theme exception is
+         therefore no longer EXERCISED by --logo: one value serves both
+         lights. It stays documented because --logo-off still uses it, and
+         because the next sign colour may want it again.
+         BOTH ENDS ARE AMBER, so the warm-up RAMPS BRIGHTNESS RATHER THAN
+         SHIFTING HUE (Daniel, 17 Nov, after the first amber pass left this
+         uneven). The three boot rungs are color-mix between --logo-off and
+         --logo in the keyframes, so a green unlit value made the filament
+         travel from green to amber on its way up — a hue rotation nobody
+         asked for, in the one animation that is supposed to read as a sign
+         warming. Same hue at both ends, different value: that is a lamp
+         coming on.
+         ONE THING STILL UNEVEN, reported rather than quietly adjusted:
+         --amber is #c9a25e dark and #8a5d00 light, close to this in dark and
+         much darker in light, and it is what the selected top tab's
+         underline uses. So the logo and the tab rule are two nearby ambers
+         rather than one. Daniel has named --logo and --logo-off; --amber is
+         his to call separately. */
+      --logo: #E0A23C;
+      --logo-off: #4A3A24;
+      /* THE HALO'S OWN COLOUR, which is the logo's in the dark and is NOT in
+         the light (Daniel, 17 Nov 2026). A glow is light spilling off a lit
+         sign, so on a dark panel it is the sign's colour; on a PALE panel a
+         pale halo is invisible — there is nothing for it to be brighter
+         than. Light therefore needs a darker amber, and the only way to say
+         that without forking five glow definitions is a token of its own.
+         HERE IT IS JUST --logo, so dark is unchanged by its introduction.
+         The indirection costs dark nothing and earns light everything. */
+      --logo-glow: var(--logo);
       /* THE BOOT FILAMENT'S BLOOM, one value per rung so the keyframes can be
          themed without being duplicated: `drop-shadow()` takes a custom
          property as its whole argument list. The rung COLOURS are not here —
@@ -84,11 +113,11 @@
          they cannot drift from the palette they are supposed to be climbing
          towards. Only the glow needs a theme, because light has nowhere to
          glow. */
-      --boot-glow-1: 0 0 3px color-mix(in srgb, var(--logo) 12%, transparent);
-      --boot-glow-2: 0 0 5px color-mix(in srgb, var(--logo) 22%, transparent);
-      --boot-glow-3: 0 0 7px color-mix(in srgb, var(--logo) 32%, transparent);
-      --boot-glow-lit: 0 0 7px color-mix(in srgb, var(--logo) 50%, transparent);
-      --boot-glow-wide: 0 0 20px color-mix(in srgb, var(--logo) 26%, transparent);
+      --boot-glow-1: 0 0 3px color-mix(in srgb, var(--logo-glow) 12%, transparent);
+      --boot-glow-2: 0 0 5px color-mix(in srgb, var(--logo-glow) 22%, transparent);
+      --boot-glow-3: 0 0 7px color-mix(in srgb, var(--logo-glow) 32%, transparent);
+      --boot-glow-lit: 0 0 7px color-mix(in srgb, var(--logo-glow) 50%, transparent);
+      --boot-glow-wide: 0 0 20px color-mix(in srgb, var(--logo-glow) 26%, transparent);
       /* The 1px top highlight on a chosen surface — a tab or a selected row.
          The panel's own cap highlight, which is where "chosen" gets its
          slight physicality without a second surface tone. */
@@ -208,30 +237,78 @@
          defined in one theme is invisible in the other until somebody
          switches. */
       --action-text: #1f6b3d;
-      /* FOREST, chosen 14 Nov 2026 from six candidates all sourced from the
-         panel drawing (the LOCAL OFF magenta, the LED red, this green, the
-         panel teal, the unlit ochre legend, plain ink).
-         It differs from the dark value where the panel strip deliberately does
-         not, and that is allowed for one reason: the panel is a picture of a
-         machine, the logo is a lit SIGN. A sign reads as its emission in the
-         dark and as its own material in daylight. One object, two lights.
-         WATCH: this is also --action-text in light, both descended from the
-         DEPTH/RATE legend, so the shared hue is honest rather than a
-         coincidence — a 31px script in the corner is not confusable with a
-         12px label in the foot. If a third thing wants this green, split them
-         then. */
-      --logo: #1f6b3d;
-      --logo-off: #b3a994;
-      /* MUCH SMALLER, because paper does not glow. On light the warm-up is
-         carried by the INK darkening from --logo-off towards --logo — the
-         same three rungs, the same keyframes — and the bloom is just enough
-         to stop the mark looking flat at the end. A dark-sized glow here
-         reads as a blur, not a light. */
-      --boot-glow-1: 0 0 1px color-mix(in srgb, var(--logo) 4%, transparent);
-      --boot-glow-2: 0 0 2px color-mix(in srgb, var(--logo) 7%, transparent);
-      --boot-glow-3: 0 0 3px color-mix(in srgb, var(--logo) 10%, transparent);
-      --boot-glow-lit: 0 0 4px color-mix(in srgb, var(--logo) 16%, transparent);
-      --boot-glow-wide: 0 0 9px color-mix(in srgb, var(--logo) 8%, transparent);
+      /* AMBER, THE SAME VALUE AS DARK (Daniel, 17 Nov 2026). See the dark
+         palette's entry for what that costs and what it leaves uneven.
+         IT REPLACES FOREST #1f6b3d, chosen 14 Nov 2026 from six candidates
+         all sourced from the panel drawing (the LOCAL OFF magenta, the LED
+         red, that green, the panel teal, the unlit ochre legend, plain ink).
+         Forest was the one place in the app that deliberately differed by
+         theme — "the panel is a picture of a machine, the logo is a lit SIGN;
+         a sign reads as its emission in the dark and as its own material in
+         daylight. One object, two lights." That argument is not refuted, it
+         is simply no longer taken: amber reads as emission in both.
+         ONE CONSEQUENCE WORTH KNOWING. Forest was ALSO --action-text in
+         light, and the old note flagged that shared hue as honest rather
+         than coincidental. The two are now unrelated, so --action-text
+         (#1f6b3d) is on its own here — which is cleaner, not worse: it is
+         the only thing claiming the DEPTH/RATE legend's green in light. */
+      --logo: #E0A23C;
+      /* THE UNLIT SIGN HAS TO BE LIGHTER THAN THE TYPE BESIDE IT, and for
+         one revision it was not (Daniel, 17 Nov 2026: "inactive almost looks
+         as highlighted as active").
+         THE MEASUREMENT THAT EXPLAINS IT. #B8A888 is 63% lightness; the nav
+         tabs it sits next to are --text-muted #544e44 at about 30%, and the
+         LIT logo is 56%. So the unlit sign was the BRIGHTEST thing in the
+         row — brighter than the lit state it is supposed to be the absence
+         of — and only looked dimmer because amber is more saturated. On a
+         pale panel "switched off" means closer to the panel, not warmer.
+         #D2C9B6 IS --line's VALUE, chosen from four rendered side by side.
+         The relationship is the reason: an unlit sign weighs the same as the
+         rules and dividers around it, which is as quiet as something can be
+         while still being there. One step further (#DCD5C6) started to break
+         up the script's thin strokes at 28px.
+         WRITTEN AS A LITERAL, NOT var(--line), deliberately. The resemblance
+         is a judgement about this sign at this size, not a constraint the
+         two must satisfy — binding them would mean a future tweak to the
+         divider colour silently moved the logo, and nothing would say why.
+         DARK IS UNCHANGED and did not have this problem: #4A3A24 is 22%
+         against tab type at ~55%, so its unlit sign is clearly the darker
+         thing. The inversion was light's alone. */
+      --logo-off: #D2C9B6;
+      /* A DARK AMBER HALO, NOT A PALE ONE (Daniel, 17 Nov 2026).
+         The halo had been mixed from --logo itself, which works in the dark
+         and cannot work here: on a pale panel a light halo has nothing to be
+         brighter than, so it simply disappears. A glow on paper reads as the
+         ink bleeding, and bleeding ink is DARKER than the letter.
+         #8A5000 is the same hue family as the logo (~35°) at about a third
+         of its lightness, so the halo is recognisably the sign's own colour
+         rather than a grey shadow. */
+      --logo-glow: #8A5000;
+      /* THE RESTING CEILING IS DANIEL'S, the rungs are scaled TO it.
+         He gave the two drop-shadows the settled mark should land on:
+             0 0 5px   --logo-glow 28%
+             0 0 15px  --logo-glow 14%
+         which are --boot-glow-lit and --boot-glow-wide, the pair .boot-mark
+         .is-lit applies together.
+         THE THREE RUNGS ARE DERIVED, NOT COPIED FROM DARK. Taking dark's own
+         proportions relative to ITS ceiling (7px/50%) and applying them to
+         this one (5px/28%):
+             rung   dark blur/alpha   as a fraction   light
+             1      3px / 12%         43% / 24%       2px /  7%
+             2      5px / 22%         71% / 44%       4px / 12%
+             3      7px / 32%        100% / 64%       5px / 18%
+         So the climb has the same SHAPE in both themes and a ceiling set per
+         theme — which is the point: copying dark's absolute numbers onto a
+         darker halo would make the warm-up heavier than the thing it is
+         warming up to.
+         PAPER STILL DOES NOT GLOW MUCH. The warm-up here is carried mostly
+         by the INK moving from --logo-off towards --logo; the halo is the
+         supporting half, which is why even the ceiling is 28% and not 50%. */
+      --boot-glow-1: 0 0 2px color-mix(in srgb, var(--logo-glow) 7%, transparent);
+      --boot-glow-2: 0 0 4px color-mix(in srgb, var(--logo-glow) 12%, transparent);
+      --boot-glow-3: 0 0 5px color-mix(in srgb, var(--logo-glow) 18%, transparent);
+      --boot-glow-lit: 0 0 5px color-mix(in srgb, var(--logo-glow) 28%, transparent);
+      --boot-glow-wide: 0 0 15px color-mix(in srgb, var(--logo-glow) 14%, transparent);
       --cap-hi: rgba(255, 255, 255, .6);
 
       --inst-chassis: #3f3f47;
@@ -1393,9 +1470,19 @@
     }
     /* THE RUNGS ARE MIXED FROM THE PALETTE, not written as hex, so they are
        always on the line between unlit and lit in whichever theme is running.
-       That is also what makes light mode work with no separate keyframes: on
-       light, --logo-off is a pale warm grey and --logo is a dark green, so the
-       identical mix DARKENS the ink instead of brightening it. */
+       That is also what makes light mode work with no separate keyframes: the
+       identical mix BRIGHTENS the ink in dark and DARKENS it in light,
+       because --logo-off is darker than --logo there and lighter here.
+       MEASURED 17 Nov 2026, after both ends were made amber: dark climbs
+       22% -> 56% lightness, light descends 63% -> 56%, and the two ends are
+       2.6 and 2.7 degrees of hue apart. So the ramp is a value change in
+       both themes rather than a hue rotation — which it was NOT while
+       --logo-off was still the green family and the filament travelled ~98
+       degrees on its way up.
+       THE HALO IS THE ONE PART THAT IS NOT SHARED, and it has its own token
+       for exactly that reason: --logo-glow is --logo in dark and a dark
+       amber in light, because a pale halo on a pale panel is invisible. The
+       keyframes are still identical; only what they mix resolves per theme. */
     @keyframes boot-warm {
       0%   { color: var(--logo-off); filter: none; }
       12%  { color: color-mix(in srgb, var(--logo) 28%, var(--logo-off));
@@ -1529,18 +1616,20 @@
       font-size: 10px; font-weight: 700; letter-spacing: .07em;
       text-transform: uppercase; color: var(--text-dim);
     }
-    /* The lock sits on the text's baseline-ish line, with the same gap the
-       Bank 1 tab puts between its label and its lock. NO COLOUR OF ITS OWN:
-       .bank-tab-lock is already var(--text-dim), which is what .fresh uses,
-       so the glyph and the words are one ink. */
-    #bank1-note { display: inline-flex; align-items: center; gap: 6px; }
-    /* AND IT MUST LEAVE THE LAYOUT WHEN IT IS NOT SHOWING. `display` on the
-       line above outranks the UA sheet's `[hidden] { display: none }`, so
-       without this the span stays a flex item on banks 2-4 — empty, but
-       still costing #fresh-line's 12px gap, which moved the freshness line
-       12px between Bank 1 and the rest. The whole point of item 3 is that
-       the two land in the SAME place. */
-    #bank1-note[hidden] { display: none; }
+    /* #bank1-note HAS NO RULE OF ITS OWN, AND THAT IS THE POINT.
+       It had `display: inline-flex; align-items: center; gap: 6px` for one
+       revision, to sit a lock glyph beside the words. The lock is gone
+       (Daniel, 17 Nov 2026 — the TAB has the lock, this line is the words),
+       so the span is a plain inline span wearing .fresh, exactly like
+       #bank-asof.
+       WHICH IS WHAT MAKES `hidden` WORK. A `display` here would outrank the
+       UA sheet's `[hidden] { display: none }` and leave the span a flex item
+       on banks 2-4 — empty, but still costing #fresh-line's 12px gap, which
+       moved the freshness line 12px between Bank 1 and the rest. That is
+       exactly the thing item 3 was about, so DO NOT GIVE THIS ELEMENT A
+       display WITHOUT ALSO ADDING `#bank1-note[hidden] { display: none }`.
+       bank1-locked.test.js fails if a display declaration appears here
+       without that companion rule. */
 
     /* ---- the foot: 12px labels, sentence case ---------------------------- */
     /* THE SEVEN TAB'S ALONE (Daniel, 2026-11-15). The only thing the three
@@ -3114,21 +3203,28 @@
        the old full-width bar carried is undone here or it draws a stray rule
        across the column. */
     /* PROXIMITY: THE BUTTON BELONGS TO THE BLOCK ABOVE IT, which is what it
-       acts on. One group reads name · sub-line · location · action, then air,
-       then Type and the parameters.
-       4px IS THE BLOCK'S OWN RHYTHM, not a new number: .engine-sub and
-       .engine-pos are both margin-top 4px, so the button becomes the fourth
-       line of the thing it belongs to rather than a fifth element floating
-       between two groups. It was 12px, which put the button 14px below the
-       bank line against the block's own 4px — three times the block's
-       internal spacing, and it read as detached (Daniel: "looks floating out
-       in space").
+       acts on. One group reads name · sub-line · action, then air, then Type
+       and the parameters.
+       4px IS THE BLOCK'S OWN RHYTHM, not a new number: .engine-sub is
+       margin-top 4px and so is this, so the button is the third line of the
+       thing it belongs to rather than an element floating between two
+       groups. It was 12px, which read as detached (Daniel: "looks floating
+       out in space").
+       THREE LINES NOW, NOT FOUR (17 Nov 2026). The "Bank 1 · Preset 3"
+       caption sat between the sub-line and this and has been removed, so the
+       group is name · sub-line · Save patch on a single 4px rhythm. The
+       spacing here did not have to change for that — it was already the
+       block's own figure, and dropping a line simply made the group shorter.
        THE GAP BELOW IS NOT SET HERE AND CANNOT BE. .save-slot is a grid cell
        whose height is dictated by the PICTURE beside it — .engine-stage spans
-       rows 2-4 and is the taller of the two — so the cell has slack, and
-       whatever is not spent above the bar falls below it automatically. That
-       is the behaviour this change wants: tightening above widens below by
-       exactly as much, without touching the grid. */
+       rows 2-3 and is the taller of the two — so the cell has slack, and
+       whatever is not spent above the bar falls below it automatically.
+       REMOVING A LINE THEREFORE MOVES THE SLACK, IT DOES NOT CLOSE IT. The
+       picture still sets the block's height, so the ~17px the caption
+       occupied reappears below Save patch rather than pulling the parameters
+       up. Daniel named that in the brief as expected, not a bug to chase:
+       the parameters only rise if the picture gets smaller, which is a
+       separate decision (out/next-1.5.7.md item 12). */
     .save-slot .audition-bar,
     .save-slot .audition-bar.is-live {
       display: block; position: static; z-index: auto; text-align: left;
@@ -3377,14 +3473,17 @@
        drawing's neighbours reach the parameter rows. Now:
 
            name and badge        full width, row 1, nothing beside it
-           engine / Bank·Preset  column 1
-           Save patch            column 1
-           the stage             column 2, spanning those rows
+           engine group          column 1, row 2
+           Save patch            column 1, row 3
+           the stage             column 2, spanning rows 2-3
 
        Every child is placed EXPLICITLY. Auto-placement with one positioned
        item is where this would silently rearrange the day somebody adds a
-       fourth meta line. Rows are `auto`, so a missing Bank·Preset or Save
-       collapses rather than leaving a gap. */
+       meta line. Rows are `auto`, so a missing Save collapses rather than
+       leaving a gap.
+       IT WAS FOUR ROWS UNTIL 17 Nov 2026, the third being "Bank 1 · Preset
+       3". That line is gone and the rows were renumbered rather than left
+       with a hole — see .engine-sub's neighbours below. */
     .engine-head-text {
       min-width: 0;
       display: grid;
@@ -3398,10 +3497,37 @@
          fixed 128 resolves in one pass. */
       grid-template-columns: minmax(0, 1fr) auto;
       column-gap: 16px;
+      /* FOUR ROWS, AND THE FOURTH IS EMPTY ON PURPOSE (17 Nov 2026).
+         THE BUG THIS FIXES was invisible in a box measurement and obvious on
+         screen. The stage spans the text rows and is the taller side, so its
+         height was distributed ACROSS those rows — which stretched them, and
+         .engine-sub stretched with its row. Measured: the sub-line's box ran
+         to y328 while the words "Rhodes piano" ended at y261, and the button
+         sat at y334. Box-to-box that reads as a 4px gap; the eye saw ~73.
+         So the three lines were never going to close while the picture had a
+         say in where they sat.
+         auto auto auto 1fr: the three text rows size to their CONTENT, and
+         the flexible fourth takes whatever the picture still needs. The
+         stage spans 2-4, so its 186px no longer pushes the sub-line and Save
+         patch apart — the leftover lands under them instead, which is
+         exactly what Daniel asked for ("the leftover space moves below Save
+         patch — that is expected, not a bug to chase").
+         THE 1fr ROW IS LOAD-BEARING AND EMPTY. Nothing is placed in row 4;
+         it exists to absorb the span. Remove it and the stretch comes back
+         to the text rows, silently, and only a Range measurement would say
+         so. */
+      grid-template-rows: auto auto auto 1fr;
     }
     .engine-sound { grid-column: 1 / -1; grid-row: 1; }
     .engine-sub   { grid-column: 1; grid-row: 2; }
-    .engine-pos   { grid-column: 1; grid-row: 3; }
+    /* .engine-pos WAS ROW 3 and is gone (17 Nov 2026) — the "Bank 1 ·
+       Preset 3" caption, removed so the identity block reads as one group.
+       THE ROWS WERE RENUMBERED RATHER THAN LEFT WITH A HOLE. Rows are
+       `auto`, so an empty row 3 would have collapsed to zero and looked
+       fine — but every child here is placed EXPLICITLY on purpose, and a
+       grid whose contract names four rows while three exist is a map that
+       no longer matches the ground. Save patch is row 3 now and the stage
+       spans 2-3. */
     /* ABOVE THE WHEEL, WHATEVER THE WHEEL IS DOING. A peek may cross the meta
        TEXT — that is deliberate and has always been allowed — but it may not
        take a click meant for a control. The stage lifts to z-index 5 while the
@@ -3410,10 +3536,19 @@
        overlap's own centre was measured hitting `img`, not the button.
        A BUTTON OUTRANKS A PICTURE. z-index needs a position to bite, hence
        the relative. */
-    .save-slot    { grid-column: 1; grid-row: 4; position: relative; z-index: 6; }
+    .save-slot    { grid-column: 1; grid-row: 3; position: relative; z-index: 6; }
     /* Spanning the meta rows and ALIGNED TO THE TOP of them, so the row's
        height is the taller of the two and the parameters start below both. */
+    /* SPANNING THE THREE TEXT ROWS AND THE EMPTY FOURTH. align-self: start
+       keeps the picture at the top of that span; the span reaches row 4 so
+       the picture's extra height is absorbed there rather than stretching
+       the lines beside it. */
     .engine-stage { grid-column: 2; grid-row: 2 / span 3; align-self: start; }
+    /* AND THE TEXT ITEMS DO NOT STRETCH. The rows are content-sized now, so
+       this is belt and braces — but a `1fr` row or a taller neighbour
+       arriving later would stretch them again, and the stretch is invisible
+       in every box measurement. Stated rather than relied upon. */
+    .engine-sub, .save-slot { align-self: start; }
     /* THE STAGE IS THE GRID CELL, NOT A BOX THAT SIZES THE PICTURE.
        It was `width: 100%; aspect-ratio: 190/120; overflow: hidden` — a fixed
        187x118 that grew the artwork 46% and clipped it. Both are reverted; the
@@ -3977,7 +4112,12 @@
     }
     .engine-sub { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
     .engine-group { color: var(--text-muted); font-size: 12px; }
-    .engine-pos { color: var(--text-muted); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    /* .engine-pos's own rule is gone with the line it styled (17 Nov 2026).
+       It was `color: var(--text-muted); font-size: 12px; margin-top: 4px;
+       font-variant-numeric: tabular-nums` — the tabular figures mattered
+       because the preset number changed under the pointer as you moved down
+       a bank, and a proportional 1 made the line twitch. Recorded here in
+       case the caption ever comes back somewhere else. */
     .warn-banner {
       margin-top: 10px; padding: 8px 10px; border-radius: 4px;
       background: rgba(217, 161, 59, .12); border: 1px solid var(--warn);

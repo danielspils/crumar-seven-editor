@@ -80,7 +80,13 @@
   // so the words live in one file and every surface reads them. Two
   // phrasings in one place is a decision; two phrasings in two files is the
   // drift that commit ended.
-  const BANK1_FOOT = 'Bank 1 is reserved for Crumar models.';
+  // NO FULL STOP, and it is deliberate rather than an oversight (Daniel,
+  // 17 Nov 2026). This is a LABEL, not a sentence in prose: it sits in
+  // #fresh-line beside "as of last backup · yesterday", which has no stop
+  // either, in 10px uppercase. A period in a line of small caps reads as a
+  // speck. BANK1_LOCKED keeps its stop because it appears in dialog bodies
+  // and tooltips, where it genuinely is a sentence.
+  const BANK1_FOOT = 'Bank 1 is reserved for Crumar models';
 
   // The overwrite row is ABSENT with nothing changed: there is no slot to
   // overwrite, and a row offering to replace a preset with its own contents is

@@ -101,29 +101,27 @@
       others.length ? `a non-factory bank also shows it: ${others.join(' | ')}`
         : 'and banks 2-4 show nothing there');
 
-    // THE LOCK, the Bank 1 tab's own glyph. Asserted as the SAME class the
-    // tab uses, not as "an svg": two drawings of a padlock is the thing
-    // reusing the tab's LOCK string exists to prevent.
+    // NO GLYPH, AND NO STOP (Daniel, 17 Nov 2026). The note carried the
+    // Bank 1 tab's own lock for one revision; the TAB keeps the lock and
+    // this line is the words, because two padlocks on screen — one in the
+    // tab strip, one directly under the rows — is the same fact drawn twice.
     const bank1 = ui.$$('#bank-tabs .bank-tab')[0];
     if (bank1) { ui.click(bank1, 'bank 1'); await ui.sleep(550); }
-    const lock = ui.$('#bank1-note .bank-tab-lock');
-    ui.check(!!lock, 'the note carries the bank tab\'s own lock glyph');
-    if (lock) {
-      const lb = lock.getBoundingClientRect();
-      const words = ui.$('#bank1-note span:not(.bank-tab-lock)');
-      const wb = words ? words.getBoundingClientRect() : null;
-      ui.note(`  lock ${px(lb.width)}x${px(lb.height)} at x${px(lb.left)}`
-        + (wb ? ` · words start x${px(wb.left)}` : ''));
-      if (wb) {
-        ui.check(lb.right <= wb.left + 1,
-          `and it is to the LEFT of the sentence (lock ends ${px(lb.right)},`
-          + ` words start ${px(wb.left)})`);
-      }
-      // ONE INK. The glyph must not have a colour of its own — .bank-tab-lock
-      // is already var(--text-dim), which is what .fresh uses.
-      const note = ui.$('#bank1-note');
-      ui.check(getComputedStyle(lock).color === getComputedStyle(note).color,
-        `the glyph and the words are one ink (${getComputedStyle(lock).color})`);
+    const note = ui.$('#bank1-note');
+    ui.check(!ui.$('#bank1-note svg'), 'the note carries no glyph of its own');
+    // AND THE TAB STILL HAS ONE, so removing it from the line did not remove
+    // it from the app. Asserted here because it is the half that would make
+    // the deletion wrong rather than right.
+    ui.check(!!ui.$('#bank-tabs .bank-tab .bank-tab-lock'),
+      'and the Bank 1 TAB still carries it');
+    if (note) {
+      const t = text(note);
+      ui.note(`  note text: "${t}"`);
+      // THE PERIOD IS GONE FROM THE STRING, not hidden by CSS. text-transform
+      // cannot remove a character, so what is read back here is what the
+      // literal says.
+      ui.check(!/\.$/.test(t), `and no full stop at the end ("${t}")`);
+      ui.check(!/[.]/.test(t), 'and none anywhere in it');
     }
 
     // SAME TYPE AS THE CAVEAT, read off both rather than off the stylesheet.

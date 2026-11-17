@@ -8,8 +8,9 @@
 // View state (never persisted to a patch): callers pass a `view` object —
 //   { showRaw: bool,            raw numeric values visible on every row
 //     collapsed: {group: bool}, per-section expand/collapse
-//     bankLabel: 'Bank 1',      hardware-matching bank label for the header
-//     patchNumber: 3 }          1-based position within the bank
+//     (no bankLabel/patchNumber — the "Bank 1 · Preset 3" caption they fed
+//      was removed 17 Nov 2026 and they went with it rather than staying
+//      as view fields nobody reads) }
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -477,10 +478,22 @@
         );
       };
 
-      const pos =
-        view && view.bankLabel
-          ? `<div class="engine-pos">${esc(view.bankLabel)} · Preset ${view.patchNumber}</div>`
-          : '';
+      // THE "Bank N · Preset M" LINE IS GONE (Daniel, 17 Nov 2026).
+      //
+      // The identity block is one tight group now — name, sub-line, Save
+      // patch — and this was the third of four lines in it. It had to go for
+      // the group to read as a group.
+      //
+      // IT WAS ALSO LARGELY A REPEAT. The left pane shows the selected row,
+      // so a player looking at this block can already see which slot it came
+      // from; stating it again here is the same fact in two places, and the
+      // one in the list is the one they navigated with.
+      //
+      // THE PROVENANCE IS NOT LOST. It stays in the patch file, and the
+      // detail pane's own actions still know the slot — this was a caption,
+      // not the record. view.bankLabel and view.patchNumber went with it
+      // rather than being left as fields nobody reads.
+      //
       // The badge alone says Modeled/Sampled; the description line is the group
       // label only, so it never re-states the badge's word.
       return (
@@ -556,7 +569,6 @@
         // them rather than above: stacked, the picture pushed every parameter
         // down the page, and the parameters are what the view is for.
         `<div class="engine-sub"><span class="engine-group">${esc(shownSound.label)}</span></div>` +
-        pos +
         // Saving belongs to the sound, so it sits with it. Above the panel it
         // pushed BOTH columns down; here only the parameters move.
         (view && view.saveBar

@@ -1,10 +1,17 @@
 // WHERE DOES THE SAVE PATCH BUTTON BELONG?
 //
 // Daniel: "looks floating out in space." The diagnosis is proximity, not
-// alignment — its left edge is already shared with the name, the sub-line and
-// Bank · Preset above it. What strands it is that the gap ABOVE and the gap
-// BELOW are about equal, so it reads as belonging to neither the identity
-// block nor the parameter list.
+// alignment — its left edge is already shared with the name and the sub-line
+// above it. What strands it is that the gap ABOVE and the gap BELOW are about
+// equal, so it reads as belonging to neither the identity block nor the
+// parameter list.
+//
+// THE LINE ABOVE IT IS .engine-sub SINCE 17 Nov 2026. It was .engine-pos —
+// "Bank 1 · Preset 3" — which has been removed so the identity block reads as
+// one group of three. This scenario measured the gap FROM that element, so
+// left alone it would have found null and skipped its whole main block
+// silently: every gap number gone, and a green run saying nothing. The
+// anchor moved with the layout.
 //
 // This measures both gaps, every spacing value already in use in the column
 // (so a fix can be derived from them rather than invented), the two button
@@ -31,7 +38,6 @@
   const parts = [
     ['.engine-sound', ui.$('#detail .engine-sound')],
     ['.engine-sub', ui.$('#detail .engine-sub')],
-    ['.engine-pos', ui.$('#detail .engine-pos')],
     ['.save-slot', ui.$('#detail .save-slot')],
     ['.engine-stage', ui.$('#detail .engine-stage')],
   ];
@@ -45,9 +51,13 @@
       + ` | ${s.marginTop} / ${s.marginBottom}`);
   }
 
-  // THE TWO GAPS, which is the whole question.
-  const pos = box(ui.$('#detail .engine-pos'));
+  // THE TWO GAPS, which is the whole question. `above` is measured from the
+  // LAST LINE OF THE IDENTITY BLOCK, whichever that currently is — .engine-sub
+  // since the Bank·Preset line came out.
+  const lastLine = box(ui.$('#detail .engine-sub'));
   const save = box(ui.$('#detail .save-slot'));
+  ui.check(!ui.$('#detail .engine-pos'),
+    'the Bank · Preset line is gone from the identity block');
   // The first thing BELOW the identity block: whatever the parameter list
   // starts with in this column.
   const firstParam = ui.$('#detail .col-engine .param');
@@ -59,7 +69,7 @@
   const btn0 = ui.$('#save-live-btn') || ui.$('#detail .save-slot button');
   const bb = box(btn0);
   const br = box(bar0);
-  if (pos && save && fp && bb) {
+  if (lastLine && save && fp && bb) {
     ui.note(`.audition-bar  | ${String(px(br.top)).padStart(6)}`
       + ` ${String(px(br.bottom)).padStart(6)} ${String(px(br.height)).padStart(6)}`
       + ` | padding ${getComputedStyle(bar0).padding}`);
@@ -69,9 +79,9 @@
       + ` ${px(save.height)}px cell is empty`);
     ui.note(`  above the bar inside the cell: ${px(br.top - save.top)}px`);
     ui.note(`  below the bar inside the cell: ${px(save.bottom - br.bottom)}px`);
-    const above = bb.top - pos.bottom;
+    const above = bb.top - lastLine.bottom;
     const below = fp.top - bb.bottom;
-    ui.note(`GAP ABOVE the BUTTON (Bank·Preset -> button): ${px(above)}px`);
+    ui.note(`GAP ABOVE the BUTTON (sub-line -> button): ${px(above)}px`);
     ui.note(`GAP BELOW the BUTTON (button -> first param): ${px(below)}px`);
     ui.note(`  ratio below/above: ${px(below / above)}`
       + `  — equal-ish is the complaint; one should be clearly larger`);
@@ -96,14 +106,20 @@
   }
 
   // IS THE PICTURE STRETCHING THE ROWS IT SPANS? .engine-stage spans rows
-  // 2-4 with align-self:start, so if it is TALLER than those three rows'
+  // 2-3 with align-self:start, so if it is TALLER than those two rows'
   // own content the grid grows them — and the air around Save patch is part
   // of what grows. This is the check for "has the column gained air".
+  //
+  // IT IS EXPECTED TO BE THE TALLER ONE, and more so since the Bank·Preset
+  // line came out: the block lost a line while the picture did not change,
+  // so the leftover moves BELOW Save patch rather than pulling the
+  // parameters up. Daniel named that as expected rather than a bug — the
+  // parameters only rise if the picture shrinks (out/next-1.5.7.md item 12).
   const stage = box(ui.$('#detail .engine-stage'));
   const sub = box(ui.$('#detail .engine-sub'));
   if (stage && sub && save) {
     const spanned = save.bottom - sub.top;
-    ui.note(`rows 2-4 span ${px(spanned)}px; the stage beside them is ${px(stage.height)}px`);
+    ui.note(`rows 2-3 span ${px(spanned)}px; the stage beside them is ${px(stage.height)}px`);
     ui.check(true, `stage ${px(stage.height)} vs spanned rows ${px(spanned)}`
       + ` — ${stage.height > spanned ? 'THE PICTURE IS THE TALLER ONE and sets the height'
         : 'the text rows are taller, so the picture is not adding air'}`);

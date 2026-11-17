@@ -448,14 +448,30 @@ is the question that used to be a second dialog behind "save to computer"
     bank cannot be stored to (hardware, 2026-08-13). A hardware run offered
     `Overwrite Bank 1 · Preset 1` before this was caught, which would have sent
     the player to hold a button the instrument refuses.
-### Two sentences for Bank 1, one per job
+### Two lines for Bank 1, one per job
 
 > `Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.`
-> `Bank 1 is reserved for Crumar models.`
+> `Bank 1 is reserved for Crumar models`
 
 **Daniel's wording.** The first is 16 Nov 2026 — his 16 Aug 2026 tab-lock
 tooltip with "can not" corrected to "cannot". The second is 17 Nov 2026, for
-the foot of Bank 1's rows.
+the line under Bank 1's rows.
+
+**THE SECOND ONE HAS NO FULL STOP, deliberately** (Daniel, 17 Nov). It is a
+10px uppercase LABEL sitting beside `as of last backup · yesterday`, which has
+no stop either, and a period in a line of small caps reads as a speck. The
+refusal keeps its stop: that one appears in dialog bodies and tooltips, where
+it genuinely is prose. The stop is absent from the **literal**, not hidden by
+CSS — `text-transform` cannot remove a character — so the test that pins the
+wording pins the absence too.
+
+**AND NO LOCK GLYPH BESIDE IT** (Daniel, 17 Nov). It carried the Bank 1 tab's
+own `LOCK` for one revision, on the argument that the tab and the line should
+say one thing with one drawing. They still do: the **tab** has the lock, the
+line has the words. Two padlocks on screen at once — one in the tab strip, one
+directly under the rows it describes — is the same fact drawn twice, and a lock
+beside a line that only DESCRIBES the bank pushes it back towards reading as a
+refusal, which is the distinction below.
 
 **TWO SENTENCES IS NOT A RELAPSE INTO THE TWO-PHRASINGS PROBLEM BELOW**, and
 the difference is which question each answers:
@@ -477,13 +493,31 @@ every surface reads them from there:
 | the Bank 1 tab's lock | refusal | tooltip — `app.js`, `BANK1_LOCK_TIP` |
 | the save dialog | refusal | the note in the Seven row's place — `save-plan.js` |
 | the transfer runner | refusal | three refusals — `transfer-runner.js` |
-| the foot under Bank 1's rows | description | `app.js`, `updateSevenFoot` → `#foot-seven` |
+| the line under Bank 1's rows | description | `app.js`, `updateBank1Note` → `#bank1-note` |
 
-`#foot-seven` had **no consumer at all** between 16 and 17 Nov — declared in
-`app.js` and referenced nowhere else, the shape CLAUDE.md names as the tell
-for an unfinished capability. This is what finished it. Which bank counts as
-the factory's is asked of `ots-freshness.js` rather than tested against a
-literal 1, so the one place that knows stays the one place that knows.
+**IT MOVED ONCE, ON THE DAY IT LANDED.** For its first revision it was in
+`#foot-seven` — the bottom of the whole pane, two elements below the list, in
+12px green sentence case (`.foot-slot`, `color: var(--action-text)`). Three
+things wrong with that and one of them structural: it is a footnote about
+**those eight rows**, exactly like the freshness caveat, so it belongs in the
+same line under the same list. It is now a second span in `#fresh-line`
+wearing `class="fresh"` — which is how "it looks the same as the freshness
+line" is made true rather than copied: font, size, weight, tracking, colour
+and the uppercasing all come from that one rule. **The green is gone** because
+`DESIGN.md` reserves `--action-text` for things that DO something, and this
+line does nothing.
+
+Measured on all four banks: `#bank1-note` and `#bank-asof` both land at right
+385, top 569, 10px/700, 0.7px tracking, uppercase, `rgb(157,148,132)`.
+
+`#foot-seven` is **once again an element with no consumer**, and that is
+deliberate rather than forgotten — its own comment in `index.html` reserves it
+for "Save this bank as a setlist". The JS const that pointed at it is gone, so
+nothing reads as wired that is not.
+
+Which bank counts as the factory's is asked of `ots-freshness.js` rather than
+tested against a literal 1, so the one place that knows stays the one place
+that knows.
 
 **It replaced TWO phrasings of one fact**, which is why the entry is written
 this way. `save-plan.js` said "Bank 1 holds the factory presets and cannot be

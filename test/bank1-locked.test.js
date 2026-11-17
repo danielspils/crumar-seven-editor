@@ -39,7 +39,11 @@ const read = (f) => fs.readFileSync(path.join(SRC, f), 'utf8');
 const files = fs.readdirSync(SRC).filter((f) => f.endsWith('.js'));
 
 const WORDING = 'Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.';
-const FOOT_WORDING = 'Bank 1 is reserved for Crumar models.';
+// NO FULL STOP (Daniel, 17 Nov 2026). It is a 10px uppercase LABEL sitting
+// beside "as of last backup · yesterday", which has no stop either, and a
+// period in a line of small caps reads as a speck. BANK1_LOCKED keeps its
+// stop: that one appears in dialog bodies and tooltips, where it is prose.
+const FOOT_WORDING = 'Bank 1 is reserved for Crumar models';
 
 test('the Bank 1 sentence is Daniel\'s wording, exactly', () => {
   const { BANK1_LOCKED } = require('../src/save-plan');
@@ -122,8 +126,13 @@ test('the surfaces that state it all read the shared constant', () => {
   // on 17 Nov, beside the freshness caveat it is a sibling of. The assertion
   // is that SOME surface writes it and reads the shared constant to do so;
   // what it must not go back to is being a constant nobody renders.
-  assert.match(app, /bank1Note\.innerHTML = show \? LOCK/,
+  assert.match(app, /bank1Note\.textContent = show \? SevenSavePlan\.BANK1_FOOT/,
     'the Bank 1 note is actually written to');
+  // AND AS TEXT, not markup. It was innerHTML while it carried a lock glyph
+  // (SVG has to go in that way); with the lock gone a string goes in as a
+  // string, and nothing in this line needs the parser.
+  assert.doesNotMatch(app, /bank1Note\.innerHTML/,
+    'as text — there is no glyph to inject any more');
   assert.match(app, /SevenSavePlan\.BANK1_FOOT/,
     'and it reads the shared constant rather than retyping the sentence');
   // IT ASKS ots-freshness WHICH BANK IS THE FACTORY'S, rather than testing
@@ -165,7 +174,21 @@ test('the Bank 1 note wears the freshness line\'s own type rule', () => {
     'the note lives in #fresh-line, beside the freshness caveat');
   assert.doesNotMatch(html, /id="bank1-note"[^>]*foot-slot/,
     'and wears no foot class, which is where the green came from');
-  assert.match(html, /#bank1-note\[hidden\] \{ display: none; \}/,
-    'and it leaves the layout when hidden — an empty flex item still costs'
-    + ' #fresh-line its 12px gap, which would move the caveat between banks');
+  // AND IT LEAVES THE LAYOUT WHEN HIDDEN. The invariant is not "a particular
+  // rule exists" — it is that NOTHING OVERRIDES `[hidden]`. The span is a
+  // plain inline span, so the UA sheet's `[hidden] { display: none }` takes
+  // it out of flow by itself; a `display` declaration here would outrank
+  // that and leave an empty flex item costing #fresh-line its 12px gap,
+  // which moved the caveat 12px between Bank 1 and the rest.
+  //
+  // So this asserts the PAIR: either no display on #bank1-note, or a display
+  // plus the companion [hidden] rule. The first version asserted that the
+  // companion rule was present, and once the display it existed for was
+  // removed it was pinning a no-op — a rule that does nothing, asserted.
+  const hasDisplay = /#bank1-note(?![[\w-])[^{}]*\{[^{}]*display:/.test(html);
+  const hasHiddenRule = /#bank1-note\[hidden\][^{}]*\{[^{}]*display:\s*none/.test(html);
+  assert.ok(!hasDisplay || hasHiddenRule,
+    '#bank1-note has a display declaration but no `[hidden] { display: none }`'
+    + ' to go with it — hidden will not take it out of #fresh-line\'s flow,'
+    + ' and the freshness caveat will shift between banks');
 });

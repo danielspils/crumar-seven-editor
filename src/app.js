@@ -1862,9 +1862,14 @@
   const listEl = document.getElementById('patch-list');
   const detailEl = document.getElementById('detail');
 
-  // Bank labels match the hardware panel (banks are numbered 1-4). Restore
-  // prompts will tell the user which physical button to press.
-  const bankLabel = (i) => `Bank ${banks[i].name}`;
+  // `bankLabel(i)` IS GONE (17 Nov 2026). It read `Bank ${banks[i].name}`
+  // and had exactly one caller — the view field feeding the sound-engine
+  // block's "Bank 1 · Preset 3" caption, which was removed the same day.
+  // Deleted with it rather than left as a helper nothing calls: the one-line
+  // grep this repo uses to find dead surfaces would have reported it
+  // forever, and the string is trivially rebuilt if it is ever wanted.
+  // Bank numbering still matches the hardware panel (1-4) everywhere it
+  // appears; restore prompts name the physical button.
 
   // Bank 1 is Crumar's, and the Seven refuses writes to it. That used to be a
   // badge on all eight of its rows and on none anywhere else — a fact about
@@ -2002,8 +2007,12 @@
         }
         : deviceSel
           ? {
-            bankLabel: bankLabel(deviceSel.bank),
-            patchNumber: deviceSel.preset + 1,
+            // NO bankLabel/patchNumber. They existed solely to feed the
+            // "Bank 1 · Preset 3" caption in the sound-engine block, which
+            // was removed 17 Nov 2026 — and a view field with no reader is
+            // what this repo calls the tell for an unfinished capability, so
+            // they went with their consumer rather than sitting here looking
+            // wired. Both are one line from deviceSel if ever wanted back.
             // Bank 1 is the factory presets and the app will not write there,
             // so the picture is not a control at all on those slots — it says
             // why on hover instead. A button that opens only to refuse is a
@@ -3590,11 +3599,14 @@
   // literal stays sentence case — the refusals read the same constant and
   // 65a7969's tests assert it character for character.
   //
-  // THE LOCK IS THE BANK 1 TAB'S OWN GLYPH, the same LOCK string renderTabs
-  // puts in the tab, so the tab and this line say one thing with one
-  // drawing. It is aria-hidden in there already: the sentence beside it is
-  // the accessible content, and a screen reader announcing "lock" before it
-  // would be the same fact twice.
+  // NO LOCK GLYPH (Daniel, 17 Nov 2026). It carried the Bank 1 tab's own
+  // LOCK for one revision, on the argument that the tab and this line should
+  // say one thing with one drawing. They still do — the TAB has the lock,
+  // and this line is the words. Two padlocks on screen at once, one in the
+  // tab strip and one directly under the rows it describes, is the same fact
+  // drawn twice; and a lock beside a line that only DESCRIBES the bank
+  // pushes it back towards reading as a refusal, which is the distinction
+  // BANK1_FOOT exists to hold apart from BANK1_LOCKED.
   //
   // IT FOLLOWS bankIsFactory RATHER THAN A LITERAL 1, so the one place that
   // knows which bank is the factory's stays the one place that knows.
@@ -3603,7 +3615,10 @@
     if (!bank1Note) return;
     const show = SevenOtsFreshness.bankIsFactory(bankIndex);
     bank1Note.hidden = !show;
-    bank1Note.innerHTML = show ? LOCK + `<span>${SevenSavePlan.BANK1_FOOT}</span>` : '';
+    // textContent, NOT innerHTML, now that there is no glyph to inject. The
+    // previous version had to use innerHTML because LOCK is SVG markup; with
+    // the lock gone this is a string, and a string goes in as text.
+    bank1Note.textContent = show ? SevenSavePlan.BANK1_FOOT : '';
   }
 
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it
