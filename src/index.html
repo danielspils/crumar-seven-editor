@@ -277,6 +277,27 @@
          back button's BORDER rather than its text: .lib-back is a bordered
          control, so the border is what the eye reads as its left edge and the
          padding is what moves it.
+         AND SINCE 17 NOV, EVERY LIST ROW IN THE PANE. It is one pane, so a
+         row's left edge should not depend on which tab drew it. Folded on:
+         .patch-row (was 14), .lib-row (6), .lib-setlist-row's inner button
+         (6) and .lib-new-setlist (6). Measured at two pane widths afterwards:
+         every one of them 16, and 16 again squeezed to 360px.
+         LEFT ONLY — each rule keeps its own right padding, because the right
+         edge is where the per-row controls live and they are not one system:
+         .lib-row.lib-patch reserves 34px for the trash icon that is POSITIONED
+         over the row rather than laid out in it, .patch-row keeps 14, the slot
+         rows 6. Folding those together would put the date back under the icon.
+         THREE THINGS DELIBERATELY NOT ON IT, each found by looking rather
+         than assumed:
+         .lib-empty is CENTRED text (text-align: center), so a left inset says
+         nothing about where its ink lands.
+         .pick-row is not a pane row at all — it lives inside .pick-body in the
+         .pick-modal overlay, already inset 14px from a centred dialog's own
+         edge, with no relationship to the pane's left edge to agree with.
+         .lib-group-title LOOKS like a pane row and is not one any more: its
+         only remaining caller is renderPickBackups, inside that same modal
+         (library-view.js). It was put on the gutter and taken back off when
+         the measurement showed it never appears in the pane.
          .lib-setlist-head IS NOT ONE OF THEM, though the 15 Nov note and the
          brief for this change both said three. It is justify-content:
          flex-end — its content sits right BY DESIGN and its box starts at the
@@ -298,6 +319,23 @@
          squeezed). Reading it as agreement with a 16px gutter would be
          mistaking a coincidence for a rule. */
       --list-gutter: 16px;
+
+      /* ONE HEADER HEIGHT FOR THE WHOLE PANE (Daniel, 17 Nov 2026).
+         It is one pane, so switching tabs should change the ROWS and nothing
+         else. Each tab builds its own band — bank tabs on Seven, a search
+         field on the other three — and they came out 41.3px and 43px, so row
+         1 landed 1.7px lower on three tabs than on the fourth.
+         MEASURED BEFORE PICKING IT, and the number was far smaller than
+         expected because removing the connection banner the same day took
+         the real jump out: that line was a whole extra band on Patches
+         whenever nothing was connected.
+         43px is the TALLER of the two, so nothing has to shrink — the bank
+         tabs get slack beneath them instead, which Daniel has seen and
+         accepted. min-height rather than height: a band that needs more (the
+         scope control wraps on a narrow pane) may still take it, and then the
+         tabs no longer line up — which is honest, because at that width they
+         genuinely are different shapes. */
+      --pane-header-h: 43px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* The window itself never scrolls: the panel strip is a fixed reference at
@@ -839,7 +877,10 @@
        are separated by space and type size (the design language agreed 14 Nov
        2026, which also took out the rule under the top tabs and the one above
        the foot). The chosen tab's own tint is what marks the strip now. */
-    #bank-tabs, .bank-tabs { display: flex; }
+    /* THE SAME RESERVED BAND as the other tabs' .lib-bar, so row 1 lands at
+       one y across the pane. The tabs do not grow to fill it; the slack
+       sits beneath them. */
+    #bank-tabs, .bank-tabs { display: flex; min-height: var(--pane-header-h); }
     /* Subtle tabs: selection is carried by the same raised background as a
        selected patch row — no tab outline, no radius. The amber underline is
        text-width (on the label span), so it doesn't stack with the patch row's
@@ -940,7 +981,7 @@
     .patch-row {
       display: grid; grid-template-columns: 28px 1fr auto auto auto;
       gap: 10px; align-items: center;
-      width: 100%; padding: 9px 14px;
+      width: 100%; padding: 9px 14px 9px var(--list-gutter);
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
@@ -1442,6 +1483,7 @@
        this way" rather than as a fourth tab. */
     .lib-bar {
       display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px;
+      min-height: var(--pane-header-h);
       border-bottom: 1px solid var(--line);
       /* The scope control wraps to its own line. Three tabs, three scope
          segments and the search magnifier do not fit across a 480px pane —
@@ -1548,7 +1590,7 @@
     .lib-row {
       display: grid; grid-template-columns: 1fr 1fr auto auto;
       gap: 10px; align-items: center;
-      width: 100%; padding: 7px 6px;
+      width: 100%; padding: 7px 6px 7px var(--list-gutter);
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
@@ -1626,7 +1668,7 @@
        number arrived (Daniel, 2026-08-13). */
     .lib-setlist-row .lib-setlist {
       display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
-      flex: 1; min-width: 0; padding: 7px 6px;
+      flex: 1; min-width: 0; padding: 7px 6px 7px var(--list-gutter);
       background: none; border: none; color: var(--text); font: inherit;
       text-align: left; cursor: pointer;
     }
@@ -2626,7 +2668,7 @@
        things should not be the thing you have to scroll to find. */
     .lib-new-setlist {
       position: sticky; bottom: 0; z-index: 1;
-      display: block; width: 100%; padding: 9px 6px;
+      display: block; width: 100%; padding: 9px 6px 9px var(--list-gutter);
       background: var(--bg); border: none; border-top: 1px solid var(--line);
       color: var(--text-muted); font: inherit; text-align: left; cursor: pointer;
     }
