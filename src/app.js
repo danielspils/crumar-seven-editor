@@ -1162,7 +1162,35 @@
     //
     // Nothing but the sound was sent, so the effects the player had are still
     // the effects the instrument is running.
-    audition.beginLive({ soundName: name, params: { ...(keptChain || {}) } });
+    // WITH NOTHING SELECTED THERE IS NO SNAPSHOT, SO ASK THE INSTRUMENT.
+    //
+    // `liveParams()` answers null when no session is open — and browsing the
+    // carousel from an empty setlist, or from anything else with no patch
+    // behind it, is exactly that state. The spread below then turned null
+    // into `{}` and carried nothing, so the pane drew the FILE's chain while
+    // the instrument ran the player's: three of six section switches showing
+    // OFF with the Seven playing them (measured 16 Nov 2026,
+    // test/ui/scenarios/fx-chain-hangover.js).
+    //
+    // THE WHOLE CHAIN, NOT THE SIX SWITCHES (Daniel, 16 Nov). With switches
+    // only a block renders "PHASER · ON · Level 44" — the ON read from the
+    // instrument and true, the Phaser and the 44 still the file's. Today the
+    // OFF pill makes the whole block read as not-in-play so the numbers
+    // beside it are ignored; the moment it says ON they are believed. A block
+    // honest about running and wrong about what it is running is a worse lie
+    // than a visibly stale one, not a smaller one.
+    //
+    // ONCE PER SESSION, NOT PER STEP. Turning the wheel calls nothing — only
+    // CHOOSING reaches here — and a session opens on the choice, so the next
+    // one has a snapshot to carry and never reaches this branch. Confirmed on
+    // hardware: 39 live rows after the first choice.
+    //
+    // AFTER THE SEND, DELIBERATELY. The instrument keeps its effects across
+    // `0x46` (measured 2026-08-09, read-back verified), so reading before or
+    // after gives the same values — and reading first would make the sound
+    // itself wait ~500ms on a control whose whole job is browsing.
+    const chain = keptChain || await readChainFromInstrument();
+    audition.beginLive({ soundName: name, params: { ...(chain || {}) } });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
     const hero = document.querySelector('[data-carousel] .is-hero');
@@ -2170,6 +2198,32 @@
   // Which patch the detail panel is acting on: the library selection when that
   // was touched last, otherwise the selected bank slot. Both app.js and the
   // audition module work from this one answer.
+  // THE EFFECTS CHAIN, READ OFF THE INSTRUMENT. Used only where the app has
+  // no snapshot to carry — see chosenFromCarousel, which is the one caller.
+  //
+  // THE KEYS COME FROM THE SCHEMA, not from a list written here. The chain is
+  // every `efx_` parameter — 39 of 110, measured by tools/fx-chain-size.js —
+  // and a hardcoded copy would be a second definition of "the chain" to keep
+  // in step with the renderer's sections.
+  //
+  // ALL OR NOTHING, the same rule src/param-read.js applies to a buffer read.
+  // A chain of thirty values read and nine remembered is worse than one
+  // visibly stale: nothing afterwards could tell which were which, and the
+  // panel would be confidently wrong about the nine.
+  async function readChainFromInstrument() {
+    if (!isConnected()) return null;
+    const keys = (schema.parameters || [])
+      .filter((p) => /^efx_/.test(p.group))
+      .map((p) => p.key);
+    const out = {};
+    for (const key of keys) {
+      const r = await window.sevenAPI.midi.readParam(key);
+      if (!r || !r.ok) return null;
+      out[key] = r.value;
+    }
+    return out;
+  }
+
   function currentTarget() {
     if (lastTouched === 'library' && libSelected) {
       return { file: libSelected.file, patchIndex: libSelected.patchIndex || 0 };
