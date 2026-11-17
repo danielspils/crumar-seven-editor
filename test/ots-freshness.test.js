@@ -56,10 +56,38 @@ test('every slot read: a clock time', () => {
     'as of 2:32pm');
 });
 
-test('some read, some not: both halves counted', () => {
+// CHANGED 16 Nov 2026. This asserted "16 of 32 as of 2:32pm - 16 as of last
+// backup". Daniel: too much for a caption, and it summarises something the
+// per-row fade already shows ROW BY ROW — a slot not heard from draws faded,
+// so "16 as of last backup" is a number for a thing you can see.
+test('some read, some not: just the backup caveat', () => {
   assert.strictEqual(
     asOfLabel({ banksAsOf: BACKUP, verified: 16, total: 32, readAt: NOW, now: NOW, fmtDate, fmtTime, ago }),
-    '16 of 32 as of 2:32pm - 16 as of last backup');
+    'as of last backup · 19 Aug (2 days ago)');
+});
+
+test('the mixed line names no counts and no reading time at all', () => {
+  // Asserted as ABSENCES as well as by the whole string: a reword that kept
+  // "9 of 32" in a different shape would pass an equality check written
+  // against some other wording, and the counts are the thing being removed.
+  const line = asOfLabel({
+    banksAsOf: BACKUP, verified: 9, total: 32, readAt: NOW, now: NOW, fmtDate, fmtTime, ago,
+  });
+  assert.doesNotMatch(line, /\d+ of \d+/, `no "n of m" (${line})`);
+  assert.doesNotMatch(line, /2:32pm/, `and no reading time (${line})`);
+  assert.match(line, /as of last backup/, `only the backup caveat (${line})`);
+});
+
+// THE BRANCH THAT SURVIVES, pinned on its own so the removal above cannot
+// take it with it. With everything read nothing on screen is stale, and a
+// backup date here would state the OPPOSITE of the truth.
+test('everything read keeps its reading time and takes no backup caveat', () => {
+  const line = asOfLabel({
+    banksAsOf: BACKUP, verified: 32, total: 32, readAt: NOW, now: NOW, fmtDate, fmtTime, ago,
+  });
+  assert.strictEqual(line, 'as of 2:32pm');
+  assert.doesNotMatch(line, /last backup/,
+    'it must not claim the region describes the past when every row is live');
 });
 
 test('AFTER MIDNIGHT the clock time carries its date', () => {

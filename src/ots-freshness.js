@@ -204,9 +204,23 @@
       && readAt.getDate() === now.getDate();
     const when = sameDay ? fmtTime(readAt) : `${fmtTime(readAt)}, ${fmtDate(readAt)}`;
 
+    // EVERYTHING READ: no caveat, because nothing on screen is stale. THIS
+    // BRANCH IS UNCHANGED AND MUST STAY SO — replacing it with the backup
+    // date would state the opposite of the truth, claiming the region
+    // describes the past when every row has been heard from this session.
     if (verified >= total) return `as of ${when}`;
-    // Both halves counted, because neither describes the whole region.
-    return `${verified} of ${total} as of ${when} - ${total - verified} as of last backup`;
+
+    // THE MIXED CASE DROPS ITS COUNTS (Daniel, 16 Nov 2026).
+    //
+    // It read "9 OF 32 AS OF 3:53PM - 23 AS OF LAST BACKUP", which is too
+    // much for a caption and summarises something the per-row fade already
+    // shows ROW BY ROW: a slot the app has not heard from draws faded, so
+    // "23 as of last backup" is a number for a thing the player can see.
+    //
+    // What is left is the caveat that the fade cannot carry — HOW OLD the
+    // backup under those faded rows is. That is a property of the region,
+    // not of any one row, so it has nowhere else to live.
+    return backup;
   }
 
   // WHEN A BACKUP IS OLD ENOUGH TO MENTION.
