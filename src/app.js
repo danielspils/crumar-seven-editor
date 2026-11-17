@@ -2898,7 +2898,11 @@
   const libRoot = document.getElementById('library');
   const topTabs = document.getElementById('top-tabs');
   const bankAsOf = document.getElementById('bank-asof');
-  const footSeven = document.getElementById('foot-seven');
+  // #foot-seven IS NOT READ FROM HERE ANY MORE. Bank 1's sentence moved up
+  // to #fresh-line on 17 Nov; the element stays in index.html for the
+  // Seven-tab action its own comment reserves it for, and a const pointing
+  // at it with no reader would be the thing this file keeps warning about.
+  const bank1Note = document.getElementById('bank1-note');
   // WHICH TAB, and the persisted key the tray used to write. The tray's
   // open/closed state and its dragged split are both gone; what persists now
   // is simply which of the four you were on.
@@ -3546,17 +3550,33 @@
   // independently here and in the region header, which is two places for one
   // rule to drift.
   function updateFreshLine() {
-    if (bankAsOf) bankAsOf.textContent = asOfText();
-    updateSevenFoot();
+    const text = asOfText();
+    if (bankAsOf) {
+      bankAsOf.textContent = text;
+      // HIDDEN WHEN IT SAYS NOTHING, so it costs #fresh-line no gap. An
+      // empty span is still a flex item, and on Bank 1 — where the caveat is
+      // deliberately blank — that put 12px between the Bank 1 sentence and
+      // the right edge that the caveat does not have on banks 2-4.
+      bankAsOf.hidden = !text;
+    }
+    updateBank1Note();
   }
 
-  // WHAT BANK 1 IS, UNDER BANK 1'S ROWS (Daniel, 17 Nov 2026).
+  // WHAT BANK 1 IS, ON THE SAME LINE AS THE FRESHNESS CAVEAT
+  // (Daniel, 17 Nov 2026).
   //
-  // #foot-seven was declared on 16 Nov and had no consumer at all —
-  // `const footSeven = document.getElementById('foot-seven')` and nothing
-  // else in the file, which is the exact shape CLAUDE.md names as the tell
-  // for an unfinished capability ("a preload surface with zero callers").
-  // This is its consumer.
+  // IT MOVED OUT OF #foot-seven, where it spent one day. There it was at the
+  // bottom of the whole pane, two elements below the list, in 12px green
+  // sentence case (.foot-slot, color: var(--action-text)) — and DESIGN.md
+  // reserves green for things that DO something. This sentence does nothing;
+  // it is a footnote about the eight rows above it, which is exactly what the
+  // freshness caveat is, so it shares that line and that type.
+  //
+  // #foot-seven IS ONCE AGAIN AN ELEMENT WITH NO CONSUMER, and that is worth
+  // saying out loud rather than leaving for the next person to find: it is
+  // kept deliberately, because its own comment in index.html says it still
+  // has to hold "Save this bank as a setlist" when that lands. The JS
+  // reference to it is gone, so nothing reads as wired that is not.
   //
   // THE DESCRIPTION, NOT THE REFUSAL. SevenSavePlan.BANK1_FOOT is a second
   // sentence from the same file, and the reason there are two is written
@@ -3566,13 +3586,24 @@
   // tell a player looking at the factory presets that they cannot overwrite
   // something they were not attempting to overwrite.
   //
+  // THE CAPS ARE CSS. .fresh carries text-transform: uppercase, so the
+  // literal stays sentence case — the refusals read the same constant and
+  // 65a7969's tests assert it character for character.
+  //
+  // THE LOCK IS THE BANK 1 TAB'S OWN GLYPH, the same LOCK string renderTabs
+  // puts in the tab, so the tab and this line say one thing with one
+  // drawing. It is aria-hidden in there already: the sentence beside it is
+  // the accessible content, and a screen reader announcing "lock" before it
+  // would be the same fact twice.
+  //
   // IT FOLLOWS bankIsFactory RATHER THAN A LITERAL 1, so the one place that
   // knows which bank is the factory's stays the one place that knows.
-  // ots-freshness.js already owns that question for the line above the rows.
-  function updateSevenFoot() {
-    if (!footSeven) return;
-    footSeven.textContent = SevenOtsFreshness.bankIsFactory(bankIndex)
-      ? SevenSavePlan.BANK1_FOOT : '';
+  // ots-freshness.js already owns that question for the caveat beside it.
+  function updateBank1Note() {
+    if (!bank1Note) return;
+    const show = SevenOtsFreshness.bankIsFactory(bankIndex);
+    bank1Note.hidden = !show;
+    bank1Note.innerHTML = show ? LOCK + `<span>${SevenSavePlan.BANK1_FOOT}</span>` : '';
   }
 
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it

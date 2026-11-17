@@ -1503,12 +1503,44 @@
       gap: 12px; padding: 2px 14px 6px; flex: none;
     }
     /* Pushed right when the button is absent, so the caveat does not jump
-       sides as the cable goes in and out. */
-    #fresh-line #bank-asof { margin-left: auto; }
+       sides as the cable goes in and out.
+       BOTH OF THEM, because on Bank 1 the sentence is the only occupant and
+       has to land exactly where the caveat lands on banks 2-4. `auto` on the
+       first of the two is what does it; with both present — Bank 1 in a
+       library holding no backup at all, which still says "not yet backed
+       up" — they sit together at that end. */
+    #fresh-line #bank-asof, #fresh-line #bank1-note { margin-left: auto; }
+    /* AND NO `#bank1-note + #bank-asof { margin-left: 0 }`. That was here for
+       one run and it moved the caveat to the LEFT edge on banks 2-4
+       (measured: right edge 205.1 instead of 385). The `+` combinator matches
+       a hidden sibling, so it stripped #bank-asof's auto margin on every
+       bank — and with the only in-flow item then having no auto margin,
+       #fresh-line's `space-between` put it at flex-start.
+       It is not needed: both spans are toggled with `hidden`, which takes
+       them out of flow entirely, so whichever one is speaking is the only
+       flex item and `auto` lands it at the right edge by itself. */
+    /* ONE TYPE TREATMENT FOR BOTH FOOTNOTES. The Bank 1 sentence wears this
+       too, so "it looks the same as the freshness line" is a shared rule
+       rather than a copied set of values.
+       THE UPPERCASE LIVES HERE, not in the string: save-plan.js owns the
+       wording in sentence case, the refusals read the same constant, and
+       65a7969's tests assert it character for character. */
     .fresh {
       font-size: 10px; font-weight: 700; letter-spacing: .07em;
       text-transform: uppercase; color: var(--text-dim);
     }
+    /* The lock sits on the text's baseline-ish line, with the same gap the
+       Bank 1 tab puts between its label and its lock. NO COLOUR OF ITS OWN:
+       .bank-tab-lock is already var(--text-dim), which is what .fresh uses,
+       so the glyph and the words are one ink. */
+    #bank1-note { display: inline-flex; align-items: center; gap: 6px; }
+    /* AND IT MUST LEAVE THE LAYOUT WHEN IT IS NOT SHOWING. `display` on the
+       line above outranks the UA sheet's `[hidden] { display: none }`, so
+       without this the span stays a flex item on banks 2-4 — empty, but
+       still costing #fresh-line's 12px gap, which moved the freshness line
+       12px between Bank 1 and the rest. The whole point of item 3 is that
+       the two land in the SAME place. */
+    #bank1-note[hidden] { display: none; }
 
     /* ---- the foot: 12px labels, sentence case ---------------------------- */
     /* THE SEVEN TAB'S ALONE (Daniel, 2026-11-15). The only thing the three
@@ -1606,10 +1638,22 @@
        counts are the point, and a dropdown hides two thirds of them. */
     /* Its own line, under the tabs it filters — reading as "this tab, shown
        this way" rather than as a fourth tab. */
+    /* NO RULE ABOVE ROW 1 (Daniel, 17 Nov 2026).
+       This carried `border-bottom: 1px solid var(--line)`, so Patches,
+       Setlists and Backups each drew a line between the search field and
+       their first row and the Seven tab drew none — #bank-tabs has no border
+       and .bank-tab is `border: none`, so the Seven list has only the row
+       borders. One pane, so the line comes off all three.
+       THE ROWS STILL HAVE THEIR OWN BORDERS, which is why nothing is lost:
+       .lib-row carries border-bottom, so the list is still ruled between its
+       entries. What goes is the extra line ABOVE the first one, which read as
+       a frame round the list rather than as a separator between rows.
+       IT GOES FOR .lib-bar-detail TOO, deliberately. That is the same element
+       wearing an extra class — the back-button line inside a run or a setlist
+       — and it had the same line above its first row for the same reason. */
     .lib-bar {
       display: flex; gap: 8px; align-items: center; padding: 8px 2px 8px;
       min-height: var(--pane-header-h);
-      border-bottom: 1px solid var(--line);
       /* The scope control wraps to its own line. Three tabs, three scope
          segments and the search magnifier do not fit across a 480px pane —
          measured, after "From the Seven" was clipped by the pane edge
@@ -1712,10 +1756,22 @@
       border: 2px solid var(--bg); background-clip: padding-box;
     }
     .lib-list::-webkit-scrollbar-thumb:hover { background: var(--bar-fill); }
+    /* ONE ROW HEIGHT FOR EVERY LIST IN THE PANE (Daniel, 17 Nov 2026).
+       9px, not 7, which is the Seven tab's figure and makes every list row
+       37.8px. The 7px was the library's own number from when the library was
+       a separate tray with its own density; there is one pane now, so a row's
+       height should not depend on which tab drew it any more than its left
+       edge should.
+       IT REPLACES A SCOPED RULE RATHER THAN JOINING IT. The round before this
+       brought only the rows INSIDE a backup run to 37.8, via
+       #library[data-view="backups"] .lib-row.lib-patch — and that rule is
+       gone, because its reason was "a run's records are the same thing the
+       Seven tab lists" and the answer turned out to be that EVERY list is.
+       Leaving both would be one height written in two places. */
     .lib-row {
       display: grid; grid-template-columns: 1fr 1fr auto auto;
       gap: 10px; align-items: center;
-      width: 100%; padding: 7px 6px 7px var(--list-gutter);
+      width: 100%; padding: 9px 6px 9px var(--list-gutter);
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left; cursor: pointer;
     }
@@ -1758,21 +1814,16 @@
     .lib-row.lib-patch .patch-num {
       color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums;
     }
-    /* INSIDE A BACKUP RUN, THE ROWS BREATHE LIKE THE SEVEN'S (Daniel, 17 Nov
-       2026). A run's thirty-two records are the same thing the Seven tab
-       lists — one preset per line, read down the column — and they sat 4px
-       tighter than it (33.8 against 37.8) purely because .lib-row's 7px is
-       the library's figure and .patch-row's 9px is the bank list's.
-       SCOPED TO THE BACKUP DETAIL, not to .lib-row, and that is a deliberate
-       narrowing of what "one pane" buys: the Patches tab is an INVENTORY that
-       can run to hundreds of files, where tighter rows are the point, and the
-       brief asked for the backup's inner rows alone. The result is that
-       Backups-inside and Patches now differ by 4px while both say
-       .lib-row.lib-patch — reported rather than quietly widened, because
-       whether Patches should follow is Daniel's call and not a CSS one. */
-    #library[data-view="backups"] .lib-row.lib-patch {
-      padding-top: 9px; padding-bottom: 9px;
-    }
+    /* THE BACKUP-ONLY ROW HEIGHT IS GONE, and the reason is worth keeping.
+       It was #library[data-view="backups"] .lib-row.lib-patch at 9px, added
+       earlier the same day to bring a run's records up to the Seven tab's
+       37.8 — scoped on the argument that the Patches tab is an INVENTORY
+       that can run to hundreds of files, where tighter rows are the point.
+       Daniel's answer: every list in the pane gets the same row. So the 9px
+       moved up to .lib-row itself and this rule became a second copy of a
+       number it no longer changed. The reported consequence it carried —
+       "Backups-inside and Patches now differ by 4px while both say
+       .lib-row.lib-patch" — is what got answered. */
     .lib-group + .lib-group { margin-top: 4px; }
     /* A group heading that carries an action sits on one line with it. */
     .lib-group-title-row {
@@ -1808,7 +1859,11 @@
        number arrived (Daniel, 2026-08-13). */
     .lib-setlist-row .lib-setlist {
       display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
-      flex: 1; min-width: 0; padding: 7px 6px 7px var(--list-gutter);
+      /* 9px to match .lib-row, whose padding this button carries instead of
+         the row: .lib-setlist-row sets padding: 0 so its delete control and
+         chevron can sit outside the clickable part. One number, two places,
+         and it has to stay one — hence the note rather than a bare value. */
+      flex: 1; min-width: 0; padding: 9px 6px 9px var(--list-gutter);
       background: none; border: none; color: var(--text); font: inherit;
       text-align: left; cursor: pointer;
     }
@@ -2749,6 +2804,25 @@
        `auto` rather than a measured width: the column sizes itself to
        whatever the controls are, so a relabelled button cannot silently
        re-open the overlap. */
+    /* 7px, NOT THE 9px EVERY OTHER LIST ROW NOW USES, and the number is
+       load-bearing (measured 17 Nov 2026 — row-height-source.js).
+       A slot row comes out 38.5px against 37.8 everywhere else, and the
+       0.7px is STRUCTURAL rather than padding. Taken apart:
+         .lib-row        37.84 = padding 18 + border 1 + content 18.84
+         .lib-slot       38.50 = padding 14 + border 1 + content 23.50
+       So this rule has FOUR PIXELS LESS padding than the others and 4.66
+       more content, and the two nearly cancel. The content is:
+         3.00  the meta line's own grid track plus row-gap. grid-template-rows
+               reads "20.5px 0px" on an EMPTY slot — the second row exists
+               whether or not it has text, so this is there on every slot.
+         1.66  align-items: baseline with .slot-controls in the line. The
+               Select control is a bordered 20.5px button against an 18.85px
+               text line, and a grid row is as tall as its tallest cell.
+       SO FOLDING THE PADDING IN WOULD MAKE IT WORSE, not better: 9px here
+       gives 42.5px, which is 4.7 off the shared row rather than 0.7. The
+       only way to 37.8 is ~6.67px a side, and three decimal places of
+       padding to win 0.66px is not a trade worth making. Left at 38.5 by
+       decision; do not "align" it without re-reading the numbers above. */
     .lib-slot {
       display: grid; grid-template-columns: 24px 1fr auto auto auto;
       column-gap: 10px; row-gap: 3px; align-items: baseline;
@@ -4353,8 +4427,26 @@
              than in the toolbar three regions away. Same element, same id,
              same handler and the same hidden/label states — moved, not
              rebuilt. -->
+        <!-- AND BANK 1'S SENTENCE SHARES THAT LINE (Daniel, 17 Nov 2026).
+             It was in #lib-foot — at the bottom of the whole pane, two
+             elements below the list, in 12px green sentence case. Three
+             things wrong with that and one of them structural: it is a
+             footnote about THESE EIGHT ROWS, exactly like the freshness
+             caveat beside it, so it belongs in the same line under the same
+             list rather than at the foot of the pane.
+             IT WEARS class="fresh", which is how "look the same" is made
+             true rather than copied: the font, size, weight, tracking,
+             colour and the uppercasing all come from that one rule, so a
+             later change to the freshness line's type takes this with it.
+             THE CAPS ARE CSS, NOT THE STRING. .fresh carries
+             text-transform: uppercase. The literal in save-plan.js stays
+             sentence case because the refusals read the same constant and
+             65a7969's tests assert it character for character.
+             THE LOCK IS THE BANK 1 TAB'S OWN GLYPH (app.js, LOCK), so the
+             tab and this line say one thing with one drawing. -->
         <div id="fresh-line">
           <button id="backup-button" type="button" hidden>Back up instrument</button>
+          <span id="bank1-note" class="fresh" hidden></span>
           <span id="bank-asof" class="fresh"></span>
         </div>
       </div>

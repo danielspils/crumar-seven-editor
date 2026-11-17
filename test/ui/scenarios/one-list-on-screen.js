@@ -138,11 +138,35 @@
   // auto, bottom-aligned on the tabs' own line in the same dim uppercase, and
   // read as a fifth bank tab — the type was already the 10/700 micro-label, so
   // it was the shared LINE that did it, not the size.
+  //
+  // WHICHEVER FOOTNOTE IS SPEAKING, and it has to be asked that way since
+  // 17 Nov 2026. #fresh-line now holds two: the freshness caveat and Bank
+  // 1's "reserved for Crumar models" sentence, each `hidden` when the other
+  // is the one with something to say. Bank 1's caveat is deliberately blank
+  // — a factory bank cannot go stale — so this measured an EMPTY #bank-asof
+  // and passed only because an empty span still reports a position. Once
+  // that span started being hidden properly it reported zeros, and the
+  // assertion failed for a reason that had nothing to do with its subject.
+  //
+  // The subject is unchanged: whatever sits in that line is a footnote below
+  // the tabs, not a fifth tab on their own line.
   await ui.selectTab('seven');
-  const fresh = ui.$('#bank-asof');
+  await ui.sleep(500);
+  const speaking = () => [ui.$('#bank1-note'), ui.$('#bank-asof')]
+    .find((el) => el && !el.hidden && el.getBoundingClientRect().height > 0);
+  let fresh = speaking();
+  if (!fresh) {
+    // Neither spoke, which on a library with backups means the selected bank
+    // is Bank 1 and this build has no note for it. Bank 2 always has one of
+    // the two: an age, or "not yet backed up".
+    const b2 = ui.$$('#bank-tabs .bank-tab')[1];
+    if (b2) { ui.click(b2, 'bank 2'); await ui.sleep(600); }
+    fresh = speaking();
+  }
   const aTab = ui.$('#bank-tabs .bank-tab');
-  ui.check(!!fresh, 'the freshness caveat is on screen');
+  ui.check(!!fresh, 'a footnote line is on screen under the tabs');
   if (fresh && aTab) {
+    ui.note(`the footnote speaking is #${fresh.id}`);
     const fs = getComputedStyle(fresh);
     const ts = getComputedStyle(aTab);
     const fr = fresh.getBoundingClientRect();

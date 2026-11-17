@@ -44,36 +44,125 @@
       `bank 2's caption is either an age or the never-backed-up state ("${fresh}")`);
   }
 
-  // ---- 7. BANK 1'S FOOT SAYS WHAT BANK 1 IS -----------------------------
+  // ---- 7. BANK 1'S NOTE SAYS WHAT BANK 1 IS -----------------------------
   //
   // ON BANK 1 ONLY. A description of the factory bank sitting under Bank 3's
-  // rows would be false, and #foot-seven is one element shared by all four
-  // tabs — so the half worth asserting is that it EMPTIES again.
+  // rows would be false, and #bank1-note is one element shared by all four
+  // tabs — so the half worth asserting is that it goes away again.
+  //
+  // AND IN THE SAME PLACE AS THE FRESHNESS CAVEAT, which is item 3 and is
+  // the part a reword could silently undo: these two are footnotes about the
+  // same eight rows, so they share the line, the type rule and the position.
   const tabs = ui.$$('#bank-tabs .bank-tab');
+  ui.note('');
   ui.note(`bank tabs: ${tabs.length}`);
-  const footByBank = [];
+  const noteByBank = [];
+  const geomByBank = [];
   for (let i = 0; i < tabs.length; i += 1) {
     const t = ui.$$('#bank-tabs .bank-tab')[i];
     if (!t) break;
     ui.click(t, `bank tab ${i + 1}`);
     await ui.sleep(550);
-    footByBank.push(text(ui.$('#foot-seven')) || '');
+    const n = ui.$('#bank1-note');
+    const a = ui.$('#bank-asof');
+    const shown = (el) => el && !el.hidden && el.getBoundingClientRect().width > 0;
+    noteByBank.push(shown(n) ? text(n) : '');
+    // THE RIGHT EDGE OF WHICHEVER FOOTNOTE IS SPEAKING. Both are pushed to
+    // the same end of #fresh-line, so if they land in the same place this
+    // number is the same on every bank — and if one of them costs an extra
+    // flex gap, it is not.
+    const live = shown(n) ? n : (shown(a) ? a : null);
+    geomByBank.push(live ? {
+      right: px(live.getBoundingClientRect().right),
+      top: px(live.getBoundingClientRect().top),
+      which: live.id,
+      font: getComputedStyle(live).fontSize + '/' + getComputedStyle(live).fontWeight,
+      tracking: getComputedStyle(live).letterSpacing,
+      transform: getComputedStyle(live).textTransform,
+      colour: getComputedStyle(live).color,
+    } : null);
   }
-  for (let i = 0; i < footByBank.length; i += 1) {
-    ui.note(`  bank ${i + 1} foot: "${footByBank[i]}"`);
+  for (let i = 0; i < noteByBank.length; i += 1) {
+    const g = geomByBank[i];
+    ui.note(`  bank ${i + 1}: note "${noteByBank[i]}"`);
+    ui.note(`           line: ${g ? `${g.which} right ${g.right} top ${g.top}`
+      + ` · ${g.font} · ${g.tracking} · ${g.transform} · ${g.colour}` : '(nothing showing)'}`);
   }
-  if (footByBank.length) {
-    ui.check(/reserved for Crumar models/.test(footByBank[0]),
-      `Bank 1's foot describes the bank ("${footByBank[0]}")`);
+  if (noteByBank.length) {
+    ui.check(/reserved for Crumar models/i.test(noteByBank[0]),
+      `Bank 1's note describes the bank ("${noteByBank[0]}")`);
     // IT IS THE DESCRIPTION, NOT THE REFUSAL. The two sentences live in the
     // same file and the whole point of there being two is that this one does
     // not tell a player what they cannot do.
-    ui.check(!/cannot|overwrit/i.test(footByBank[0]),
+    ui.check(!/cannot|overwrit/i.test(noteByBank[0]),
       'and it does not carry the refusal wording');
-    const others = footByBank.slice(1).filter((s) => s);
+    const others = noteByBank.slice(1).filter((s) => s);
     ui.check(others.length === 0,
-      others.length ? `a non-factory bank also shows a foot: ${others.join(' | ')}`
+      others.length ? `a non-factory bank also shows it: ${others.join(' | ')}`
         : 'and banks 2-4 show nothing there');
+
+    // THE LOCK, the Bank 1 tab's own glyph. Asserted as the SAME class the
+    // tab uses, not as "an svg": two drawings of a padlock is the thing
+    // reusing the tab's LOCK string exists to prevent.
+    const bank1 = ui.$$('#bank-tabs .bank-tab')[0];
+    if (bank1) { ui.click(bank1, 'bank 1'); await ui.sleep(550); }
+    const lock = ui.$('#bank1-note .bank-tab-lock');
+    ui.check(!!lock, 'the note carries the bank tab\'s own lock glyph');
+    if (lock) {
+      const lb = lock.getBoundingClientRect();
+      const words = ui.$('#bank1-note span:not(.bank-tab-lock)');
+      const wb = words ? words.getBoundingClientRect() : null;
+      ui.note(`  lock ${px(lb.width)}x${px(lb.height)} at x${px(lb.left)}`
+        + (wb ? ` · words start x${px(wb.left)}` : ''));
+      if (wb) {
+        ui.check(lb.right <= wb.left + 1,
+          `and it is to the LEFT of the sentence (lock ends ${px(lb.right)},`
+          + ` words start ${px(wb.left)})`);
+      }
+      // ONE INK. The glyph must not have a colour of its own — .bank-tab-lock
+      // is already var(--text-dim), which is what .fresh uses.
+      const note = ui.$('#bank1-note');
+      ui.check(getComputedStyle(lock).color === getComputedStyle(note).color,
+        `the glyph and the words are one ink (${getComputedStyle(lock).color})`);
+    }
+
+    // SAME TYPE AS THE CAVEAT, read off both rather than off the stylesheet.
+    const b1 = geomByBank[0];
+    const b2 = geomByBank.slice(1).find((g) => g);
+    if (b1 && b2) {
+      ui.note('');
+      ui.note(`  bank 1 note vs bank ${geomByBank.indexOf(b2) + 1} caveat:`);
+      for (const k of ['font', 'tracking', 'transform', 'colour', 'right', 'top']) {
+        ui.check(String(b1[k]) === String(b2[k]),
+          `  ${k}: ${b1[k]} === ${b2[k]}`);
+      }
+      // THE GREEN IS GONE. --action-text is what .foot-slot used, and
+      // DESIGN.md reserves it for things that DO something.
+      const action = getComputedStyle(document.documentElement)
+        .getPropertyValue('--action-text').trim();
+      ui.note(`  --action-text is ${action}; the note is ${b1.colour}`);
+      ui.check(b1.colour !== action, 'and the note is not the action colour');
+      ui.check(b1.transform === 'uppercase', 'the caps come from CSS');
+    }
+  }
+
+  // ---- 2. NO RULE ABOVE ROW 1 ON ANY TAB --------------------------------
+  //
+  // THE BAND ABOVE THE ROWS, asked of whatever element each tab puts there.
+  // Measured as a computed border, not by looking: the line was .lib-bar's
+  // border-bottom, and the Seven tab's #bank-tabs has never had one.
+  ui.note('');
+  for (const tab of ['seven', 'patches', 'setlists', 'backups']) {
+    await ui.selectTab(tab);
+    await ui.sleep(600);
+    const band = ui.$('#library .lib-bar') || ui.$('#bank-tabs');
+    if (!band) { ui.note(`  ${tab}: nothing above the rows`); continue; }
+    const cs = getComputedStyle(band);
+    const w = parseFloat(cs.borderBottomWidth);
+    ui.note(`  ${tab.padEnd(9)} ${band.className || band.id}`
+      + ` border-bottom ${cs.borderBottomWidth} ${cs.borderBottomStyle}`);
+    ui.check(!w || cs.borderBottomStyle === 'none',
+      `${tab}: no rule between the header and row 1 (${cs.borderBottomWidth})`);
   }
 
   // ---- 4. A SETLIST ROW COUNTS PATCHES, NOT EMPTIES ---------------------

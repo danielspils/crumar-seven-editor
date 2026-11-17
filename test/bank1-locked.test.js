@@ -117,18 +117,55 @@ test('the surfaces that state it all read the shared constant', () => {
   assert.match(plan, /rows\.push\(\{ kind: 'note', text: BANK1_LOCKED \}\)/,
     'the save dialog renders it as the note in the Seven row\'s place');
 
-  // THE FOOT'S SURFACE. #foot-seven had NO consumer at all between 16 and 17
-  // Nov — declared in app.js and referenced nowhere else, the shape CLAUDE.md
-  // names as the tell for an unfinished capability. This is the assertion
-  // that it has one, and that the one it has reads the shared constant
-  // rather than retyping the sentence.
-  assert.match(app, /footSeven\.textContent =/,
-    '#foot-seven is actually written to — it sat declared and unused for a day');
+  // THE DESCRIPTION'S SURFACE. It lived in #foot-seven for one day — at the
+  // bottom of the pane in 12px green sentence case — and moved to #fresh-line
+  // on 17 Nov, beside the freshness caveat it is a sibling of. The assertion
+  // is that SOME surface writes it and reads the shared constant to do so;
+  // what it must not go back to is being a constant nobody renders.
+  assert.match(app, /bank1Note\.innerHTML = show \? LOCK/,
+    'the Bank 1 note is actually written to');
   assert.match(app, /SevenSavePlan\.BANK1_FOOT/,
-    'and the foot reads the shared constant');
+    'and it reads the shared constant rather than retyping the sentence');
   // IT ASKS ots-freshness WHICH BANK IS THE FACTORY'S, rather than testing
-  // for 1. One place knows that, and the freshness line above the rows
-  // already asks it the same way.
-  assert.match(app, /bankIsFactory\(bankIndex\)\s*\n?\s*\?\s*SevenSavePlan\.BANK1_FOOT/,
+  // for 1. One place knows that, and the freshness caveat beside it already
+  // asks the same way.
+  assert.match(app, /const show = SevenOtsFreshness\.bankIsFactory\(bankIndex\)/,
     'and shows it only on the factory bank, asked rather than hardcoded');
+  // AND IT IS CALLED. A renderer that nothing invokes is the Notes strip
+  // again — complete, correct and invisible for ten days.
+  assert.match(app, /updateBank1Note\(\)/,
+    'and updateFreshLine calls it, so a bank change repaints it');
+  // THE CAPS ARE CSS, NOT THE STRING, which is what lets save-plan.js keep
+  // the sentence-case literal 65a7969's tests assert character for
+  // character. If this ever becomes .toUpperCase() in app.js, those tests
+  // still pass while the two sentences have silently diverged on screen.
+  assert.doesNotMatch(app, /BANK1_FOOT[^\n]*toUpperCase/,
+    'the uppercasing belongs to .fresh in the stylesheet');
+});
+
+test('the Bank 1 note wears the freshness line\'s own type rule', () => {
+  // READ FROM index.html, because "it looks the same as the freshness line"
+  // is only true while both take their type from ONE rule. Copied values
+  // would pass a screenshot today and drift the first time one is edited.
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
+  assert.match(html, /<span id="bank1-note" class="fresh"/,
+    'the note carries class="fresh", the same rule #bank-asof uses');
+  // AND THE GREEN IS GONE BECAUSE THE POSITION CHANGED, which is what to
+  // assert: .foot-slot is var(--action-text), DESIGN.md reserves that for
+  // things that DO something, and the only way to wear it is to be in
+  // #lib-foot. So the test is that the note is inside #fresh-line — with
+  // the freshness caveat — and carries no foot class.
+  //
+  // The first version of this checked that #foot-seven does not carry
+  // `fresh`, which is true and means nothing: it would pass with the
+  // sentence still sitting in the foot in green.
+  const line = /<div id="fresh-line">[\s\S]*?<\/div>/.exec(html);
+  assert.ok(line, '#fresh-line is in the markup');
+  assert.match(line[0], /id="bank1-note"/,
+    'the note lives in #fresh-line, beside the freshness caveat');
+  assert.doesNotMatch(html, /id="bank1-note"[^>]*foot-slot/,
+    'and wears no foot class, which is where the green came from');
+  assert.match(html, /#bank1-note\[hidden\] \{ display: none; \}/,
+    'and it leaves the layout when hidden — an empty flex item still costs'
+    + ' #fresh-line its 12px gap, which would move the caveat between banks');
 });
