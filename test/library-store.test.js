@@ -1414,3 +1414,64 @@ test('a setlist’s bank survives a save and reload', () => {
   assert.strictEqual(store.setSetlistBank(i, '3'), false);
   assert.strictEqual(listNamed(store, 'Long Winters').bank, 2, 'a refused write changes nothing');
 });
+
+// A FIELD THIS READER DOES NOT NAME IS SILENTLY LOST ON EVERY READ.
+//
+// readSetlists rebuilds each setlist from scratch, so anything not listed in
+// it is dropped — the file says so in its own comment, about touchedAt. It
+// happened again to `runId`: written by createOrReplaceSetlist since
+// 2026-08-16 and thrown away on every read ever since, which nothing noticed
+// because every consumer has a fallback. library-view's backupRuns has
+// therefore ALWAYS grouped by the date key while its comment called runId
+// "exact".
+//
+// Found 16 Nov 2026 by a collision check refusing to fire, because the value
+// it compared was always null.
+test('every field a setlist is written with survives being read back', () => {
+  const { store } = freshStore();
+  store.createOrReplaceSetlist('Bank 1 setlist (2026-11-16 15:42)', ['a.sevenlib.json'], 'RUN-A');
+  const back = store.readSetlists().find((s) => /^Bank 1 setlist/.test(s.name));
+  assert.ok(back, 'the setlist comes back');
+  assert.strictEqual(back.runId, 'RUN-A',
+    'runId survives the read — without it the collision check cannot fire and '
+    + 'backupRuns silently falls back to the date');
+  assert.ok(back.touchedAt, 'and so does touchedAt, which was lost the same way once');
+});
+
+// THE COLLISION RULE ITSELF, at the store rather than through a run.
+test('a backup setlist name belongs to the run that wrote it', () => {
+  const { store } = freshStore();
+  store.createOrReplaceSetlist('Bank 1 setlist (2026-11-16 15:42)', ['a.sevenlib.json'], 'RUN-A');
+  assert.throws(
+    () => store.createOrReplaceSetlist('Bank 1 setlist (2026-11-16 15:42)', ['b.sevenlib.json'], 'RUN-B'),
+    /already belongs to another backup run/,
+    'a different run may not take a name that is already held'
+  );
+  const back = store.readSetlists().find((s) => /^Bank 1 setlist/.test(s.name));
+  assert.strictEqual(back.runId, 'RUN-A', 'and the first run still owns it');
+  assert.strictEqual(back.slots[0], 'a.sevenlib.json', 'with its own slots intact');
+});
+
+test('but the SAME run may rewrite its own setlist', () => {
+  // The runner writes a bank once per run, and a retry within one run — or
+  // any future caller re-stamping its own work — must not be refused by a
+  // rule aimed at a DIFFERENT run.
+  const { store } = freshStore();
+  store.createOrReplaceSetlist('Bank 1 setlist (2026-11-16 15:42)', ['a.sevenlib.json'], 'RUN-A');
+  assert.doesNotThrow(
+    () => store.createOrReplaceSetlist('Bank 1 setlist (2026-11-16 15:42)', ['c.sevenlib.json'], 'RUN-A')
+  );
+  const back = store.readSetlists().find((s) => /^Bank 1 setlist/.test(s.name));
+  assert.strictEqual(back.slots[0], 'c.sevenlib.json', 'its own rewrite lands');
+});
+
+test('and a setlist with no runId is still replaceable, as it always was', () => {
+  // Everything written before 2026-08-16 — and every hand-made setlist — has
+  // no runId. The rule must not make those immovable: it refuses a known
+  // DIFFERENT owner, not an unknown one.
+  const { store } = freshStore();
+  store.createOrReplaceSetlist('Bank 1 setlist (2026-08-09)', ['old.sevenlib.json']);
+  assert.doesNotThrow(
+    () => store.createOrReplaceSetlist('Bank 1 setlist (2026-08-09)', ['new.sevenlib.json'], 'RUN-Z')
+  );
+});

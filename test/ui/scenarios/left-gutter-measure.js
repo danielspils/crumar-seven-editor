@@ -40,6 +40,34 @@
     // which is the measurement equivalent of not looking.
     const tabLabel = firstTab
       && (firstTab.querySelector('.bank-tab-label') || firstTab);
+    // WHAT THE TAB'S INK EDGE ACTUALLY IS. If it is a chosen gutter it can be
+    // aligned to; if it falls out of centring, it is an artifact that moves
+    // with the pane and with the label, and nothing can be aligned to it.
+    if (firstTab) {
+      const cs = getComputedStyle(firstTab);
+      const tb = firstTab.getBoundingClientRect();
+      const lb = tabLabel ? tabLabel.getBoundingClientRect() : null;
+      ui.note(`first tab: padding-left "${cs.paddingLeft}" · text-align "${cs.textAlign}"`
+        + ` · flex "${cs.flexGrow}" · box w${px(tb.width)}`
+        + (lb ? ` · label w${px(lb.width)} · inset ${px(lb.left - tb.left)}` : ''));
+      if (lb) {
+        const centred = (tb.width - lb.width) / 2;
+        ui.note(`  centring would put the label ${px(centred)}px in`
+          + ` — ${Math.abs(centred - (lb.left - tb.left)) < 0.6 ? 'MATCHES, so it is an artifact of centring'
+            : 'does not match, so something else sets it'}`);
+      }
+    }
+    // EVERY TAB, because "the bank tabs' left edge" is only a thing if the
+    // four agree. Bank 1 carries a lock and the others do not, so its
+    // CONTENT is wider and centring puts its label somewhere else entirely.
+    for (const [n, t] of tabs.entries()) {
+      const tb = t.getBoundingClientRect();
+      const lab = t.querySelector('.bank-tab-label') || t;
+      const lb = lab.getBoundingClientRect();
+      ui.note(`  tab ${n + 1}: box x${px(tb.left)} w${px(tb.width)}`
+        + ` · label x${px(lb.left)} · inset ${px(lb.left - tb.left)}`
+        + (t.querySelector('.bank-tab-lock') ? ' · has a lock' : ''));
+    }
     ui.note(`bank tabs row   box ${px(left(tabsRow))}`);
     ui.note(`  first tab     box ${px(left(firstTab))}`
       + `  INK ${px(left(tabLabel))}`

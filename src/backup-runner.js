@@ -234,6 +234,11 @@ class BackupRunner extends EventEmitter {
     }
 
     const partial = slotFiles.length < SLOT_COUNT;
+    // Banks whose patches were saved but whose setlist could not be written,
+    // because the name already belongs to another run. Reported rather than
+    // swallowed — a quiet "did nothing" is indistinguishable from a broken
+    // one, which is the shape this project keeps getting caught by.
+    const unnamed = [];
 
     // Setlists for every completed bank (even on cancel/abort — the files are
     // real; the label says they're partial).
@@ -265,9 +270,25 @@ class BackupRunner extends EventEmitter {
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:`
         + `${String(now.getMinutes()).padStart(2, '0')}`;
       const suffix = partial ? ', failed' : '';
-      this.store.createOrReplaceSetlist(
-        `Bank ${b + 1} setlist (${dateStr} ${timeStr}${suffix})`, slots, runId
-      );
+      // A REFUSAL MUST NOT COST THE RUN. The store now refuses to replace a
+      // backup setlist belonging to a DIFFERENT run, which is what stops a
+      // second backup in the same minute overwriting the first — but that
+      // throw arrives after 32 slots and ~50 seconds of reading, and every
+      // patch is already safely on disk under its own unique filename.
+      //
+      // So it is caught per bank: the files are kept, the run reports what it
+      // could not name, and nothing of the earlier run is touched. Losing the
+      // SETLIST of a re-run is a far smaller thing than losing the records of
+      // the run before it, which is what the old behaviour did silently.
+      try {
+        this.store.createOrReplaceSetlist(
+          `Bank ${b + 1} setlist (${dateStr} ${timeStr}${suffix})`, slots, runId
+        );
+      } catch (err) {
+        unnamed.push(b + 1);
+        console.warn(`[backup] bank ${b + 1} kept its patches but could not be `
+          + `recorded as a setlist: ${err.message}`);
+      }
     }
 
     // Globals snapshot alongside the setlists — record only, no restore path.
@@ -303,6 +324,11 @@ class BackupRunner extends EventEmitter {
       slots: slotFiles.length,
       created,
       unchanged,
+      // Banks whose patches were saved but which could not be recorded as a
+      // setlist, because that name belongs to another run. Empty on every
+      // ordinary run. Carried on the report so a caller can say so rather
+      // than the only trace being a console line.
+      unnamed,
       globalsFile,
       durationMs,
       restored,

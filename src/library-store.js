@@ -378,6 +378,21 @@ class LibraryStore {
           // every setlist means nobody has, and the list sorts by creation.
           ...(Number.isFinite(s.order) ? { order: s.order } : {}),
           ...(typeof s.createdAt === 'string' ? { createdAt: s.createdAt } : {}),
+          // WHICH RUN WROTE THIS, and it was being dropped on every read.
+          //
+          // The warning four lines up — "a field it does not name is silently
+          // lost on every read, which is what happened to the first version of
+          // touchedAt" — happened again, to `runId`, and nothing noticed
+          // because every consumer has a fallback. createOrReplaceSetlist has
+          // written it since 2026-08-16 and this reader has thrown it away
+          // ever since, so library-view's backupRuns has ALWAYS grouped by the
+          // date-plus-flag key and its comment calling runId "exact" has never
+          // been true of a setlist that had been through a read.
+          //
+          // Found on 16 Nov 2026 by the collision check below refusing to
+          // fire: it compares the held runId against the incoming one, and the
+          // held one was always null.
+          ...(typeof s.runId === 'string' ? { runId: s.runId } : {}),
           // WHICH BANK THIS SETLIST WAS LAST SENT TO, written only after a
           // transfer actually landed. Absent means never sent, which is a real
           // answer and not a missing one — nothing may invent a bank.
@@ -550,6 +565,30 @@ class LibraryStore {
     const existing = setlists.findIndex((s) => s.name === name);
     const now = new Date().toISOString();
     if (existing >= 0) {
+      // ANOTHER RUN'S SETLIST IS NOT MINE TO REPLACE.
+      //
+      // The name carries HH:MM so two backups are two entries — but a minute
+      // is not fine enough to rely on, and the reason I first gave for it was
+      // wrong. The shortest run on record is 47 SECONDS, which is LESS than a
+      // minute: a run starting 15:42:00 ends 15:42:47, and a re-run started
+      // straight after lands at 15:42:5x. Same minute, same name, and the
+      // first run's four setlists would be overwritten and repointed — the
+      // exact defect B exists to remove, in a narrower window.
+      //
+      // FIXED AT THE RULE, NOT AT THE CLOCK. Adding seconds to the name would
+      // close this one arithmetic and leave the rule itself unguarded, and
+      // HH:MM is what a person reads back. A run is identified by its runId,
+      // so a DIFFERENT runId means a different run, whatever the name says.
+      //
+      // The name is then already taken, so this is left to the caller rather
+      // than silently renamed here: a store that invents names is a store
+      // whose output nobody can predict.
+      const held = setlists[existing].runId;
+      if (runId && held && held !== runId) {
+        throw new Error(
+          `“${name}” already belongs to another backup run (${held}) — refusing to replace it`
+        );
+      }
       setlists[existing].slots = padded;
       setlists[existing].touchedAt = now;
       if (runId) setlists[existing].runId = runId;

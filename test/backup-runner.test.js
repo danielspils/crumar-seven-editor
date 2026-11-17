@@ -347,3 +347,56 @@ test('an unchanged slot is not renamed — nothing is written at all', async () 
   assert.strictEqual(done.created, 0, 'nothing changed on the instrument');
   assert.strictEqual(slotOneOf(store).name, first.name, 'the existing record keeps its name');
 });
+
+// THE SAME-MINUTE COLLISION, which the time in the name does NOT close.
+//
+// My own reason for minute granularity was wrong and was caught: "two runs
+// cannot start inside a minute of each other — the shortest run on record is
+// 47 seconds". 47 seconds is LESS than a minute. A run starting 15:42:00 ends
+// 15:42:47, and a re-run started straight after lands at 15:42:5x — same
+// minute, same name, and the first run's setlists would be overwritten and
+// repointed. The exact defect B exists to remove, in a narrower window.
+//
+// FIXED AT THE RULE RATHER THAN THE CLOCK: a run is identified by its runId,
+// so a different runId means a different run whatever the name says. Adding
+// seconds to the name would close this one arithmetic and leave the rule
+// unguarded.
+test('a second run in the SAME MINUTE cannot overwrite the first', async () => {
+  const store = freshStore();
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const first = setlistNames(store).filter((n) => /^Bank [1-4] setlist/.test(n));
+  assert.strictEqual(first.length, 4, 'the first run wrote four');
+  const firstSlots = store.readSetlists()
+    .filter((s) => /^Bank 1 setlist/.test(s.name))[0].slots.slice();
+  const firstRunId = store.readSetlists()
+    .filter((s) => /^Bank 1 setlist/.test(s.name))[0].runId;
+
+  // THE SAME MINUTE, which is the whole point — no clock is advanced.
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+
+  const after = store.readSetlists().filter((s) => /^Bank 1 setlist/.test(s.name));
+  assert.strictEqual(after.length, 1, 'the name is still held by exactly one setlist');
+  assert.strictEqual(after[0].runId, firstRunId,
+    'and it still belongs to the FIRST run — it was not repointed');
+  assert.deepStrictEqual(after[0].slots, firstSlots,
+    'with the first run\'s slots untouched');
+});
+
+test('and the refused run keeps its patches and says which banks it could not name', async () => {
+  // A refusal must not cost the run: the throw arrives after 32 slots and
+  // ~50 seconds of reading, and every patch is already on disk under its own
+  // unique filename. Losing the SETLIST of a re-run is far smaller than
+  // losing the records of the run before it, which is what the old behaviour
+  // did silently.
+  const store = freshStore();
+  await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  const filesAfterFirst = store.list().patches.length;
+
+  const second = await new BackupRunner({ midi: new FakeSeven(), store, schema }).run();
+  assert.ok(Array.isArray(second.unnamed), 'the report carries which banks went unnamed');
+  assert.deepStrictEqual(second.unnamed, [1, 2, 3, 4],
+    `all four collided in the same minute, got ${JSON.stringify(second.unnamed)}`);
+  assert.strictEqual(second.ok, true, 'and the run still reports as having worked');
+  assert.ok(store.list().patches.length >= filesAfterFirst,
+    'no patch file was removed');
+});
