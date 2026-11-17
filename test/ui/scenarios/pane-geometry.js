@@ -79,9 +79,20 @@
     // footer button, an empty state — a Range over its contents is, because
     // an element's rect starts at its border and the text starts after the
     // padding, which is the number the gutter is about.
+    // A BORDERED CONTROL'S INK IS ITS BORDER, not its text. .lib-back and
+    // the create-setlist button are both drawn boxes: the eye reads the line
+    // round them as their left edge, and the gutter moves the BOX. Measuring
+    // their text instead reported the create button at 27 — its border on
+    // the 16px gutter plus 1px of border and 10px of its own padding — which
+    // contradicted left-pane-copy.js measuring the same button at 16. Same
+    // distinction --list-gutter's own comment records for .lib-back.
     const inkLeft = (row, inkSel) => {
       const child = inkSel ? row.querySelector(inkSel) : null;
       if (child) return left(child);
+      const cs = getComputedStyle(row);
+      if (parseFloat(cs.borderLeftWidth) > 0 && cs.borderLeftStyle !== 'none') {
+        return left(row);
+      }
       const range = document.createRange();
       range.selectNodeContents(row);
       const r = range.getBoundingClientRect();

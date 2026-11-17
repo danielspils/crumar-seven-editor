@@ -57,6 +57,31 @@
   // rather than announcing a rule of its own.
   const BANK1_LOCKED = 'Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.';
 
+  // AND A SECOND SENTENCE, FOR A SECOND JOB (Daniel, 17 Nov 2026).
+  //
+  // The entry above says there must be ONE sentence for one fact, and this
+  // does not contradict it: these two sentences do two different things, and
+  // the distinction is which QUESTION each answers.
+  //
+  // BANK1_LOCKED answers "why can I not do the thing I just tried" — it is a
+  // REFUSAL, and it appears at the moment of one: where the Seven row would
+  // have been in the save dialog, on the locked tab's tooltip, and in the
+  // transfer runner's three refusals. It names the consequence ("cannot be
+  // overwritten") because that is what the player has just run into.
+  //
+  // BANK1_FOOT answers "what is this bank" — it is a DESCRIPTION, sitting
+  // quietly under Bank 1's eight rows whether or not anybody tried anything.
+  // Putting the refusal there instead would tell every player looking at the
+  // factory presets that they cannot overwrite something they were not
+  // attempting to overwrite, which is how a warning becomes furniture.
+  //
+  // BOTH ARE DEFINED HERE, which is the part that matters and the part the
+  // 16 Nov commit established: the fact is Crumar's and the app states it,
+  // so the words live in one file and every surface reads them. Two
+  // phrasings in one place is a decision; two phrasings in two files is the
+  // drift that commit ended.
+  const BANK1_FOOT = 'Bank 1 is reserved for Crumar models.';
+
   // The overwrite row is ABSENT with nothing changed: there is no slot to
   // overwrite, and a row offering to replace a preset with its own contents is
   // an instruction to do nothing. With changes it is present — and it is NOT a
@@ -262,5 +287,5 @@
       : 'stay';
   }
 
-  return { saveRows, rowsHtml, valuesToWrite, decideSave, BANK1_LOCKED };
+  return { saveRows, rowsHtml, valuesToWrite, decideSave, BANK1_LOCKED, BANK1_FOOT };
 });

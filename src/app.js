@@ -2510,13 +2510,17 @@
     if (SevenOtsFreshness.bankIsFactory(bankIndex)) {
       return SevenOtsFreshness.factoryBankLabel({ hasRecord: bankHasRecord(bankIndex) });
     }
-    const d = banksAsOf ? new Date(banksAsOf) : null;
-    const age = banksAsOf ? SevenLibraryView.ago(banksAsOf) : '';
-    // Same day, nothing verified: the age IS the answer, and printing the date
-    // beside it makes somebody read "21 Aug" to work out that it means today.
-    if (d && !isNaN(d) && age === 'today' && !verifiedSlots.size) {
-      return 'as of last backup · today';
-    }
+    // THE SAME-DAY SPECIAL CASE IS GONE, and it is gone because the general
+    // rule swallowed it (17 Nov 2026). It read:
+    //
+    //   if (age === 'today' && !verifiedSlots.size) return 'as of last backup · today';
+    //
+    // and its comment said why — "the age IS the answer, and printing the
+    // date beside it makes somebody read '21 Aug' to work out that it means
+    // today". That reasoning was never specific to today. asOfLabel now
+    // prints the age alone on every day, so this branch had become a copy of
+    // what the function it guards already returns, and a second place that
+    // would have to be found and changed the next time the wording moves.
     return SevenOtsFreshness.asOfLabel({
       banksAsOf,
       verified: verifiedSlots.size,
@@ -3543,6 +3547,32 @@
   // rule to drift.
   function updateFreshLine() {
     if (bankAsOf) bankAsOf.textContent = asOfText();
+    updateSevenFoot();
+  }
+
+  // WHAT BANK 1 IS, UNDER BANK 1'S ROWS (Daniel, 17 Nov 2026).
+  //
+  // #foot-seven was declared on 16 Nov and had no consumer at all —
+  // `const footSeven = document.getElementById('foot-seven')` and nothing
+  // else in the file, which is the exact shape CLAUDE.md names as the tell
+  // for an unfinished capability ("a preload surface with zero callers").
+  // This is its consumer.
+  //
+  // THE DESCRIPTION, NOT THE REFUSAL. SevenSavePlan.BANK1_FOOT is a second
+  // sentence from the same file, and the reason there are two is written
+  // beside them: a refusal answers "why did that not work" and belongs at
+  // the moment somebody tries, while this answers "what is this bank" and
+  // sits there whether anybody tries or not. Using BANK1_LOCKED here would
+  // tell a player looking at the factory presets that they cannot overwrite
+  // something they were not attempting to overwrite.
+  //
+  // IT FOLLOWS bankIsFactory RATHER THAN A LITERAL 1, so the one place that
+  // knows which bank is the factory's stays the one place that knows.
+  // ots-freshness.js already owns that question for the line above the rows.
+  function updateSevenFoot() {
+    if (!footSeven) return;
+    footSeven.textContent = SevenOtsFreshness.bankIsFactory(bankIndex)
+      ? SevenSavePlan.BANK1_FOOT : '';
   }
 
   // The result is returned but unused: SEVEN_NO_REVEAL makes it say whether it

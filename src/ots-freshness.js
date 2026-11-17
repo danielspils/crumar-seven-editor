@@ -189,8 +189,24 @@
     banksAsOf = null, verified = 0, total = 32, readAt = null,
     now = new Date(), fmtDate, fmtTime, ago,
   } = {}) {
+    // THE AGE, WITHOUT THE DATE (Daniel, 17 Nov 2026).
+    //
+    // It read "as of last backup · 16 Nov (yesterday)", which states one fact
+    // twice and makes the reader do the arithmetic to check they agree. The
+    // question the line answers is HOW OLD, and "yesterday" answers it
+    // outright; "16 Nov" answers it only if you know today's date, which is
+    // the work ago() was added to remove.
+    //
+    // THE DATE IS NOT LOST, it is one level down: every backup run is listed
+    // by date on the Backups tab, which is where a date is something you act
+    // on — picking one run out of seven — rather than a caption's second
+    // opinion of its own age.
+    //
+    // fmtDate STAYS A PARAMETER, and is still used below: the verified branch
+    // prints a clock time, and after midnight a bare clock time is ambiguous,
+    // so that one genuinely needs a day beside it.
     const backup = banksAsOf
-      ? `as of last backup · ${fmtDate(new Date(banksAsOf))} (${ago(banksAsOf)})`
+      ? `as of last backup · ${ago(banksAsOf)}`
       : 'not yet backed up';
 
     // Nothing verified: the app has read no slot, so it may not name a time.

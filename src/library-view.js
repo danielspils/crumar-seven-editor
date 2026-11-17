@@ -887,8 +887,15 @@
         }
         const filled = s.slots.filter(Boolean).length;
         // Users think in patches; the 8-slot capacity is visible in the slot
-        // view itself. Note the empties only when there are any.
-        const label = `${filled} patch${filled === 1 ? '' : 'es'}` + (filled < 8 ? ` · ${8 - filled} empty` : '');
+        // view itself.
+        //
+        // AND THE EMPTIES ARE NOT WORTH SAYING (Daniel, 17 Nov 2026). This
+        // read "0 patches · 8 empty", which is the same fact twice: a setlist
+        // is always eight slots, so the number of empties is 8 minus the
+        // number stated immediately before it. The clause that was there
+        // ("note the empties only when there are any") was the reasoning for
+        // suppressing it at 8 of 8 and it applies the whole way down.
+        const label = `${filled} patch${filled === 1 ? '' : 'es'}`;
         return (
           // Delete was reachable only by right-click, which nothing advertised.
           // Same trash icon a slot uses — one vocabulary for "remove this".
@@ -918,7 +925,16 @@
       .join('');
     const create = state.creatingSetlist
       ? `<div class="lib-row lib-setlist-renaming"><input class="setlist-input lib-autofocus" data-setlist-create type="text" placeholder="Setlist name…" spellcheck="false"></div>`
-      : `<button type="button" class="lib-new-setlist">＋ Create new setlist</button>`;
+      // THE STRIP IS THE STICKY PART, THE BUTTON IS THE CONTROL (17 Nov
+      // 2026). It used to be one full-bleed element doing both jobs, so an
+      // outlined button could not be made of it: a 100%-wide bordered box
+      // reads as a panel, not a control. The wrapper keeps the pinning, the
+      // background and the top rule — all three are needed or the rows show
+      // through as they scroll under it — and the button inside is only as
+      // wide as its words.
+      : '<div class="lib-new-setlist-bar">'
+        + '<button type="button" class="lib-new-setlist">＋ Create new setlist</button>'
+        + '</div>';
     // A SEARCH THAT MATCHED NOTHING IS NOT AN EMPTY LIBRARY. Saying "No
     // setlists yet" over a hidden list would be the same wrong answer the
     // offline badge gave: a state described from the wrong cause.

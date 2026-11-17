@@ -241,8 +241,21 @@ Most need a blocked plan, a missing file, or a sound this instrument lacks.
 - `Backups` · `Patches` · `Setlists` — library-view.js:967
 - Search placeholder: `Search name or sound…` — library-view.js:996
 - Header: `ON THIS COMPUTER — 35`, `48 files`, `Open Library Folder`
-- Bank region header: `On the Seven` + `as of last backup · 16 Aug` — app.js:1517
+- Freshness line: `as of last backup · yesterday` — ots-freshness.js, `asOfLabel`.
+  **THE DATE CAME OFF 17 NOV 2026 (Daniel).** It read `as of last backup ·
+  16 Nov (yesterday)` — one fact stated twice, with the reader left to check
+  that the two halves agree. The line answers HOW OLD; the age answers that
+  outright, the date only if you already know today's. The date is not lost:
+  every run is listed by date on the Backups tab, where a date is something
+  you act on rather than a caption's second opinion of its own age.
+  App.js's same-day special case (`age === 'today'` → print the age alone)
+  went with it, having become a copy of what the general rule now returns.
 - `not yet backed up` — app.js:1518, before any backup exists
+- Setlist row count: `3 patches`. **`· 5 empty` CAME OFF 17 NOV 2026
+  (Daniel)** — library-view.js. A setlist is always eight slots, so the
+  empties are 8 minus the number stated immediately before them: the same
+  fact twice. The clause that was there suppressed it at 8 of 8 for exactly
+  that reason, and the reason applies the whole way down.
 
 ### Empty states
 
@@ -435,21 +448,42 @@ is the question that used to be a second dialog behind "save to computer"
     bank cannot be stored to (hardware, 2026-08-13). A hardware run offered
     `Overwrite Bank 1 · Preset 1` before this was caught, which would have sent
     the player to hold a button the instrument refuses.
-### One sentence for Bank 1
+### Two sentences for Bank 1, one per job
 
 > `Crumar reserves Bank 1 for its 8 models — they cannot be overwritten.`
+> `Bank 1 is reserved for Crumar models.`
 
-**Daniel's wording, 16 Nov 2026.** His 16 Aug 2026 tab-lock tooltip with
-"can not" corrected to "cannot" — his call, today.
+**Daniel's wording.** The first is 16 Nov 2026 — his 16 Aug 2026 tab-lock
+tooltip with "can not" corrected to "cannot". The second is 17 Nov 2026, for
+the foot of Bank 1's rows.
 
-Defined ONCE, as `BANK1_LOCKED` in `src/save-plan.js`. Everywhere this fact
-appears reads that constant:
+**TWO SENTENCES IS NOT A RELAPSE INTO THE TWO-PHRASINGS PROBLEM BELOW**, and
+the difference is which question each answers:
 
-| where | what shows it |
-|---|---|
-| the Bank 1 tab's lock | tooltip — `app.js`, `BANK1_LOCK_TIP` |
-| the save dialog | the note in the Seven row's place — `save-plan.js` |
-| the transfer runner | three refusals — `transfer-runner.js` |
+- `BANK1_LOCKED` is a **refusal** — *why did that not work* — and appears at
+  the moment somebody runs into the rule. It names the consequence.
+- `BANK1_FOOT` is a **description** — *what is this bank* — and sits under
+  Bank 1's eight rows whether or not anybody tried anything. Putting the
+  refusal there would tell every player looking at the factory presets that
+  they cannot overwrite something they were not attempting to overwrite,
+  which is how a warning becomes furniture.
+
+What the 16 Nov commit ended was two phrasings in **two files**, drifting with
+nobody owning either. Both of these are literals in `src/save-plan.js` and
+every surface reads them from there:
+
+| where | sentence | what shows it |
+|---|---|---|
+| the Bank 1 tab's lock | refusal | tooltip — `app.js`, `BANK1_LOCK_TIP` |
+| the save dialog | refusal | the note in the Seven row's place — `save-plan.js` |
+| the transfer runner | refusal | three refusals — `transfer-runner.js` |
+| the foot under Bank 1's rows | description | `app.js`, `updateSevenFoot` → `#foot-seven` |
+
+`#foot-seven` had **no consumer at all** between 16 and 17 Nov — declared in
+`app.js` and referenced nowhere else, the shape CLAUDE.md names as the tell
+for an unfinished capability. This is what finished it. Which bank counts as
+the factory's is asked of `ots-freshness.js` rather than tested against a
+literal 1, so the one place that knows stays the one place that knows.
 
 **It replaced TWO phrasings of one fact**, which is why the entry is written
 this way. `save-plan.js` said "Bank 1 holds the factory presets and cannot be
@@ -458,11 +492,17 @@ carrying both implies there are two rules; there is one, and it is the
 instrument's rather than the app's — the sentence says *Crumar* reserves the
 bank, so the app is reporting behaviour rather than announcing a policy.
 
-`test/bank1-locked.test.js` pins it: the exact wording including the em dash
-and the numeral, that it is a literal in `save-plan.js` alone, that no older
-phrasing survives anywhere in `src/`, and that each surface reads the shared
-constant. Mutation-checked — a second copy of the sentence, even the CORRECT
-sentence, fails two of them.
+`test/bank1-locked.test.js` pins both: the refusal's exact wording including
+the em dash and the numeral, that each is a literal in `save-plan.js` alone,
+that no older phrasing survives anywhere in `src/`, that each surface reads
+the shared constant, and that the foot sentence stays a DESCRIPTION — it
+fails if it ever acquires "cannot" or "overwrit", which is the line between
+the two jobs stated as an assertion rather than as prose.
+
+Mutation-checked, 3 for 3 (17 Nov 2026): a second copy of the sentence — even
+the CORRECT sentence — fails two; collapsing `BANK1_FOOT` into `BANK1_LOCKED`
+fails two; and taking away `#foot-seven`'s consumer fails the surfaces test,
+which is the guard that stops it going back to being declared and unused.
 
 - Note — in the Seven row's place on Bank 1, showing the sentence above:
   - **SETTLED 2026-11-15 (Daniel).** This was OPEN: the row was removed and

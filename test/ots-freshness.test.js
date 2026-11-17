@@ -44,10 +44,28 @@ const ago = () => '2 days ago';
 const BACKUP = '2026-08-19T10:00:00Z';
 const NOW = new Date('2026-08-21T14:32:00');
 
-test('never refreshed: the backup, with its age', () => {
+// CHANGED 17 Nov 2026. This asserted "as of last backup · 19 Aug (2 days
+// ago)". Daniel's call: the line answers HOW OLD, and the age answers it
+// outright while the date answers it only if you already know today's. The
+// date is still on the Backups tab, where it picks one run out of seven.
+test('never refreshed: the backup, as an age', () => {
   assert.strictEqual(
     asOfLabel({ banksAsOf: BACKUP, verified: 0, total: 32, now: NOW, fmtDate, fmtTime, ago }),
-    'as of last backup · 19 Aug (2 days ago)');
+    'as of last backup · 2 days ago');
+});
+
+test('and the date is not in it, in any shape', () => {
+  // AS AN ABSENCE, not only by the whole string. An equality check passes
+  // whatever the right-hand side says, so a reword that put the date back in
+  // some other form would be pinned rather than caught — the shape CLAUDE.md
+  // names as a test defending the thing it was written to remove. fmtDate is
+  // the only route a date can take into this branch, so a line that calls it
+  // is a line that printed one.
+  const line = asOfLabel({
+    banksAsOf: BACKUP, verified: 0, total: 32, now: NOW, fmtDate, fmtTime, ago,
+  });
+  assert.doesNotMatch(line, /19 Aug/, `no date beside the age (${line})`);
+  assert.doesNotMatch(line, /[()]/, `and no parenthesised anything (${line})`);
 });
 
 test('every slot read: a clock time', () => {
@@ -63,7 +81,7 @@ test('every slot read: a clock time', () => {
 test('some read, some not: just the backup caveat', () => {
   assert.strictEqual(
     asOfLabel({ banksAsOf: BACKUP, verified: 16, total: 32, readAt: NOW, now: NOW, fmtDate, fmtTime, ago }),
-    'as of last backup · 19 Aug (2 days ago)');
+    'as of last backup · 2 days ago');
 });
 
 test('the mixed line names no counts and no reading time at all', () => {

@@ -2806,13 +2806,34 @@
        all — and any small change elsewhere in the window (one more button in
        the connection row) was enough to tip it over. A control that creates
        things should not be the thing you have to scroll to find. */
-    .lib-new-setlist {
+    /* AN OUTLINED BUTTON, NOT A FILLED ROW (Daniel, 17 Nov 2026).
+       It was a full-bleed row — width: 100%, no border, a top rule, and a
+       fill on hover — so it read as the list's last entry rather than as a
+       control, and hovering it lit a whole band the width of the pane. Now
+       it is the same outlined shape .lib-back and .patch-send already use:
+       1px border, 5px radius, transparent, and only as wide as its words.
+       THE STICKY FOOTER STAYS, and so does the band it sits in. It is pinned
+       because with enough setlists it fell below the fold and could not be
+       clicked at all, and a control that creates things should not be the
+       thing you have to scroll to find. So the BUTTON shrinks to its label
+       while its sticky strip keeps the background and the top rule — without
+       them the rows would scroll visibly underneath it.
+       ALIGNED TO THE GUTTER like every other row, via the strip's padding
+       rather than the button's: the eye reads the button's BORDER as its
+       left edge (the same reasoning .lib-back's entry in --list-gutter
+       records), so the padding has to move the box, not the text. */
+    .lib-new-setlist-bar {
       position: sticky; bottom: 0; z-index: 1;
-      display: block; width: 100%; padding: 9px 6px 9px var(--list-gutter);
-      background: var(--bg); border: none; border-top: 1px solid var(--line);
-      color: var(--text-muted); font: inherit; text-align: left; cursor: pointer;
+      padding: 7px 6px 7px var(--list-gutter);
+      background: var(--bg); border-top: 1px solid var(--line);
     }
-    .lib-new-setlist:hover { background: var(--bg-raised); color: var(--text); }
+    .lib-new-setlist {
+      display: inline-block; padding: 3px 10px;
+      background: transparent; border: 1px solid var(--line); border-radius: 5px;
+      color: var(--text-muted); font: inherit; font-size: 12px;
+      text-align: left; cursor: pointer;
+    }
+    .lib-new-setlist:hover { color: var(--text); border-color: var(--text-muted); }
     .lib-setlist-renaming { display: block; }
     .setlist-input {
       width: 100%; font: inherit; font-weight: 600; color: var(--text);
