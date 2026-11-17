@@ -272,24 +272,31 @@
     :root {
       /* THE LIST'S LEFT GUTTER — ONE VALUE, DEFINED HERE (Daniel, 16 Nov 2026,
          after seeing 6px, 12px and 16px rendered side by side).
-         WHAT IT ALIGNS. Three edges share it, agreed on 15 Nov: the numbers on
-         the slot rows, the setlist header, and the detail bar — whose edge is
-         the back button's BORDER, not its text, because .lib-back is a
-         bordered control and the padding moves its box.
-         IT IS A PROPERTY RATHER THAN THREE COPIES. 6px was written separately
-         in three rules with a comment explaining the alignment, and three
-         copies of a number that must agree is three chances for it not to.
-         Change this line and all three move together.
+         WHAT IT ALIGNS — TWO EDGES, not three. The numbers on the slot rows
+         (.lib-slot) and the detail bar (.lib-bar-detail), whose edge is the
+         back button's BORDER rather than its text: .lib-back is a bordered
+         control, so the border is what the eye reads as its left edge and the
+         padding is what moves it.
+         .lib-setlist-head IS NOT ONE OF THEM, though the 15 Nov note and the
+         brief for this change both said three. It is justify-content:
+         flex-end — its content sits right BY DESIGN and its box starts at the
+         pane edge, so it measured 0px at 6, 12 and 16 alike. It was never a
+         left edge, and setting this on it changes nothing while implying it
+         belongs to a group it does not.
+         IT IS A PROPERTY RATHER THAN COPIES. 6px was written separately in
+         each rule with a comment explaining the alignment, and two copies of
+         a number that must agree is two chances for it not to. Change this
+         line and both move together.
          WHY IT WAS NOT DERIVED. The bank tabs look like the natural anchor and
          are not one: they are centred text in flex: 1 cells, so their ink edge
          moves with the pane width and has no fixed relationship to a gutter at
          all (measured 16 Nov). There is nothing to derive it from, so it was
          chosen by looking.
-         .lib-setlist-head TAKES IT AND SHOWS NOTHING, because it is
-         justify-content: flex-end — its content sits right and its box starts
-         at the pane edge. It is set anyway so the three rules say the same
-         thing, and so a future left-aligned item in that header lands correctly
-         rather than needing this rediscovered. */
+         THE BANK TABS ARE A SEPARATE SYSTEM and are not aligned to this.
+         They are centred text in flex: 1 cells; they agree with each other at
+         16.9px today, and that figure moves with the pane width (11.9px
+         squeezed). Reading it as agreement with a 16px gutter would be
+         mistaking a coincidence for a rule. */
       --list-gutter: 16px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1657,7 +1664,7 @@
        gutter by its own 8px padding. */
     .lib-setlist-head {
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 6px 8px var(--list-gutter); color: var(--text-muted);
+      padding: 4px 6px 8px; color: var(--text-muted);
     }
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
