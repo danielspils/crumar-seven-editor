@@ -1435,6 +1435,68 @@
     return null;
   }
 
+  // A NEW BACKUP ROLLS IN — ported from JUNO-Xtra's arriveBackupRows, so the
+  // two apps read as one family (Daniel, 16 Nov 2026). The BEHAVIOUR is
+  // ported, not the file: no code crossed between the repos.
+  //
+  // A BRIGHTNESS FLARE, NOT A FADE UP FROM DIM. This app already uses opacity
+  // to mean "stale" on the Seven rows — a row the app has not heard from this
+  // session draws at .58 — and a new row fading up from dim would make the
+  // two treatments converge on one meaning. The flare goes ABOVE full
+  // brightness and settles back, which nothing else here does.
+  //
+  // WHICH ROWS. The list keeps a Set of the row identities it has already
+  // shown; anything not in it arrives. The Set starts EMPTY, so the first
+  // fill animates everything — which is the behaviour wanted, not an edge
+  // case to suppress.
+  //
+  // `data-backup` is the run key: the runId where there is one, the
+  // date-plus-flag fallback otherwise. Two runs on one day are two keys as of
+  // 16 Nov, which is what gives this anything to animate at all.
+  const ARRIVE_MS = 360;
+  const ARRIVE_STEP = 22;
+  const reducedMotion = () => typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function arriveBackupRows(box) {
+    if (!box || typeof box.querySelectorAll !== 'function') return;
+    const rows = [...box.querySelectorAll('.lib-setlist[data-backup]')];
+    // NOT ON A TAB THAT HAS NO BACKUP ROWS. Leaving the Set alone means
+    // coming back to Backups does not re-animate everything, and going to
+    // Patches does not quietly forget what has been shown.
+    if (!rows.length) return;
+    const seen = box.seenBackupKeys || new Set();
+    if (!reducedMotion()) {
+      let i = 0;
+      for (const r of rows) {
+        const key = r.dataset.backup;
+        if (seen.has(key) || typeof r.animate !== 'function') continue;
+        const a = r.animate(
+          [
+            { opacity: 0, filter: 'brightness(1.7)' },
+            { opacity: 1, filter: 'brightness(1.35)', offset: 0.45 },
+            { opacity: 1, filter: 'brightness(1)' },
+          ],
+          {
+            duration: ARRIVE_MS, delay: i * ARRIVE_STEP, easing: 'ease-out',
+            // `backwards` so the row holds opacity 0 through its delay rather
+            // than appearing, waiting, then animating from visible.
+            fill: 'backwards',
+          }
+        );
+        // CANCELLED AFTER IT ENDS. A finished animation left on an element
+        // keeps its fill applied, so a row that later needs its own opacity —
+        // the stale fade, a selection — would be fighting a dead keyframe.
+        setTimeout(() => a.cancel(), ARRIVE_MS + i * ARRIVE_STEP + 200);
+        i += 1;
+      }
+    }
+    // RECORDED EVEN UNDER REDUCED MOTION, so turning it off later does not
+    // flare every row that was already on screen.
+    box.seenBackupKeys = new Set(rows.map((r) => r.dataset.backup));
+  }
+
   function renderBody(data, state, sounds) {
     // THE THREE TABS ARE LEVEL 1 NOW and are not rendered here any more. They
     // were a segmented control inside the tray — Backups | Patches | Setlists
@@ -1640,6 +1702,7 @@
         if (list) list.scrollTop = keepScroll;
       }
       lastViewKey = viewKey;
+      arriveBackupRows(el);
       updateFade();
       // What is on screen, for the header above it. The count used to be the
       // FOLDER total on every tab, so "36 patch files" sat over a list of one

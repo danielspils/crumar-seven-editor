@@ -4359,6 +4359,16 @@
       connText.textContent = ev.cancelled
         ? `Backup cancelled at ${ev.slots}/32 — ${counts} · ${where}`
         : `Backed up 32/32 in ${fmtElapsed(ev.durationMs)} — ${counts} · ${where}`;
+      // A FINISHED RUN LANDS ON BACKUPS, and the new row arrives there
+      // (Daniel, 16 Nov 2026). ALREADY BEING THERE IS NOT A SPECIAL CASE —
+      // setView is idempotent, so this is one line rather than a branch, and
+      // the arrival happens either way because it is driven by the row's key
+      // being new to the list rather than by the tab changing.
+      //
+      // BEFORE refreshLibrary, so the list renders once with the new run in
+      // it rather than rendering the old set and then again — which would
+      // show the arrival flare on rows that were already there.
+      setView('backups');
       refreshLibrary();
       // Say it plainly, not only in the connection row. A backup is the thing
       // this app exists for, and it finishing deserves more than a line of
