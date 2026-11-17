@@ -1617,9 +1617,18 @@
       // OUTSIDE .lib-list on purpose: inside it, the line scrolls away and the
       // rows it explains outlive it (Daniel asked whether the header survives
       // scrolling, 2026-08-21).
-      (data.soundsKnown === false && data.patches && data.patches.length
-        ? '<p class="lib-unknown-sounds">Connect your Seven to see which sounds are installed</p>'
-        : '') +
+      // REMOVED 17 Nov 2026 (Daniel). The status bar already says whether the
+      // Seven is connected; this said it again, at more length, permanently,
+      // on all three tabs — and it was a band of its own, so the first row sat
+      // lower whenever it showed.
+      //
+      // THE ACCEPTED COST, STATED SO NOBODY RE-ADDS IT: with nothing
+      // connected, no row can carry a "not installed" warning, and their
+      // absence is therefore UNKNOWN rather than good news. This line was the
+      // only thing saying so. The rule it came from is unchanged and still
+      // matters — offline the app claims nothing about any instrument
+      // (CLAUDE.md, "a claim about hardware needs hardware") — what went is
+      // the sentence, not the silence it explained.
       `<div class="lib-list">${listHtml}</div>`
     );
   }

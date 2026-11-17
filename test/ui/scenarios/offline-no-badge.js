@@ -32,23 +32,20 @@
   ui.check(notInstalled.length === 0,
     'no patch is marked "Not installed" with nothing connected');
 
-  // ── AND IT SAYS WHY, ONCE ──────────────────────────────────────────────
+  // ── AND IT NO LONGER SAYS WHY, WHICH IS THE ACCEPTED COST ─────────────
+  //
+  // "Connect your Seven to see which sounds are installed" came off all three
+  // tabs on 17 Nov 2026 (Daniel): the status bar already says whether the
+  // Seven is connected, and this said it again at more length, permanently.
+  //
+  // THE RULE IT CAME FROM IS UNCHANGED. Offline the app claims nothing about
+  // any instrument, which is what the assertion above pins — no row is marked
+  // "not installed". What went is the SENTENCE, not the silence. The cost,
+  // stated so nobody re-adds the line by accident: the absence of warnings is
+  // now unknown rather than good news, and nothing on screen says so.
   const line = ui.$('#library .lib-unknown-sounds');
-  ui.check(!!line, 'the region says why it cannot answer');
-  if (line) {
-    ui.note(`the line reads: "${line.textContent.trim()}"`);
-    ui.check(ui.$$('#library .lib-unknown-sounds').length === 1,
-      'once for the region, not once per row');
-    // IT MUST NOT SCROLL AWAY FROM THE ROWS IT EXPLAINS. Daniel asked this
-    // before it was built: a header inside the scroller outlives nothing.
-    const list = ui.$('#library .lib-list');
-    ui.check(!!list && !list.contains(line),
-      'and it sits outside the scrolling list, so it cannot slide away');
-    const lb = line.getBoundingClientRect();
-    const rb = list.getBoundingClientRect();
-    ui.note(`line bottom ${Math.round(lb.bottom)} · list top ${Math.round(rb.top)}`);
-    ui.check(lb.bottom <= rb.top + 1, 'above the rows it is about');
-  }
+  ui.note(`the explanatory line: ${line ? `"${line.textContent.trim()}"` : 'gone, as intended'}`);
+  ui.check(!line, 'the connection banner is gone from the Patches tab');
 
   // ── THE SETLIST SLOT MAKES THE SAME CLAIM, so it is checked too ─────────
   await ui.selectTab('setlists');
