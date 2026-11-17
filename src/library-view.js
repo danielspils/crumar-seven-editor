@@ -544,7 +544,28 @@
   // opposed to a setlist someone built for a gig.
   // "failed" is what a stopped run is called now; ", partial" is what runs
   // before 2026-08-16 wrote, and those setlists are still on disk.
-  const BACKUP_NAME = /^Bank ([1-4]) setlist \((\d{4}-\d{2}-\d{2})(, (?:partial|failed))?\)$/;
+  // THREE NAME FORMATS ARE ON DISK, AND ALL THREE MUST KEEP MATCHING.
+  //
+  //   Bank 1 setlist (2026-08-09)                 the original
+  //   Bank 1 setlist (2026-08-09, partial)        before 2026-08-16
+  //   Bank 1 setlist (2026-08-09, failed)         after it
+  //   Bank 1 setlist (2026-11-16 15:42)           from 16 Nov 2026, per RUN
+  //   Bank 1 setlist (2026-11-16 15:42, failed)
+  //
+  // THE TIME IS OPTIONAL AND THE REGEX WAS WIDENED, NEVER REPLACED. The
+  // Backups tab is built entirely from names matching this, so a format that
+  // stops matching does not render wrong — it DISAPPEARS, taking a real
+  // backup record out of the UI while leaving it on disk. Rule 1.
+  //
+  // NAMED GROUPS, deliberately. Adding the optional time shifts every
+  // positional index after it, and the flag group moved from 3 to 4 — the
+  // kind of change that compiles, runs, and quietly reads a date as a
+  // partial-flag. Named groups cannot drift that way.
+  const BACKUP_NAME = new RegExp(
+    '^Bank (?<bank>[1-4]) setlist '
+    + '\\((?<date>\\d{4}-\\d{2}-\\d{2})(?: (?<time>\\d{2}:\\d{2}))?'
+    + '(?<flag>, (?:partial|failed))?\\)$'
+  );
 
   // Most recently touched first — made, edited, or opened. A backup run stamps
   // the four setlists it writes, so the last run sits at the top until you go
@@ -566,7 +587,14 @@
   const createdKey = (s, i) => {
     if (s.createdAt) return `9:${s.createdAt}`;
     const m = BACKUP_NAME.exec(s.name);
-    if (m) return `1:${m[2]}:${String(9 - Number(m[1])).padStart(2, '0')}`;
+    // THE TIME JOINS THE KEY where there is one, so two runs of the same day
+    // sort against each other rather than tying. A name without one sorts as
+    // 00:00, which puts a pre-16-Nov record below that day's timed runs —
+    // correct, since it was written before them.
+    if (m) {
+      return `1:${m.groups.date} ${m.groups.time || '00:00'}`
+        + `:${String(9 - Number(m.groups.bank)).padStart(2, '0')}`;
+    }
     return `0:${String(10000 + i).padStart(6, '0')}`;
   };
 
@@ -589,16 +617,22 @@
     data.setlists.forEach((s, i) => {
       const m = BACKUP_NAME.exec(s.name);
       if (!m) return;
-      const date = m[2];
-      const partial = !!m[3];
-      const key = s.runId || `${date}${partial ? '|partial' : ''}`;
+      const date = m.groups.date;
+      const partial = !!m.groups.flag;
+      // THE DATE FALLBACK IS KEPT, and now carries the time when the name has
+      // one. A setlist predating runId still groups by date-plus-flag, which
+      // is what separated the only case that actually occurred; a timed name
+      // without a runId — which nothing writes, but which a hand-edited file
+      // could hold — separates by the minute instead of merging.
+      const key = s.runId
+        || `${date}${m.groups.time ? ` ${m.groups.time}` : ''}${partial ? '|partial' : ''}`;
       if (!runs.has(key)) runs.set(key, { key, date, partial: false, startedAt: null, banks: [] });
       const run = runs.get(key);
       if (partial) run.partial = true;
       // The run's own instant, when it has one. It is what orders two runs of
       // the same day; without it there is nothing finer than the date.
       if (s.runId && (!run.startedAt || s.runId < run.startedAt)) run.startedAt = s.runId;
-      run.banks.push({ bank: Number(m[1]), index: i, name: s.name });
+      run.banks.push({ bank: Number(m.groups.bank), index: i, name: s.name });
     });
     for (const run of runs.values()) run.banks.sort((a, b) => a.bank - b.bank);
     // NEWEST FIRST, and within a day the run that started later comes first.

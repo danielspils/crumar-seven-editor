@@ -409,3 +409,73 @@ test('a patch whose sound this instrument lacks is flagged in the flat list', ()
   );
   assert.doesNotMatch(fine, /Not installed/);
 });
+
+// ---- RULE 1: EVERY NAME FORMAT EVER WRITTEN MUST KEEP MATCHING -----------
+//
+// The Backups tab is built ENTIRELY from setlists whose names match
+// BACKUP_NAME, so a format that stops matching does not render wrong — it
+// DISAPPEARS, taking a real backup record out of the UI while leaving it on
+// disk. Adding the time to the name on 16 Nov 2026 widened that regex, and
+// this is what says the widening did not drop anything.
+//
+// Four formats are on disk across the project's life, and the fifth is new.
+const { backupRuns: runsOf } = require('../src/library-view.js');
+
+test('every backup name format ever written is still recognised', () => {
+  const names = [
+    'Bank 1 setlist (2026-08-09)',                  // the original
+    'Bank 2 setlist (2026-08-09, partial)',         // before 2026-08-16
+    'Bank 3 setlist (2026-08-12, failed)',          // after it
+    'Bank 4 setlist (2026-11-16 15:42)',            // from 16 Nov, per run
+    'Bank 1 setlist (2026-11-16 15:42, failed)',
+  ];
+  const runs = runsOf({ setlists: names.map((name) => ({ name, slots: [] })) });
+  const seen = runs.flatMap((r) => r.banks.map((b) => b.name));
+  for (const n of names) {
+    assert.ok(seen.includes(n), `"${n}" is still recognised as a backup setlist`);
+  }
+});
+
+test('a name that is not a backup is still left alone', () => {
+  // The same regex decides which setlists are the PLAYER's. Widening it to
+  // accept a time must not start swallowing hand-made setlists.
+  const runs = runsOf({
+    setlists: [
+      { name: 'Friday set', slots: [] },
+      { name: 'Bank 5 setlist (2026-08-09)', slots: [] },      // no bank 5
+      { name: 'Bank 1 setlist (2026-8-9)', slots: [] },        // not ISO
+      { name: 'Bank 1 setlist (2026-11-16 1542)', slots: [] }, // no colon
+    ],
+  });
+  assert.strictEqual(runs.length, 0,
+    `none of those are backup runs, got ${JSON.stringify(runs.map((r) => r.key))}`);
+});
+
+test('two runs on one day are two runs, by time as well as by runId', () => {
+  // With a runId they separate on that. WITHOUT one — a hand-edited file, or
+  // anything predating runId that someone retimed — the date fallback now
+  // carries the minute, so they still do not merge.
+  const runs = runsOf({
+    setlists: [
+      { name: 'Bank 1 setlist (2026-11-16 09:05)', slots: [] },
+      { name: 'Bank 1 setlist (2026-11-16 15:42)', slots: [] },
+    ],
+  });
+  assert.strictEqual(runs.length, 2, 'two separate runs');
+});
+
+test('and two undated-format setlists from one day still merge, as they always did', () => {
+  // NOT BACKFILLED. A library written before 16 Nov has no time in its names
+  // and no runId, and those four setlists are ONE run — merging them is the
+  // correct, unchanged behaviour, not a regression introduced by the widening.
+  const runs = runsOf({
+    setlists: [
+      { name: 'Bank 1 setlist (2026-08-09)', slots: [] },
+      { name: 'Bank 2 setlist (2026-08-09)', slots: [] },
+      { name: 'Bank 3 setlist (2026-08-09)', slots: [] },
+      { name: 'Bank 4 setlist (2026-08-09)', slots: [] },
+    ],
+  });
+  assert.strictEqual(runs.length, 1, 'one run of four banks');
+  assert.strictEqual(runs[0].banks.length, 4);
+});

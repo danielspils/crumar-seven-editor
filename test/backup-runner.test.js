@@ -86,8 +86,48 @@ test('a full run writes 32 slots and four dated setlists', async () => {
   assert.deepStrictEqual(midi.sentPrograms.slice(0, 32), [...Array(32).keys()],
     'slots are recalled 0..31 in order');
 
-  const dated = setlistNames(store).filter((n) => /^Bank [1-4] setlist \(\d{4}-\d{2}-\d{2}\)$/.test(n));
+  // THE NAME CARRIES THE TIME AS OF 16 Nov 2026, so two runs on one day are
+  // two entries rather than the second overwriting the first.
+  const dated = setlistNames(store)
+    .filter((n) => /^Bank [1-4] setlist \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$/.test(n));
   assert.strictEqual(dated.length, 4, `four clean setlist names, got: ${setlistNames(store)}`);
+});
+
+// THE WHOLE POINT OF THE TIME IN THE NAME. Two backups minutes apart used to
+// produce ONE entry: createOrReplaceSetlist replaces by name, so the second
+// run overwrote the first run's four setlists and repointed them. Patch files
+// survived (uniqueFile), but a slot that CHANGED between the runs left its
+// first version referenced by nothing — and the Backups tab is built entirely
+// from setlists matching BACKUP_NAME, so that record became unreachable.
+test('two runs on the same day are two sets of setlists, not one', async () => {
+  const store = freshStore();
+  const first = new BackupRunner({ midi: new FakeSeven(), store, schema });
+  await first.run();
+  const afterFirst = setlistNames(store).filter((n) => /^Bank [1-4] setlist/.test(n));
+  assert.strictEqual(afterFirst.length, 4, 'the first run wrote four');
+
+  // A DIFFERENT MINUTE, forced rather than waited for: the runner takes its
+  // name from `new Date()` and a test cannot sit through a minute.
+  const realDate = Date;
+  const shifted = new Date(Date.now() + 90_000);
+  global.Date = class extends realDate {
+    constructor(...args) {
+      if (!args.length) { super(shifted.getTime()); return; }
+      super(...args);
+    }
+    static now() { return shifted.getTime(); }
+  };
+  try {
+    const second = new BackupRunner({ midi: new FakeSeven(), store, schema });
+    await second.run();
+  } finally {
+    global.Date = realDate;
+  }
+
+  const all = setlistNames(store).filter((n) => /^Bank [1-4] setlist/.test(n));
+  assert.strictEqual(all.length, 8,
+    `both runs survive as separate setlists, got ${all.length}: ${all.join(' | ')}`);
+  assert.strictEqual(new Set(all).size, 8, 'and all eight names are distinct');
 });
 
 test('a slot that never answers ABORTS the run — it is never skipped', async () => {

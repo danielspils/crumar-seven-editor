@@ -246,8 +246,28 @@ class BackupRunner extends EventEmitter {
       // it failed, and the count beside it says how far it got
       // (Daniel, 2026-08-16). Setlists written before this say ", partial" and
       // are still read — see BACKUP_NAME in library-view.js.
+      // THE NAME CARRIES THE TIME, SO A RE-RUN IS ITS OWN ENTRY (16 Nov 2026).
+      //
+      // It was the date alone, and createOrReplaceSetlist replaces by NAME —
+      // so two backups five minutes apart produced one entry, the second
+      // overwriting the first run's four setlists and repointing them.
+      //
+      // WHAT THAT LOST, and it is not a deletion: patch files are written
+      // with uniqueFile(), so nothing went from disk. But a slot that CHANGED
+      // between two same-day runs left the first run's version behind,
+      // referenced by no setlist — and the Backups tab is built entirely from
+      // setlists matching BACKUP_NAME, so those records became unreachable in
+      // the UI. Invisible rather than gone.
+      //
+      // HH:MM, not seconds: two runs cannot start inside a minute of each
+      // other — the shortest run on record is 47 seconds for 32 slots — and a
+      // minute is what a person can read back.
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:`
+        + `${String(now.getMinutes()).padStart(2, '0')}`;
       const suffix = partial ? ', failed' : '';
-      this.store.createOrReplaceSetlist(`Bank ${b + 1} setlist (${dateStr}${suffix})`, slots, runId);
+      this.store.createOrReplaceSetlist(
+        `Bank ${b + 1} setlist (${dateStr} ${timeStr}${suffix})`, slots, runId
+      );
     }
 
     // Globals snapshot alongside the setlists — record only, no restore path.
