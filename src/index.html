@@ -261,6 +261,37 @@
       --d6-frame-bg: transparent;
       --d6-frame-border: transparent;
     }
+
+    /* ── LAYOUT TOKENS ────────────────────────────────────────────────
+       NOT A PALETTE. These are the same in both themes, so they live in
+       their own :root rather than inside the colour blocks — where
+       css-hazards.test.js rightly asks that every variable in one theme
+       exists in the other, and a layout value would have to be written
+       twice to satisfy it. Two copies of a number that must agree is
+       exactly what this property exists to remove. */
+    :root {
+      /* THE LIST'S LEFT GUTTER — ONE VALUE, DEFINED HERE (Daniel, 16 Nov 2026,
+         after seeing 6px, 12px and 16px rendered side by side).
+         WHAT IT ALIGNS. Three edges share it, agreed on 15 Nov: the numbers on
+         the slot rows, the setlist header, and the detail bar — whose edge is
+         the back button's BORDER, not its text, because .lib-back is a
+         bordered control and the padding moves its box.
+         IT IS A PROPERTY RATHER THAN THREE COPIES. 6px was written separately
+         in three rules with a comment explaining the alignment, and three
+         copies of a number that must agree is three chances for it not to.
+         Change this line and all three move together.
+         WHY IT WAS NOT DERIVED. The bank tabs look like the natural anchor and
+         are not one: they are centred text in flex: 1 cells, so their ink edge
+         moves with the pane width and has no fixed relationship to a gutter at
+         all (measured 16 Nov). There is nothing to derive it from, so it was
+         chosen by looking.
+         .lib-setlist-head TAKES IT AND SHOWS NOTHING, because it is
+         justify-content: flex-end — its content sits right and its box starts
+         at the pane edge. It is set anyway so the three rules say the same
+         thing, and so a future left-aligned item in that header lands correctly
+         rather than needing this rediscovered. */
+      --list-gutter: 16px;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* The window itself never scrolls: the panel strip is a fixed reference at
        the top, and only the two columns below scroll, independently. A root
@@ -1440,7 +1471,7 @@
     /* 6px, the gutter the rows use — the back button moved up here from
        .lib-setlist-head, which had just been aligned to it, and .lib-bar's own
        2px would have put it back on the panel edge. */
-    .lib-bar-detail { flex-wrap: nowrap; padding-left: 6px; }
+    .lib-bar-detail { flex-wrap: nowrap; padding-left: var(--list-gutter); }
     .lib-detail-title {
       min-width: 0; flex: 1 1 auto;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1626,7 +1657,7 @@
        gutter by its own 8px padding. */
     .lib-setlist-head {
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 6px 8px; color: var(--text-muted);
+      padding: 4px 6px 8px var(--list-gutter); color: var(--text-muted);
     }
     /* In the header it is a permanent control, not a hover affordance: the
        rule above hides .setlist-send until its ROW is hovered, and there is no
@@ -2532,7 +2563,7 @@
     .lib-slot {
       display: grid; grid-template-columns: 24px 1fr auto auto auto;
       column-gap: 10px; row-gap: 3px; align-items: baseline;
-      width: 100%; padding: 7px 6px;
+      width: 100%; padding: 7px 6px 7px var(--list-gutter);
       background: none; border: none; border-bottom: 1px solid var(--line);
       color: var(--text); font: inherit; text-align: left;
     }
