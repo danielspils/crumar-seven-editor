@@ -64,6 +64,14 @@
       const tb = t.getBoundingClientRect();
       const lab = t.querySelector('.bank-tab-label') || t;
       const lb = lab.getBoundingClientRect();
+      const lk = t.querySelector('.bank-tab-lock');
+      if (lk) {
+        const lr = lk.getBoundingClientRect();
+        const lcs = getComputedStyle(lk);
+        ui.note(`    the lock itself: w${px(lr.width)} · margin-left ${lcs.marginLeft}`
+          + ` · total ${px(lr.width + parseFloat(lcs.marginLeft))}`
+          + ` · gap from label ${px(lr.left - lb.right)}`);
+      }
       ui.note(`  tab ${n + 1}: box x${px(tb.left)} w${px(tb.width)}`
         + ` · label x${px(lb.left)} · inset ${px(lb.left - tb.left)}`
         + (t.querySelector('.bank-tab-lock') ? ' · has a lock' : ''));

@@ -167,11 +167,37 @@
   // The stored name is untouched (renaming still edits what actually exists,
   // as in the bank list) — only the display drops the part its own row already
   // states, and the sound cell goes quiet when it would echo the name.
+  // THE GENERATED BACKUP NAME, REBUILT RATHER THAN PARSED (16 Nov 2026).
+  //
+  // This stripped `^Bank \d+ Preset \d+ — ` with a regex, and a regex cannot
+  // tell a name the app generated from a name a PLAYER chose. "Bank 3 Preset
+  // 5 — my live rig" is a legal patch name and would silently lose its first
+  // three words.
+  //
+  // So the question is asked structurally: build the name a backup WOULD have
+  // been given from the record's own origin and sound, and strip only when
+  // the stored name equals it EXACTLY. Anything else is a name somebody
+  // meant, including a borrowed one — which is the single case where the
+  // stored name is the meaningful part and must survive untouched.
+  const generatedBackupName = (entry) => {
+    const o = entry && entry.origin;
+    if (!o || o.kind !== 'backup') return null;
+    if (!Number.isInteger(o.bank) || !Number.isInteger(o.preset)) return null;
+    if (!entry.soundName) return null;
+    return `Bank ${o.bank} Preset ${o.preset} — ${entry.soundName}`;
+  };
+
+  // WHAT A ROW SHOWS. The full stored name stays on the row's title, so the
+  // exact thing on disk is always one hover away — this only decides what is
+  // worth the width.
   function displayName(entry) {
-    // Any "Bank N Preset M — " prefix, not only one matching this patch's own
-    // origin: a COPY keeps the prefix in its stored name while having no slot
-    // of its own, and showed up as "Bank 1 …" truncated (Daniel, 2026-08-13).
-    return String(entry.name || '').replace(/^Bank\s*\d+\s*Preset\s*\d+\s*—\s*/, '');
+    const stored = String((entry && entry.name) || '');
+    const generated = generatedBackupName(entry);
+    // THE SLOT IS ALREADY ON THE ROW in other form; the SOUND is not. A
+    // generated name truncates to "Bank 3 Preset 8 — " in a narrow column,
+    // which is the half the row can already tell you.
+    if (generated && stored === generated) return entry.soundName;
+    return stored;
   }
 
 
@@ -292,7 +318,10 @@
       `<span class="lib-row-wrap"${opts.readOnly ? ' data-in-run' : ''}>` +
       `<button type="button" class="lib-row lib-patch${selected ? ' selected' : ''}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}"${opts.readOnly ? '' : ' draggable="true"'}${tip ? ` title="${esc(tip)}"` : ''}>` +
       `<span class="patch-num">${lead}</span>` +
-      `<span class="patch-name" title="${esc(name)}">${esc(name)}</span>` +
+      // THE TITLE CARRIES THE FULL STORED NAME, which is what makes it safe
+      // for the display to show less: a generated backup name shows its
+      // SOUND, and the slot it came from is one hover away rather than gone.
+      `<span class="patch-name" title="${esc(entry.name || name)}">${esc(name)}</span>` +
       // THE SOUND, NOT WHERE IT CAME FROM (Daniel, 2026-11-15: "I would never
       // care about where it came from").
       //
@@ -996,7 +1025,7 @@
         return `<button type="button" class="pick-row" data-pick-file="${esc(entry.file)}" ` +
           `data-pi="${entry.patchIndex}">` +
           `<span class="patch-num">${i + 1}</span>` +
-          `<span class="patch-name" title="${esc(displayName(entry))}">${esc(displayName(entry))}</span>` +
+          `<span class="patch-name" title="${esc(entry.name || displayName(entry))}">${esc(displayName(entry))}</span>` +
           `<span class="patch-sound">${esc(entry.soundName)}</span></button>`;
       }).join('');
       return `<div class="lib-group"><div class="lib-group-title">Bank ${b.bank}</div>${rows}</div>`;
@@ -1312,7 +1341,7 @@
         }
         return (
           `<div class="lib-slot lib-slot-patch${selected ? ' selected' : ''}${pulse(i)}" data-slot="${i}" data-file="${esc(entry.file)}" data-pi="${entry.patchIndex}" draggable="true">` +
-          `${num}<span class="patch-name" title="${esc(displayName(entry))}">${esc(displayName(entry))}</span>` +
+          `${num}<span class="patch-name" title="${esc(entry.name || displayName(entry))}">${esc(displayName(entry))}</span>` +
           // THE META LINE TRUNCATES, SO IT CARRIES ITS OWN TEXT. "Bank 2 ·
           // Preset 4 · 14 Nov" is exactly the kind of line a narrow pane cuts,
           // and the part that gets cut — the date — is the part somebody is

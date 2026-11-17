@@ -479,3 +479,72 @@ test('and two undated-format setlists from one day still merge, as they always d
   assert.strictEqual(runs.length, 1, 'one run of four banks');
   assert.strictEqual(runs[0].banks.length, 4);
 });
+
+// ---- A GENERATED BACKUP NAME IS DECIDED STRUCTURALLY, NOT BY PARSING -----
+//
+// displayName stripped `^Bank \d+ Preset \d+ — ` with a regex, which cannot
+// tell a name the APP generated from one a PLAYER chose. The generated form
+// is rebuilt from the record's own origin and sound, and stripped only on an
+// exact match.
+const { displayName: dn } = require('../src/library-view.js');
+
+test('a generated backup name shows its SOUND, not its slot', () => {
+  // "Bank 3 Preset 8 — Venice Upright U1 Felt" truncates to the half the row
+  // can already tell you. The slot is on the row in other form; the sound is
+  // not.
+  assert.strictEqual(dn({
+    name: 'Bank 3 Preset 8 — Venice Upright U1 Felt',
+    soundName: 'Venice Upright U1 Felt',
+    origin: { kind: 'backup', bank: 3, preset: 8 },
+  }), 'Venice Upright U1 Felt');
+});
+
+test('A USER PATCH THAT LOOKS LIKE ONE IS LEFT ALONE', () => {
+  // The case the regex got wrong, and the reason this is structural. All of
+  // these begin with the generated shape and none of them IS one.
+  const samePrefixDifferentSound = {
+    name: 'Bank 3 Preset 5 — my live rig',
+    soundName: 'Tine Piano',
+    origin: { kind: 'backup', bank: 3, preset: 5 },
+  };
+  assert.strictEqual(dn(samePrefixDifferentSound), 'Bank 3 Preset 5 — my live rig',
+    'the sound does not match, so the name is the player\'s');
+
+  const wrongSlot = {
+    name: 'Bank 1 Preset 1 — Tine Piano',
+    soundName: 'Tine Piano',
+    origin: { kind: 'backup', bank: 3, preset: 5 },
+  };
+  assert.strictEqual(dn(wrongSlot), 'Bank 1 Preset 1 — Tine Piano',
+    'the slot does not match its own origin, so it was not generated for it');
+
+  const notABackup = {
+    name: 'Bank 2 Preset 4 — Reed Piano',
+    soundName: 'Reed Piano',
+    origin: { kind: 'user', bank: 2, preset: 4 },
+  };
+  assert.strictEqual(dn(notABackup), 'Bank 2 Preset 4 — Reed Piano',
+    'not a backup record, so nothing was generated');
+
+  const noOrigin = { name: 'Bank 2 Preset 4 — Reed Piano', soundName: 'Reed Piano' };
+  assert.strictEqual(dn(noOrigin), 'Bank 2 Preset 4 — Reed Piano',
+    'no origin to rebuild from, so nothing may be assumed');
+});
+
+test('a BORROWED name survives untouched', () => {
+  // The one case where the stored name is the meaningful one: the run found a
+  // library patch holding these values and took its name. It is not the
+  // generated form, so it is not stripped.
+  assert.strictEqual(dn({
+    name: 'Daniel\'s Rhodes',
+    soundName: 'Tine Piano',
+    nameFrom: 'daniels-rhodes.sevenlib.json',
+    origin: { kind: 'backup', bank: 3, preset: 1 },
+  }), 'Daniel\'s Rhodes');
+});
+
+test('an ordinary patch name is returned as it is', () => {
+  assert.strictEqual(dn({ name: 'Shapes Clav 2', soundName: 'Clavi Piano' }), 'Shapes Clav 2');
+  assert.strictEqual(dn({}), '');
+  assert.strictEqual(dn({ name: null }), '');
+});

@@ -823,12 +823,27 @@
        WHAT STAYS: the amber underline on the selected tab, and the lock on
        Bank 1. The underline is the selection vocabulary, not a caps effect. */
     .bank-tab {
+      /* CENTRED BY FLEX RATHER THAN BY text-align, so the lock's reserved
+         slot is a flex item and whitespace between the two is not. The 9px
+         gap is what the lock's margin-left used to be and now applies to the
+         spacer as well, which is the whole point: one value, both cases. */
+      display: flex; align-items: baseline; justify-content: center; gap: 9px;
       flex: 1; padding: 9px 0 7px; text-align: center;
       background: transparent; border: none;
       color: var(--text-dim); font: inherit;
       /* 14/700, chosen by Daniel against his approved mock after seeing 12/600
          rendered — they read differently at a glance and the mock won. */
       font-size: 14px; font-weight: 700;
+      /* THE LAST 1.4px IS THE DIGIT, NOT THE LAYOUT. With the lock's width
+         reserved, all four tabs centre by the same rule — and they still
+         differed, because "Bank 1" is 43.6px wide against 46.4px for "Bank 2".
+         A proportional "1" is narrower than a "2", so centring four different
+         strings puts them in four slightly different places.
+         tabular-nums is the app's existing answer to exactly this: .slot-num
+         and the patch rows already use it so a column of numbers does not
+         shimmy. Here it makes the four labels the same width, which is what
+         makes their left edges agree. */
+      font-variant-numeric: tabular-nums;
       cursor: pointer;
     }
     .bank-tab:hover { color: var(--text); }
@@ -837,7 +852,38 @@
        the tab, in place of the badge that used to repeat it on all eight rows.
        Dim, and it does not brighten with the tab: it is a note about the bank,
        not a second thing to read (Daniel, 2026-08-16). */
-    .bank-tab-lock { margin-left: 9px; vertical-align: -1px; color: var(--text-dim); }
+    /* THE LOCK'S WIDTH IS RESERVED ON EVERY TAB, so a label's position does
+       not depend on whether a lock is drawn beside it (16 Nov 2026).
+       MEASURED FIRST: the four labels sat at x18.6, 26.7, 26.6 and 26.4.
+       Bank 1 is the only tab with a lock, and the lock plus its margin is 19px
+       of extra CONTENT — so centring put Bank 1's label 9.5px left of the
+       other three. The tabs are `text-align: center` in `flex: 1` cells and
+       that system is unchanged; what was wrong is that one tab's content was
+       a different width from the rest.
+       RESERVED RATHER THAN NUDGED. Nudging Bank 1 by a measured 8px would be
+       a number that has to be re-derived whenever the lock, its margin or the
+       face changes. A spacer the same size as the thing it stands in for
+       cannot drift from it.
+       :not(:has()) rather than a class, because which tab is locked is
+       decided in app.js when the tabs are built and nothing marks it in the
+       markup — and adding a hidden span to three tabs to solve a spacing
+       problem is markup carrying a layout decision. */
+    /* A FLEX ROW, SO WHITESPACE STOPS COUNTING. The first attempt reserved
+       the space with an inline-block ::after of exactly the lock's measured
+       size — 10px wide, 9px margin, 19px in total, confirmed against the
+       rendered lock — and the labels STILL disagreed by 1.4px, because an
+       inline formatting context also counts the whitespace text nodes
+       between the label and what follows it. A flex container ignores
+       whitespace-only nodes entirely, so the only things with width are the
+       label and the lock slot, and `gap` replaces the lock's own margin so
+       one value spaces both cases. */
+    .bank-tab-lock { flex: none; vertical-align: -1px; color: var(--text-dim); }
+    .bank-tab:not(:has(.bank-tab-lock))::after {
+      content: ''; flex: none;
+      /* The lock's own rendered width, measured rather than taken from the
+         SVG's attribute: width="10" and it renders at 10. */
+      width: 10px;
+    }
     /* THE UNDERLINE CARRIES THE SELECTION ALONE. The word was amber too, which
        is the same thing said twice — "underline = selection" is already the
        vocabulary (DESIGN.md). The tint and the 1px cap highlight say "chosen"
