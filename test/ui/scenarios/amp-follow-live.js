@@ -53,8 +53,20 @@
     + ` · live session ${await ui.live()}`);
   ui.check(await ui.live(), 'a live session is open — onPanelCc returns early without one');
 
-  await ui.waitForHuman('SLOW PUSH KNOB 6 ON THE SEVEN (hold ~1s, release) — once.',
-    { timeout: 180000 });
+  // THE RETURN VALUE IS READ, which it was not until 18 Nov 2026.
+  //
+  // This ignored waitForHuman entirely — no branch at all — so with nobody at
+  // the panel it burned the full 180 seconds, then carried on measuring and
+  // reported "the push reached the instrument (amp_sw 0 -> 0)". A reader takes
+  // that as the app failing to follow a panel move. NO PANEL MOVE HAPPENED.
+  // The scenario was describing an absence as a measurement.
+  //
+  // `hand: true` so a device pass says a device scenario was skipped rather
+  // than filing it under ordinary preconditions.
+  if (!(await ui.waitForHuman('SLOW PUSH KNOB 6 ON THE SEVEN (hold ~1s, release) — once.',
+    { timeout: 180000 }))) {
+    return { skipped: 'nobody pushed knob 6 — nothing was measured', hand: true };
+  }
   // The follow is debounced 80ms and then reads over SysEx; give it room.
   await ui.sleep(1800);
 

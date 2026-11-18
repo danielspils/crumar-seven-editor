@@ -93,7 +93,7 @@ from a designer's preference.
 | Action | `--action` | the panel's DEPTH/RATE legend green (`#7f9c78` dark, `#1f6b3d` light) | anything that DOES something, as a FILL or a MARK: a filled button, a 1px border, a focus ring, a 2px underline |
 | Action, as words | `--action-text` | the same legend, damped (`#a9c3a1` dark; identical to `--action` in light) | the LABEL of an action — a button's text, a link, a name going green on hover |
 | Destructive | `--accent` | panel LED red, warmed for the dark palette (`#b5584a` / `#b8362b`) | the selected-row edge, and any confirm that destroys something |
-| Navigation | `--amber` | the panel's amber legends (`#c9a25e` / `#8a5d00`) | which tab or segment is selected, focus rings, an open rename field |
+| Navigation | `--amber` | **the logo's lit amber** (`#E0A23C` dark; `#9e6c19` light — the same hue at a contrast that works) | which tab or segment is selected, focus rings, an open rename field |
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
 | Sampled | `--sampled` | panel green legend, darker | the Sampled badge, outlined |
 
@@ -184,9 +184,9 @@ into a rule:
 | Borders and row dividers | `--line` | `#3d3934` |
 | Primary text | `--text` | `#e6dfd2` |
 | Secondary text | `--text-muted`, `--text-dim` | `#9d9484` |
-| Navigation | `--amber` | `#c9a25e` |
+| Navigation / the logo | `--amber`, `--logo` | `#E0A23C` — one value, since 18 Nov 2026 |
 | Destructive | `--accent` | `#b5584a`, with `--accent-ink` `#f6ece2` on a fill |
-| Action / ON / Sampled / the logo | `--action`, `--sampled`, `--logo` | `#7f9c78` |
+| Action / ON / Sampled | `--action`, `--sampled` | `#7f9c78` |
 | ON pill | `--pill-on-*` | text `#a9c3a1`, border `#56704f`, fill `#2f3a2b` |
 | Outlined amber pill | `--pill-amber-border` | `#7d6a45` |
 | Modeled | `--modeled` | `#8fa8c4`, muted steel blue |
@@ -257,6 +257,21 @@ third thing wants this green, split them then.
 **And it is allowed exactly once.** The logo lights because it IS the machine;
 it states "selected" in the instrument's own language instead of the app's. A
 second element that starts glowing takes the meaning away from this one.
+
+**THE EXCEPTION IS THE GLOW, NOT THE HUE** (Daniel, 18 Nov 2026). Since the
+active-state marker became the logo's amber — `--amber` and `--logo` are one
+value in dark — it is worth being exact about what the licence covers. What
+the logo alone does is **bloom**: `--logo-glow`, a same-hue spill that widens
+and weakens. The tab underlines wear the colour flat, with no halo, and that
+is why they do not spend this. Anything that starts to glow does.
+
+**A note on `--amber`'s name.** It is now doing five jobs: the active-state
+marker (tabs, bank tabs, `.seg-btn`), focus rings, the field being edited,
+locating marks (`.mp-bracket`, `.reach-arrow`, drop targets) and warnings
+(`.tx-alarm-soft`, `.param-value.range-reversed`). This change narrowed its
+*meaning* toward the first without touching the others, so the token's name no
+longer describes most of its users. Splitting them into named tokens is a
+later cleanup, deliberately not done in that pass.
 
 The mock at `out/lists-design.html` implements this — a same-hue spill at low
 alpha, widening and weakening, so the sign reads as more saturated than the

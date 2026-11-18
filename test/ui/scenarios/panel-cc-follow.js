@@ -66,7 +66,14 @@
     // device pass having never asked Daniel for the knob he was sitting next
     // to. The skip is part of the RESULT, the same way the device skip four
     // branches up already was.
-    return { skipped: 'no signal arrived — nobody answered the prompt for the Treble knob' };
+    // `hand: true` MAKES THIS A FAILED DEVICE PASS. Without it the runner read
+    // this as an ordinary precondition — the reason does not match "no
+    // instrument attached" — so a run started for device coverage ended
+    // without saying that a device scenario had been skipped.
+    return {
+      skipped: 'nobody answered the prompt for the Treble knob',
+      hand: true,
+    };
   }
 
   // onPanelCc debounces by 80ms and then reads the parameter back off the

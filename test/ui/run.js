@@ -335,11 +335,31 @@ const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
       // flag, a reset flag, a library with nothing in it — is a precondition
       // the pass cannot supply by having a Seven plugged in, and stays a
       // skip that the summary lists by name.
-      const deviceSkip = /no instrument attached/i.test(r.skipped);
+      // TWO KINDS OF SKIP MAKE A DEVICE PASS A FAILED PASS, and only one of
+      // them is about the instrument (18 Nov 2026).
+      //
+      // `r.hand` is set by a scenario that asked a person to do something at
+      // the panel and got no answer — the knob turn, the three-second hold,
+      // the signal. In the 18 Nov run those were filed under "a precondition
+      // the device does not supply" and the pass ended without saying a device
+      // scenario had been skipped, which is exactly what this gate exists to
+      // prevent. A HUMAN IS PART OF A DEVICE PASS: `--device` is the statement
+      // that someone is at the instrument.
+      //
+      // IT IS A FLAG AND NOT A REGEX because the reason is prose and gets
+      // reworded. "no signal arrived" and "nobody pushed knob 6" and "nobody
+      // answered the prompt" are the same fact in three phrasings, and a
+      // pattern that caught today's three would miss tomorrow's fourth — the
+      // same way /instrument|device|seven/ once caught SEVEN_WRITE_BANK.
+      const deviceSkip = /no instrument attached/i.test(r.skipped) || !!r.hand;
       if (wantDevice && deviceSkip) {
         failed++;
         deviceSkipped.push(`${file} — ${r.skipped}`);
-        console.log(`✗ ${file} — SKIPPED FOR WANT OF THE DEVICE in a device pass`);
+        // NAMES WHICH OF THE TWO IT WAS. "for want of the device" is wrong
+        // when the instrument was there and the person was not, and sends the
+        // next reader to check the cable.
+        console.log(`✗ ${file} — SKIPPED in a device pass, `
+          + `${r.hand ? 'FOR WANT OF A HAND AT THE PANEL' : 'FOR WANT OF THE DEVICE'}`);
         console.log(`    ${r.skipped}`);
         continue;
       }

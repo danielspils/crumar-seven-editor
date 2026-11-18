@@ -58,7 +58,12 @@
       --pill-on-text: #a9c3a1;
       --pill-on-border: #56704f;
       --pill-on-bg: #2f3a2b;
-      --amber: #c9a25e;
+      /* ONE "WHERE YOU ARE" COLOUR: this is --logo's lit value (Daniel,
+         18 Nov 2026). It was #c9a25e, a hair off the logo's #E0A23C, and two
+         nearby warm golds read worse than one. The merge improved contrast —
+         6.74:1 -> 7.19:1 on --bg. See the --logo block for the light theme,
+         which takes the HUE and not the value. */
+      --amber: #E0A23C;
       /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
       --action: #7f9c78;
@@ -89,12 +94,18 @@
          asked for, in the one animation that is supposed to read as a sign
          warming. Same hue at both ends, different value: that is a lamp
          coming on.
-         ONE THING STILL UNEVEN, reported rather than quietly adjusted:
-         --amber is #c9a25e dark and #8a5d00 light, close to this in dark and
-         much darker in light, and it is what the selected top tab's
-         underline uses. So the logo and the tab rule are two nearby ambers
-         rather than one. Daniel has named --logo and --logo-off; --amber is
-         his to call separately. */
+         AND --amber IS NOW THE SAME COLOUR IN DARK (Daniel, 18 Nov 2026).
+         It was #c9a25e, a hair off this one, and the two sat side by side as
+         "two nearby warm golds, which is worse than one". Merging cost
+         nothing: contrast against --bg went 6.74:1 -> 7.19:1.
+         IN LIGHT IT IS THE HUE, NOT THE VALUE. #E0A23C measures 1.88:1 on
+         --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel — a 2px marker
+         at 1.65:1 is no marker. Light --amber is #9e6c19 instead: this hue
+         (37deg) and saturation (73%) at 36% lightness, worst ground 3.37:1.
+         THE EXCEPTION THIS SIGN HAS IS THE GLOW, NOT THE HUE (docs/DESIGN.md).
+         The logo may light because it IS the machine; sharing its colour with
+         the active-state marker does not spend that, because what the logo
+         alone does is BLOOM — see --logo-glow below. */
       --logo: #E0A23C;
       --logo-off: #4A3A24;
       /* THE HALO'S OWN COLOUR, which is the logo's in the dark and is NOT in
@@ -214,7 +225,23 @@
       --pill-on-text: #1c7a45;
       --pill-on-border: #8fb79c;
       --pill-on-bg: #e4efe6;
-      --amber: #8a5d00;
+      /* THE LOGO'S HUE, NOT ITS VALUE (Daniel, 18 Nov 2026). Dark --amber is
+         now exactly --logo; light cannot be, because #E0A23C measures 1.88:1
+         on --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel. A 2px
+         marker at 1.65:1 is no marker, which is the opposite of what an
+         active marker is for.
+         SO IT IS THE SAME HUE AT A CONTRAST THAT WORKS: #E0A23C is hue 37deg
+         at 73% saturation, and this is that hue and saturation at 36%
+         lightness. Worst ground 3.37:1 (--bg-panel), bg 3.83:1, raised
+         4.18:1.
+         #a7721b WAS THE OTHER CANDIDATE at 3.06:1 and was declined: 3:1 is
+         the floor, not a target, and a later background tweak would push it
+         under. This has margin.
+         IT IS A REAL DROP from the old #8a5d00's 4.26:1, accepted so the
+         marker matches the sign. IF 2px READS WEAK, THE ANSWER IS 3px, not a
+         darker colour — a thicker line in the logo's hue is the harmony that
+         was asked for; a darker line is not. */
+      --amber: #9e6c19;
       /* THE LIGHT GROUND IS ALREADY TAME. Change 1 is dark-only: these values
          were measured against the mock and match it, so only --page is new —
          the antiqued paper one step down, for the artwork to sit on. */

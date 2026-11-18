@@ -15,7 +15,11 @@
     // scenario CAN wait on a person, and it spent the 18 Nov device pass
     // reporting ✓ while proving that it cannot: `ui.note('skipped: …')` and a
     // bare return told the log one thing and the runner another.
-    return { skipped: 'no SEVEN_UI_SIGNAL set, or nothing arrived in 30s' };
+    // THE "OR" WAS STALE. This read "no SEVEN_UI_SIGNAL set, or nothing
+    // arrived in 30s" — and since `--device` provisions the signal file, only
+    // the second half can be true in a device pass. Offering the first sends
+    // the next reader to check an env var that is fine.
+    return { skipped: 'nothing arrived in 30s', hand: true };
   }
   ui.check(true, 'the signal hook delivered — a scenario can wait on a person');
 })()

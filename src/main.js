@@ -1141,7 +1141,17 @@ function createWindow() {
         }
         const outcome = await win.webContents.executeJavaScript(
           `Promise.resolve(${fs.readFileSync(process.env.SEVEN_UI_TEST, 'utf8')})` +
-            '.then((r) => (r && r.skipped ? { skipped: String(r.skipped) } : null))'
+            // `hand` RIDES ALONG, because the runner has to tell two kinds of
+            // skip apart and cannot do it from the reason text (18 Nov 2026).
+            // A device pass that skipped a scenario needing a HAND at the
+            // panel is a failed pass the same way a missing instrument is —
+            // but "nobody answered the prompt" does not match "no instrument
+            // attached", so it was being reported as an ordinary precondition
+            // and the pass ended without saying so. A flag the scenario sets
+            // is not a regex on prose: it cannot be defeated by rewording.
+            '.then((r) => (r && r.skipped'
+            + ' ? { skipped: String(r.skipped), hand: !!r.hand }'
+            + ' : null))'
         );
         if (outcome && outcome.skipped) return report(outcome);
         report(await win.webContents.executeJavaScript('window.ui.result()'));

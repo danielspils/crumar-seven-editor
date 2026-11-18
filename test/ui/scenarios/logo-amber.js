@@ -201,14 +201,38 @@
   if (dark && light) {
     ui.check(dark.lit === light.lit,
       `one value serves both themes (${hex(dark.lit)} / ${hex(light.lit)})`);
-    // AND THE NEARBY AMBER, reported because it is a real unevenness: the
-    // selected top tab's underline is var(--amber) #c9a25e, which is close to
-    // the logo's #E0A23C and not it. Two nearby ambers rather than one.
+    // AND THE ACTIVE-STATE MARKER, which was the "nearby amber" this note
+    // used to report as an unevenness. Daniel merged them on 18 Nov 2026, so
+    // the claim is now the opposite one and it is CHECKED rather than noted:
+    // in dark, var(--amber) IS the logo's lit value.
     ui.note(`--amber is ${dark.amber} dark / ${light.amber} light;`
       + ` the logo is ${hex(dark.lit)} in both.`);
-    ui.note('  So the selected tab\'s underline (var(--amber)) is a NEARBY amber'
-      + ' in dark and a much darker one in light — two ambers, not one.'
-      + ' Reported: Daniel named one value and only one.');
+    ui.check(dark.amber.toLowerCase() === hex(dark.lit).toLowerCase(),
+      `in dark the active marker IS the logo's amber (${dark.amber}`
+      + ` vs ${hex(dark.lit)})`);
+    // LIGHT TAKES THE HUE AND NOT THE VALUE, deliberately: #E0A23C measures
+    // 1.65:1 on light --bg-panel, and a 2px marker at 1.65:1 is no marker. So
+    // the test is hue, the way the ramp test below is — comparing hexes would
+    // demand a value that cannot be used.
+    // The same instrument the ramp check uses: hexes through hexToRgb into
+    // hsl(), because "same hue, different lightness" is not readable from two
+    // hexes by eye.
+    const markerHsl = hsl(hexToRgb(light.amber));
+    const litHsl = hsl(hexToRgb(hex(light.lit)));
+    if (markerHsl && litHsl) {
+      const d = Math.abs(markerHsl.h - litHsl.h);
+      const apart = Math.round(Math.min(d, 360 - d) * 10) / 10;
+      // hsl() returns lightness ALREADY as a percentage, the way the ramp
+      // notes above print it. Multiplying by 100 again read "3588%".
+      ui.note(`  light: the marker is ${light.amber} (hue ${Math.round(markerHsl.h)}°,`
+        + ` lightness ${Math.round(markerHsl.l)}%) against the logo's`
+        + ` ${Math.round(litHsl.h)}° / ${Math.round(litHsl.l)}% — ${apart}° apart`);
+      ui.check(apart <= 6,
+        `and in light it is the same HUE at a usable contrast (${apart}° apart)`);
+      ui.check(markerHsl.l < litHsl.l,
+        `darker than the sign, which is what buys the contrast`
+        + ` (${Math.round(markerHsl.l)}% vs ${Math.round(litHsl.l)}%)`);
+    }
     // AND THE RAMP, BOTH THEMES, with what it replaced. The first amber pass
     // left --logo-off in the green family and this is where that showed:
     // dark was ~98° from the lit colour, so the filament rotated green to

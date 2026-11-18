@@ -207,7 +207,40 @@
     ui.check(pe === 'auto',
       `and a real press would land on it (pointer-events: ${pe || 'DETACHED'})`);
     card.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await ui.sleep(2600);
+    // WAITS FOR THE RE-READ, RATHER THAN GUESSING HOW LONG IT TAKES.
+    //
+    // This was `await ui.sleep(2600)` and it made the scenario INTERMITTENT:
+    // green run alone, red 40 scenarios into the 18 Nov device pass, with the
+    // same code and the same instrument state. Proven by running it alone
+    // immediately after that pass — before 3, after 0 — so the difference was
+    // not the Seven, it was the machine being busier. A re-read that lands at
+    // 2.7s is indistinguishable from one that never happens.
+    //
+    // Which is the trap the harness already warns about: "Fixed sleeps were
+    // the source of the suite's only flake. The app re-renders after IPC, and
+    // '500ms is probably enough' is not a test."
+    //
+    // The condition is the chain AGREEING, which is the scenario's own claim.
+    // A timeout here is a real failure and reads as one, because the wait is
+    // for the thing under test rather than for a duration.
+    // THE PILLS ARE POLLED, NOT THE INSTRUMENT. Agreement needs a device
+    // value per switch, and a predicate doing six SysEx reads every 150ms
+    // would flood the port to ask "are you there yet". The device values are
+    // static at this point — the scenario set them itself — so they are read
+    // ONCE and only the app's pills are watched.
+    const want = new Map();
+    for (const [group, key] of SWITCHES) {
+      const v = await readOne(key);
+      want.set(group, key === 'veq_byp' ? v === 0 : v === 1);
+    }
+    const agreed = await ui.waitFor(
+      () => [...want].every(([group, on]) => {
+        const p = pillOf(group);
+        return p != null && (p === 'ON') === on;
+      }),
+      { timeout: 8000, what: 'the chain to be re-read after the choice' }
+    );
+    ui.note(`the chain came back in agreement: ${agreed ? 'yes' : 'NO — it timed out'}`);
   }
 
   const after = await compare('AFTER: a model was chosen from the carousel');
