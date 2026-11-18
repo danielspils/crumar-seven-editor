@@ -611,10 +611,45 @@
     }
     #conn-button:hover { color: #000; border-color: rgba(0, 0, 0, 0.6); }
     #conn-button:disabled { opacity: 0.5; cursor: default; }
-    /* Backup: the row's one call to action wears the felt red. */
+    /* BACKING UP IS THE MOST IMPORTANT ACTION IN THE APP, so it is a FILLED
+       GREEN BUTTON (Daniel, 18 Nov 2026). Outlined felt red read as
+       incidental.
+       GREEN BECAUSE IT SAVES. Save patch is filled green and these are the
+       same kind of act — preserving what you have. One colour for "this
+       keeps your work" is worth more than telling them apart by hue.
+       FILLED IS NOT A RULE BREAK. DESIGN.md already says filled means
+       ACTION and outlined means STATE; the outline was the inconsistency
+       here, not the fill.
+       THE TOKEN, NOT A LITERAL: --action is the same green #save-live-btn
+       fills with (.is-ready), so the two cannot drift.
+
+       THE LABEL IS --action-ink, AND THAT IS "WHITE" WHERE WHITE WORKS.
+       The brief said a white label. In LIGHT, --action-ink IS near-white
+       (#f4f7f5) and that is what renders. In DARK it is near-black
+       (#08150d), and it has to be — measured:
+
+         DARK   #08150d on #7f9c78   6.17:1   AA
+         DARK   #ffffff on #7f9c78   3.03:1   fails AA at 12px
+         LIGHT  #f4f7f5 on #1f6b3d   6.03:1   AA
+         LIGHT  #ffffff on #1f6b3d   6.50:1   AA
+
+       A literal white would fail in dark, where --action is a light sage.
+       The token already answers this per theme, which is the whole reason
+       it exists — and it is what the filled Save patch uses.
+
+       AND THE GREEN ITSELF PASSES against the pane behind it, which the
+       brief asked to be checked rather than worked around:
+
+         DARK   --action #7f9c78 on --bg #23211e   5.30:1
+         LIGHT  --action #1f6b3d on --bg #f0ebe0   5.47:1
+
+       THE FELT RED IS NOT DEAD, but it is no longer a CONTROL colour.
+       #8f2420 survives as the connection row's `border-bottom: 4px` — the
+       keybed felt, which is artwork and not a control. Its hover partner
+       #6e1a17 had no other user and is gone with this rule. */
     #backup-button {
       margin-left: auto;
-      background: none; border: 1px solid #8f2420;
+      background: var(--action); border: 1px solid var(--action);
       /* 5px, MATCHING #conn-button. It carried 4px, which was the only real
          difference between this button and the two in the connection row —
          see the measurement below.
@@ -624,7 +659,7 @@
          right about the corner is Daniel's call, not a side effect of a
          brief about the backup button. */
       border-radius: 5px;
-      color: #8f2420;
+      color: var(--action-ink);
       /* THE TYPE IS SET, NOT INHERITED (Daniel, 18 Nov 2026).
          WHAT THE MEASUREMENT SAID, because it did not say what the brief
          expected and the record is worth more than the fix. All three
@@ -650,7 +685,19 @@
          wherever it sits. 1.45 is body's own ratio, so it still lands on
          17.4px and matches the other two to the hundredth of a pixel. */
       font-family: inherit; font-size: 12px; line-height: 1.45; font-weight: 600;
-      padding: 2px 10px; cursor: pointer;
+      /* 4px 12px, THE BRIEF'S FIGURE, and it is NOT the padding this button
+         had — it was 2px 10px, which is what #conn-button and
+         #settings-button still carry.
+         SO IT IS 4px TALLER, AND #fresh-line WITH IT: 23.4 -> 27.4, and the
+         line 31.4 -> 35.4. The brief said the type was "the same size it has
+         now" and separately that #fresh-line's height should not move; those
+         two cannot both hold, because 4px 12px is 4px more padding than 2px
+         10px. The type IS unchanged — 12px/600 — and the padding is what
+         grew. Reported in the commit rather than silently resolved either
+         way: this is Daniel's number, applied, with the consequence named.
+         ROW 1 DOES NOT MOVE, which is the half that matters and is measured:
+         #fresh-line sits BELOW the eight bank rows. */
+      padding: 4px 12px; cursor: pointer;
       /* IT DOES NOT WRAP AND IT DOES NOT SHRINK (Daniel, 18 Nov 2026, with a
          screenshot of "Back up / instrument" on two lines).
          THE CAUSE IS NOT THE LABEL'S LENGTH. #fresh-line is a flex row and
@@ -669,7 +716,12 @@
     /* :not(:disabled), or the hover still lights a button that cannot be
        pressed — which is exactly the "looks enabled, does nothing" state a
        disabled control is supposed to avoid. */
-    #backup-button:not(:disabled):hover { color: #6e1a17; border-color: #6e1a17; }
+    /* A FILLED BUTTON BRIGHTENS, it does not swap colours. The old hover
+       darkened the felt red on an outlined button; with a fill there is no
+       border to re-tint, and `brightness` keeps the hue the token chose in
+       both themes rather than naming a second green. Same treatment
+       .car-select uses. */
+    #backup-button:not(:disabled):hover { filter: brightness(1.08); }
     /* NOTHING TO BACK UP WITHOUT AN INSTRUMENT (Daniel, 18 Nov 2026). The
        button used to be `hidden` with nothing connected; it is disabled and
        present now, so #fresh-line's layout does not change between the two
@@ -682,8 +734,15 @@
        THE CURSOR SAYS SO TOO. `not-allowed` rather than `default`: the
        border still makes it look like a button, so the pointer is what
        distinguishes "cannot press this" from "nothing here". */
+    /* DISABLED IS A QUIET FILL, not an outline. The button is filled now, so
+       dropping only the ink would leave a green block with grey words on it
+       — which reads as a styling fault rather than as unavailable. The fill
+       goes to --line and the label to --text-dim, both furniture colours
+       defined in each theme, so a disabled backup button looks like the
+       rules and dividers around it. */
     #backup-button:disabled {
-      color: var(--text-dim); border-color: var(--line);
+      background: var(--line); border-color: var(--line);
+      color: var(--text-dim);
       cursor: not-allowed;
     }
     #backup-button + #conn-button { margin-left: 0; }

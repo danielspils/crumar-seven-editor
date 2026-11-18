@@ -83,19 +83,25 @@
   }
 
   if (backup && conn) {
-    ui.check(backup.h === conn.h,
-      `Back up Seven and Connect are the same height (${backup.h} vs ${conn.h})`);
-    for (const k of ['fontSize', 'lineHeight', 'padT', 'padB', 'padL', 'padR']) {
+    // THE TYPE STILL MATCHES, and that is what this file was written for:
+    // the button's size must not depend on where it is mounted.
+    for (const k of ['fontSize', 'lineHeight']) {
       ui.check(backup[k] === conn[k], `  ${k}: ${backup[k]} === ${conn[k]}`);
     }
-    // THE RADIUS IS ASKED SEPARATELY because the two it is matching do not
-    // agree with each other — see the note below.
     ui.check(backup.radius === conn.radius,
       `  radius: ${backup.radius} === ${conn.radius}`);
-  }
-  if (backup && settings) {
-    ui.check(backup.h === settings.h,
-      `Back up Seven and Settings are the same height (${backup.h} vs ${settings.h})`);
+    // THE PADDING AND THE HEIGHT NO LONGER MATCH, BY DECISION (Daniel,
+    // 18 Nov 2026, second brief the same day). This asserted equality when
+    // the task was "match the other two"; the later call made the backup
+    // button a filled primary action at 4px 12px, against the connection
+    // row's 2px 10px. Reported rather than asserted, because a test that
+    // pins the earlier decision would fight the later one — which is the
+    // exact shape CLAUDE.md warns about.
+    ui.note('');
+    ui.note(`Back up Seven ${backup.h}px tall at ${backup.padT} ${backup.padL};`
+      + ` Connect ${conn.h}px at ${conn.padT} ${conn.padL}`);
+    ui.note('  they differ ON PURPOSE: the backup button is the app\'s one'
+      + ' filled primary action and carries the heavier padding Daniel set.');
   }
   if (conn && settings) {
     // REPORTED, NOT ASSERTED. These two were already in the app and already
@@ -105,6 +111,111 @@
     ui.note(`#conn-button radius ${conn.radius} vs #settings-button ${settings.radius}`
       + (conn.radius === settings.radius ? ' — they agree'
         : ' — THEY DO NOT AGREE WITH EACH OTHER, and did not before this change'));
+  }
+
+  // ---- THE FILL, AND WHETHER ITS LABEL CAN BE READ ON IT ----------------
+  //
+  // "Back up Seven" is a FILLED GREEN button since 18 Nov 2026 — backing up
+  // is the most important action in the app and an outlined felt-red one
+  // read as incidental. The green is --action, the same one the filled Save
+  // patch (.is-ready) uses, so "the same green" is a shared token and not a
+  // matched literal.
+  //
+  // CONTRAST IS COMPUTED HERE, not trusted to a palette note. The brief
+  // asked for a WHITE label; --action-ink is near-white in light and
+  // near-black in dark, and it has to be — on dark's light sage green a
+  // literal white measures 3.03:1 and fails AA at 12px. Reading the ratio
+  // off the rendered colours is the only way to know the token still
+  // answers that correctly after a palette change.
+  const relLum = (rgb) => {
+    const m = /(\d+),\s*(\d+),\s*(\d+)/.exec(rgb || '');
+    if (!m) return null;
+    const f = [1, 2, 3].map((i) => {
+      const c = Number(m[i]) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const ratio = (a, b) => {
+    const la = relLum(a);
+    const lb = relLum(b);
+    if (la == null || lb == null) return null;
+    return Math.round(((Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)) * 100) / 100;
+  };
+
+  const btn = ui.$('#backup-button');
+  const save = ui.$('#save-live-btn');
+  if (btn) {
+    // ENABLED, WHICH OFFLINE MEANS FORCING IT. The button is disabled with
+    // nothing connected, and its disabled state is a deliberately quiet
+    // --line fill — so reading the colours as found measured the GREY, not
+    // the green, and reported 3.82:1 for a label/fill pair that is not the
+    // one under test. The first version of this did exactly that.
+    const wasDisabled = btn.disabled;
+    btn.disabled = false;
+    await ui.sleep(220);
+    const cs = (() => {
+      const c = getComputedStyle(btn);
+      return { backgroundColor: c.backgroundColor, color: c.color,
+        borderTopColor: c.borderTopColor };
+    })();
+    btn.disabled = wasDisabled;
+    // THE PANE BEHIND IT. #bank-region is transparent — it inherits — so
+    // walk up until something actually paints, or the comparison is against
+    // rgba(0,0,0,0) and means nothing. That is what the first run reported.
+    const paintedBg = (el) => {
+      let n = el;
+      while (n && n !== document.documentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        if (c && !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(c)) return c;
+        n = n.parentElement;
+      }
+      return getComputedStyle(document.body).backgroundColor;
+    };
+    const pane = paintedBg(btn.parentElement || btn);
+    ui.note('');
+    ui.note(`the backup button: background ${cs.backgroundColor}`);
+    ui.note(`                   label      ${cs.color}`);
+    ui.note(`                   border     ${cs.borderTopColor}`);
+    // FILLED, which is the change. A transparent background would mean the
+    // outline survived.
+    ui.check(!/^(transparent|rgba\(0, 0, 0, 0\))$/.test(cs.backgroundColor),
+      `it is filled, not outlined (${cs.backgroundColor})`);
+    const onFill = ratio(cs.color, cs.backgroundColor);
+    ui.note(`label on fill: ${onFill}:1`);
+    ui.check(onFill != null && onFill >= 4.5,
+      `the label reads on the fill at 12px (${onFill}:1, AA needs 4.5)`);
+    // AND THE FILL AGAINST THE PANE. The brief asked for this to be said
+    // rather than worked around if it failed.
+    const onPane = ratio(cs.backgroundColor, pane);
+    ui.note(`fill against the pane (${pane}): ${onPane}:1`);
+    ui.check(onPane != null && onPane >= 3,
+      `the green is distinguishable from the pane (${onPane}:1)`);
+    // THE SAME GREEN AS SAVE PATCH, asked of the rendered colour rather
+    // than of the stylesheet: a token can be right in the file and shadowed
+    // on screen.
+    // AGAINST THE TOKEN, not against Save patch's rendered border. Save
+    // patch has three states and two of them (.is-quiet, and the base
+    // outlined one) do not paint --action at all — its border reads --line
+    // when quiet, which is what the first run compared against and "matched"
+    // only because the backup button was ALSO showing its disabled --line.
+    // Two greys agreeing is not two greens agreeing.
+    const token = getComputedStyle(document.documentElement)
+      .getPropertyValue('--action').trim();
+    const swatch = document.createElement('span');
+    swatch.style.color = token;
+    document.body.appendChild(swatch);
+    const tokenRgb = getComputedStyle(swatch).color;
+    swatch.remove();
+    ui.note(`--action is ${token} = ${tokenRgb}`);
+    ui.check(cs.backgroundColor === tokenRgb,
+      `the fill IS --action, the same green Save patch fills with`
+      + ` (${cs.backgroundColor} / ${tokenRgb})`);
+    if (save) {
+      ui.note(`Save patch right now: border ${getComputedStyle(save).borderTopColor}`
+        + ` · background ${getComputedStyle(save).backgroundColor}`
+        + '  (its quiet state paints --line, not --action)');
+    }
   }
 
   // ---- AND THE LINE IT SITS IN -----------------------------------------
