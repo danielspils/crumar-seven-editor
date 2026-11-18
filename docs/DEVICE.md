@@ -684,15 +684,30 @@ effect's oscillator.
   route to the pedal's Function or Range, so these two cannot be reached from
   the instrument at all.
 - **`min > max` reverses the pedal's direction** (manual).
-- **`min == max` IS STORED** (measured 2026-11-18, firmware v1.37). Asked for
-  95 → 95 and the instrument reported 95 → 95 on read-back. The manual
-  documents `min > max` and says nothing about this case, so it was unproven
-  until now.
-  **WHAT THE PEDAL AUDIBLY DOES WITH NO TRAVEL IS STILL UNPROVEN.** What was
-  established is that the Seven *stores and returns* the value — not that
-  rocking the pedal has no effect. Confirming that needs someone with a foot
-  on the pedal and an ear on the output; it cannot be read over SysEx.
-  The intended use is disarming a volume pedal before a show.
+- **`min == max` DISARMS THE PEDAL.** Established 2026-11-18 on firmware
+  v1.37, in two parts and by two different instruments:
+  - **it is stored** — asked for 95 → 95 over SysEx and the Seven reported
+    95 → 95 on read-back (`test/ui/scenarios/pedal-range-edit.js`);
+  - **and it silences the assignment** — with the pedal assigned to Volume and
+    the range at 95 → 95, rocking it through its full travel produces no
+    change in volume at all. **Daniel's ear**, which is the only instrument
+    that can settle this: no SysEx read can say what the pedal does, only what
+    the parameter holds.
+
+  **The manual documents only `min > max`** (which reverses the pedal) and
+  says nothing about equality, so both halves of this were unproven.
+
+- **Zero travel is the instrument's ONLY "off" for the expression pedal.**
+  `exp_fn` takes ten values — Volume, FX 1 Depth, FX 2 Depth, FX 1 + 2 Depth,
+  FX 1 Rate, FX 2 Rate, FX 1 + 2 Rate, Amp Drive, Pad Level, Pad Blend — and
+  **none of them is None**. The pedal is always assigned to something, so
+  setting `min == max` is not one way to disable it, it is the whole
+  mechanism.
+
+- **And it is per preset.** `exp_fn`, `exp_mn` and `exp_mx` are stored in the
+  patch, not in the globals (verified against a captured preset and a
+  `globals-*.json` from the same backup run), so the pedal can be disarmed on
+  some patches and live on others.
 
 ### Other panel states
 

@@ -18,8 +18,16 @@
 //               row surfaces that with the amber readout
 //   min == max  no travel, so the pedal cannot move its destination — how you
 //               disarm a volume pedal before a show. THE MANUAL SAYS NOTHING
-//               ABOUT THIS ONE, so what the instrument does with it is
-//               reported rather than assumed.
+//               ABOUT THIS ONE. Settled on hardware 18 Nov 2026: the Seven
+//               stores it (this scenario), AND it genuinely silences the
+//               assignment — pedal on Volume, range 95 → 95, full travel, no
+//               change in volume, confirmed by ear. See docs/DEVICE.md.
+//
+//               WHAT THIS SCENARIO CAN AND CANNOT SHOW: it proves the round
+//               trip. It cannot hear anything, so the disarming half rests on
+//               Daniel's ear and is recorded in DEVICE.md rather than
+//               asserted here. A green run is not evidence the pedal went
+//               quiet.
 (async () => {
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
