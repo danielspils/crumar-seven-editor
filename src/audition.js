@@ -641,6 +641,19 @@
     const key = row.dataset.key;
     const setter = el.closest('[data-set]');
     if (setter) return { key, value: Number(setter.dataset.set) };
+    // A RANGE HANDLE CARRIES ITS OWN KEY, which is not the row's. Without
+    // this the pedal's range opened a session and then dropped the move that
+    // asked for it, so you had to drag twice — once to be let in, once to
+    // mean it.
+    const grip = el.closest('.range-handle[data-range-key]');
+    if (grip) {
+      const track = grip.closest('.param-rangebar');
+      const rMax = Number(track && track.dataset.rangeMax);
+      const rRect = track && track.getBoundingClientRect();
+      if (!rRect || !rRect.width || !Number.isFinite(rMax)) return null;
+      const rPct = Math.max(0, Math.min(1, (e.clientX - rRect.left) / rRect.width));
+      return { key: grip.dataset.rangeKey, value: Math.round(rPct * rMax) };
+    }
     const bar = el.closest('.param-bar');
     if (bar) {
       const rect = bar.getBoundingClientRect();
@@ -660,6 +673,71 @@
     if (!intent || !isLive()) return;
     await sendEdit(intent.key, intent.value);
   }
+
+  // THE EXPRESSION PEDAL'S RANGE: two handles, two parameters, one row.
+  //
+  // It needs its own handler because every other row carries ONE key, on the
+  // row, and rowKeyOf() reads it from there. This row carries two, so a press
+  // on the track cannot say which parameter it meant — the key comes off the
+  // HANDLE instead (data-range-key).
+  //
+  // GRAB THE HANDLE YOU PRESSED, not the nearest value. Nearest-wins reads
+  // well until the two coincide, and min EQUAL to max is a state Daniel
+  // wants reachable — at which point "nearest" is a coin toss and the row
+  // becomes unpredictable exactly where it is most delicate. Pressing a
+  // handle is unambiguous, and when they overlap the one on top takes it and
+  // dragging it away reveals the other.
+  //
+  // NO CLAMPING BETWEEN THEM. min above max reverses the pedal (manual), and
+  // min equal to max leaves it no travel; clamping the handles to each other
+  // would delete both states while looking like tidiness.
+  el.addEventListener('pointerdown', async (e) => {
+    const grip = e.target.closest('.param.is-live .range-handle[data-range-key]');
+    if (!grip) return;
+    e.preventDefault();
+    const key = grip.dataset.rangeKey;
+    const track = grip.closest('.param-rangebar');
+    const max = Number(track && track.dataset.rangeMax);
+    if (!key || !track || !Number.isFinite(max)) return;
+
+    // THE SAME READ-FIRST DISCIPLINE AS THE BARS (B7): ask the instrument what
+    // this parameter actually is before writing from what the panel believes.
+    let released = false;
+    const earlyUp = () => { released = true; };
+    window.addEventListener('pointerup', earlyUp, { once: true });
+    const corrected = await readBeforeDrag(key);
+    window.removeEventListener('pointerup', earlyUp);
+    if (!isLive()) return;
+
+    // RE-QUERIED AFTER THE READ. A correction re-renders the detail pane, and
+    // the node measured before it is detached — a detached node reports zeros
+    // from getBoundingClientRect rather than throwing, which would read as a
+    // track that teleported to the origin.
+    const liveTrack = corrected
+      ? (el.querySelector(`.param.is-live[data-key] .range-handle[data-range-key="${key}"]`)
+        || grip).closest('.param-rangebar')
+      : track;
+    const rect = liveTrack.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const valueAt = (clientX) => {
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return Math.round(pct * max);
+    };
+    let last = null;
+    const move = (ev) => {
+      const v = valueAt(ev.clientX);
+      if (v !== last) { last = v; sendEdit(key, v); }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    move({ clientX: e.clientX });
+    if (released) return;
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  });
 
   // Bars: press or drag anywhere along the track. Value follows the pointer,
   // rounded to the parameter's own range — no separate handle to hunt for.
@@ -739,7 +817,10 @@
   // Switches, choice tabs and segmented selectors all carry their target value.
   el.addEventListener('click', (e) => {
     // Not live yet: any reach for a control offers audition mode.
-    const idle = e.target.closest('.param:not(.is-live) [data-set], .param:not(.is-live) .param-bar');
+    const idle = e.target.closest('.param:not(.is-live) [data-set], '
+      + '.param:not(.is-live) .param-bar, '
+      // The pedal's range handles reach for a session the same way a bar does.
+      + '.param:not(.is-live) .range-handle[data-range-key]');
     if (idle) {
       pendingIntent = intentFrom(e, idle);
       offerAudition();

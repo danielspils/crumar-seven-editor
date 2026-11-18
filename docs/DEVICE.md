@@ -678,6 +678,22 @@ it for the panel SVG.
 When a knob displays FX speed, its blue light pulses in sync with the
 effect's oscillator.
 
+### The expression pedal's range
+
+- **`exp_mn` and `exp_mx` are editor-only.** The manual gives no front-panel
+  route to the pedal's Function or Range, so these two cannot be reached from
+  the instrument at all.
+- **`min > max` reverses the pedal's direction** (manual).
+- **`min == max` IS STORED** (measured 2026-11-18, firmware v1.37). Asked for
+  95 → 95 and the instrument reported 95 → 95 on read-back. The manual
+  documents `min > max` and says nothing about this case, so it was unproven
+  until now.
+  **WHAT THE PEDAL AUDIBLY DOES WITH NO TRAVEL IS STILL UNPROVEN.** What was
+  established is that the Seven *stores and returns* the value — not that
+  rocking the pedal has no effect. Confirming that needs someone with a foot
+  on the pedal and an ear on the output; it cannot be read over SysEx.
+  The intended use is disarming a volume pedal before a show.
+
 ### Other panel states
 
 - **A knob sends nothing until it crosses its stored value** (observed

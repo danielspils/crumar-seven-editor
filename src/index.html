@@ -4740,6 +4740,20 @@
     }
     .param.is-default .range-handle { background: var(--text-dim); }
     .param.is-changed .range-handle { background: var(--bar-fill-changed); }
+    /* GRABBABLE SINCE 18 Nov 2026. .param-rangebar is pointer-events: none —
+       correct for the track, which is deliberately not a hit target: picking
+       the NEAREST handle is a coin toss once min and max coincide, and
+       min == max is a state that has to stay reachable. The handles take the
+       press instead, each carrying its own key. */
+    .range-handle { pointer-events: auto; }
+    .param.is-live .range-handle { cursor: ew-resize; }
+    /* THE INK IS 11px AND THE TARGET IS 25px. A circle that small is a hard
+       thing to catch mid-performance, and the two can sit on top of each
+       other, so the hit area is widened without moving what is drawn. */
+    .range-handle::after {
+      content: ''; position: absolute; inset: -7px; border-radius: 50%;
+    }
+    .param.is-live .range-handle:hover { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--bar-fill-changed); }
     .param-value.range-reversed { color: var(--amber); font-weight: 600; }
     /* Inert parameters: dimmed with the reason inline; section-level override
        notes span the params grid. */

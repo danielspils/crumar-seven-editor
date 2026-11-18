@@ -1219,22 +1219,45 @@ test('grabbing a live bar reads that parameter, and cannot hang on it', () => {
 
   // AND THE DRAG IS WIRED TO IT. The function could be perfect and never
   // called, which is the shape this file exists for.
-  const down = /el\.addEventListener\('pointerdown', async \(e\) => \{([\s\S]*?)\n  \}\);/.exec(src);
-  assert.ok(down, 'the pointerdown handler is still recognisable');
-  assert.match(down[0], /await readBeforeDrag\(info\.key\)/,
-    'the grab awaits the read');
-  // BEFORE THE FIRST WRITE, which is the entire point: reading after the
-  // press would correct the display having already sent the wrong value.
-  assert.ok(
-    down[0].indexOf('readBeforeDrag') < down[0].indexOf('move({ clientX: downX })'),
-    'and does so BEFORE the press writes anything'
-  );
-  // preventDefault cannot move below the await: it is only honoured while the
-  // event is still being dispatched.
-  assert.ok(
-    down[0].indexOf('e.preventDefault()') < down[0].indexOf('readBeforeDrag'),
-    'preventDefault stays above the await, where it still has an effect'
-  );
+  // EVERY DRAG HANDLER, NOT THE FIRST ONE FOUND.
+  //
+  // This used to take the first `pointerdown` block and assert on it by name
+  // (`readBeforeDrag(info.key)`). On 18 Nov 2026 the expression pedal's range
+  // got a handler of its own — two parameters in one row, so the key comes
+  // off the handle rather than the row — and because it is declared first,
+  // the test started examining it and failed on a variable name while the
+  // guarantee it protects was intact in both places.
+  //
+  // THE RULE IS ABOUT ALL OF THEM: a drag reads the parameter before it
+  // writes. Matching every handler also means the next one cannot be added
+  // without this applying to it, which the single-match version allowed.
+  const downs = [...src.matchAll(
+    /el\.addEventListener\('pointerdown', async \(e\) => \{([\s\S]*?)\n  \}\);/g
+  )];
+  assert.ok(downs.length >= 2,
+    `both drag handlers are recognisable (found ${downs.length})`);
+  for (const down of downs) {
+    const body = down[0];
+    assert.match(body, /await readBeforeDrag\(/,
+      'every drag handler awaits the read before it writes');
+    // BEFORE THE FIRST WRITE, which is the entire point: reading after the
+    // press would correct the display having already sent the wrong value.
+    // The first write is the synthetic `move({ clientX: ... })` that applies
+    // the press itself.
+    const readAt = body.indexOf('readBeforeDrag');
+    const writeAt = body.indexOf('move({ clientX:');
+    assert.ok(writeAt > -1, 'the handler applies the press through move({ clientX: … })');
+    assert.ok(readAt < writeAt,
+      'and does so BEFORE the press writes anything');
+    // preventDefault cannot move below the await: it is only honoured while
+    // the event is still being dispatched. Checked PER HANDLER, inside the
+    // loop — it was a single assertion on `down[0]` outside it, which went
+    // on referring to a variable the loop replaced.
+    assert.ok(
+      body.indexOf('e.preventDefault()') < readAt,
+      'preventDefault stays above the await, where it still has an effect'
+    );
+  }
 });
 
 // ONE RULE FOR WHAT A READING DOES TO THE WORKING COPY, not two.

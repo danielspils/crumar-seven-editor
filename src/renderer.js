@@ -428,12 +428,37 @@
       const dLo = defaultFor(p, patch.soundName);
       const dHi = defaultFor(partner, patch.soundName);
       const bothDefault = dLo !== null && dHi !== null && mn === dLo && mx === dHi;
+      // EDITABLE SINCE 18 Nov 2026. It was a readout — "an amber min→max
+      // display instead of a broken-looking pair of bars" — and was never
+      // wired, which left it the ONLY parameter row in the app that could not
+      // be changed.
+      //
+      // THAT MATTERED MORE THAN IT LOOKED: the manual gives no front-panel
+      // route to the pedal's Function or Range, so they are editor-only
+      // parameters. Until this, the only way to change the range was Crumar's
+      // web editor — the thing this app exists to replace.
+      //
+      // EACH HANDLE CARRIES ITS OWN KEY, because the row holds two parameters
+      // and every other row holds one. The usual rowKeyOf() reads data-key off
+      // the row, which cannot say which of the two a press meant; the drag
+      // reads data-range-key off the handle instead.
+      //
+      // AND THE HANDLES ARE NOT CLAMPED TO EACH OTHER. min above max is legal
+      // — the manual says it reverses the pedal's direction, which is what the
+      // amber readout is for — and min EQUAL to max is reachable too, so the
+      // pedal can be given no travel at all. Clamping would quietly delete
+      // both states.
+      const live = view && view.live;
       return (
-        `<div class="param param-range ${bothDefault ? 'is-default' : 'is-changed'}">` +
+        `<div class="param param-range ${bothDefault ? 'is-default' : 'is-changed'}`
+        + `${live ? ' is-live' : ''}" data-key="${p.key}" data-max="${p.max}">` +
         `<span class="param-label">Range</span>` +
-        `<span class="param-rangebar"><span class="range-fill" style="left:${loPct}%;width:${widthPct}%"></span>` +
-        `<span class="range-handle" style="left:${(mn / p.max) * 100}%"></span>` +
-        `<span class="range-handle" style="left:${(mx / p.max) * 100}%"></span></span>` +
+        `<span class="param-rangebar" data-range-max="${p.max}">` +
+        `<span class="range-fill" style="left:${loPct}%;width:${widthPct}%"></span>` +
+        `<span class="range-handle" data-range-key="${p.key}" data-range-end="min"`
+        + ` title="Range min. (${mn})" style="left:${(mn / p.max) * 100}%"></span>` +
+        `<span class="range-handle" data-range-key="${partner.key}" data-range-end="max"`
+        + ` title="Range max. (${mx})" style="left:${(mx / p.max) * 100}%"></span></span>` +
         `<span class="param-value${reversed ? ' range-reversed' : ''}"` +
         (reversed ? ` title="Reversed: min is above max, which reverses the pedal action (manual)"` : '') +
         `>${mn}→${mx}</span>` +
