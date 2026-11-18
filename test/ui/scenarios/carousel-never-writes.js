@@ -12,7 +12,13 @@
 // source-wiring.test.js holds the always-on half of this (no instrument
 // needed, runs in CI); this half proves the gesture actually works.
 (async () => {
-  if (!(await ui.requireDevice())) return;
+  // THE SKIP IS RETURNED, NOT IMPLIED BY A BARE `return`. requireDevice()
+  // waits through waitFor, and waitFor records `check(false, 'timed out after
+  // 20000ms waiting for the Seven to connect')` when it gives up. A scenario
+  // that returns a skip has that failure superseded; one that returns bare
+  // keeps it, and reports a RED about a connection timeout on a machine that
+  // simply has no Seven. Two of 28 device scenarios did this.
+  if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
   const onDisk = async (file) => {
     const lib = await window.sevenAPI.library.list();
@@ -121,14 +127,41 @@
     const nowCentred = ui.$('[data-carousel] .is-front').dataset.carName;
     ui.check(nowCentred !== wasCentred, `stepping centres a different instrument in ${tab}`);
 
-    // CHOOSE IT with Select, which appears only once the front card differs
-    // from what the instrument holds — which is exactly the state the step
-    // above just produced.
-    const sel = ui.$('[data-carousel] [data-car-select]');
-    if (!ui.check(!!sel, `Select appears once the stack has moved in ${tab}`)) {
+    // CHOOSE IT BY PRESSING THE CARD, which is the whole control since
+    // 18 Nov 2026. This read `ui.$('[data-carousel] [data-car-select]')` and
+    // went red in that day's device pass: the Select button went with the
+    // side-peek wheel, and the rewrite that moved the TURN onto the chevrons
+    // left the PICK still looking for it.
+    //
+    // THE COST WAS NOT THE RED. Everything below here is this scenario's
+    // actual claim — choosing raises no refusal, and the patch file is
+    // UNCHANGED on disk, which is the guarantee that broke on 12 Aug when
+    // choosing an instrument silently renamed five patches. The missing
+    // element hit a `continue`, so that claim went untested while the suite
+    // reported one red check about a button.
+    //
+    // THE CHIP IS THE AFFORDANCE AND THE CARD IS THE TARGET. Both are
+    // asserted, because they are separate promises: .car-load only renders
+    // when the front card differs and the stack is verified (renderer.js),
+    // while the press itself lands on .is-front — `.car-load` is
+    // pointer-events: none so there is no edge where the click hits a label
+    // that does nothing.
+    const chip = ui.$('[data-carousel] .car-load');
+    ui.check(!!chip, `the Load chip appears once the stack has moved in ${tab}`);
+
+    const live = ui.$('[data-carousel] .car-face.is-front');
+    if (!ui.check(!!live && !!live.isConnected,
+      `the front card is there to be pressed in ${tab}`)) {
       await ui.closeLibrary(); continue;
     }
-    ui.click(sel, 'Select');
+    // AND A REAL PRESS WOULD REACH IT. ui.click dispatches straight at the
+    // node, which ignores pointer-events entirely — so without this the
+    // scenario would keep passing if the card became unclickable for a
+    // player. The CSS gates this on `.has-moved:not(.is-unverified)`.
+    const pe = getComputedStyle(live).pointerEvents;
+    ui.check(pe === 'auto',
+      `and a real press would land on it in ${tab} (pointer-events: ${pe || 'DETACHED'})`);
+    ui.click(live, 'the front card');
     await ui.sleep(2800);
     // SAY WHAT WAS RAISED. "choosing raised no refusal in backups" named the
     // expectation and not the thing on screen, so a real failure here arrived

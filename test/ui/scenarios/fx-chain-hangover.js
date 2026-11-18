@@ -186,13 +186,28 @@
   const nowFront = ui.$('#detail .car-face.is-front');
   const nowName = nowFront && nowFront.dataset.carName;
   ui.note(`the stack stepped: "${wasName}" -> "${nowName}"`);
-  // CHOOSING is Select — stepping alone sends nothing.
-  const sel = ui.$('#detail .engine-carousel [data-car-select]');
-  if (sel) {
-    sel.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  // CHOOSING IS PRESSING THE FRONT CARD — stepping alone sends nothing.
+  //
+  // THIS LOOKED FOR [data-car-select] AND REACHED THE WRONG CONCLUSION OUT
+  // LOUD. The selector died with the side-peek wheel on 18 Nov 2026, so in
+  // that day's device pass this branch logged "no Select button — the stack
+  // did not move, so nothing was chosen" ONE LINE BELOW its own note saying
+  // the stack had stepped from "Tine Piano" to "Venice Upright U1". It then
+  // measured an unchanged chain and failed, and the red read as evidence of
+  // the hangover bug when it was evidence of nothing: no model was ever
+  // chosen, so nothing could have been re-read.
+  //
+  // THE MISSING CONTROL IS NOW A FAILURE RATHER THAN A NOTE. An `else` that
+  // shrugs and carries on is how a stale selector turns the rest of a
+  // scenario into scenery while still reporting a verdict about it.
+  const card = ui.$('#detail .engine-carousel .car-face.is-front');
+  if (ui.check(!!card && !!card.isConnected,
+    'the front card is there to be pressed, so a model can actually be chosen')) {
+    const pe = getComputedStyle(card).pointerEvents;
+    ui.check(pe === 'auto',
+      `and a real press would land on it (pointer-events: ${pe || 'DETACHED'})`);
+    card.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await ui.sleep(2600);
-  } else {
-    ui.note('no Select button — the stack did not move, so nothing was chosen');
   }
 
   const after = await compare('AFTER: a model was chosen from the carousel');

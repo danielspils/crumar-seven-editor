@@ -58,8 +58,32 @@
     // NOTHING TO PICK WITH. Before any turning there is nothing to install
     // anyway, so this is the resting state; carousel-stack.js checks the
     // harder case, after a turn has made `moved` true.
-    ui.check(!ui.$('#detail [data-car-select]'),
-      `${where}: no Select button`);
+    //
+    // THIS WAS `!ui.$('#detail [data-car-select]')` AND COULD NOT FAIL. The
+    // Select button died with the side-peek wheel on 18 Nov 2026 and nothing
+    // in the app renders that selector in any state, so the check was green by
+    // asking after something that exists nowhere. It read like coverage of the
+    // offline rule and had no power to report a breach of it.
+    //
+    // THE FRONT CARD IS THE CONTROL NOW, so the question is whether it takes a
+    // press. Offline it must not, and the rule that withholds it is scoped
+    // `.has-moved:not(.is-unverified)`.
+    const front = ui.$('#detail .car-face.is-front');
+    if (ui.check(!!front && !!front.isConnected,
+      `${where}: the front card is on screen to be asked about`)) {
+      // getComputedStyle on a detached node returns '' for everything, and
+      // `'' === 'none'` is false — so this would fail honestly rather than
+      // pass on nothing, which is why the guard above exists.
+      const pe = getComputedStyle(front).pointerEvents;
+      // NOTED, NOT ONLY CHECKED. A passing ui.check prints nothing, so a
+      // silent green here is indistinguishable from the guard above having
+      // skipped the measurement — which is the exact ambiguity that let the
+      // old [data-car-select] check sit vacuous for a week. The value in the
+      // log is the proof that the question was asked.
+      ui.note(`${where}: the front card's pointer-events is ${pe || 'DETACHED'}`);
+      ui.check(pe === 'none',
+        `${where}: the front card takes no clicks (pointer-events: ${pe || 'DETACHED'})`);
+    }
     // THE CHEVRONS ARE THERE, because turning is what still works.
     ui.check(ui.$$('#detail [data-car-step]').length === 2,
       `${where}: both chevrons are present`);

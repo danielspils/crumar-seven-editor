@@ -213,6 +213,44 @@ const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
       );
       process.exit(2);
     }
+
+    // A DEVICE PASS HAS A PERSON AT THE PANEL, so it provisions the hook that
+    // lets a scenario ask them for something (18 Nov 2026).
+    //
+    // WHY: panel-cc-follow and signal-hook both reported GREEN in the first
+    // real device pass having tested nothing. SEVEN_UI_SIGNAL was unset, so
+    // waitForHuman returned false immediately, and both scenarios took their
+    // no-signal branch — which noted the word "skipped" and then returned
+    // normally. Daniel was sitting at the instrument and was never asked for
+    // the knob.
+    //
+    // THE FIX IS NOT A PER-SCENARIO @env LINE. amp-follow-live.js carried one,
+    // which is why it alone worked, and it hardcoded a session-specific
+    // scratchpad path — a path that is wrong on any other machine and gone
+    // after a temp sweep. The hook is a property of the RUN (is anyone there?),
+    // not of the scenario, so the run provides it.
+    //
+    // AND ONLY IN A DEVICE PASS. An offline or CI run has nobody to ask, and
+    // defaulting this everywhere would turn a fast skip into a two-minute
+    // timeout on a machine with no Seven. `--device` is the statement that
+    // someone is present.
+    if (!process.env.SEVEN_UI_SIGNAL) {
+      process.env.SEVEN_UI_SIGNAL = path.join(os.tmpdir(), 'seven-ui-signal');
+    }
+    // EMPTIED FIRST, because waitForHuman waits for the contents to CHANGE
+    // from whatever is there when the wait begins. A leftover "go" from an
+    // earlier run would satisfy the first wait instantly — the person is never
+    // asked and the step silently does not happen, which cost a real preset on
+    // 20 Aug.
+    try {
+      fs.writeFileSync(process.env.SEVEN_UI_SIGNAL, '');
+    } catch (e) {
+      console.error(`could not prepare the signal file: ${e.message}`);
+      process.exit(2);
+    }
+    console.log(`hands-on scenarios will ask through: ${process.env.SEVEN_UI_SIGNAL}`);
+    console.log('  (answer a prompt with:  echo go > '
+      + `${process.env.SEVEN_UI_SIGNAL}  — something DIFFERENT each time)`);
   }
 
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.js') && (!only || f.includes(only))).sort();
@@ -278,6 +316,39 @@ const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
       continue;
     }
     for (const n of r.notes || []) console.log(`    ${n}`);
+
+    // A SCENARIO THAT SKIPS ITSELF IN A NOTE REPORTED GREEN (18 Nov 2026).
+    //
+    // panel-cc-follow.js and signal-hook.js both ended:
+    //
+    //     ui.note('skipped: no signal arrived …');
+    //     return;
+    //
+    // A bare return. The word "skipped" went into a NOTE, the runner was told
+    // nothing, no failures were recorded, and a ✓ was printed for a scenario
+    // that had tested none of its claim. Both are fixed at the source, but
+    // THAT IS THE PARTICULAR CASE AND THIS IS THE GENERAL ONE: the same two
+    // lines can be written again in any of 83 files, and the next one would
+    // hide exactly as well.
+    //
+    // It is the same failure as the device gate, one level down. The gate
+    // stops a RUN from silently becoming a smaller run; this stops a SCENARIO
+    // from doing it. A guard that only caught the two known instances would be
+    // the kind of fix that reads as a fix and prevents nothing.
+    //
+    // IT IS A FAILURE, NOT A SKIP, deliberately: the scenario's own words say
+    // it did not run, and its return value says it passed. Those disagree, and
+    // which one is true is not for this runner to guess. A loud red gets the
+    // return value corrected; a quiet skip would let the contradiction live.
+    const selfSkipped = (r.notes || []).filter((n) => /^\s*skipped\b/i.test(n));
+    if (selfSkipped.length && !r.skipped) {
+      r.failures = (r.failures || []).concat(
+        'THIS SCENARIO SAYS IT SKIPPED AND REPORTS THAT IT RAN. Its note reads '
+        + `"${selfSkipped[0].trim()}" — so it returned without a `
+        + '{ skipped: reason }, and would have been counted as a pass.'
+      );
+    }
+
     if ((r.failures || []).length) {
       failed++;
       console.log(`✗ ${file}`);

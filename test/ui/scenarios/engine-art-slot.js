@@ -65,7 +65,16 @@
   ui.note(`the slot is ${art.className}`);
   if (art.classList.contains('engine-carousel')) {
     ui.note('the PLAIN variant is not reachable here any more — skipping');
-    return { skipped: 'the plain instrument slot is no longer rendered offline' };
+    // THE REASON SAID "offline" AND WAS MISREAD IN A DEVICE PASS. It read
+    // "the plain instrument slot is no longer rendered offline", which invites
+    // exactly the wrong conclusion when the Seven IS attached: that the skip
+    // happened because nothing was plugged in. The plain variant is gone in
+    // BOTH states — that is the whole point of the stack rendering offline —
+    // so the reason should not name one of them. (It also contained the word
+    // "instrument", which the suite's old skip test matched; that test is
+    // narrowed now, but a reason that only reads correctly next to a
+    // particular regex is a reason worth rewriting anyway.)
+    return { skipped: 'the plain slot variant is no longer rendered in either state' };
   }
 
   const save = () => ui.$('#save-live-btn');

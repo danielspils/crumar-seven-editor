@@ -1,4 +1,14 @@
-// @env SEVEN_UI_SIGNAL=/private/tmp/claude-501/-Users-danielspils/c50ae52d-e9bf-447d-8fb2-21e8db8c9734/scratchpad/amp-signal
+// THE SIGNAL HOOK IS PROVIDED BY THE RUN, not declared here.
+//
+// This file used to carry `// @env SEVEN_UI_SIGNAL=<an absolute path inside one
+// session's scratchpad>`. It worked on the one desk it was written on and was
+// wrong everywhere else — wrong on any other machine, and wrong on this one
+// after a temp sweep. It was also why this scenario alone could ask for a hand
+// while panel-cc-follow and signal-hook silently could not.
+//
+// `run.js --device` now provisions SEVEN_UI_SIGNAL for every scenario, because
+// whether a person is at the panel is a fact about the RUN and not about any
+// one file. See the comment there.
 //
 // DOES THE APP FOLLOW A REAL PANEL TOGGLE? B9's last unknown.
 //

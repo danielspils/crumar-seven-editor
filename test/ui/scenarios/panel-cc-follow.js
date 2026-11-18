@@ -60,8 +60,13 @@
     { timeout: 180000 }
   );
   if (!got) {
-    ui.note('skipped: no signal arrived — set SEVEN_UI_SIGNAL and write to it');
-    return;
+    // TOLD TO THE RUNNER, NOT ONLY TO THE LOG. This was `ui.note(...)` and a
+    // bare `return`, so the word "skipped" went into a note while the return
+    // value said the scenario had run clean — and it printed ✓ in the 18 Nov
+    // device pass having never asked Daniel for the knob he was sitting next
+    // to. The skip is part of the RESULT, the same way the device skip four
+    // branches up already was.
+    return { skipped: 'no signal arrived — nobody answered the prompt for the Treble knob' };
   }
 
   // onPanelCc debounces by 80ms and then reads the parameter back off the

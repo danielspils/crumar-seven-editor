@@ -111,12 +111,51 @@
       { timeout: 20000, what: `the "Saved to Patches" confirmation (${what})` }
     );
     if (!up) return false;
-    const cards = overlays().map((o) => titleOf(o.querySelector('.seven-modal')));
-    ui.note(`${what} — dialogs on screen: ${cards.join(' | ')}`);
+    // ON SCREEN MEANS REACHABLE, NOT PRESENT IN THE DOM (18 Nov 2026).
+    //
+    // This counted `.seven-modal-overlay` nodes and went red three times in
+    // that day's device pass — 3, 2, 3 where it wanted 1. The cause is that
+    // dismissal stopped being synchronous when the modals got their leave
+    // animation: SevenViewAnim.modalLeave sets pointer-events: none, adds
+    // .is-leaving, and unmounts the node on animationend with a
+    // LEAVE_MS + 120 = 290ms timer behind it. A dialog the player can no
+    // longer see or touch is still a node for a third of a second.
+    //
+    // SO IT ASKS WHAT THE ASSERTION ALWAYS MEANT: how many dialogs can the
+    // player reach. Each overlay is reported with its state so a future
+    // failure says which kind it is, rather than leaving the next reader to
+    // re-derive this.
+    const all = overlays().map((o) => ({
+      title: titleOf(o.querySelector('.seven-modal')),
+      leaving: o.classList.contains('is-leaving'),
+      pe: getComputedStyle(o).pointerEvents,
+    }));
+    for (const o of all) {
+      ui.note(`${what} — overlay "${o.title}" · ${o.leaving ? 'LEAVING' : 'live'}`
+        + ` · pointer-events ${o.pe}`);
+    }
+    const cards = all.filter((o) => !o.leaving && o.pe !== 'none').map((o) => o.title);
+    ui.note(`${what} — reachable: ${cards.join(' | ') || 'none'}`
+      + ` (${all.length - cards.length} fading out)`);
     ui.check(cards.length === 1,
-      `${what}: the confirmation is the only dialog on screen (${cards.length})`);
+      `${what}: the confirmation is the only dialog the player can reach (${cards.length})`);
     ui.check(!cards.some((t) => /unsaved changes/i.test(t)),
       `${what}: nothing is asking about unsaved changes behind it`);
+
+    // AND THE FADING ONES ACTUALLY GO. Filtering them out of the count above
+    // and stopping there would weaken this scenario's claim — "the guard
+    // resolves and does not linger" — into a claim about whatever happened to
+    // be interactive at one instant. A modal that fades and never unmounts is
+    // the precise bug modalLeave's timer fallback exists for, and nothing
+    // tested it until now.
+    if (all.length > cards.length) {
+      const gone = await ui.waitFor(
+        () => overlays().every((o) => !o.classList.contains('is-leaving')),
+        { timeout: 1500, what: 'the dismissed overlays to unmount' }
+      );
+      ui.check(!!gone,
+        `${what}: every dismissed overlay unmounted rather than lingering`);
+    }
 
     const done = inTop('.seven-modal-ok')[0];
     if (!ui.check(!!done, `${what}: the confirmation has a Done button`)) return false;

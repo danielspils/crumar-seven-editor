@@ -10,7 +10,12 @@
 // carousel's own geometry is covered elsewhere, and what changed here is that
 // the path is reachable at all without a bank slot.
 (async () => {
-  if (!(await ui.requireDevice())) return;
+  // RETURNED AS A SKIP. A bare `return` here left behind the failure that
+  // waitFor records when it times out, so without a Seven this scenario went
+  // red with "timed out after 20000ms waiting for the Seven to connect" —
+  // a connection complaint standing in for "nothing is plugged in". It never
+  // showed up on Daniel's desk because there always is one.
+  if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
   // 1. A LIBRARY patch selected, and no preset on the instrument.
   await ui.openLibrary();

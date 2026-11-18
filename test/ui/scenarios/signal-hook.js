@@ -11,8 +11,11 @@
 (async () => {
   const got = await ui.waitForHuman('write anything to the signal file', { timeout: 30000 });
   if (!got) {
-    ui.note('skipped: no SEVEN_UI_SIGNAL set, or nothing arrived in 30s');
-    return;
+    // THE RETURN VALUE, NOT A NOTE. This scenario exists to prove that a
+    // scenario CAN wait on a person, and it spent the 18 Nov device pass
+    // reporting ✓ while proving that it cannot: `ui.note('skipped: …')` and a
+    // bare return told the log one thing and the runner another.
+    return { skipped: 'no SEVEN_UI_SIGNAL set, or nothing arrived in 30s' };
   }
   ui.check(true, 'the signal hook delivered — a scenario can wait on a person');
 })()

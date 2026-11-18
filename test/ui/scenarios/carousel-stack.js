@@ -306,11 +306,42 @@
     }
 
     if (!connected) {
-      // NO SELECT. `moved` is true the moment the stack turns, so without
-      // the offline clause the button WOULD appear — and every press would
-      // be a refusal. This is the one that matters most.
-      ui.check(!ui.$('#detail [data-car-select]'),
-        'offline: a turned stack offers no Select button');
+      // NOTHING CAN BE PICKED. `moved` is true the moment the stack turns,
+      // so without the offline clause the card WOULD become live — and every
+      // press would be a refusal. This is the one that matters most.
+      //
+      // IT ASSERTED `!ui.$('#detail [data-car-select]')` UNTIL 18 NOV 2026 AND
+      // COULD NOT FAIL. [data-car-select] was the side-peek wheel's Select
+      // button; the depth stack deleted it, so nothing in the app renders that
+      // selector in ANY state. The check stayed green by asking after an
+      // element that no longer exists anywhere — a deleted test wearing the
+      // shape of a passing one, and it reported green through the 18 Nov
+      // device pass while covering nothing.
+      //
+      // SO IT ASKS THE MECHANISM THAT IS ACTUALLY LOAD-BEARING. The card is
+      // the control now, and what withholds it offline is one CSS rule:
+      //
+      //   .engine-carousel.has-moved:not(.is-unverified) .is-front {
+      //     pointer-events: auto; cursor: pointer; }
+      //
+      // Offline the stack carries .is-unverified, the selector does not match,
+      // and the card inherits pointer-events: none from .car-face. That is the
+      // whole offline guarantee, it is a VALUE rather than an absence, and it
+      // goes red the moment someone widens that selector.
+      const offFront = ui.$('#detail .car-face.is-front');
+      // MEASURED ONLY IF IT IS THERE AND ATTACHED. getComputedStyle on a
+      // detached node returns empty strings, and `'' !== 'auto'` would have
+      // passed this check on nothing at all — the same false green as the
+      // selector it replaces.
+      if (ui.check(!!offFront && !!offFront.isConnected,
+        'offline: the front card is on screen to be asked about')) {
+        const pe = getComputedStyle(offFront).pointerEvents;
+        ui.note(`offline: the turned stack's front card has pointer-events: ${pe || 'DETACHED'}`);
+        ui.check(pe === 'none',
+          `offline: a turned stack's front card takes no clicks (${pe || 'DETACHED'})`);
+        ui.check(!ui.$('#detail .car-load'),
+          'offline: and no Load chip offers the press');
+      }
       // NO SELECTION STATE on any card.
       const chosen = ui.$$('#detail .car-face')
         .filter((c) => /selected|is-chosen|is-live/.test(c.className));
