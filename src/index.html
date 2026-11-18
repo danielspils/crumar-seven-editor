@@ -4740,6 +4740,34 @@
     }
     .param.is-default .range-handle { background: var(--text-dim); }
     .param.is-changed .range-handle { background: var(--bar-fill-changed); }
+    /* MIN IS FILLED, MAX IS A RING (Daniel, 18 Nov 2026).
+       THE SYMBOL TRAVELS WITH THE PARAMETER, NOT THE POSITION — keyed on
+       data-range-end, which the markup already carries, and never on which
+       handle happens to be further left. That is the whole point: when the
+       range is REVERSED (min above max, which the manual says flips the
+       pedal's direction) the filled handle crosses to the right-hand side,
+       and that crossing is how a player sees which one they are holding. */
+    /* SPECIFICITY, NOT JUST ORDER. `.param.is-default .range-handle` and
+       `.param.is-changed .range-handle` are three classes each; a bare
+       `.range-handle[data-range-end="max"]` is two and loses to both, so the
+       first version of this rule drew a filled "ring" on every row that had a
+       state — which is every row. Each state gets its own override. */
+    .range-handle[data-range-end="max"],
+    .param.is-default .range-handle[data-range-end="max"],
+    .param.is-changed .range-handle[data-range-end="max"] {
+      background: transparent;
+    }
+    /* The stroke is the ink now, so it is set from the same tokens the filled
+       handle uses and follows is-default / is-changed with it. */
+    .range-handle[data-range-end="max"] { border: 2px solid var(--bar-fill); }
+    .param.is-default .range-handle[data-range-end="max"] { border-color: var(--text-dim); }
+    .param.is-changed .range-handle[data-range-end="max"] { border-color: var(--bar-fill-changed); }
+    /* AT min == max THE TWO SIT EXACTLY ON TOP OF EACH OTHER, which draws as a
+       ring around a dot — a good accident, and only if the FILLED one is on
+       top. DOM order puts max second, so without this the ring would paint
+       over the dot and hide it inside itself. */
+    .range-handle[data-range-end="min"] { z-index: 2; }
+    .range-handle[data-range-end="max"] { z-index: 1; }
     /* GRABBABLE SINCE 18 Nov 2026. .param-rangebar is pointer-events: none —
        correct for the track, which is deliberately not a hit target: picking
        the NEAREST handle is a coin toss once min and max coincide, and
