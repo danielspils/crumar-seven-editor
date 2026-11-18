@@ -1410,6 +1410,73 @@ When writing a test, say which of two things it pins: **behaviour somebody
 decided on**, or **behaviour that happens to be there now**. The second kind
 needs a reason in the comment or it should not be written.
 
+## A TEST THE CODE CANNOT FAIL IS A RECORD, NOT A TEST (2026-11-18)
+
+Daniel's rule, and it will recur, because this project answers questions by
+asking the instrument and the answers arrive wearing a scenario's clothes.
+
+**A scenario that establishes a fact about the INSTRUMENT goes behind a probe
+flag. A scenario that asserts what THIS APP does stays in the regression
+pass.**
+
+The test is one question: *could any change to this repo make it fail?* If the
+answer is no, it is a record. It will pass forever, it cannot catch anything,
+and in this project it is not free — it costs a person standing at the panel
+on every device pass, which is the scarcest thing the suite spends.
+
+**The two that produced the rule**, both gated behind `SEVEN_PEDAL_PROBE=1`:
+
+- `pedal-position-probe.js` established that the destination parameter is
+  **not modulated** — `veq_vol` read 127 with the pedal up and 127 held down —
+  so the pedal's effect cannot be read back at all.
+- `pedal-cc-scaling.js` established that **CC 11 carries the raw position** and
+  ignores `exp_mn`/`exp_mx`, proven with the range narrowed to 40/80 so that
+  raw and scaled could not produce the same numbers.
+
+Both are facts about FW 1.37. No edit to this app can make either false, and
+between them they cost two more hands-on steps per pass — the device pass went
+from four to six in a single afternoon, which is how the rule got written.
+
+**`pedal-live-mark.js` STAYED IN, and the contrast is the whole distinction.**
+It asserts what the app does with that CC: the mark appears only once the pedal
+has spoken, it lands where the last message said, it takes no press, and the
+sweep costs one render. It caught a real bug within an hour of being written —
+the mark could never be *born*, because the render that draws it was suppressed
+for every message including the first.
+
+**THE ANSWER IS THE DELIVERABLE, NOT THE SCENARIO.** A probe that is gated and
+forgotten has lost nothing only if its finding is written down somewhere a
+reader will meet it — `docs/DEVICE.md` here, with the command to re-run it. The
+scenario then exists for the one event that makes the question live again: a
+firmware update. Gate it, record the answer, and say how to re-run.
+
+**THE TELL, when the header does not say "INVESTIGATION":** `ui.check(true, …)`.
+An assertion that cannot fail is a note with a tick on it, and it inflates the
+green count. Two in the suite as of this date, both deliberate reports rather
+than mistakes, and **neither is moved — Daniel asked for them reported, not
+changed**:
+
+- `save-slot-spacing.js:123` records which of the picture and the text rows is
+  taller. Either answer passes.
+- `amp-switch-read.js:139` records whether the pill followed the instrument.
+  Either answer passes.
+
+Two others are legitimate: `notes-strip.js:75` sits after a guard that returns
+on failure, so the tick means "we got here", and `signal-hook.js:24` is the
+harness self-test, where reaching the line IS the result.
+
+**ONE CANDIDATE WAS FOUND AND LEFT IN PLACE, with the argument both ways,
+because the answer is genuinely not clear.** `param-read-cost.js` times one
+parameter read over the wire and asserts `med < 100ms` and `med < all/4`.
+Those are mostly properties of the instrument and the USB bridge — but a change
+to the read path *could* breach them, so the code can fail it, which puts it
+the right side of the line by a narrow margin. It also needs no hand, so it
+costs seconds rather than a person. Recorded here so the next reader does not
+have to re-derive the argument. The three other scenarios whose headers call
+themselves investigations — `amp-switch-read.js`, `fx2-delay-map.js` and
+`fx2-delay-display.js` — all compare the app against the device, so the app can
+fail all three, and all three stay.
+
 ## Two coordinate conventions, one seam apart (2026-08-20)
 
 `midi.recall(bank, preset)` is **0-BASED** — it sends `bank * 8 + preset` as a

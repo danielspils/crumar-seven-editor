@@ -20,7 +20,19 @@
 //
 // IT PUTS THE RANGE BACK. The values are read first and restored at the end,
 // and nothing is stored to a preset — this writes to the edit buffer only.
+//
+// BEHIND SEVEN_PEDAL_PROBE BECAUSE IT IS A RECORD, NOT A TEST (Daniel,
+// 18 Nov 2026). What it establishes is a fact about the INSTRUMENT'S
+// FIRMWARE — CC 11 carries the raw position and ignores the range — and no
+// change to this app can make that fail. A test the code cannot fail costs a
+// foot at the pedal on every device pass and can never repay it. The answer
+// is committed in docs/DEVICE.md, which says how to re-run this. See the rule
+// in CLAUDE.md: a scenario that establishes a fact about the instrument goes
+// behind a probe flag; one that asserts what this app does stays in the pass.
 (async () => {
+  if (!ui.env('SEVEN_PEDAL_PROBE')) {
+    return { skipped: 'SEVEN_PEDAL_PROBE not set — this probe re-establishes a firmware fact' };
+  }
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
   const api = window.sevenAPI.midi;

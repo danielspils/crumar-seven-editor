@@ -728,8 +728,38 @@ effect's oscillator.
   whether it uses the pedal's full 0..127 are all unverified.
 - **Untested:** both measurements used `exp_fn=0` (Volume). Whether CC 11 is
   the same for every assignment is not established.
-- Nothing consumes CC 11 today: `buildCcMap` only maps parameters with
-  `flag === 1`, none of which claims CC 11, so `onPanelCc` returns early.
+- `buildCcMap` still ignores CC 11 — it only maps parameters with `flag === 1`,
+  none of which claims it, so `onPanelCc` returns early. The app consumes CC 11
+  **before** that call, in the `panel-cc` branch of `app.js`, to place the live
+  mark on the pedal's own Range bar.
+
+#### How to re-establish all of this (and when)
+
+Both findings above came from two UI scenarios that are **gated behind
+`SEVEN_PEDAL_PROBE=1`** and skip in an ordinary device pass. They are records
+rather than tests: no change to this app can make either fail, and each costs
+somebody's foot at the pedal (CLAUDE.md, "A test the code cannot fail is a
+record, not a test").
+
+**The one event that makes the question live again is a FIRMWARE UPDATE.**
+v1.37 has been current since 2022, and everything above is tagged to it. If the
+Seven ever ships a new firmware, run both rather than re-deriving them:
+
+```
+SEVEN_PEDAL_PROBE=1 npm run test:ui -- --device pedal-position-probe
+SEVEN_PEDAL_PROBE=1 npm run test:ui -- --device pedal-cc-scaling
+```
+
+Each asks for a foot and prints its readings. Run them in that order — the
+first asks whether the applied value can be read at all, and the second only
+matters if it cannot. **`pedal-cc-scaling` narrows the range to 40/80 and puts
+it back**, which is the whole experiment: at 0 → 127 raw and scaled produce
+identical numbers, so a sweep at the default range would prove nothing. It
+writes to the edit buffer only and stores nothing.
+
+The third pedal scenario, `pedal-live-mark`, is **not** a probe and stays in
+every device pass: it asserts what the app does with CC 11, not what the
+instrument does.
 
 ### Other panel states
 

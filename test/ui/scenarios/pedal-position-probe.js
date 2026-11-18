@@ -20,7 +20,20 @@
 // failure cannot be mistaken for evidence of (b).
 //
 // IT READS AND LISTENS ONLY. Nothing is written to the instrument.
+//
+// BEHIND SEVEN_PEDAL_PROBE BECAUSE IT IS A RECORD, NOT A TEST (Daniel,
+// 18 Nov 2026). It says so itself three paragraphs up — "it is an
+// investigation" that "asserts almost nothing" — and what it established is a
+// fact about the INSTRUMENT'S FIRMWARE: the destination parameter is not
+// modulated, so the position cannot be read back. No change to this app can
+// make that fail. The answer is committed in docs/DEVICE.md, which says how to
+// re-run this. See the rule in CLAUDE.md: a scenario that establishes a fact
+// about the instrument goes behind a probe flag; one that asserts what this
+// app does stays in the pass.
 (async () => {
+  if (!ui.env('SEVEN_PEDAL_PROBE')) {
+    return { skipped: 'SEVEN_PEDAL_PROBE not set — this probe re-establishes a firmware fact' };
+  }
   if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
 
   const api = window.sevenAPI.midi;
