@@ -614,8 +614,42 @@
     /* Backup: the row's one call to action wears the felt red. */
     #backup-button {
       margin-left: auto;
-      background: none; border: 1px solid #8f2420; border-radius: 4px;
-      color: #8f2420; font: inherit; font-size: 12px; font-weight: 600;
+      background: none; border: 1px solid #8f2420;
+      /* 5px, MATCHING #conn-button. It carried 4px, which was the only real
+         difference between this button and the two in the connection row —
+         see the measurement below.
+         #settings-button IS STILL 4px, and that is reported rather than
+         changed: the two buttons this one is being matched to do not agree
+         with each other, and did not before any of this. Which of them is
+         right about the corner is Daniel's call, not a side effect of a
+         brief about the backup button. */
+      border-radius: 5px;
+      color: #8f2420;
+      /* THE TYPE IS SET, NOT INHERITED (Daniel, 18 Nov 2026).
+         WHAT THE MEASUREMENT SAID, because it did not say what the brief
+         expected and the record is worth more than the fix. All three
+         buttons were ALREADY identical in size — 23.4px tall, 12px/17.4px,
+         padding 2px 10px — before this change:
+
+             BACK UP   23.4  12px  17.4px  2px 10px  radius 4px
+             CONNECT   23.4  12px  17.4px  2px 10px  radius 5px
+             SETTINGS  23.4  12px  17.4px  2px 10px  radius 4px
+
+         So the diagnosis — that moving into #fresh-line made `font: inherit`
+         pick up the 10px/700 freshness type — does not hold. `.fresh` is on
+         the two SPANS in that line, not on the line itself, so #fresh-line
+         computes 13px/18.85px and the button's own `font-size: 12px`
+         overrode the size anyway. The line-height came through as the
+         unitless 1.45 body sets, which is why it resolved to 17.4px here and
+         18.85px on its parent: the same factor, two font sizes.
+         IT IS STILL WORTH SETTING EXPLICITLY, which is why this is not
+         simply reverted. `font: inherit` made the button's type a property
+         of wherever it happened to be mounted — it has moved once already,
+         from the connection row to here, and the next move would change its
+         size silently. These three declarations make it the same button
+         wherever it sits. 1.45 is body's own ratio, so it still lands on
+         17.4px and matches the other two to the hundredth of a pixel. */
+      font-family: inherit; font-size: 12px; line-height: 1.45; font-weight: 600;
       padding: 2px 10px; cursor: pointer;
       /* IT DOES NOT WRAP AND IT DOES NOT SHRINK (Daniel, 18 Nov 2026, with a
          screenshot of "Back up / instrument" on two lines).
