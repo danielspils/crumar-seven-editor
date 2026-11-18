@@ -1122,6 +1122,42 @@ reporting" is worth re-running the named scenarios individually before
 believing it. If it becomes routine, the thing to capture is whether a pause
 between launches clears it and what `MIDIClientCreate` actually returned.
 
+## A -f PATTERN KILLS WHATEVER SHARES THE STRING (2026-11-18)
+
+`test/ui/run.js` refused to start while the editor held the instrument and
+told the reader how to free it:
+
+```
+Quit it first (or run: pkill -f "crumar-seven-editor"), then run this again.
+```
+
+**That line kills a Claude Code session working in this repo.** `pkill -f`
+matches the whole COMMAND LINE, and a session's command line carries the repo
+name inside a permission rule (`Read(//Users/…/crumar-seven-editor/…)`). It
+was in the runner's own output, so the obvious thing to do with it was to run
+it.
+
+**The irony is that `test/ui/app-running.js` already knew better.** That module
+exists because the old detector scanned `ps -Ao command` for the repo name and
+matched shells that merely mentioned it — so it was rewritten to match the
+EXECUTABLE path from `ps -Ao comm=`, which a process cannot spell however it
+likes. The careful detection then printed a loose pattern for the reader to
+run: the looseness was removed from the code and handed to the human.
+
+**IT NAMES THE PROCESS IT FOUND.** The runner had to detect the app to print
+the message at all, so `appRunningPids()` returns the pids and the refusal
+says `kill <pid>`. A pid matches one process. A pattern matches whatever
+happens to share the string, and what shares it changes over time — nobody
+adding a permission rule to a session was thinking about this message.
+
+**STILL OPEN, REPORTED NOT CHANGED (Daniel's call):** `.claude/settings.json`
+allows `Bash(pkill -f MacOS/Electron)`, and CLAUDE.md's own
+permission-habits example runs `pkill -f Electron`. Neither is built from the
+repo name, so neither is the bug above — but both match **every Electron app
+running from a dev checkout**, which on this machine means the Juno-Xtra,
+JP Patches and Hammond M-solo editors as well as this one. Freeing one MIDI
+port should not close three other projects' windows.
+
 ## A MEASUREMENT THAT IS WRONG FOR ONE OF THE TWO THINGS IT COMPARES (2026-11-18)
 
 Third member of the family above, and the one that hid the longest.
@@ -1499,10 +1535,12 @@ Two related reflexes, same cause:
   unsaved-free.** They may be committed already, by somebody else. The
   tell on 2026-11-13 was a clean `git status` with the edits plainly on
   disk, which reads as "nothing changed" and means the opposite.
-- **Before `pkill`-ing the app or running `npm run test:ui`** — which
+- **Before stopping the app or running `npm run test:ui`** — which
   refuses while the editor holds the instrument — check for a live sibling
   session first (the desktop app can list them). That editor may be
-  somebody's hardware session mid-run. The grid's scenario was run in an
+  somebody's hardware session mid-run. **Stop it by pid, never by `pkill -f`
+  on a pattern:** the runner's refusal prints `kill <pid>` for the process it
+  actually found. See "A -f PATTERN KILLS WHATEVER SHARES THE STRING" below. The grid's scenario was run in an
   isolated second instance instead (`SEVEN_NO_DEVICE=1` plus a scratch
   `SEVEN_LIBRARY_DIR`), which needed nothing killed.
 

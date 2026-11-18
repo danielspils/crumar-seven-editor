@@ -93,7 +93,66 @@ test('the runner uses the shared detection rather than its own copy', () => {
   const fs = require('node:fs');
   const src = fs.readFileSync(path.join(__dirname, 'ui', 'run.js'), 'utf8');
   assert.match(src, /require\('\.\/app-running'\)/,
-    'run.js should get appAlreadyRunning from test/ui/app-running.js');
+    'run.js should get its detection from test/ui/app-running.js');
   assert.doesNotMatch(src, /ps -Ao command/,
     'run.js should no longer scan whole command lines for the app');
+});
+
+// THE REFUSAL MUST NOT PRINT A -f PATTERN (Daniel, 18 Nov 2026).
+//
+// It said `pkill -f "crumar-seven-editor"`, which matches any process whose
+// command line carries the repo name — including a Claude Code session working
+// in this repo, whose command line has it inside a permission rule. The
+// message was in the runner's own output, so the obvious thing to do with it
+// was run it, and running it killed the session.
+test('the refusal never tells anyone to pkill -f', () => {
+  const fs = require('node:fs');
+  const src = fs.readFileSync(path.join(__dirname, 'ui', 'run.js'), 'utf8');
+  // The comment explaining why is allowed to name the old command; the code
+  // that builds the message is not. Only template/quoted output is checked by
+  // stripping full-line comments first.
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  assert.doesNotMatch(code, /pkill/,
+    'run.js should name the pid it found, not a pattern that matches whatever shares the string');
+  assert.match(code, /kill \$\{openPids/,
+    'the refusal should print `kill <pid>` for the process it detected');
+});
+
+const { appPids } = require('./ui/app-running');
+
+test('appPids returns the main process pid and ignores the helpers', () => {
+  const ps = [
+    '  501 /bin/zsh',
+    `60928 ${MAIN}`,
+    `60930 ${HELPER}`,
+    `60931 ${RENDERER}`,
+  ].join('\n');
+  assert.deepStrictEqual(appPids(ps), ['60928']);
+});
+
+test('appPids tolerates spaces in the executable path', () => {
+  // "Electron Helper (Renderer)" has two. A split on whitespace would take
+  // "Electron" as the command and drop the rest, so the pid is split off the
+  // front and the REST is the path.
+  const ps = `60931 ${RENDERER}\n60928 ${MAIN}\n`;
+  assert.deepStrictEqual(appPids(ps), ['60928']);
+});
+
+test('appPids finds nothing for another checkout, or for no app at all', () => {
+  const sibling = '60928 /Users/someone/other-editor/node_modules/electron/dist/'
+    + 'Electron.app/Contents/MacOS/Electron';
+  assert.deepStrictEqual(appPids(sibling), []);
+  assert.deepStrictEqual(appPids(''), []);
+  assert.deepStrictEqual(appPids(null), []);
+  // A line with no pid — `ps -Ao comm=` output fed in by mistake — yields
+  // nothing rather than a bad pid, because `kill` on a wrong number is worse
+  // than a refusal that cannot name one.
+  assert.deepStrictEqual(appPids(MAIN), []);
+});
+
+test('an empty pid list is falsy only by length', () => {
+  // run.js tests `.length`. This records why: the array itself is truthy, so
+  // `if (appRunningPids())` would refuse every run on a machine with no app.
+  assert.ok([], 'an empty array is truthy — the guard must use .length');
+  assert.strictEqual(appPids('').length, 0);
 });

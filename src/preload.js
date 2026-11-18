@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('sevenAPI', {
   // Development only (SEVEN_UI_SIGNAL): lets a UI test wait for a human step —
   // a panel hold, a listening judgement — instead of guessing at a delay.
   devSignal: () => ipcRenderer.invoke('dev:signal'),
+  // Prints a human-step prompt to the runner's stdout immediately. ui.note()
+  // cannot do this: notes are emitted once when the scenario ends, which is
+  // after the wait they describe has already timed out.
+  devPrompt: (text) => ipcRenderer.invoke('dev:prompt', { text }),
   getExpansions: () => {
     try { return readJson('data/expansions.json'); } catch { return null; }
   },

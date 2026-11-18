@@ -213,6 +213,18 @@ window.ui = (() => {
     const before = first;
     note(`WAITING FOR YOU: ${prompt}`);
 
+    // AND IN THE RUNNER'S OUTPUT, NOT ONLY ON SCREEN. The banner below covers
+    // a person sitting at the app. It does not cover whoever is watching the
+    // terminal — or an agent driving the run, which is how signal-hook was
+    // skipped on 18 Nov 2026: the writer waited for "WAITING FOR YOU" to
+    // appear in the runner's log, and notes do not reach it until the child
+    // has exited. Both readers need telling, and they are not the same reader.
+    try {
+      if (window.sevenAPI && window.sevenAPI.devPrompt) {
+        await window.sevenAPI.devPrompt(prompt);
+      }
+    } catch (_) { /* a prompt that cannot print must not end the wait */ }
+
     // AND SAY IT ON SCREEN, because note() only pushes to an array the RUNNER
     // prints after the child exits. So this asked for a knob turn and then
     // showed nothing at all for up to three minutes — the person is looking at

@@ -46,16 +46,61 @@ function isAppRunning(psOutput, root = ROOT) {
   });
 }
 
+// THE PIDs, SO THE REFUSAL CAN NAME ONE (Daniel, 18 Nov 2026).
+//
+// The runner used to tell the reader to quit the app with
+//
+//     pkill -f "crumar-seven-editor"
+//
+// and that instruction was dangerous in a way the detector above was already
+// careful about. `-f` matches any process whose COMMAND LINE contains the
+// string, and plenty of things carry a repo's name without being the app: a
+// Claude Code session working in this repo has it in a permission rule, so
+// running that line kills the session that ran it. This module exists because
+// a command line is arbitrary text; printing a -f pattern handed that same
+// looseness straight back to the reader.
+//
+// A PID MATCHES ONE PROCESS. A pattern matches whatever happens to share the
+// string, and what shares it changes over time.
+//
+// PURE, like isAppRunning, and takes the output of `ps -Ao pid=,comm=`. The
+// executable path may contain spaces ("…/Electron Helper"), so the pid is
+// split off the front and the REST is the command — not a split on whitespace.
+function appPids(psOutput, root = ROOT) {
+  const out = [];
+  for (const line of String(psOutput || '').split('\n')) {
+    const m = line.trim().match(/^(\d+)\s+(.*)$/);
+    if (!m) continue;
+    const cmd = m[2].trim();
+    if (cmd.startsWith(root + path.sep) && cmd.endsWith(MAIN_SUFFIX)) out.push(m[1]);
+  }
+  return out;
+}
+
+// Returns the main-process pids, empty when the app is not running. Callers
+// test `.length`, never truthiness: an empty array is truthy, and `if (pids)`
+// would refuse every run.
+function appRunningPids() {
+  const { execSync } = require('node:child_process');
+  try {
+    return appPids(execSync('ps -Ao pid=,comm=', { encoding: 'utf8' }));
+  } catch {
+    // A failure to ask is not evidence that nothing is running, but refusing
+    // to run the suite because `ps` broke would be worse: the scenarios would
+    // simply never run. Fail open, as before.
+    return [];
+  }
+}
+
 function appAlreadyRunning() {
   const { execSync } = require('node:child_process');
   try {
     return isAppRunning(execSync('ps -Ao comm=', { encoding: 'utf8' }));
   } catch {
-    // A failure to ask is not evidence that nothing is running, but refusing
-    // to run the suite because `ps` broke would be worse: the scenarios would
-    // simply never run. Fail open, as before.
     return false;
   }
 }
 
-module.exports = { isAppRunning, appAlreadyRunning, ROOT, MAIN_SUFFIX };
+module.exports = {
+  isAppRunning, appAlreadyRunning, appPids, appRunningPids, ROOT, MAIN_SUFFIX,
+};

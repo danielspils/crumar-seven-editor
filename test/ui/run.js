@@ -118,7 +118,29 @@ function runScenario(file, libraryDir) {
       },
     });
     let out = '';
-    child.stdout.on('data', (d) => { out += d; });
+    // A HUMAN-STEP PROMPT IS ECHOED THE MOMENT IT ARRIVES (18 Nov 2026).
+    //
+    // Everything else a scenario says is buffered here and printed after the
+    // child exits, which is correct: notes belong under their scenario's
+    // heading, in order. A PROMPT IS THE ONE THING THAT IS USELESS LATE — it
+    // asks someone to do something while the scenario waits, and by the time
+    // the buffer is printed the wait has already timed out. The app shows a
+    // banner for a person sitting at it; this is for whoever is watching the
+    // terminal, which on 18 Nov was an agent that then missed the window.
+    //
+    // Only lines carrying the marker are echoed, so this does not turn into a
+    // raw passthrough of the child's chatter.
+    let pending = '';
+    const echoPrompts = (chunk) => {
+      pending += chunk;
+      const lines = pending.split('\n');
+      pending = lines.pop();
+      for (const l of lines) {
+        const m = l.match(/^\[ui-prompt\](.*)$/);
+        if (m) console.log(`\n>>> WAITING FOR YOU: ${m[1]}\n`);
+      }
+    };
+    child.stdout.on('data', (d) => { out += d; echoPrompts(String(d)); });
     child.stderr.on('data', (d) => { out += d; });
     child.on('exit', (code, signal) => {
       const line = out.split('\n').find((l) => l.startsWith('[ui-test]'));
@@ -166,7 +188,7 @@ function runScenario(file, libraryDir) {
 // The detection lives in its own module because it is worth testing and this
 // file cannot be required without running the suite. See the comment there for
 // why a command-line substring was the wrong thing to match.
-const { appAlreadyRunning } = require('./app-running');
+const { appRunningPids } = require('./app-running');
 const { deviceAnswered } = require('./device-present');
 
 // A DEVICE PASS IS A DIFFERENT RUN, AND IT SAYS SO (Daniel, 18 Nov 2026).
@@ -185,10 +207,21 @@ const wantDevice = process.argv.includes('--device');
 const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
 (async () => {
-  if (appAlreadyRunning()) {
+  // IT NAMES THE PROCESS IT FOUND (Daniel, 18 Nov 2026). This used to say
+  // `pkill -f "crumar-seven-editor"`, which matches any process whose COMMAND
+  // LINE carries the repo name — a Claude Code session working in this repo
+  // has it in a permission rule, so the line killed the session that ran it.
+  //
+  // The runner already had to detect the app to print this message, so it
+  // knows which process it means. A pid matches one process; a -f pattern
+  // matches whatever happens to share the string, and what shares it changes
+  // over time. `.length`, not truthiness — an empty array is truthy.
+  const openPids = appRunningPids();
+  if (openPids.length) {
     console.error(
-      'The editor is already open, and it holds the instrument.\n' +
-      'Quit it first (or run: pkill -f "crumar-seven-editor"), then run this again.'
+      'The editor is already open, and it holds the instrument.\n'
+      + `Quit the app first (Cmd+Q), or: kill ${openPids.join(' ')}\n`
+      + 'Then run this again.'
     );
     process.exit(2);
   }

@@ -355,6 +355,23 @@ function registerMidiIpc() {
     if (!p) return null;
     try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
   });
+  // A PROMPT NOBODY CAN SEE IS NOT A PROMPT (Daniel, 18 Nov 2026).
+  //
+  // ui.note() pushes onto an array that is emitted ONCE, as a single
+  // [ui-test] line, when the scenario ends. So "WAITING FOR YOU: TURN THE
+  // TREBLE KNOB" could not reach anybody until after the wait it was asking
+  // about had already timed out. Both hands-on scenarios were therefore inert
+  // in practice: the person is at the panel, waiting to be told what to do,
+  // and the instruction arrives in the transcript thirty seconds too late.
+  //
+  // This goes straight to the main process's stdout, unbuffered, so the runner
+  // can echo it the moment it is written. It carries no state and reads
+  // nothing — a prompt is all it is.
+  ipcMain.handle('dev:prompt', (_e, { text }) => {
+    if (!process.env.SEVEN_UI_SIGNAL) return false;
+    console.log(`[ui-prompt]${String(text || '').replace(/\s+/g, ' ').trim()}`);
+    return true;
+  });
   ipcMain.handle('midi:present', () => {
     try {
       return getMidi().portPresent();
