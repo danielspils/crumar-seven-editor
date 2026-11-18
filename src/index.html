@@ -4768,6 +4768,19 @@
        over the dot and hide it inside itself. */
     .range-handle[data-range-end="min"] { z-index: 2; }
     .range-handle[data-range-end="max"] { z-index: 1; }
+    /* THE PEDAL'S LIVE POSITION. A LINE, NOT A DOT, because it is not a thing
+       you can take hold of — the two round handles are the controls and this
+       is a reading. It is taller than the track so it stays legible when it
+       passes under a handle, and it never takes a press. */
+    .pedal-pos {
+      position: absolute; top: 50%; width: 2px; height: 16px;
+      margin-left: -1px; transform: translateY(-50%);
+      background: var(--amber); border-radius: 1px;
+      box-shadow: 0 0 0 1px var(--bg);
+      pointer-events: none; z-index: 3;
+      /* No transition: it follows a pedal at ~140 messages a sweep, and
+         easing each step would lag the foot that is moving it. */
+    }
     /* GRABBABLE SINCE 18 Nov 2026. .param-rangebar is pointer-events: none —
        correct for the track, which is deliberately not a hit target: picking
        the NEAREST handle is a coin toss once min and max coincide, and

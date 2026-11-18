@@ -455,6 +455,26 @@
         `<span class="param-label">Range</span>` +
         `<span class="param-rangebar" data-range-max="${p.max}">` +
         `<span class="range-fill" style="left:${loPct}%;width:${widthPct}%"></span>` +
+        // WHERE THE PEDAL IS, when it has said so. The Seven sends its raw
+        // position as CC 11 (docs/DEVICE.md), and this track is already
+        // 0..127 — so the mark is placed by the same arithmetic as the
+        // handles and NOTHING IS INFERRED. A mark on the destination
+        // parameter's bar would need the instrument's own mapping, which
+        // cannot be read or checked from here.
+        //
+        // null, NOT ZERO, when the pedal has not moved this session: drawing
+        // an unheard pedal at the heel would be a claim rather than a
+        // reading.
+        //
+        // THE 127 IS THE CC'S RANGE, not this track's, and they agree only
+        // because exp_mn and exp_mx both have max 127 in the schema — the
+        // handles below divide by p.max. If a range parameter ever had a
+        // different max, the CC fraction would have to be mapped into the
+        // track rather than used as it is.
+        (view && view.pedalPos != null
+          ? `<span class="pedal-pos" style="left:${(view.pedalPos / 127) * 100}%"`
+            + ` title="Expression pedal: ${view.pedalPos}" aria-hidden="true"></span>`
+          : '') +
         `<span class="range-handle" data-range-key="${p.key}" data-range-end="min"`
         + ` title="Range min. (${mn})" style="left:${(mn / p.max) * 100}%"></span>` +
         `<span class="range-handle" data-range-key="${partner.key}" data-range-end="max"`

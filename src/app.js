@@ -282,6 +282,24 @@
   // Where the sound carousel is parked. null = follow the patch; a number
   // means the user has paged away from it and is browsing.
   let carouselAt = null;
+
+  // WHERE THE EXPRESSION PEDAL IS, 0..127, or null if it has not moved this
+  // session. NULL IS NOT ZERO: a pedal that has said nothing is in a position
+  // the app does not know, and drawing it at the heel would be a claim rather
+  // than a reading. The mark appears the first time CC 11 arrives.
+  const PEDAL_CC = 11;
+  let pedalPos = null;
+
+  // Moves the mark without re-rendering. Returns false when there is nothing
+  // on screen to move, which is the ordinary case — the pedal's row is only
+  // drawn when a patch is open and its section expanded.
+  function movePedalMark() {
+    const mark = document.querySelector('#detail .pedal-pos');
+    if (!mark || pedalPos == null) return false;
+    mark.style.left = `${(pedalPos / 127) * 100}%`;
+    mark.setAttribute('title', `Expression pedal: ${pedalPos}`);
+    return true;
+  }
   // The sound the INSTRUMENT says its buffer holds, when that is no longer the
   // one the patch names — after choosing a different instrument in audition
   // mode. The panel must describe what you are hearing, not what the file
@@ -2030,7 +2048,9 @@
     const saveBarNew = nowActive && !lastSaveBar;
     lastSaveBar = nowActive;
     detailEl.innerHTML = patch
-      ? R.renderDetail(shown, { showRaw, collapsed, live, saveBar, saveBarNew, ...pos })
+      ? R.renderDetail(shown, {
+        showRaw, collapsed, live, saveBar, saveBarNew, pedalPos, ...pos,
+      })
       : `<div class="placeholder">${emptyMsg}</div>`;
     detailEl.scrollTop = keepScroll;
     lastDetailKey = key;
@@ -4960,6 +4980,44 @@
         if (transferStored) transferStored(ev);
       }
       else if (ev.type === 'panel-cc') {
+        // THE EXPRESSION PEDAL'S OWN POSITION (Daniel, 18 Nov 2026).
+        //
+        // Measured on hardware: the Seven sends CC 11 — the MIDI Expression
+        // Controller — as the pedal moves, carrying its RAW position 0..127
+        // regardless of exp_mn/exp_mx. The destination parameter is NOT
+        // modulated, so there is no read that says what the pedal is doing;
+        // this is the only signal there is. See docs/DEVICE.md.
+        //
+        // IT MARKS THE PEDAL'S OWN RANGE BAR AND NOTHING ELSE. Putting a mark
+        // on the DESTINATION parameter's bar would mean interpolating between
+        // the range ends, and that interpolation is a model of the
+        // instrument's behaviour that cannot be checked from this side of the
+        // cable. Here the mark is the pedal's position on a track that is
+        // already 0..127, so no inference is made at all.
+        if (ev.cc === PEDAL_CC) {
+          // THE FIRST MESSAGE IS THE ONE THAT RENDERS. The span is drawn by
+          // renderRangeRow, and only when `pedalPos` is not null — so while
+          // the position is unknown there is no node, and nothing to move.
+          // Suppressing the render on every message (below) therefore left the
+          // mark unable to be BORN: measured on hardware 18 Nov 2026, 95
+          // messages arrived and no mark was ever drawn.
+          //
+          // The alternative was building the node here, which would put the
+          // mark's markup in two places and let them drift. One render on the
+          // transition from unknown keeps it in exactly one.
+          const wasUnknown = pedalPos == null;
+          pedalPos = ev.value;
+          if (wasUnknown) {
+            renderDetail();
+          } else {
+            // NOT A RE-RENDER, for every message after the first. A slow sweep
+            // is ~140 of them, and rebuilding the detail pane for each would be
+            // 140 full renders — and would fight the scroll position the pane
+            // works to preserve. The mark is moved in place; the next ordinary
+            // render picks the value up from `view`.
+            movePedalMark();
+          }
+        }
         audition.onPanelCc(ev.cc);
       } else if (ev.type === 'program-change' && !backupRunning) {
         // A recall replaces the edit buffer wholesale, so anything we were
