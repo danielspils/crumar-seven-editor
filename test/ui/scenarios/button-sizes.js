@@ -226,9 +226,65 @@
   const line = ui.$('#fresh-line');
   if (line) {
     const l = box(line);
+    const ls = getComputedStyle(line);
     ui.note('');
     ui.note(`#fresh-line ${px(l.width)} x ${px(l.height)} at y${px(l.top)}..${px(l.bottom)}`);
+    ui.note(`  padding ${ls.paddingTop} ${ls.paddingRight} ${ls.paddingBottom} ${ls.paddingLeft}`);
+    // THE GAP ABOVE THE BUTTON, which is what "cramped" meant: the distance
+    // from the rule under the last row to the button's own border. It was
+    // 2px against a filled 27.4px control, and a filled block touching a
+    // rule reads as part of the rule.
+    const lastRow = ui.$$('#patch-list .patch-row').slice(-1)[0];
+    const b = backup ? box(ui.$('#backup-button')) : null;
+    if (lastRow && b) {
+      const gap = px(b.top - box(lastRow).bottom);
+      ui.note(`  last row's rule -> the button: ${gap}px`);
+      ui.check(gap >= 8,
+        `the button is not cramped against the rule above it (${gap}px)`);
+      // AND IT IS A BAND, not a caption tucked under the list: the space
+      // below should match the space above.
+      const below = px(box(line).bottom - b.bottom);
+      ui.note(`  the button -> the line's bottom: ${below}px`);
+      ui.check(Math.abs(gap - below) <= 1.5,
+        `the band is symmetric (${gap} above, ${below} below)`);
+    }
   }
+
+  // ---- THE BUTTON DOES NOT MOVE BETWEEN BANKS --------------------------
+  //
+  // Daniel, 18 Nov 2026, with two screenshots: x20 on Bank 1 and x83 on
+  // Bank 2. #fresh-line is a flex row and BOTH items carried
+  // `margin-left: auto`, so two auto margins split the free space and the
+  // button's position depended on the length of the message beside it.
+  // Bank 1's note is long ("BANK 1 IS RESERVED FOR CRUMAR MODELS"), Bank 2's
+  // caveat is short ("AS OF LAST BACKUP · 2 DAYS AGO").
+  //
+  // THE TWO BANKS ARE THE TEST because they are the two messages. Walking
+  // all four is cheap and catches a third case nobody thought of.
+  ui.note('');
+  const xs = [];
+  for (let i = 0; i < 4; i += 1) {
+    const t = ui.$$('#bank-tabs .bank-tab')[i];
+    if (!t) break;
+    ui.click(t, `bank ${i + 1}`);
+    await ui.sleep(550);
+    const b = box(ui.$('#backup-button'));
+    const msg = [ui.$('#bank1-note'), ui.$('#bank-asof')]
+      .find((el) => el && !el.hidden && box(el).width > 0);
+    xs.push(px(b.left));
+    ui.note(`  bank ${i + 1}: button x${px(b.left)}..${px(b.right)}`
+      + ` · message "${msg ? (msg.textContent || '').trim().slice(0, 34) : '(none)'}"`
+      + (msg ? ` ending x${px(box(msg).right)}` : ''));
+  }
+  const spreadX = xs.length ? px(Math.max(...xs) - Math.min(...xs)) : null;
+  ui.note(`BUTTON x SPREAD ACROSS THE FOUR BANKS: ${spreadX}px`);
+  ui.check(spreadX === 0,
+    `the button holds its position whatever the message says (${spreadX}px)`);
+  // AND IT IS ON THE LIST'S GUTTER, like every row's ink.
+  const gutter = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--list-gutter'));
+  ui.check(Math.abs(xs[0] - gutter) < 1.5,
+    `its border lands on --list-gutter (${xs[0]} against ${gutter})`);
 
   // ---- ROW 1 DOES NOT MOVE ---------------------------------------------
   //

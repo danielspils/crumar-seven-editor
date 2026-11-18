@@ -648,7 +648,19 @@
        keybed felt, which is artwork and not a control. Its hover partner
        #6e1a17 had no other user and is gone with this rule. */
     #backup-button {
-      margin-left: auto;
+      /* NO margin-left: auto, AND THAT IS THE FIX (Daniel, 18 Nov 2026:
+         "keep the button in the same position between tabs").
+         WHY IT MOVED. #fresh-line is a flex row and BOTH items carried
+         `margin-left: auto` — the button here and the caveat/note below. Two
+         auto margins SPLIT the free space between them, so the button's x
+         depended on how long the message beside it was: x20 on Bank 1 with
+         its long note, x83 on Bank 2 with the short caveat. A control that
+         moves when the text next to it changes length is not where you left
+         it.
+         ONE AUTO MARGIN, ON THE MESSAGE. The button then sits at flex-start
+         and the message's own auto margin takes all the slack and pins it
+         right. Left-justified button, right-justified message, which is
+         Daniel's own description of the fix. */
       background: var(--action); border: 1px solid var(--action);
       /* 5px, MATCHING #conn-button. It carried 4px, which was the only real
          difference between this button and the two in the connection row —
@@ -1713,7 +1725,27 @@
        of the time for somebody browsing their library. */
     #fresh-line {
       display: flex; justify-content: space-between; align-items: baseline;
-      gap: 12px; padding: 2px 14px 6px; flex: none;
+      gap: 12px;
+      /* ROOM ABOVE THE BUTTON (Daniel, 18 Nov 2026: "cramped", with a
+         screenshot of it sitting hard against the last row's rule).
+         IT WAS 2px 14px 6px — two pixels between a filled 27.4px button and
+         the border under the eight rows. That was survivable while the
+         button was an outlined 23.4px control reading as furniture; it is
+         not now that it is the app's one filled primary action, because a
+         filled block touching a rule reads as part of the rule.
+         SYMMETRIC, 10px EACH. The line is a band of its own now rather
+         than a caption tucked under the list, so the space above and below
+         should match — 2 above and 6 below was neither.
+         THE LINE MOVES DOWN WITH IT, which Daniel allowed explicitly. It
+         sits BELOW the eight rows, so nothing above it moves: row 1 stays
+         at y264.3 on all four tabs, measured. */
+      /* THE LEFT IS THE LIST'S GUTTER, so the button's border lands on the
+         same edge every row's ink does — and a bordered control's border IS
+         its edge, which is the rule --list-gutter's own entry records for
+         .lib-back and the create-setlist button. The right stays 14px: the
+         message is text, not a bordered box, so it needs no such alignment
+         and the caveat's right edge does not move. */
+      padding: 10px 14px 10px var(--list-gutter); flex: none;
     }
     /* Pushed right when the button is absent, so the caveat does not jump
        sides as the cable goes in and out.
