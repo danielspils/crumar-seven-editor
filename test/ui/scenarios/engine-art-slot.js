@@ -33,9 +33,40 @@
   const art = ui.$('#detail .engine-art');
   ui.check(!!art, 'the detail panel has an instrument slot');
   if (!art) return;
-  ui.check(!art.classList.contains('engine-carousel'),
-    `and it is the plain variant, not the carousel (${art.className})`);
-  if (art.classList.contains('engine-carousel')) return;
+  // WHICHEVER SLOT IS THERE, and since 18 Nov 2026 that is the carousel's.
+  //
+  // THIS ASSERTED THE PLAIN VARIANT and had to stop, because the plain
+  // variant is no longer reachable from here: the stack renders offline now
+  // (Daniel's call — he demonstrates the app without a Seven), so a library
+  // patch gets `.engine-art.engine-carousel` in both states.
+  //
+  // A FINDING WHILE CHANGING THIS, reported rather than acted on: with
+  // `connected` gone from the condition, renderer.js's plain-variant branch
+  // is gated on `canPickSound` alone — and app.js sets that in BOTH
+  // selection branches, unconditionally. So that branch is now unreachable,
+  // and the `noPickReason` tooltip it carries was ALREADY dead before this
+  // change: nothing in src/ ever assigns it. The only live plain path left
+  // is soundCarousel's own early return when a library has fewer than two
+  // sounds. Left in place; deleting a fallback is a decision, not a tidy-up.
+  //
+  // SO IT SKIPS, AND SAYS WHICH KIND OF SKIP IT IS. This is a precondition
+  // the scenario cannot control — the app no longer produces the thing it
+  // measures — and not a result the feature is responsible for, which is the
+  // distinction CLAUDE.md requires a skip to state.
+  //
+  // IT IS NOT POINTED AT THE CAROUSEL'S BOX INSTEAD, which was tried and is
+  // wrong: this works by swapping `art.innerHTML` for a bare drawing and
+  // re-measuring, and the two variants size their images by different rules
+  // (`.engine-carousel .car-face img { height: 100% }` against the plain
+  // `height: auto`). Injected into the stack's box the images overflowed —
+  // Venice Grand Open 172px into a 128px slot — which measures the mismatch
+  // between the two sets of rules, not the guarantee. carousel-stack.js
+  // covers the stack's own box: .engine-stage, fixed at 162x134.
+  ui.note(`the slot is ${art.className}`);
+  if (art.classList.contains('engine-carousel')) {
+    ui.note('the PLAIN variant is not reachable here any more — skipping');
+    return { skipped: 'the plain instrument slot is no longer rendered offline' };
+  }
 
   const save = () => ui.$('#save-live-btn');
   const firstParam = () => ui.$('#detail .param');

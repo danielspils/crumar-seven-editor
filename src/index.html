@@ -3981,6 +3981,22 @@
       display: block; width: 100%; height: auto;
     }
 
+    /* ---- OFFLINE: A BROWSER, MARKED UNVERIFIED ------------------------
+       With nothing connected the list is the SCHEMA's 24 sounds — this
+       build's list, not a reading of anybody's instrument — so the stack
+       may be turned and looked at but claims nothing about hardware.
+       THE SAME FADE THE STALE BANK ROWS WEAR. .patch-row.is-stale is .58
+       and means "not heard from this session"; this means "not read from an
+       instrument at all", which is the same kind of statement one step
+       further out. One visual language for "the app believes this and has
+       not confirmed it" (DESIGN.md).
+       ON THE CONTAINER, NOT EACH CARD, and that is what keeps the depth
+       readable: the cards' own opacities (1, .30, .14) MULTIPLY by this, so
+       the front stays three times the next and the stack still reads as a
+       stack. Setting .58 on each card would flatten all three to the same
+       value and lose the thing the opacities are for. */
+    .engine-carousel.is-unverified { opacity: .58; }
+
     .engine-carousel .is-front {
       transform: translate(-50%, -50%) scale(1);
       opacity: 1;

@@ -64,8 +64,13 @@
       `${art.iconFor(s.name, s.sampled)}</span>`;
     const here = wrap(at);
     const moved = here.name !== patch.soundName;
+    // OFFLINE IT IS A BROWSER, NOT A CONTROL (Daniel, 18 Nov 2026).
+    // One flag, read three times below: the cards are marked unverified,
+    // Select is not offered, and nothing claims an engine changed.
+    const unverified = !(view && view.connected);
     return (
-      `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}" data-carousel>` +
+      `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}` +
+      `${unverified ? ' is-unverified' : ''}" data-carousel>` +
       // A DEPTH STACK, NOT A SIDE-PEEK WHEEL (Daniel, 18 Nov 2026, from a
       // measured and approved prototype). The current sound is front and
       // centre; the next two sit BEHIND it, offset up and to the right,
@@ -119,10 +124,18 @@
       // Daniel asked for the same type, and sharing the rule is the only way
       // "the same" stays true when one of them is next edited.
       `<span class="car-count fresh">${at + 1} of ${sounds.length}</span>` +
-      // Under the wheel, and only while the middle is something other than
-      // what the instrument holds: with nothing to install, a Select button
-      // would be a control that does nothing.
-      (moved
+      // Under the stack, and only while the front card is something other
+      // than what the instrument holds: with nothing to install, a Select
+      // button would be a control that does nothing.
+      //
+      // AND NEVER OFFLINE, which is the same rule with the same reason and
+      // not a second one. With no instrument there is nothing to send to, so
+      // every press would be a refusal — and `moved` is TRUE offline the
+      // moment the stack is turned, so without this clause the button would
+      // appear and do nothing. That is the exact shape Daniel's brief names
+      // as worse than absence: a control that appears to act and silently
+      // does not.
+      (moved && !unverified
         ? '<button type="button" class="car-select" data-car-select>Select</button>'
         : '') +
       `</div>`
@@ -459,7 +472,13 @@
       // candidate is muted — the instrument is not playing it yet.
       const shownSound = (() => {
         const sounds = (view && view.sounds) || [];
-        if (view && view.carouselAt != null && sounds.length) {
+        // OFFLINE THE HEADING DOES NOT FOLLOW THE STACK (Daniel, 18 Nov
+        // 2026). Turning works with nothing connected, but a heading that
+        // renamed itself as you turned would say the engine had become
+        // something — and `candidate` means "the instrument is not playing
+        // it YET", which is a claim about an instrument that is not there.
+        // The counter under the stack is what says where you are offline.
+        if (view && view.connected && view.carouselAt != null && sounds.length) {
           const i = ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
           const s = sounds[i];
           if (s && s.name !== patch.soundName) {
@@ -542,21 +561,39 @@
         // outside, which is what let them cross the parameter rows.
         '<div class="engine-stage">' +
         (soundArt()
-          // CONNECTED, OR IT IS A PICTURE. The wheel changes what the instrument
-          // is playing, so with nothing plugged in it can do exactly one thing:
-          // say "Connect the Seven". A control whose only outcome is a refusal
-          // is a dead end dressed as an offer.
+          // A BROWSER OFFLINE, A CONTROL CONNECTED (Daniel, 18 Nov 2026).
           //
-          // AND OFFLINE IT WOULD BE WRONG, not merely inert. soundList falls
-          // back to schema.sounds when no unit is attached — this BUILD's 24,
-          // not the player's instrument — so it would offer sounds their Seven
-          // does not have and hide ones it does. A claim about hardware needs
-          // hardware; that rule applies to a control as much as to a badge.
+          // THIS USED TO REQUIRE A CONNECTION and fall back to a flat
+          // picture. The reasoning was sound and is only half-retired, so it
+          // is kept: "the wheel changes what the instrument is playing, so
+          // with nothing plugged in it can do exactly one thing — say
+          // 'Connect the Seven'. A control whose only outcome is a refusal
+          // is a dead end dressed as an offer." And: soundList falls back to
+          // schema.sounds with no unit attached — this BUILD's 24, not the
+          // player's instrument — so it would offer sounds their Seven does
+          // not have and hide ones it does.
           //
-          // THE CONDITION IS CONNECTEDNESS, never sounds.length. The schema
-          // fallback is exactly what made an offline app look like a populated
-          // device, which is how the plain variant quietly lost its subject.
-          ? (view && view.canPickSound && view.connected
+          // WHAT CHANGED IS THE REASON TO SHOW IT AT ALL. Daniel demonstrates
+          // the app without a Seven to hand, and a control that cannot be
+          // shown is hard to explain. So it renders, and the two objections
+          // above are answered rather than overruled:
+          //
+          //   THE REFUSAL IS REMOVED, NOT HIDDEN. Picking is not offered
+          //   offline — no Select button, no selection state, no heading
+          //   that renames itself. Turning is the whole of what works, and
+          //   turning sends nothing and claims nothing. There is no gesture
+          //   that appears to act and silently does not.
+          //
+          //   THE CLAIM IS WITHDRAWN. Every card is drawn in the app's
+          //   unverified treatment — the same fade the stale bank rows wear
+          //   — because the list IS this build's schema and not a reading of
+          //   anybody's instrument. The app shows what it believes and marks
+          //   what it has not confirmed.
+          //
+          // `canPickSound` STILL GATES IT, and still means what it meant: a
+          // patch whose sound could be changed if there were something to
+          // change it on. What no longer gates it is `connected`.
+          ? (view && view.canPickSound
             // THE SAME CONTROL FOR A LIBRARY PATCH AS FOR A PRESET. It was not
             // always: from 2026-08-12 a library patch got a flat picture and a
             // tooltip instead, and the comment that stood here gave two

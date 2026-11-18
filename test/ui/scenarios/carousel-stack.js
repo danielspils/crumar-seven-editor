@@ -1,3 +1,5 @@
+// @env SEVEN_NO_DEVICE=1
+//
 // THE STACK DRAWS INSIDE ITS OWN CELL. Daniel's brief: "Measure that the
 // stack's painted bounds stay inside .engine-stage at both pane widths, and
 // that no control beside it is covered. That test is the point of the
@@ -17,19 +19,19 @@
 // reports the transformed box, which is the one the eye sees, and that is
 // what is compared.
 //
-// IT NEEDS THE INSTRUMENT, and that is not a convenience — it is the app
-// refusing to guess. The carousel renders only when something is connected
-// (`view.canPickSound && view.connected` in renderer.js): offline, soundList
-// falls back to the SCHEMA's 24 sounds, which is this BUILD's list and not
-// the player's instrument, so a wheel there would offer sounds their Seven
-// does not have and hide ones it does. That rule predates this change and is
-// right. The consequence for this scenario is that it CANNOT run offline —
-// written with @env SEVEN_NO_DEVICE=1 first, it reported "no carousel on
-// screen" and failed on its own preconditions rather than on the geometry.
+// IT RUNS OFFLINE SINCE 18 Nov 2026, and the reason is worth knowing.
+// Until that day the carousel required a connection — `view.canPickSound &&
+// view.connected` — so this scenario could not run at all without a Seven,
+// and reported "no carousel on screen" rather than measuring anything.
+// Daniel's change: the stack renders offline too, as a BROWSER rather than a
+// control. The geometry is the same geometry either way, so the measurement
+// below is now reachable on every desk.
 //
-// SO IT SKIPS WITHOUT ONE, and the skip is honest by CLAUDE.md's rule: no
-// instrument is a precondition this scenario cannot control, not a result
-// the feature is responsible for.
+// WHAT IS DIFFERENT OFFLINE IS CHECKED AT THE END, separately: the cards
+// wear the unverified fade, Select is not offered, and the heading does not
+// rename itself as the stack turns. Those are the offline rules, and they
+// matter more than the geometry — a control that appears to act and silently
+// does nothing is worse than one that is absent.
 //
 // ---- THE FIVE SCENARIOS THIS ONE REPLACES ------------------------------
 //
@@ -69,7 +71,6 @@
 // carousel-peeks.js's sharpest idea, applied to every interactive element in
 // the pane rather than to Save patch alone.
 (async () => {
-  if (!(await ui.requireDevice())) return { skipped: 'no instrument attached' };
   const px = (n) => Math.round(n * 10) / 10;
   const box = (el) => (el ? el.getBoundingClientRect() : null);
 
@@ -150,6 +151,14 @@
         : `${label}: no control beside the stack is covered`);
 
     // ---- AND NOTHING COULD TAKE A CLICK ANYWAY -------------------------
+  //
+  // A NOTE ON THE SECOND WIDTH, measured rather than assumed: squeezing
+  // #library to 360px moves the LIST (pane-geometry.js shows row 1 going
+  // 264.3 -> 300) but leaves .engine-stage at exactly 632..794. The detail
+  // column does not follow the library pane's width, so the two passes
+  // below measure the same geometry twice. That is reported rather than
+  // dressed up as two conditions — the brief asked for both widths, and
+  // what both widths actually produce is one answer.
     //
     // BOXES ARE THE WRONG QUESTION ON THEIR OWN. An overlap only matters if
     // the thing on top can take the press, so this asks the browser directly
@@ -240,12 +249,18 @@
       `a press at its centre reaches it (hit <${hit ? hit.tagName.toLowerCase() : 'none'}>)`);
   }
 
-  // ---- AND A STEP TURNS THE STACK ---------------------------------------
+  // ---- TURNING WORKS, PICKING DOES NOT ----------------------------------
   //
-  // 0x46 AND NOTHING ELSE is the send path and needs an instrument; what is
-  // checkable offline is that a chevron MOVES the stack and that the counter
-  // follows it. Nothing is sent here — there is no instrument to send to.
+  // THE OFFLINE CONTRACT, and the half most worth defending. Nothing can be
+  // sent with no instrument attached, so no card may read as chosen: no
+  // Select, no selection state, no heading renaming itself as though the
+  // engine had switched. The chevrons move the stack and that is all.
   ui.note('');
+  const connected = !!ui.$('#connection-row.connected');
+  ui.note(`connected: ${connected}`);
+  const car = ui.$('#detail [data-carousel]');
+  const heading = ui.$('#detail .engine-sound');
+  const headBefore = heading ? (heading.textContent || '').trim() : null;
   const before = (ui.$('#detail .car-count') || {}).textContent;
   const frontBefore = (ui.$('#detail .is-front') || {}).dataset;
   const next = ui.$('#detail [data-car-step="1"]');
@@ -260,5 +275,69 @@
     ui.check(after !== before, `a step advances the counter (${before} -> ${after})`);
     ui.check(!frontBefore || !frontAfter || frontBefore.carName !== frontAfter.carName,
       'and a different instrument is in front');
+
+    if (!connected) {
+      // NO SELECT. `moved` is true the moment the stack turns, so without
+      // the offline clause the button WOULD appear — and every press would
+      // be a refusal. This is the one that matters most.
+      ui.check(!ui.$('#detail [data-car-select]'),
+        'offline: a turned stack offers no Select button');
+      // NO SELECTION STATE on any card.
+      const chosen = ui.$$('#detail .car-face')
+        .filter((c) => /selected|is-chosen|is-live/.test(c.className));
+      ui.check(chosen.length === 0,
+        `offline: no card reads as chosen (${chosen.length})`);
+      // AND THE HEADING DID NOT RENAME ITSELF. Turning must not say the
+      // engine became something — `candidate` means "not playing it YET",
+      // which is a claim about an instrument that is not there.
+      const headAfter = ui.$('#detail .engine-sound');
+      const headNow = headAfter ? (headAfter.textContent || '').trim() : null;
+      ui.note(`heading "${headBefore}" -> "${headNow}"`);
+      ui.check(headNow === headBefore,
+        `offline: the heading still names the patch's own sound ("${headNow}")`);
+      ui.check(!headAfter || !headAfter.classList.contains('is-candidate'),
+        'and nothing is marked as a candidate');
+    }
+  }
+
+  // ---- OFFLINE IT CLAIMS NOTHING ----------------------------------------
+  //
+  // RE-QUERIED, AND AFTER THE TURN HAS SETTLED. `car` was captured before
+  // the step above, and a step re-renders the detail pane — so that node is
+  // DETACHED by now. getComputedStyle on a detached element returns empty
+  // strings, and `Number('') < 1` is `0 < 1`, which is TRUE: the fade check
+  // passed on a node that was not on screen, for a reason that had nothing
+  // to do with the fade. The classList check passed legitimately (classes
+  // survive detachment), which is what made it look fine.
+  //
+  // The sleep is past TURN_MS as well, or the classes read back with
+  // `is-turning` still on them and the cards are measured mid-flight.
+  await ui.sleep(700);
+  const live = ui.$('#detail [data-carousel]');
+  if (!connected && live) {
+    ui.note('');
+    const cs = getComputedStyle(live);
+    ui.note(`the stack's own opacity: ${cs.opacity} · classes "${live.className}"`);
+    ui.check(live.classList.contains('is-unverified'),
+      'offline: the stack is marked unverified');
+    ui.check(cs.opacity !== '' && Number(cs.opacity) < 1,
+      `and faded, as the stale bank rows are (${cs.opacity || 'DETACHED — no value'})`);
+    // THE DEPTH SURVIVES THE FADE. The container's opacity multiplies each
+    // card's own, so the front must still be clearly ahead of the next —
+    // setting the fade per card would flatten all three to one value.
+    const frontCard = ui.$('#detail .is-front');
+    const nextCard = ui.$('#detail .is-next');
+    if (frontCard && nextCard) {
+      const fo = Number(getComputedStyle(frontCard).opacity);
+      const no = Number(getComputedStyle(nextCard).opacity);
+      ui.note(`front card ${fo} · next card ${no} (each before the container's fade)`);
+      ui.check(fo > no, `the stack still reads as depth (${fo} > ${no})`);
+    }
+    // AND THE COUNTER STAYS. It is the only thing telling you where you are
+    // offline, now that the heading does not follow the stack.
+    const c = ui.$('#detail .car-count');
+    const txt = c ? (c.textContent || '').trim() : '';
+    ui.check(!!c && /^\d+ of \d+$/.test(txt),
+      `offline: the counter is still there ("${txt}")`);
   }
 })()
