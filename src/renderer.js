@@ -50,10 +50,15 @@
     const at = view.carouselAt == null ? home : ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
     const wrap = (i) => sounds[((i % sounds.length) + sounds.length) % sounds.length];
     // No label on the face. A name pill in the middle covered the very
-    // instrument it named, and the ones on the neighbours crowded the panel —
-    // so the SOUND ENGINE heading does the naming instead, following whatever
-    // is in the centre (Daniel, 2026-08-12). data-car-name stays: it is how a
-    // click knows which sound it means.
+    // instrument it named, and the ones on the neighbours crowded the panel.
+    //
+    // THE NAMING WAS GIVEN TO THE SOUND ENGINE HEADING on 2026-08-12, "following
+    // whatever is in the centre". THAT PART IS REVERSED (18 Nov 2026): the
+    // heading names what the instrument holds and never moves, because the
+    // parameter rows beneath it cannot follow. The CAPTION under the stack
+    // does the naming while you turn — see `.car-count` below.
+    //
+    // data-car-name stays: it is how a click knows which sound it means.
     // The art key rides along so CSS can treat a shape differently — a wide,
     // flat instrument fitted to the box's WIDTH ends up short, and standing it
     // on the floor line leaves it sitting low against instruments that have
@@ -169,7 +174,13 @@
   // `invert` marks inverted logic: veq_byp is EQ *Bypass* — 1 means bypassed,
   // i.e. the EQ is OFF, so its pill and dimming read the opposite way.
   const FX_SECTIONS = [
-    { title: 'Master Volume / EQ', group: 'efx_veq', sw: 'veq_byp', invert: true },
+    // "VOLUME / EQ", not "MASTER VOLUME / EQ" (Daniel, 18 Nov 2026): this is
+    // the longest title in the chain and it squeezed the summary beside it
+    // down to "V...". The summary is `flex: 1` with a zero basis, so it gets
+    // only what the title leaves. The schema's own label for the group is
+    // "Master volume + EQ" and is deliberately NOT changed — that is the
+    // group's identity on the wire, this is its display name in the chain.
+    { title: 'Volume / EQ', group: 'efx_veq', sw: 'veq_byp', invert: true },
     { title: 'FX1', group: 'efx_fx1', sw: 'fx1_sw' },
     { title: 'FX2', group: 'efx_fx2', sw: 'fx2_sw', fx2: true },
     { title: 'Amp Simulator', group: 'efx_amp', sw: 'amp_sw' },
@@ -489,30 +500,37 @@
       const group = engineGroupFor(patch);
       const label = groupLabels[group] || group;
       const missing = isMissing(patch);
-      // What the heading names: the carousel's centre when it has been turned
-      // away from the loaded sound, otherwise the loaded sound itself. A
-      // candidate is muted — the instrument is not playing it yet.
-      const shownSound = (() => {
-        const sounds = (view && view.sounds) || [];
-        // OFFLINE THE HEADING DOES NOT FOLLOW THE STACK (Daniel, 18 Nov
-        // 2026). Turning works with nothing connected, but a heading that
-        // renamed itself as you turned would say the engine had become
-        // something — and `candidate` means "the instrument is not playing
-        // it YET", which is a claim about an instrument that is not there.
-        // The counter under the stack is what says where you are offline.
-        if (view && view.connected && view.carouselAt != null && sounds.length) {
-          const i = ((view.carouselAt % sounds.length) + sounds.length) % sounds.length;
-          const s = sounds[i];
-          if (s && s.name !== patch.soundName) {
-            const g = engineGroupFor({ soundName: s.name, sampled: s.sampled });
-            return {
-              name: s.name, sampled: !!s.sampled, candidate: true,
-              label: groupLabels[g] || g,
-            };
-          }
-        }
-        return { name: patch.soundName, sampled: !!patch.sampled, candidate: false, label };
-      })();
+      // THE HEADING NAMES WHAT THE INSTRUMENT HOLDS. It does not follow the
+      // stack (Daniel, 18 Nov 2026).
+      //
+      // IT USED TO, AND THAT WAS THE BUG: with slot 2 (Reed Piano) selected
+      // and sounding, paging the stack to card 5 made this heading read "DX
+      // Synth Piano / DX Digital E.P." while the Seven was still playing the
+      // Reed. Nothing had been loaded. The panel named a sound the instrument
+      // was not making.
+      //
+      // THE PARAMETER LIST BELOW BELONGS TO THIS HEADING and cannot follow —
+      // the rows are the loaded patch's values, read from the instrument. A
+      // heading that previews while the rows underneath do not is not a
+      // preview, it is two different sounds stacked on top of each other with
+      // one name between them. That is why Daniel considered letting the
+      // header preview and rejected it, and why the caption under the stack
+      // exists at all: the caption is the thing that is allowed to move.
+      //
+      // The `candidate` muting was the old preview's marker — "the instrument
+      // is not playing it YET". There is no longer any state in which this
+      // heading names something unplayed, so it is always false. REPORTED,
+      // NOT TIDIED: `.engine-sound.is-candidate` in index.html is now
+      // unreachable, and deleting a style on the strength of one reading is a
+      // decision rather than a clean-up.
+      //
+      // NOTE FOR ANYONE RESTORING THE PREVIEW: `moved` in soundCarousel
+      // compares the front card against `patch.soundName`, NOT against this
+      // heading, so the caption and the LOAD chip are unaffected by what is
+      // written here. They were checked when this was fixed.
+      const shownSound = {
+        name: patch.soundName, sampled: !!patch.sampled, candidate: false, label,
+      };
       // Some sounds answer to only part of the keyboard — the modeled
       // Wurlitzer and the Vibraphone among them. Nothing on the wire says so
       // (see schema/key-ranges-1.37.json), so this draws only what has been

@@ -399,7 +399,7 @@ One modal, from Settings → `Sounds on this Seven` (app.js:2736).
   for it anywhere in the interface (Daniel, 2026-08-17).
 - `Duplicate and edit` dialog: `This is a Crumar factory preset, captured from Bank 1. Every patch generated from this model is built from it, so it is kept as it is.` + `Your changes on a copy instead?` — app.js:310–312
 - `Make your changes` — app.js:600
-- Section heads: `Master Volume / EQ`, `Amp Simulator`, `Synth Pad`, `Expression Pedal` — renderer.js:89–95
+- Section heads: `Volume / EQ`, `Amp Simulator`, `Synth Pad`, `Expression Pedal` — renderer.js FX_SECTIONS (was `Master Volume / EQ` until 18 Nov 2026; the schema's group label is still `Master volume + EQ`, which is the wire identity and not this display name)
 - `OFF` / `ON` on each effects section — renderer.js:591
 - `not used` + `This control only does something when the loaded sample is a piano. The Seven still stores a value for it.` — renderer.js:394
 - `Reversed: min is above max, which reverses the pedal action (manual)` — renderer.js:344 ⚑
