@@ -131,7 +131,28 @@
       .filter((el) => !el.closest('[data-carousel]'))
       .filter((el) => { const b = box(el); return b.width > 0 && b.height > 0; });
     ui.note(`  interactive controls beside the stack: ${controls.length}`);
+    // WHAT THE MOUSE ACTUALLY HITS, NOT WHICH BOXES INTERSECT.
+    //
+    // This compared the control's rect against each CARD'S rect, and that is
+    // the wrong instrument twice over. A `.car-face` is 128x128 while its art
+    // is letterboxed inside by object-fit: contain — measured at 101.5px of
+    // ink in a 128px box — so a box overlap can be entirely empty margin and
+    // nothing is visually covered. And a card that takes no pointer events
+    // cannot steal a click however much it overlaps: offline every face is
+    // `pointer-events: none`, and only `.has-moved:not(.is-unverified)
+    // .is-front` is ever `auto`.
+    //
+    // THE QUESTION THE SCENARIO MEANS is whether the control is still
+    // reachable, and elementFromPoint at its centre answers exactly that —
+    // immune to both the letterbox and the pointer-events gate, because it is
+    // what the browser would do with a real press.
+    //
+    // THIS SURFACED WHEN THE SQUEEZE STARTED WORKING (18 Nov 2026). The block
+    // narrowed #library and measured #detail for weeks, so it had never run
+    // at a narrow width at all; the first real 470px run reported a 27.4x25.4
+    // box overlap with "Save patch", which is the letterbox, not a cover.
     const covered = [];
+    const boxOverlaps = [];
     for (const el of controls) {
       const b = box(el);
       for (const c of cards) {
@@ -141,13 +162,32 @@
         const overlapY = Math.min(b.bottom, cb.bottom) - Math.max(b.top, cb.top);
         if (overlapX > 0.5 && overlapY > 0.5) {
           const name = (el.textContent || el.id || el.className || '?').trim().slice(0, 24);
-          covered.push(`"${name}" by ${[...c.classList].find((k) => k.startsWith('is-'))}`
-            + ` (${px(overlapX)}x${px(overlapY)}px)`);
+          boxOverlaps.push(`"${name}" by ${[...c.classList].find((k) => k.startsWith('is-'))}`
+            + ` (${px(overlapX)}x${px(overlapY)}px of box)`);
         }
       }
+      // Reachable means the press lands on this control or something inside
+      // it. A label inside a button is the button for this purpose.
+      // BY THE STACK, SPECIFICALLY. A first version asked only "does the
+      // press land somewhere else", and that is a different and much larger
+      // question: it flagged "Save patch" as covered by its own
+      // <span class="save-actions"> wrapper (an ANCESTOR — the centre point
+      // fell between its children, which says nothing about the stack), and
+      // every control inside a collapsed .fx-section, which is unreachable by
+      // design because the section is shut. This scenario is about the
+      // carousel, so only the carousel counts as a cover.
+      const hit = ui.hitTarget(el);
+      if (hit && hit !== el && !el.contains(hit) && hit.closest('[data-carousel]')) {
+        const name = (el.textContent || el.id || el.className || '?').trim().slice(0, 24);
+        const face = [...hit.classList].find((k) => k.startsWith('is-')) || hit.className;
+        covered.push(`"${name}" is covered by the stack (${face})`);
+      }
+    }
+    if (boxOverlaps.length) {
+      ui.note(`  boxes intersect (not necessarily a cover): ${boxOverlaps.join('; ')}`);
     }
     ui.check(covered.length === 0,
-      covered.length ? `${label}: a card overlaps ${covered.join('; ')}`
+      covered.length ? `${label}: ${covered.join('; ')}`
         : `${label}: no control beside the stack is covered`);
 
     // ---- AND NOTHING COULD TAKE A CLICK ANYWAY -------------------------
@@ -184,17 +224,31 @@
 
   await report('DEFAULT WIDTH');
 
-  // THE SECOND WIDTH. The pane is what the brief names, and squeezing it is
-  // what moves the detail column — the stage's own width follows.
-  const pane = ui.$('#library');
-  const original = pane ? pane.style.width : '';
-  if (pane) {
-    pane.style.width = '360px';
-    await ui.sleep(600);
-    await report('PANE SQUEEZED TO 360px');
-    pane.style.width = original;
-    await ui.sleep(300);
-  }
+  // THE SECOND WIDTH, AND IT IS THE DETAIL PANE.
+  //
+  // THIS NARROWED #library AND MEASURED THE CAROUSEL, which is in #detail.
+  // Narrowing the LEFT pane makes the right one WIDER, and the stage is a
+  // fixed 214x134 besides — so the block printed "PANE SQUEEZED TO 360px"
+  // above numbers byte-identical to the default block, for weeks. The comment
+  // here asserted the wrong model in so many words: "squeezing it is what
+  // moves the detail column — the stage's own width follows."
+  //
+  // ui.squeeze narrows the right element, with max-width so a flex item is
+  // actually clamped, and CHECKS the box moved before anything is concluded.
+  // 470px, NOT 360. The old block narrowed #library, where 360 is a sensible
+  // left-pane width; pointed at #detail it is narrower than the app can
+  // actually produce. main.js sets minWidth to min(1280, screen width) and
+  // #library is min(400px, 36%), so #detail's floor is ~840px on a normal
+  // display and ~470px on the small or scaled panel main.js contemplates.
+  //
+  // AT 360 THE FRONT CARD OVERLAPS the parameter columns — "Save patch",
+  // "Stereo Panner", "Chorus" — which this found the moment the squeeze
+  // started working. It is recorded for Daniel rather than asserted here,
+  // because a test that fails at a width the app cannot reach spends its
+  // credibility on a state no player can produce.
+  const restore = await ui.squeeze(ui.$('#detail'), 470, { what: 'the detail pane' });
+  await report('THE DETAIL PANE SQUEEZED TO 470px — the narrowest it can be');
+  await restore();
 
   // ---- THE CAPTION'S TYPE, WHEN THERE IS ONE ---------------------------
   //

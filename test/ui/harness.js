@@ -263,11 +263,46 @@ window.ui = (() => {
   // flag the operator set rather than from the scenario deciding for itself.
   const env = (name) => (window.__SEVEN_ENV || {})[name] || null;
 
+  // NARROW AN ELEMENT, AND PROVE IT NARROWED.
+  //
+  // WHY THIS IS A HELPER (18 Nov 2026). Seven scenarios resize something to
+  // measure a narrow layout, and TWO OF THEM HAD NEVER NARROWED ANYTHING:
+  // carousel-caption.js and carousel-stack.js set `#library`'s width and then
+  // measured the carousel, which is in `#detail` — the RIGHT pane. Narrowing
+  // the left pane makes the right one WIDER. Both printed a heading saying
+  // "PANE SQUEEZED TO 360px" above numbers byte-identical to their default
+  // block, for weeks, and carousel-stack's comment asserted the wrong model
+  // out loud: "squeezing it is what moves the detail column".
+  //
+  // A third, fx-head-fits.js, set `width` on `#detail`, which is `flex: 1` —
+  // its main size comes from `flex-basis: 0%` and an inline width is ignored
+  // entirely. It printed "the pane is 747px wide" under a heading saying 460.
+  //
+  // So: max-width, which clamps a flex item whatever its basis, and a CHECK
+  // that the box actually moved. A squeeze that does not squeeze is a
+  // measurement of nothing wearing the heading of a measurement — the same
+  // family as an assertion that cannot fail, and harder to spot because the
+  // numbers look real.
+  //
+  // Returns a restore function, so the caller cannot forget which property
+  // was set or what it was.
+  async function squeeze(el, px, { what = 'the pane' } = {}) {
+    if (!el) { check(false, `${what} is not on screen to narrow`); return () => {}; }
+    const had = el.style.maxWidth;
+    el.style.maxWidth = `${px}px`;
+    await sleep(280);
+    const got = Math.round(el.getBoundingClientRect().width * 10) / 10;
+    note(`${what} narrowed to ${px}px → it is ${got}px`);
+    check(Math.abs(got - px) <= 2,
+      `${what} actually narrowed to ${px}px (it is ${got}px)`);
+    return async () => { el.style.maxWidth = had; await sleep(200); };
+  }
+
   return {
     env,
     sleep, check, note, click, hitTarget, waitFor, waitEl, waitClickable, $, $$, connected, live,
     requireDevice, selectBankPreset, enterAudition, openLibrary, closeLibrary, selectTab,
-    waitForHuman,
+    waitForHuman, squeeze,
     result: () => ({ failures, notes }),
   };
 })();

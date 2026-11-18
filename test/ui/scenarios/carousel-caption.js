@@ -211,13 +211,15 @@
     await ui.sleep(220);
   }
 
-  const pane = ui.$('#library');
-  const original = pane ? pane.style.width : '';
-  if (pane) {
-    pane.style.width = '360px';
-    await ui.sleep(600);
-    await look('PANE SQUEEZED TO 360px');
-    pane.style.width = original;
-    await ui.sleep(300);
-  }
+  // THE DETAIL PANE, NOT THE LIBRARY ONE.
+  //
+  // This narrowed #library and then measured the caption and the art, both of
+  // which live in #detail — so it made the pane under test WIDER and reported
+  // "PANE SQUEEZED TO 360px" above numbers identical to the default block.
+  // The caption overlap this scenario exists to catch is a NARROW-pane
+  // failure, so the block was covering the one direction that cannot produce
+  // it. ui.squeeze proves the width moved; see its comment in harness.js.
+  const restore = await ui.squeeze(ui.$('#detail'), 360, { what: 'the detail pane' });
+  await look('THE DETAIL PANE SQUEEZED TO 360px');
+  await restore();
 })()

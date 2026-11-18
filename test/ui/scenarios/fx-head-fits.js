@@ -140,12 +140,13 @@
   // SO THE SQUEEZE PROVES ITSELF. Each width is checked to have actually
   // taken before anything is concluded from it.
   for (const w of [520, 460, 400]) {
-    pane.style.maxWidth = `${w}px`;
-    await ui.sleep(260);
-    const got = widthOf(pane);
-    if (!ui.check(Math.abs(got - w) <= 2,
-      `the pane actually narrowed to ${w}px (it is ${got}px)`)) {
+    // ui.squeeze, not an inline version of it: two other scenarios had a
+    // squeeze block that never squeezed, so the check that the box moved
+    // belongs in one place rather than copied into each caller.
+    const restore = await ui.squeeze(pane, w, { what: 'the detail pane' });
+    if (Math.abs(widthOf(pane) - w) > 2) {
       ui.note(`    the squeeze did not take — nothing below this is about ${w}px`);
+      await restore();
       continue;
     }
     const bad = report(`SQUEEZED TO ${w}px`);
