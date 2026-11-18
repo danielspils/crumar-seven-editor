@@ -98,10 +98,13 @@
          It was #c9a25e, a hair off this one, and the two sat side by side as
          "two nearby warm golds, which is worse than one". Merging cost
          nothing: contrast against --bg went 6.74:1 -> 7.19:1.
-         IN LIGHT IT IS THE HUE, NOT THE VALUE. #E0A23C measures 1.88:1 on
-         --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel — a 2px marker
-         at 1.65:1 is no marker. Light --amber is #9e6c19 instead: this hue
-         (37deg) and saturation (73%) at 36% lightness, worst ground 3.37:1.
+         AND IN LIGHT TOO, which took two goes. #E0A23C measures 1.88:1 on
+         --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel, all under the
+         3:1 a non-text marker is meant to clear — so light first shipped
+         #9e6c19, this hue at 36% lightness and 3.37:1. Beside the script that
+         read as a different, duller gold, and Daniel chose the sign's own
+         colour from the running app. The contrast cost is deliberate and is
+         recorded beside the light token.
          THE EXCEPTION THIS SIGN HAS IS THE GLOW, NOT THE HUE (docs/DESIGN.md).
          The logo may light because it IS the machine; sharing its colour with
          the active-state marker does not spend that, because what the logo
@@ -225,23 +228,23 @@
       --pill-on-text: #1c7a45;
       --pill-on-border: #8fb79c;
       --pill-on-bg: #e4efe6;
-      /* THE LOGO'S HUE, NOT ITS VALUE (Daniel, 18 Nov 2026). Dark --amber is
-         now exactly --logo; light cannot be, because #E0A23C measures 1.88:1
-         on --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel. A 2px
-         marker at 1.65:1 is no marker, which is the opposite of what an
-         active marker is for.
-         SO IT IS THE SAME HUE AT A CONTRAST THAT WORKS: #E0A23C is hue 37deg
-         at 73% saturation, and this is that hue and saturation at 36%
-         lightness. Worst ground 3.37:1 (--bg-panel), bg 3.83:1, raised
-         4.18:1.
-         #a7721b WAS THE OTHER CANDIDATE at 3.06:1 and was declined: 3:1 is
-         the floor, not a target, and a later background tweak would push it
-         under. This has margin.
-         IT IS A REAL DROP from the old #8a5d00's 4.26:1, accepted so the
-         marker matches the sign. IF 2px READS WEAK, THE ANSWER IS 3px, not a
-         darker colour — a thicker line in the logo's hue is the harmony that
-         was asked for; a darker line is not. */
-      --amber: #9e6c19;
+      /* THE SEVEN SCRIPT'S OWN COLOUR, IN BOTH THEMES (Daniel, 18 Nov 2026,
+         from the rendered app).
+         THE CONTRAST IS KNOWN AND ACCEPTED, not overlooked. #E0A23C measures
+         1.88:1 on --bg, 2.05:1 on --bg-raised and 1.65:1 on --bg-panel, all
+         under the 3:1 WCAG asks of a non-text marker. A DELIBERATE EXCEPTION:
+         Daniel compared it on screen against the alternative and chose the
+         script colour, because the underline and the sign reading as one
+         thing is the point of the change.
+         WHAT WAS TRIED FIRST, so nobody re-derives it: #9e6c19 — this hue
+         (37deg) and saturation (73%) at 36% lightness, worst ground 3.37:1 —
+         shipped for about an hour and read as a different, duller gold beside
+         the script. #a7721b (3.06:1) was declined earlier for having no
+         margin. The old value was #8a5d00 at 4.26:1.
+         IF IT READS WEAK AT 2px THE ANSWER IS 3px, not a darker colour. A
+         thicker line in the sign's own colour is the harmony that was asked
+         for; a darker line is the thing this change undid. */
+      --amber: #E0A23C;
       /* THE LIGHT GROUND IS ALREADY TAME. Change 1 is dark-only: these values
          were measured against the mock and match it, so only --page is new —
          the antiqued paper one step down, for the artwork to sit on. */

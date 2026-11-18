@@ -228,10 +228,21 @@
         + ` lightness ${Math.round(markerHsl.l)}%) against the logo's`
         + ` ${Math.round(litHsl.h)}° / ${Math.round(litHsl.l)}% — ${apart}° apart`);
       ui.check(apart <= 6,
-        `and in light it is the same HUE at a usable contrast (${apart}° apart)`);
-      ui.check(markerHsl.l < litHsl.l,
-        `darker than the sign, which is what buys the contrast`
-        + ` (${Math.round(markerHsl.l)}% vs ${Math.round(litHsl.l)}%)`);
+        `and in light it is the same HUE (${apart}° apart)`);
+      // THE SAME VALUE, NOT MERELY THE SAME HUE (Daniel, 18 Nov 2026, from
+      // the rendered app). This asserted the marker was DARKER than the sign,
+      // "which is what buys the contrast" — true of #9e6c19, which shipped
+      // for about an hour and read as a different, duller gold beside the
+      // script. Daniel compared them on screen and chose the script's own
+      // colour, so the claim is now the stronger one.
+      //
+      // THE CONTRAST COST IS DELIBERATE and recorded here so a future reader
+      // does not "fix" it: #E0A23C is 1.65:1 on light --bg-panel, under the
+      // 3:1 WCAG asks of a non-text marker. The decision was made with that
+      // number in hand.
+      ui.check(light.amber.toLowerCase() === hex(light.lit).toLowerCase(),
+        `in light the active marker IS the script's colour too (${light.amber}`
+        + ` vs ${hex(light.lit)})`);
     }
     // AND THE RAMP, BOTH THEMES, with what it replaced. The first amber pass
     // left --logo-off in the green family and this is where that showed:

@@ -93,7 +93,15 @@ from a designer's preference.
 | Action | `--action` | the panel's DEPTH/RATE legend green (`#7f9c78` dark, `#1f6b3d` light) | anything that DOES something, as a FILL or a MARK: a filled button, a 1px border, a focus ring, a 2px underline |
 | Action, as words | `--action-text` | the same legend, damped (`#a9c3a1` dark; identical to `--action` in light) | the LABEL of an action — a button's text, a link, a name going green on hover |
 | Destructive | `--accent` | panel LED red, warmed for the dark palette (`#b5584a` / `#b8362b`) | the selected-row edge, and any confirm that destroys something |
-| Navigation | `--amber` | **the logo's lit amber** (`#E0A23C` dark; `#9e6c19` light — the same hue at a contrast that works) | which tab or segment is selected, focus rings, an open rename field |
+| Navigation | `--amber` | **the Seven script's own amber**, `#E0A23C`, in both themes | which tab or segment is selected, focus rings, an open rename field |
+
+> **The light marker is a deliberate contrast exception.** `#E0A23C` measures
+> 1.88:1 on `--bg` and 1.65:1 on `--bg-panel`, under the 3:1 WCAG asks of a
+> non-text marker. `#9e6c19` — the same hue at 3.37:1 — was built and shipped
+> for an hour first; beside the script it read as a different, duller gold.
+> Daniel compared both in the running app and chose the sign's own colour, so
+> the underline and the sign read as one thing. If it reads weak at 2px the
+> answer is 3px, not a darker colour.
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
 | Sampled | `--sampled` | panel green legend, darker | the Sampled badge, outlined |
 
