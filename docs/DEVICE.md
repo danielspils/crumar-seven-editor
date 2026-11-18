@@ -709,6 +709,28 @@ effect's oscillator.
   `globals-*.json` from the same backup run), so the pedal can be disarmed on
   some patches and live on others.
 
+#### Where the pedal's position can be read (measured 2026-11-18, v1.37)
+
+- **The destination parameter is NOT modulated.** With the pedal on Volume,
+  `veq_vol` read `127` with the pedal up and `127` held fully down. The pedal
+  applies downstream; reading the destination tells you what the patch holds,
+  never what the pedal is doing to it.
+- **The Seven transmits CC 11** (the MIDI Expression Controller) as the pedal
+  moves — ~140 messages across a slow full sweep, and no other CC.
+- **CC 11 is the RAW POSITION and ignores the range.** With `exp_mn`/`exp_mx`
+  narrowed to 40–80, a full sweep still spanned 0..127. The Seven applies the
+  range internally and does not transmit the value it is applying.
+- **So the applied value cannot be read at all.** The app can see the pedal's
+  position and the range's two ends; it cannot see what the instrument is
+  actually doing with them, and there is no read that would reveal it.
+  **Any interpolation is a MODEL of the Seven's behaviour and is
+  unfalsifiable from the app's side** — its linearity, its rounding, and
+  whether it uses the pedal's full 0..127 are all unverified.
+- **Untested:** both measurements used `exp_fn=0` (Volume). Whether CC 11 is
+  the same for every assignment is not established.
+- Nothing consumes CC 11 today: `buildCcMap` only maps parameters with
+  `flag === 1`, none of which claims CC 11, so `onPanelCc` returns early.
+
 ### Other panel states
 
 - **A knob sends nothing until it crosses its stored value** (observed
