@@ -54,9 +54,23 @@
     return;
   }
 
+  // SAY WHAT ACTUALLY WORKED (Daniel, 18 Nov 2026, at the instrument).
+  //
+  // This asked for "a good amount" and the first real attempt FAILED with
+  // Treble 64 -> 64 — and the read straight off the Seven also said 64, so
+  // the knob had sent nothing at all. A full sweep down and back up on the
+  // same knob, a minute later, gave 64 -> 127 and passed.
+  //
+  // THAT IS PICKUP BEHAVIOUR: a knob resting near its stored value sends
+  // nothing until it CROSSES that value, so "a good amount" can be a large
+  // turn that still transmits nothing. The instruction has to name the
+  // gesture that cannot fail rather than describe an amount, because the
+  // person following it cannot see which side of the stored value they are
+  // on.
   const got = await ui.waitForHuman(
-    `TURN THE TREBLE KNOB on the Seven, a good amount (it is CC 13). ` +
-    `Nothing is stored. Then signal.`,
+    `TURN THE TREBLE KNOB fully DOWN and then fully UP (it is CC 13). `
+    + `A small turn may send nothing — the knob has to cross its stored `
+    + `value. Nothing is stored. Then signal.`,
     { timeout: 180000 }
   );
   if (!got) {

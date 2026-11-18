@@ -680,6 +680,18 @@ effect's oscillator.
 
 ### Other panel states
 
+- **A knob sends nothing until it crosses its stored value** (observed
+  2026-11-18, Treble / CC 13, firmware v1.37). Turning it a short way near
+  the stored value transmits nothing at all: the app saw no change, and a
+  read straight off the instrument also still returned the old value, so
+  this is the Seven not sending rather than the app not listening. Measured
+  both ways within a minute — a partial turn gave `64 → 64`, a full sweep
+  down and back up gave `64 → 127`.
+  This is the usual "pickup" or "catch" behaviour, and it matters for any
+  instruction given to a person at the panel: **"turn it a good amount" is
+  not a reliable gesture, because they cannot see which side of the stored
+  value they are on.** `test/ui/scenarios/panel-cc-follow.js` asks for a full
+  sweep for this reason, and failed once asking for the other.
 - **Volume knob blue = Local Off.** The instrument will not play its
   internal engine. Worth surfacing in the app, since it presents as "no
   sound" with everything else apparently correct.
