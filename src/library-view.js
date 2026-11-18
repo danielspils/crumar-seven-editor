@@ -284,7 +284,8 @@
     // Every patch says its age, and the verb says how it got here — in the
     // words the app already uses elsewhere. "Captured" was the file format's
     // internal term leaking into the window; the button says "Back up
-    // instrument", so the row says "backed up" (Daniel, 2026-08-13).
+    // Seven", so the row says "backed up" (Daniel, 2026-08-13; the button
+    // was "Back up instrument" then, and the VERB is what this follows).
     // NO DATE. This list is current state now — the newest record per slot —
     // so "backed up today" on every row is a column of the same word, and for
     // a patch you made the date was already the least useful thing on the line.
@@ -779,7 +780,7 @@
   function renderBackupList(data, state) {
     const runs = backupRuns(data);
     if (!runs.length) {
-      return '<div class="lib-empty">No backups yet. “Back up instrument” reads all ' +
+      return '<div class="lib-empty">No backups yet. “Back up Seven” reads all ' +
         '32 presets and writes down what the Seven held.</div>';
     }
     return runs.map((r, i) => {

@@ -1994,7 +1994,7 @@
         // Two statements, not one long line: what is missing, then what to do
         // about it (Daniel, 2026-08-13).
         ? `No backup for Bank ${deviceSel.bank + 1} · Preset ${deviceSel.preset + 1}\n\n` +
-          'Connect to a Crumar Seven and click the “Back up instrument” button.'
+          'Connect to a Crumar Seven and click the “Back up Seven” button.'
         : 'Select a patch';
     // While a patch is live, the panel shows the WORKING copy — the values the
     // instrument currently holds, including edits not yet saved to disk.
@@ -4425,7 +4425,7 @@
 
     const showBackupDone = async (ev) => {
       backupRunning = false;
-      backupBtn.textContent = 'Back up instrument';
+      backupBtn.textContent = 'Back up Seven';
       connBtn.disabled = false;
       await finishBackupProgress(ev);
       if (!ev.ok) {
@@ -4518,8 +4518,10 @@
     // ---- THE STALE-BACKUP OFFER ------------------------------------------
     //
     // A full read of 32 slots is 45-50 seconds. Far too long to do on every
-    // launch, and it is the same operation the toolbar's "Back up instrument"
+    // launch, and it is the same operation the "Back up Seven" button
     // already performs — so the app OFFERS it rather than doing it.
+    // (It is not in the toolbar any more either: it sits in the freshness
+    // line under the Seven tab's rows.)
     //
     // IT NEVER BLOCKS THE BOOT. It is not awaited by anything on the startup
     // path and it appears AFTER the app is up, over a window the player can

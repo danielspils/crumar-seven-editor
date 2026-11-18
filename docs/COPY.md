@@ -77,9 +77,18 @@ It also cannot say **"1 days ago"** — `ago()` answers `yesterday` at one day �
 though that case is unreachable anyway at a fourteen-day threshold.
 
 **"Back up" is the VERB, two words. "backup" is the NOUN, one.** Corrected
-16 Nov 2026 from "Backup the Seven now", Daniel's call. The toolbar button has
-always read `Back up instrument`, so the app is now consistent with itself.
+16 Nov 2026 from "Backup the Seven now", Daniel's call. The button has always
+had the verb right, so the app is consistent with itself.
 **Do not revert this.**
+
+**THE BUTTON IS `Back up Seven`** (Daniel, 18 Nov 2026). It read `Back up
+instrument` until then, which wrapped onto two lines in the freshness line it
+now sits in — though the wrap was fixed structurally as well (`flex: none` on
+a flex item that was being squeezed by the Bank 1 note beside it), so this is
+the shorter label and not a workaround for the wrap.
+
+**`Cancel backup` and `Cancelling…` are UNCHANGED.** They are what the same
+button reads while a run is in flight, and only the resting label moved.
 
 **"Continue", not "Not now" or "Skip"** — declining is not a deferral, it is
 carrying on with what you opened the app to do. There is deliberately **no
@@ -112,7 +121,7 @@ The strip under the panel. One line, left, plus buttons.
 | `Couldn't talk to the Seven. Unplug the USB cable, plug it back in, and try again.` | seven-midi.js:119 | ⚑ Liveness probe fails twice — the wedge case |
 | `No Crumar Seven found. Is the USB cable connected?` | seven-midi.js:309 | Connect with no matching MIDI port |
 | `Connect` / `Disconnect` | index.html | Button label, follows state |
-| `Back up instrument` | app.js:3028 | Button, connected only |
+| `Back up Seven` | index.html, reset in app.js | Button, always present, DISABLED when not connected |
 | `Settings` | index.html | Button, always present |
 
 ### The write gate ⚑
@@ -261,12 +270,12 @@ Most need a blocked plan, a missing file, or a sound this instrument lacks.
 
 - `No patches match the search.` — library-view.js:287
 - `Patches you save or import live here. Ones read off the Seven live under Backups.` — library-view.js:288 ⚑ only with an empty library
-- `No backups yet. "Back up instrument" reads all 32 presets and writes down what the Seven held.` — library-view.js:551 ⚑
+- `No backups yet. "Back up Seven" reads all 32 presets and writes down what the Seven held.` — library-view.js ⚑
 - `No setlists yet. A setlist is a bank's worth of patches — 8 slots — staged for a gig or a transfer.` — library-view.js:674 ⚑
 - `No patches match "venice".` — library-view.js:815 (picker)
 - `No instrument matches "venice".` — library-view.js:707 (picker, Instruments)
 - `Not backed up` — app.js:1234, a bank slot with no record
-- `Connect to a Crumar Seven and click the "Back up instrument" button.` — app.js:1280
+- `Connect to a Crumar Seven and click the "Back up Seven" button.` — app.js
 - `Select a patch` — app.js:1281
 
 ### Badges and row tooltips

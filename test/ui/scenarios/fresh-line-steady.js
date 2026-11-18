@@ -2,7 +2,7 @@
 //
 // #fresh-line DOES NOT MOVE WHEN THE CABLE DOES.
 //
-// "Back up instrument" lives in that line. It used to be `hidden` with
+// "Back up Seven" lives in that line. It used to be `hidden` with
 // nothing connected, so the line's contents changed between connected and
 // disconnected — and the line sits directly under the eight bank rows, so
 // everything below it moved too. Daniel, 18 Nov 2026: the same jumpiness

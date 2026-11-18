@@ -99,10 +99,10 @@
   // The app is still usable, and nothing was started.
   ui.check(ui.$$('#patch-list .patch-row').length > 0, 'the app carries on');
   const backupBtn = ui.$('#backup-btn') || [...ui.$$('button')]
-    .find((b) => /Back up instrument/.test(b.textContent));
+    .find((b) => /Back up Seven/.test(b.textContent));
   if (backupBtn) {
     ui.note(`the toolbar button reads: "${backupBtn.textContent.trim()}"`);
-    ui.check(/Back up instrument/.test(backupBtn.textContent),
+    ui.check(/Back up Seven/.test(backupBtn.textContent),
       'declining started no backup — the button is not in its Cancel state');
   }
 
