@@ -22,6 +22,24 @@
   // FONT metrics, not glyph metrics. A line's baseline does not move because
   // the words in it happen to have no descenders — measuring 'Hxg' through
   // the resolved font gives the line box's own ascent and descent.
+  // CORRECTED 18 Nov 2026, AND IT HAD BEEN WRONG SINCE IT WAS WRITTEN.
+  //
+  // This read `r.top + (r.height - L) / 2 + …` — the line box centred in the
+  // element's RECT. That is only right when the padding is SYMMETRIC.
+  // `.top-tab` carries `padding: 0 0 7px` and a 2px bottom border, all of it
+  // BELOW the text, so the term added 4.5px that is not there and reported
+  // every tab's baseline 4.5px low. `.col-title` has no padding, so its
+  // number was right — and comparing the two made a 4.7px gap read as 0.2.
+  //
+  // THAT IS WHY THIS SCENARIO WAS GREEN WHILE THE TITLES SAT VISIBLY BELOW
+  // THE TAB ROW. Daniel could see it; the test could not. It also means the
+  // sweep that chose #detail's 33.5px offset, and the re-sweep that
+  // confirmed it after .top-tab's font was fixed, were both measuring with
+  // this. The offset is 28.9px now.
+  //
+  // FROM THE CONTENT BOX: the line box sits at the top of it (there is no
+  // extra leading to distribute at these line-heights), so the baseline is
+  // the content top, plus half the leading, plus the ascent.
   const baselineOf = (el) => {
     const s = getComputedStyle(el);
     ctx.font = `${s.fontStyle} ${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
@@ -30,9 +48,8 @@
     const D = m.fontBoundingBoxDescent;
     const r = el.getBoundingClientRect();
     const L = parseFloat(s.lineHeight) || r.height;
-    // The content area is centred in the line box; the baseline sits A below
-    // the top of it.
-    return r.top + (r.height - L) / 2 + (L - (A + D)) / 2 + A;
+    const contentTop = r.top + parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop);
+    return contentTop + (L - (A + D)) / 2 + A;
   };
 
   await ui.selectTab('seven');

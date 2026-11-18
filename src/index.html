@@ -3542,10 +3542,38 @@
        and the row's height did not move at all (the bank strip below it went
        y221.1 -> y221.3).
        A NUMBER IN A COMMENT ROTS, so one-header-line.js asserts the two
-       baselines match in a real window rather than trusting this paragraph. */
+       baselines match in a real window rather than trusting this paragraph.
+
+       ---- 28.9px, NOT 33.5 (Daniel, 18 Nov 2026) ----
+
+       HE COULD SEE THE TITLES SITTING BELOW THE TAB ROW, and he was right:
+       they were 4.6px low. Everything above this line was measured with a
+       formula that is wrong for one of the two things it compares, so the
+       sweep that chose 33.5 — and the re-sweep that confirmed it — both
+       agreed about nothing.
+
+       THE FORMULA CENTRED THE LINE BOX IN THE ELEMENT'S RECT:
+       `r.top + (r.height - lineHeight) / 2 + …`. That is only right when the
+       padding is SYMMETRIC. `.top-tab` carries `padding: 0 0 7px` and a 2px
+       bottom border — all of it BELOW the text — so the term added 4.5px
+       that is not there and put every tab's baseline 4.5px lower than it is.
+       `.col-title` has no padding, so its number was right. Comparing the
+       two made a 4.7px gap read as 0.2.
+
+       MEASURED AGAIN FROM THE CONTENT BOX (header-baselines.js):
+
+         the logo's strut  y197.0     (its artwork's bottom edge y198.1)
+         the three tabs    y198.0
+         both titles       y202.6  <- 4.6 low
+
+       So the offset comes down by 4.6: 33.5 - 4.6 = 28.9. The reasoning
+       above is otherwise untouched and still holds — baselines not boxes,
+       two containers with no shared inline flow, so the offset has to be a
+       number here. Only the number was wrong, and only because the
+       instrument that measured it was. */
     #detail {
       flex: 1; min-width: 0; overflow-y: auto; scrollbar-gutter: stable;
-      padding: 33.5px 20px 16px;
+      padding: 28.9px 20px 16px;
     }
     /* pre-line so the blank line in the message becomes a break — it is two
        statements, what is missing and what to do, and it read as one run-on
@@ -3814,10 +3842,21 @@
        now; the width is not. */
     .engine-stage .engine-art,
     .engine-stage .engine-carousel {
-      /* The float is gone because the grid cell places it now. The 128px and
-         the 20px of air on its right are the original's, which is what puts
-         the picture back at x646..774 rather than hard against the column. */
-      float: none; width: 128px; margin: 0 20px 6px 14px;
+      /* The float is gone because the grid cell places it now. The 128px is
+         the original's.
+         17px EACH SIDE, NOT 14 LEFT AND 20 RIGHT (Daniel, 18 Nov 2026). The
+         uneven pair put the picture off the centre of its own box.
+         THE DIRECTION IS LEFT, and the brief said right — measured, the
+         picture's centre was x680 against a box centre of x683, so it sat
+         3px LEFT. The arithmetic says the same: more air on the right
+         (20) than the left (14) pushes the picture toward the left. Same
+         3px, same fix; recorded because a note that says the wrong
+         direction sends the next reader looking the wrong way.
+         17 IS THE AVERAGE, which is what keeps this change INSIDE the box:
+         14 + 20 = 34 = 17 + 17, so the cell's width and the picture's
+         position relative to the column are both unchanged and the stage's
+         own 30px nudge — a separate, settled decision — is untouched. */
+      float: none; width: 128px; margin: 0 17px 6px;
     }
     /* THE PLAIN VARIANT KEEPS ITS OWN SHAPE — the one a library patch gets,
        where there is no picker. 363/512 at 128 wide, as before the stage: the
