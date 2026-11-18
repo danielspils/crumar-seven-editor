@@ -3639,7 +3639,26 @@
       grid-template-rows: auto auto auto 1fr;
     }
     .engine-sound { grid-column: 1 / -1; grid-row: 1; }
-    .engine-sub   { grid-column: 1; grid-row: 2; }
+    /* THE SUB-LINE SPANS THE FULL WIDTH TOO (Daniel, 18 Nov 2026), and it
+       is what makes the 30px nudge below possible rather than a separate
+       improvement.
+       NUDGING ALONE NARROWS COLUMN 1, because the stage's margin grows the
+       `auto` track and the 1fr gives the room up. "GSP-01 Sample Player" is
+       the sub-line for all 16 sampled sounds — two thirds of the list — so a
+       wrap there is the common case, not the edge, and it would give model
+       and sampled sounds different heights. Spanning the full width takes
+       the sub-line out of the column that narrows.
+       IT STILL SHARES GRID ROW 2 WITH THE STAGE, and that is deliberate: the
+       stage spans rows 2-4 and is the taller side, so moving the sub-line to
+       a row of its own would push everything below it down by the row's
+       height. Daniel rejected the own-row layout for exactly that reason.
+       Spanning the width while sharing the row costs nothing vertically —
+       the text is short and left-aligned, the picture is at the right end of
+       the same row, and they do not meet.
+       WHAT WOULD BREAK IT: a sub-line long enough to reach the picture. The
+       longest in the schema is "GSP-01 Sample Player"; the ten longest
+       name/sub-line pairs were the set this was measured against. */
+    .engine-sub   { grid-column: 1 / -1; grid-row: 2; }
     /* .engine-pos WAS ROW 3 and is gone (17 Nov 2026) — the "Bank 1 ·
        Preset 3" caption, removed so the identity block reads as one group.
        THE ROWS WERE RENUMBERED RATHER THAN LEFT WITH A HOLE. Rows are
@@ -3663,7 +3682,19 @@
        keeps the picture at the top of that span; the span reaches row 4 so
        the picture's extra height is absorbed there rather than stretching
        the lines beside it. */
-    .engine-stage { grid-column: 2; grid-row: 2 / span 3; align-self: start; }
+    /* AND 30px TOWARD THE PANEL'S CENTRE (Daniel, 18 Nov 2026).
+       A MARGIN, NOT A TRANSFORM. The stage sits in an `auto` track, so the
+       margin grows that track and the 1fr column beside it gives up the
+       room — the picture moves left AND the layout knows it has. A
+       translate would move the drawing while the grid still believed it was
+       where it was, which is how a picture ends up over a control.
+       IT COSTS NOTHING VERTICALLY, which the brief requires and which only a
+       measurement can confirm: this changes a horizontal track only, and the
+       first parameter row is at y386 before and after. */
+    .engine-stage {
+      grid-column: 2; grid-row: 2 / span 3; align-self: start;
+      margin-right: 30px;
+    }
     /* AND THE TEXT ITEMS DO NOT STRETCH. The rows are content-sized now, so
        this is belt and braces — but a `1fr` row or a taller neighbour
        arriving later would stretch them again, and the stretch is invisible
@@ -4196,7 +4227,19 @@
        plus a Sample pill overflowed at 17px and the pill dropped to a line of
        its own; a point off the name and a tighter pill fit them together
        (Daniel, 2026-08-13). */
-    .engine-sound { font-size: 16px; font-weight: 700; }
+    /* THE NAME LINE DOES NOT WRAP (Daniel, 18 Nov 2026). "Venice Upright U1
+       Felt" with its badge is the longest pair in the schema and it fits;
+       nowrap means a longer one TRUNCATES rather than reflowing the block,
+       because a second line here would push everything below it down and
+       the whole point of this layout is that nothing moves vertically.
+       min-width: 0 is what lets the ellipsis happen at all — a grid item's
+       automatic minimum is its content, so without it the name would force
+       the track wider instead of being clipped. */
+    .engine-sound {
+      font-size: 16px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0;
+    }
     .engine-sound .badge {
       vertical-align: 2px; margin-left: 6px;
       font-size: 9px; padding: 2px 6px; white-space: nowrap;

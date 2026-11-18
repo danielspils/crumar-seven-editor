@@ -127,6 +127,62 @@
       : '  the text rows are the taller side, so the picture is not adding air');
   }
 
+  // ---- SIDEWAYS: THE NUDGE AND THE FULL-WIDTH TEXT ----------------------
+  //
+  // Daniel, 18 Nov 2026: the identity text spans the full panel width and
+  // the picture then nudges 30px toward the centre. Both are horizontal, and
+  // the vertical numbers above are what proves they stayed horizontal.
+  const stageEl = ui.$('#detail .engine-stage');
+  const colEl = ui.$('#detail .engine-head-text');
+  if (stageEl && colEl && name && sub) {
+    const st = box(stageEl);
+    const col = box(colEl);
+    const nm = box(name);
+    const sb = box(sub);
+    ui.note('');
+    ui.note(`the text column   x ${px(col.left)}..${px(col.right)} (${px(col.width)})`);
+    ui.note(`  name box        x ${px(nm.left)}..${px(nm.right)} (${px(nm.width)})`);
+    ui.note(`  sub-line box    x ${px(sb.left)}..${px(sb.right)} (${px(sb.width)})`);
+    ui.note(`the stage         x ${px(st.left)}..${px(st.right)} (${px(st.width)})`
+      + ` · margin-right ${getComputedStyle(stageEl).marginRight}`);
+    ui.note(`  its right edge is ${px(col.right - st.right)}px short of the column's`);
+    // THE NUDGE, read from the margin that produces it rather than from a
+    // remembered before-and-after: a margin is the mechanism, so if it is
+    // 30px the picture is 30px in.
+    ui.check(getComputedStyle(stageEl).marginRight === '30px',
+      `the picture is nudged 30px toward the centre`
+      + ` (${getComputedStyle(stageEl).marginRight})`);
+    // FULL WIDTH means both text lines span the whole column, not just the
+    // 1fr track beside the picture. The name already did; the sub-line is
+    // what changed.
+    ui.check(Math.abs(sb.width - col.width) < 1.5,
+      `the sub-line spans the full panel width (${px(sb.width)} of ${px(col.width)})`);
+    ui.check(Math.abs(nm.width - col.width) < 1.5,
+      `and so does the name line (${px(nm.width)} of ${px(col.width)})`);
+    // AND NEITHER WRAPS. One line each is the whole requirement — a wrap
+    // here is what adds the height this change is not allowed to add.
+    ui.check(px(nm.height) < 30, `the name is one line (${px(nm.height)}px)`);
+    ui.check(px(sb.height) < 26, `the sub-line is one line (${px(sb.height)}px)`);
+    const ns = getComputedStyle(name);
+    ui.check(ns.whiteSpace === 'nowrap',
+      `the name is nowrap, so a longer one truncates (${ns.whiteSpace})`);
+    ui.check(ns.textOverflow === 'ellipsis',
+      `and truncates visibly (${ns.textOverflow})`);
+    // THE TEXT MUST NOT REACH THE PICTURE. They share grid row 2 now, so
+    // this is the thing that would break: a sub-line long enough to run
+    // under the drawing.
+    const subInk = (() => {
+      const r = document.createRange();
+      r.selectNodeContents(sub);
+      const b = r.getBoundingClientRect();
+      return b.width ? px(b.right) : px(sb.left);
+    })();
+    ui.note(`  the sub-line's INK ends at ${subInk}; the picture starts at ${px(st.left)}`);
+    ui.check(subInk <= st.left + 0.5,
+      `the sub-line's text stops clear of the picture`
+      + ` (${subInk} against ${px(st.left)})`);
+  }
+
   // ---- AND NOTHING ELSE MOVED ------------------------------------------
   //
   // The brief says not to touch the picture or the parameter list. Both are
