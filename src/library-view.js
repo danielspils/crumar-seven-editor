@@ -1500,9 +1500,19 @@
   // 16 Nov, which is what gives this anything to animate at all.
   const ARRIVE_MS = 360;
   const ARRIVE_STEP = 22;
-  const reducedMotion = () => typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // THE SHARED VOCABULARY (src/view-anim.js, 18 Nov 2026). Resolved both
+  // ways because this module is UMD: `npm test` requires it in plain Node,
+  // where there is no window and no script tag has run.
+  //
+  // A FALLBACK THAT DOES NOTHING, deliberately. If the module is missing,
+  // fadeIn is a no-op and reducedMotion answers true — both mean "no
+  // motion", which is the safe direction for decoration. A fallback that
+  // animated would hide the fact that the module had not loaded.
+  const ViewAnim = (typeof require === 'function' && typeof module === 'object'
+    ? require('./view-anim')
+    : (typeof window !== 'undefined' && window.SevenViewAnim))
+    || { fadeIn: () => false, reducedMotion: () => true };
+  const reducedMotion = () => ViewAnim.reducedMotion();
 
   function arriveBackupRows(box) {
     if (!box || typeof box.querySelectorAll !== 'function') return;
@@ -1755,7 +1765,23 @@
         const list = el.querySelector('.lib-list');
         if (list) list.scrollTop = keepScroll;
       }
+      // THE LIST FADES WHEN THE VIEW BEHIND IT CHANGED, not on every render
+      // (18 Nov 2026). `viewKey` already distinguishes the two: a rename, a
+      // file landing, a search repaint all keep the same key and must not
+      // flash the list; opening a backup run, going back out of one, or
+      // opening a setlist change it.
+      //
+      // THE BAR IS THE SHARED STRIP for these moves — it carries the back
+      // button you arrive at — so only .lib-list below it fades, which is
+      // Xtra's rule applied to this component.
+      //
+      // lastViewKey IS READ BEFORE IT IS WRITTEN, which is the whole reason
+      // this sits here and not three lines later.
+      const viewChanged = lastViewKey !== null && lastViewKey !== viewKey;
       lastViewKey = viewKey;
+      if (viewChanged && typeof el.querySelector === 'function') {
+        ViewAnim.fadeIn(el.querySelector('.lib-list'));
+      }
       arriveBackupRows(el);
       updateFade();
       // What is on screen, for the header above it. The count used to be the

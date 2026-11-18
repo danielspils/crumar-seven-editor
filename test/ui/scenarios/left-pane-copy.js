@@ -32,7 +32,17 @@
     // A DATE IN ANY SHAPE, not just the one that was there. "16 Nov",
     // "2026-11-16" and "16/11" are all the thing that came off, and an
     // equality check against one wording would pin the others in.
-    ui.check(!/\d{1,2}\s+\w{3}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/.test(fresh),
+    //
+    // THE MONTH IS NAMED, and that is a correction. This read
+    // `\d{1,2}\s+\w{3}` — "a number, then three word characters" — which also
+    // matches "2 DAY" inside "2 days ago". It passed for a day and went red
+    // on 18 Nov purely because the library's newest backup aged from
+    // "yesterday" to "2 days ago": a test that fails with the calendar and
+    // not with the code. An AGE is what the line is supposed to say, so the
+    // check has to be able to tell one from a date.
+    ui.check(!/\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i
+      .test(fresh)
+      && !/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/.test(fresh),
       `no date in the freshness line ("${fresh}")`);
     ui.check(!/[()]/.test(fresh), 'and no parenthesised age either');
   } else {

@@ -2771,6 +2771,10 @@
     // session first, then select — not by synthesising a click.
     bankIndex = Number(tab.dataset.bank);
     renderAll();
+    // The bank tabs themselves hold still; the eight rows under them fade.
+    // AFTER renderAll, which replaces #patch-list's contents — fading before
+    // it would animate the rows that are about to be thrown away.
+    SevenViewAnim.fadeIn(listEl);
   });
 
   // Same paired-click rename as the library (see library-view.js for why a
@@ -2956,6 +2960,28 @@
     // Calling it here would repaint the detail panel too, which is the second
     // pass this is avoiding.
     if (!opts.quiet && !libRendered) updatePanelReach();
+    if (!opts.quiet) fadeList();
+  }
+
+  // FADE ONLY WHAT CHANGED (18 Nov 2026, ported from JUNO-Xtra).
+  //
+  // Xtra fades the body BELOW a shared strip rather than the whole view, and
+  // the reason transfers exactly: a whole-pane fade flashes the thing you
+  // just clicked, which reads as the app redrawing rather than responding.
+  //
+  // HERE THE SHARED STRIP IS EVERYTHING ABOVE THE ROWS — the nav, the four
+  // top tabs, and the bank tabs — and the LIST is what fades. On the Seven
+  // tab that is #patch-list; on the other three it is the library's own
+  // .lib-list. One of the two is on screen at a time.
+  //
+  // NOT .lib-bar, AND THAT IS A REPORTED EDGE rather than an oversight: the
+  // bar's contents do change between tabs (the search field is absent on
+  // Backups' run list) and it does not fade, so on those two moves a control
+  // appears without the motion the rows get. Daniel's brief named the list;
+  // widening it to the bar is his call, not a CSS one.
+  function fadeList() {
+    const el = view === 'seven' ? listEl : libRoot.querySelector('.lib-list');
+    SevenViewAnim.fadeIn(el);
   }
 
   topTabs.addEventListener('click', (e) => {
@@ -4253,7 +4279,24 @@
         hideToast(); // nothing is in progress once the instrument is gone
       }
       connBtn.disabled = s.state === 'connecting';
-      backupBtn.hidden = s.state !== 'connected';
+      // DISABLED, NOT HIDDEN (Daniel, 18 Nov 2026). It read
+      // `backupBtn.hidden = s.state !== 'connected'`.
+      //
+      // TWO REASONS, and the first is the one that applies to the whole pane.
+      // The button lives in #fresh-line now, beside the freshness caveat, so
+      // hiding it changed that line's layout between connected and
+      // disconnected — the same jumpiness taken out of everything else here.
+      // And a control that vanishes cannot teach anyone it exists: somebody
+      // who has never connected a Seven sees no mention of backing one up.
+      //
+      // EVERY OTHER STATE IS UNTOUCHED. The label still swaps to "Cancel
+      // backup" and "Cancelling…" while a run is in flight, and the branches
+      // that set those are further down and do not look at this line — which
+      // is why `disabled` is set here rather than the label: a disabled
+      // button mid-run would be a different bug, and a run cannot start
+      // without a connection in the first place.
+      backupBtn.hidden = false;
+      backupBtn.disabled = s.state !== 'connected';
       // The write gate: shown whenever the instrument's parameter table did not
       // match the one this build knows. Backup stays offered — reads are the
       // half that is still safe, and on a unit like this it is the half that
@@ -4728,8 +4771,10 @@
 
       // THE SAME END STATE EITHER WAY. No nav logo to fly to, or the player
       // asked for less motion: the loader simply goes.
-      const reduced = window.matchMedia
-        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Asked of src/view-anim.js, which is the app's one answer to this
+      // question — app.js and library-view.js each carried their own copy of
+      // the expression until 18 Nov 2026.
+      const reduced = SevenViewAnim.reducedMotion();
       const finish = () => {
         if (navInk) navInk.style.visibility = '';   // reveal the nav mark …
         const node = bootEl();

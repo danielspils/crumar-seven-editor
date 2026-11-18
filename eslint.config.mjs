@@ -32,7 +32,7 @@ const SEVEN = [
   'SevenOtsFreshness', 'SevenPicker', 'SevenRenderer',
   'SevenSavePlan', 'SevenScrollFade', 'SevenSendChoice', 'SevenSendPcPrompt', 'SevenSoundArt',
   'SevenSlotCheckLog', 'SevenStorageLabel', 'SevenToast', 'SevenTransferSummary',
-  'SevenUndo',
+  'SevenUndo', 'SevenViewAnim',
 ];
 
 const BROWSER = [
@@ -119,6 +119,11 @@ export default [
       'src/storage-label.js', 'src/transfer-summary.js', 'src/slot-check-log.js',
       'src/library-view.js', 'src/renderer.js',
       'src/defaults.js', 'src/sound-art.js',
+      // view-anim.js is UMD for the same reason the rest are: a <script> tag
+      // loads it into the renderer and `npm test` requires it in Node.
+      // modal.js joins the group because it now resolves view-anim the same
+      // way — `require` when there is a module, the global otherwise.
+      'src/view-anim.js', 'src/modal.js',
     ],
     languageOptions: {
       ecmaVersion: 2023,

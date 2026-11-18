@@ -10,6 +10,29 @@
 // so the keyboard path is the same one the OS dialog gave for free.
 
 (function (global) {
+  // ARRIVING AND LEAVING (18 Nov 2026). Both halves come from
+  // src/view-anim.js, which app.js and library-view.js also use, so the
+  // app has one vocabulary rather than three timings that drift.
+  //
+  // THE LEAVING HALF IS A FIX, not decoration: a modal was reported still
+  // standing behind the next one (Daniel, 16 Nov 2026). `anim.modalLeave`
+  // takes the pointer events away before a frame plays and guarantees the
+  // removal on a timer, because `animationend` does not fire when an
+  // animation is cancelled — and a modal that fails to leave is the bug.
+  //
+  // RESOLVED BEFORE REMOVED, deliberately. The caller's promise settles the
+  // moment the answer is known; the node lingers for 170ms with no pointer
+  // events while it fades. Making the caller wait for a fade would put a
+  // decoration on the critical path of every dialog in the app.
+  const anim = (typeof require === 'function' && typeof module === 'object')
+    ? require('./view-anim')
+    : (global && global.SevenViewAnim);
+  const leave = (host, remove) => {
+    if (anim && anim.modalLeave) anim.modalLeave(host, remove);
+    else remove();
+  };
+  const enter = (host) => { if (anim && anim.modalEnter) anim.modalEnter(host); };
+
   // Kept in step with the .seven-modal transitions in index.html.
   const REPLACE_FADE_MS = 170;
   const REPLACE_RESIZE_MS = 340;
@@ -94,8 +117,9 @@
 
       const done = (value) => {
         document.removeEventListener('keydown', onKey, true);
-        host.remove();
+        // The answer first, the node after: see `leave` at the top.
         resolve(value);
+        leave(host, () => host.remove());
       };
       // Enter confirms, except where the answer has to be deliberate: there it
       // does whatever is focused, and focus starts on the way out.
@@ -112,6 +136,7 @@
       });
       document.addEventListener('keydown', onKey, true);
       document.body.appendChild(host);
+      enter(host);
       host.querySelector(
         defaultDeny ? (denyLabel ? '.seven-modal-deny' : '.seven-modal-cancel') : '.seven-modal-ok'
       ).focus({ focusVisible: false });
@@ -149,8 +174,9 @@
 
       const done = (value) => {
         document.removeEventListener('keydown', onKey, true);
-        host.remove();
+        // The answer first, the node after: see `leave` at the top.
         resolve(value);
+        leave(host, () => host.remove());
       };
       const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(null); } };
       host.addEventListener('click', (e) => {
@@ -160,6 +186,7 @@
       });
       document.addEventListener('keydown', onKey, true);
       document.body.appendChild(host);
+      enter(host);
       // The first choice that can actually be taken: focus on a disabled one
       // would put the keyboard somewhere Enter does nothing.
       const first = host.querySelector('[data-choice]:not([disabled])');
@@ -227,6 +254,7 @@
     };
     document.addEventListener('keydown', onKey, true);
     document.body.appendChild(host);
+    enter(host);
     // SAY SO, for listeners that only re-evaluate when something moves.
     //
     // isOpen() below lets a coordinate-based listener ASK, but asking only
@@ -319,7 +347,7 @@
       close() {
         document.removeEventListener('keydown', onKey, true);
         settle(false);
-        host.remove();
+        leave(host, () => host.remove());
       },
     };
   }

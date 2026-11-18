@@ -618,7 +618,26 @@
       color: #8f2420; font: inherit; font-size: 12px; font-weight: 600;
       padding: 2px 10px; cursor: pointer;
     }
-    #backup-button:hover { color: #6e1a17; border-color: #6e1a17; }
+    /* :not(:disabled), or the hover still lights a button that cannot be
+       pressed — which is exactly the "looks enabled, does nothing" state a
+       disabled control is supposed to avoid. */
+    #backup-button:not(:disabled):hover { color: #6e1a17; border-color: #6e1a17; }
+    /* NOTHING TO BACK UP WITHOUT AN INSTRUMENT (Daniel, 18 Nov 2026). The
+       button used to be `hidden` with nothing connected; it is disabled and
+       present now, so #fresh-line's layout does not change between the two
+       states and somebody who has never plugged a Seven in can still see
+       that backing one up is a thing this app does.
+       THE PALETTE'S OWN QUIET INK, not a faded red. --text-dim and --line
+       are defined in both themes, where #8f2420 is a literal that happens to
+       suit dark; a disabled control is furniture and should read as the
+       other furniture does.
+       THE CURSOR SAYS SO TOO. `not-allowed` rather than `default`: the
+       border still makes it look like a button, so the pointer is what
+       distinguishes "cannot press this" from "nothing here". */
+    #backup-button:disabled {
+      color: var(--text-dim); border-color: var(--line);
+      cursor: not-allowed;
+    }
     #backup-button + #conn-button { margin-left: 0; }
     #connection-row { position: relative; }
     /* Three columns, not two things and a floating third. The toggle used to be
@@ -2101,6 +2120,59 @@
       animation: toast-pulse 1s ease-in-out infinite;
     }
     @keyframes toast-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+    /* ====================================================================
+       ARRIVALS AND DEPARTURES (18 Nov 2026).
+       Ported from JUNO-Xtra as BEHAVIOUR, not as a copied rule — the two
+       apps' markup differs and a lifted selector would attach to the wrong
+       thing. src/view-anim.js holds the JavaScript halves and the reasons
+       that belong with them.
+
+       ONE FADE KEYFRAME, USED TWICE. `tab-in-fade` is what a list plays when
+       a tab changes AND what a modal's backdrop plays as it arrives. Xtra's
+       own note says not to write a second one, and the reason is better than
+       tidiness: two keyframes with the same body drift, and then a modal and
+       a tab fade at subtly different speeds for no stated reason. */
+    @keyframes tab-in-fade { from { opacity: 0; } to { opacity: 1; } }
+    .tab-fade { animation: tab-in-fade .25s linear both; }
+    @media (prefers-reduced-motion: reduce) { .tab-fade { animation: none; } }
+
+    /* translate: AND scale: AS SEPARATE PROPERTIES, never transform. Xtra's
+       reason, and it holds here too: a card that is already positioned or
+       rotated by a transform keeps it. Writing `transform: translateY(-14px)
+       scale(.975)` would silently throw that away, and the breakage would be
+       invisible until the one card that has a transform met this animation. */
+    @keyframes modal-rise {
+      from { opacity: 0; translate: 0 -14px; scale: .975; }
+      to   { opacity: 1; translate: 0 0;     scale: 1;    }
+    }
+    .seven-modal-overlay.is-entering { animation: tab-in-fade .16s ease both; }
+    .seven-modal-overlay.is-entering > .seven-modal {
+      animation: modal-rise .26s cubic-bezier(.18, .72, .22, 1) both;
+    }
+    /* THE LEAVING HALF IS THE FIX, NOT THE POLISH. Daniel reported a modal
+       still standing behind the next one on 16 Nov 2026. `reverse` replays
+       the same two keyframes backwards, so there is still only one of each.
+       pointer-events: none IS THE PART THAT MATTERS and it is set in JS the
+       moment leaving starts, before a frame has played — this rule is the
+       declarative half of the same thing, so a root mid-fade cannot take a
+       click meant for whatever opened next. */
+    .seven-modal-overlay.is-leaving {
+      pointer-events: none;
+      animation: tab-in-fade .17s ease reverse both;
+    }
+    .seven-modal-overlay.is-leaving > .seven-modal {
+      animation: modal-rise .17s cubic-bezier(.18, .72, .22, 1) reverse both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .seven-modal-overlay.is-entering,
+      .seven-modal-overlay.is-entering > .seven-modal,
+      .seven-modal-overlay.is-leaving,
+      .seven-modal-overlay.is-leaving > .seven-modal { animation: none; }
+      /* NOT the pointer-events line above: that is behaviour, not motion, and
+         somebody who asked for less movement did not ask to be able to click
+         a modal that is on its way out. */
+    }
 
     /* In-app modal (src/modal.js): the app's own voice for moments that are
        about how the instrument behaves, rather than the OS asking a question. */
@@ -4585,7 +4657,13 @@
              THE LOCK IS THE BANK 1 TAB'S OWN GLYPH (app.js, LOCK), so the
              tab and this line say one thing with one drawing. -->
         <div id="fresh-line">
-          <button id="backup-button" type="button" hidden>Back up instrument</button>
+          <!-- `disabled`, NOT `hidden`, from the very first paint: the
+               connection state arrives asynchronously, so a button that
+               started hidden would appear a moment later and move the line
+               it sits in — the jump this change exists to remove. It starts
+               disabled because nothing is connected at boot, and the
+               connection render enables it. -->
+          <button id="backup-button" type="button" disabled>Back up instrument</button>
           <span id="bank1-note" class="fresh" hidden></span>
           <span id="bank-asof" class="fresh"></span>
         </div>
@@ -4612,6 +4690,9 @@
     <script src="audition.js"></script>
     <script src="undo.js"></script>
     <script src="scroll-fade.js"></script>
+    <!-- BEFORE modal.js, which calls it. The UMD modules are plain scripts,
+         so load order is call order. -->
+    <script src="view-anim.js"></script>
     <script src="modal.js"></script>
     <script src="sound-art.js"></script>
     <script src="expansions.js"></script>
