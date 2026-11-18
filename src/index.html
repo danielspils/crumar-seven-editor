@@ -3784,7 +3784,17 @@
        first parameter row is at y386 before and after. */
     .engine-stage {
       grid-column: 2; grid-row: 2 / span 3; align-self: start;
-      margin-right: 30px;
+      /* 26px EACH SIDE, FOR THE CHEVRONS (Daniel, 18 Nov 2026). They used
+         to sit inside the 128px carousel and over the instrument; they now
+         sit at -24px, in this padding. The picture is unchanged — the
+         padding widens the CELL around it, it does not shrink the card.
+         THE 30px NUDGE IS MEASURED FROM THE PICTURE, not from the cell, so
+         the margin drops by the padding this adds on that side: 30 - 26 =
+         4. Without that the picture would travel 26px back toward the edge
+         and undo a change Daniel approved three briefs ago. The scenario
+         measures the picture's own x to prove it did not move. */
+      margin-right: 4px;
+      padding: 0 26px;
     }
     /* AND THE TEXT ITEMS DO NOT STRETCH. The rows are content-sized now, so
        this is belt and braces — but a `1fr` row or a taller neighbour
@@ -4338,8 +4348,20 @@
        that it draws within .engine-stage, and a control hanging 22px past
        the edge would break that for the sake of the thing the stack
        replaced. 2px in, on the ground the button brings with it. */
-    .car-step.is-step-prev { left: 2px; transform: translateY(-50%) rotate(90deg); }
-    .car-step.is-step-next { right: 2px; transform: translateY(-50%) rotate(-90deg); }
+    /* OUT TO THE EDGES OF THE SPACE THE STACK OCCUPIES (Daniel, 18 Nov
+       2026). They sat at left/right 2px INSIDE the 128px carousel, which
+       put them over the instrument — measured, each overlapping the painted
+       art by its whole 20x20.
+       NEGATIVE, INTO THE STAGE'S OWN PADDING. .engine-stage carries 26px of
+       horizontal padding for exactly this (see its rule), so -24px lands a
+       20px button inside the cell with 2px to spare and clear of the card.
+       The CARD is still 128px and still where it was: the padding widened
+       the cell around it rather than shrinking the picture.
+       AND THE CAPTION GAINS BY IT, which is the other half of the brief:
+       the stack no longer reserves space for the chevrons inside its own
+       box, so the caption's symmetric growth is not competing with them. */
+    .car-step.is-step-prev { left: -24px; transform: translateY(-50%) rotate(90deg); }
+    .car-step.is-step-next { right: -24px; transform: translateY(-50%) rotate(-90deg); }
 
     /* ---- WHERE YOU ARE IN THE LIST ------------------------------------
        "7 of 24", under the stack. The wheel gave no sense of place and the
@@ -4349,8 +4371,51 @@
        the class is applied in renderer.js so one rule serves both, the same
        way the Bank 1 note wears it. The only thing set here is where it
        sits. */
+    /* THE CAPTION GETS THE PANEL'S WIDTH, NOT THE STACK'S (Daniel, 18 Nov
+       2026, with a screenshot of the caption drawn across a vibraphone).
+
+       THE CAUSE, ESTABLISHED BEFORE IT WAS FIXED, because the brief asked
+       which of two it was. It is NOT the stack's box being shorter than the
+       art: the drawings are `object-fit: contain` and letterbox INSIDE the
+       128px box — measured, a 512x406 vibraphone paints y253.3..354.8
+       inside a box of y240..368, so there is room under it.
+
+       IT IS THE CAPTION BEING POSITIONED AND NARROW. `left: 0; right: 0` on
+       an absolutely positioned child of the 128px carousel gave it 128px of
+       line to work with, and `bottom: -2px` anchors its BOTTOM. So a long
+       name wraps, and every extra line grows UPWARD — into the art.
+       Reproduced by forcing the longest pair the schema can make:
+
+         "Vibraphone · 7 of 24"              1 line,  clear of the art
+         "Venice Upright U1 Felt · 18 of 24" 2 lines, OVERLAPS by 128x13.8px
+
+       The offline list is not the worst case — Daniel's screenshot was taken
+       on an instrument with expansions, whose names are longer than this
+       build's schema offers — which is why the test forces the string rather
+       than measuring whatever happens to be on screen.
+
+       nowrap IS THE FIX, and the centring is what gives it the room: anchored
+       at `left: 50%` with a -50% translate it grows symmetrically out of the
+       carousel's box into the panel, instead of wrapping inside 128px. The
+       carousel is `overflow: visible`, so nothing clips it.
+
+       CENTRED ON THE STACK, which is Daniel's own instruction ("centred
+       under the stack, as now") and not the panel's centre: the stage sits
+       right in its column and carries a 30px margin, so the two centres are
+       not the same point.
+
+       THE CEILING IS THE PANEL'S RIGHT EDGE. Growing both ways from the
+       stack's centre, the right side runs out first — measured, 114px of it
+       — so 228px is what a symmetric caption can have before it leaves the
+       column. The longest pair measures under that and does not truncate;
+       the ellipsis is a last resort that should never fire, and if it does
+       the number to change is Daniel's ("18/24" exists as a fallback and is
+       his call), not this one. */
     .car-count {
-      position: absolute; left: 0; right: 0; bottom: -2px;
+      position: absolute; left: 50%; bottom: -2px;
+      transform: translateX(-50%);
+      max-width: 228px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       text-align: center; pointer-events: none;
     }
     /* THE DOT IS PUNCTUATION, not a third fact. Dimmer than the name on one

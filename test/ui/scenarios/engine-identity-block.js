@@ -146,12 +146,22 @@
     ui.note(`the stage         x ${px(st.left)}..${px(st.right)} (${px(st.width)})`
       + ` · margin-right ${getComputedStyle(stageEl).marginRight}`);
     ui.note(`  its right edge is ${px(col.right - st.right)}px short of the column's`);
-    // THE NUDGE, read from the margin that produces it rather than from a
-    // remembered before-and-after: a margin is the mechanism, so if it is
-    // 30px the picture is 30px in.
-    ui.check(getComputedStyle(stageEl).marginRight === '30px',
-      `the picture is nudged 30px toward the centre`
-      + ` (${getComputedStyle(stageEl).marginRight})`);
+    // THE NUDGE AS A QUANTITY, not as one property's value.
+    //
+    // THIS PINNED `margin-right === 30px` AND BROKE on a change that did not
+    // move the picture at all: the chevrons moved out of the card and into
+    // 26px of new padding on the stage, so the inset is now 4px of margin
+    // plus 26px of padding. Same 30px, same picture position — measured at
+    // x616..744 before and after — and an assertion on the MECHANISM called
+    // it a regression.
+    //
+    // So it asks what the brief actually asked for: 30px of space between
+    // the picture's cell and the column's edge, however it is carried.
+    const ss = getComputedStyle(stageEl);
+    const inset = Math.round((parseFloat(ss.marginRight) + parseFloat(ss.paddingRight)) * 10) / 10;
+    ui.note(`  the inset is ${ss.marginRight} margin + ${ss.paddingRight} padding = ${inset}px`);
+    ui.check(inset === 30,
+      `the picture is nudged 30px toward the centre (${inset}px)`);
     // FULL WIDTH means both text lines span the whole column, not just the
     // 1fr track beside the picture. The name already did; the sub-line is
     // what changed.
