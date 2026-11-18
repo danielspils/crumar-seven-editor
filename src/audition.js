@@ -270,16 +270,53 @@
   let pendingSend = null;
   let auditionInFlight = false;
 
+  // WHEN THE WRITE STARTED, so a stuck flag can be told from a busy one.
+  //
+  // `sendInFlight` is cleared in a `finally`, so an exception cannot strand
+  // it. A PROMISE THAT NEVER SETTLES CAN: `finally` never runs, the flag
+  // stays true for the life of the page, and every later press is folded
+  // silently into `pendingSend`. That is the one mechanism consistent with
+  // Daniel's report of pills that neither acted nor said why and came back
+  // after a reload — a reload is exactly what clears module state.
+  //
+  // UNPROVEN AS THE CAUSE. It is reported here as the mechanism this guards,
+  // not as a diagnosis, because nothing captured the state while it was
+  // happening.
+  let sendStartedAt = 0;
+  // Generous on purpose. A single setParam round trip measured ~12ms on
+  // Daniel's unit (the whole 39-parameter effects chain takes 483ms), so four
+  // seconds is hundreds of times the normal cost and cannot fire on a merely
+  // slow instrument. It is a floor under "nothing is happening", not a
+  // timeout on the write.
+  const STUCK_MS = 4000;
+  const sendIsStuck = () => sendInFlight && (Date.now() - sendStartedAt) > STUCK_MS;
+
   async function sendEdit(key, value, opts = {}) {
     if (!isLive()) return;
     if (sendInFlight) { pendingSend = { key, value, opts }; return; } // coalesce a drag
     sendInFlight = true;
+    sendStartedAt = Date.now();
     // What the parameter held before this write — the thing an undo puts back.
     // Read before the send, because the send overwrites it.
     const before = liveEdit.params[key];
     try {
       const r = await window.sevenAPI.midi.setParam(key, value);
-      if (r.ok) {
+      // A REPLY THAT IS NOT THERE IS NOT A SUCCESS (18 Nov 2026).
+      //
+      // This read `r.ok` straight away, so a null or undefined reply threw
+      // `Cannot read properties of null`. handleStatePill calls sendEdit
+      // WITHOUT await and without a .catch, so that throw became an unhandled
+      // rejection: no toast, no note, and — because the throw jumps past it —
+      // no deps.renderDetail() either. THE PILL WOULD SIT THERE DOING
+      // NOTHING, which is one of the shapes Daniel's inert-pills report could
+      // have taken.
+      if (!r) {
+        auditionNote = {
+          kind: 'is-error',
+          text: 'The Seven did not answer that change. Try again.',
+          file: liveEdit.file,
+        };
+      } else if (r.ok) {
         // An edit to the instrument's buffer joins the app's one undo stack,
         // so Cmd-Z means the same thing here as it does in the library. Not
         // recorded when the undo IS the caller, or the stack would grow a rung
@@ -535,7 +572,16 @@
   };
 
   async function offerAudition() {
-    if (offering || auditionInFlight) return;
+    // SILENT NO LONGER (Daniel, 18 Nov 2026). Both of these flags are cleared
+    // in a `finally`, so only a promise that never settles can strand them —
+    // and if one is stranded, every press from then on returned here and did
+    // nothing at all, with no way for the player to tell that from a dead
+    // control. Whether this is what happened on the instrument is not
+    // established; that it CAN happen and would be invisible is.
+    if (offering || auditionInFlight) {
+      toast('Still working on the last thing you asked for');
+      return;
+    }
     // Already live: this control simply isn't editable — an inert row, or a
     // shape with no live handler yet (the pedal's range pair). Offering to
     // start audition mode here walked the whole entry path and ended up
@@ -551,7 +597,14 @@
       toast('Connect the Seven to edit sounds');
       return;
     }
-    if (!auditionTarget()) return;
+    // AND THIS ONE TOO. No target means nothing is selected to make live, and
+    // returning in silence left the player pressing a control that could
+    // never do anything. It is a real state — the pane can be open with no
+    // patch chosen — so it gets a sentence rather than a fix.
+    if (!auditionTarget()) {
+      toast('Choose a patch first — there is nothing to edit yet');
+      return;
+    }
     offering = true;
     try {
       // No modal on this path. Touching a control is already the request, so
@@ -1360,10 +1413,38 @@
   // TODO this replaces was written before there was a device to talk to; its
   // "No instrument connected" was the only answer available then, and it kept
   // being given after the instrument arrived.
+  // A PRESS ALWAYS PRODUCES SOMETHING (Daniel, 18 Nov 2026).
+  //
+  // REPORTED ON THE INSTRUMENT: clicking ON left it ON, clicking OFF left it
+  // OFF, and nothing else appeared — no prompt, no toast, no refusal. The
+  // chain was reading real values off the Seven at the time (Vol 127, Pedal
+  // Wha-Wha, JCM, Level 91 · Decay 32), so the READ path was fine. A reload
+  // cleared it with no code change, which makes it a STATE bug: the pane got
+  // into something it could not leave, and it will recur.
+  //
+  // THE CAUSE IS NOT ESTABLISHED. What is established is that several paths
+  // below here can return without saying anything, and a control that neither
+  // acts nor says why is the shape this project calls worse than absence. So
+  // every silent exit is now audible, whether or not it was the one.
+  //
+  // NOT BY FLIPPING THE PILL OPTIMISTICALLY. The pill reflects device state
+  // and never forks — that rule is deliberate and documented, and faking the
+  // state would turn "nothing happened" into "it lied about what happened",
+  // which is worse and harder to see.
   function handleStatePill(pill) {
     const key = pill.dataset.switch;
     if (isLive() && key) {
       const current = liveEdit.params[key];
+      // A DROPPED PRESS IS SAID OUT LOUD. sendEdit coalesces while a write is
+      // in flight — correct for a drag, where the last value wins — but a
+      // pill press is a discrete act and silently folding it into
+      // `pendingSend` is indistinguishable from a dead control if that flag
+      // is ever stuck. The flag can only stick if the IPC never settles,
+      // which a `finally` cannot catch.
+      if (sendIsStuck()) {
+        toast('The Seven is still answering the last change — nothing was sent');
+        return;
+      }
       sendEdit(key, current === 1 ? 0 : 1); // raw flip; `invert` is a display rule
       return;
     }
