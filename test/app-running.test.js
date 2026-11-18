@@ -118,6 +118,63 @@ test('the refusal never tells anyone to pkill -f', () => {
     'the refusal should print `kill <pid>` for the process it detected');
 });
 
+// NO PROCESS MATCHER IS ALLOWLISTED (Daniel, 18 Nov 2026).
+//
+// The rule was `Bash(pkill -f MacOS/Electron)`, which matches every Electron
+// app running from a dev checkout — the JUNO-Xtra, JP Patches and Hammond
+// M-solo editors as well as this one. An allowlisted command runs without
+// anybody being asked, which is exactly the wrong property for one that can
+// close three unrelated projects.
+//
+// There is no narrower pattern available: every segment of this app's
+// executable path except the repo directory is shared by every Electron
+// checkout, and the repo directory is what must not be matched (see the
+// refusal test above). So the rule is a script name, and this guards that.
+test('no allowlisted rule matches processes by pattern', () => {
+  const fs = require('node:fs');
+  const settings = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', '.claude', 'settings.json'), 'utf8')
+  );
+  const allow = (settings.permissions && settings.permissions.allow) || [];
+  assert.ok(allow.length > 0, 'the repo should carry its own permission rules');
+  for (const rule of allow) {
+    assert.doesNotMatch(rule, /pkill|pgrep|killall/,
+      `"${rule}" allowlists a process matcher — use ./scripts/quit-editor.sh, `
+      + 'which finds the pid for THIS checkout');
+  }
+  assert.ok(allow.includes('Bash(./scripts/quit-editor.sh)'),
+    'the script that frees the instrument should be allowlisted by name');
+});
+
+test('the quit script exists, is executable, and never reaches for kill -9', () => {
+  const fs = require('node:fs');
+  const p = path.join(__dirname, '..', 'scripts', 'quit-editor.sh');
+  const src = fs.readFileSync(p, 'utf8');
+  // eslint-disable-next-line no-bitwise
+  assert.ok(fs.statSync(p).mode & 0o111, 'scripts/quit-editor.sh should be executable');
+
+  // STATEMENTS, NOT PROSE. The first version of this assertion searched the
+  // whole file for /kill\s+-9/ and failed on the script's own comment saying
+  // "NEVER kill -9" and on the warning it prints telling a human not to. The
+  // check is about what the script DOES, so comment lines and echoed text are
+  // removed before looking — otherwise documenting the hazard is what trips
+  // the guard against it.
+  const statements = src
+    .split('\n')
+    .filter((l) => !/^\s*#/.test(l))
+    .filter((l) => !/^\s*echo\b/.test(l))
+    .join('\n');
+  assert.doesNotMatch(statements, /\bkill\s+-/,
+    'this app writes to hardware — a transfer interrupted mid-walk leaves a '
+    + 'preset half-written, so the script must send a plain SIGTERM and never '
+    + 'pass a signal flag');
+  assert.match(statements, /\bkill\s+"\$p"/,
+    'it should kill by pid');
+  // It must not solve its own problem with the pattern it replaces.
+  assert.doesNotMatch(statements, /pkill|killall/,
+    'the script should find pids, not match command lines');
+});
+
 const { appPids } = require('./ui/app-running');
 
 test('appPids returns the main process pid and ignores the helpers', () => {

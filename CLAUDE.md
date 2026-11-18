@@ -1150,13 +1150,34 @@ says `kill <pid>`. A pid matches one process. A pattern matches whatever
 happens to share the string, and what shares it changes over time — nobody
 adding a permission rule to a session was thinking about this message.
 
-**STILL OPEN, REPORTED NOT CHANGED (Daniel's call):** `.claude/settings.json`
-allows `Bash(pkill -f MacOS/Electron)`, and CLAUDE.md's own
-permission-habits example runs `pkill -f Electron`. Neither is built from the
-repo name, so neither is the bug above — but both match **every Electron app
-running from a dev checkout**, which on this machine means the Juno-Xtra,
+**AND THE TWO BROAD PATTERNS ARE GONE TOO** (Daniel's call, same day).
+`.claude/settings.json` allowed `Bash(pkill -f MacOS/Electron)` and the
+permission-habits example below ran `pkill -f Electron`. Neither was built from
+the repo name, so neither was the bug above — but both matched **every Electron
+app running from a dev checkout**, which on this machine is the JUNO-Xtra,
 JP Patches and Hammond M-solo editors as well as this one. Freeing one MIDI
-port should not close three other projects' windows.
+port took down three other projects mid-work.
+
+**THERE IS NO NARROWER PATTERN, AND THAT IS THE FINDING.** The app's main
+process is `<repo>/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron`.
+Every segment of that except the repo directory is shared by every Electron dev
+checkout — and the repo directory is the one thing a pattern must not match,
+because that is the bug above. So the pattern cannot be narrowed; it has to be
+replaced by logic that finds a pid.
+
+`scripts/quit-editor.sh` does that, and the rule is its name:
+`Bash(./scripts/quit-editor.sh)`. Same trade `dev-offline.sh` already makes —
+one script, one rule. It resolves the repo from its own location so another
+checkout can never match, mirrors app-running.js's two conditions (under this
+repo, and ending in `/Contents/MacOS/Electron` so helpers are excluded), takes
+`--list` to report without changing anything, and says that it cannot tell
+whether a sibling session is mid-run rather than implying it checked.
+
+**SIGTERM, AND NEVER `kill -9`.** This app writes to the instrument and to the
+library. A transfer walk interrupted between the recall and the store leaves a
+preset half-written on hardware that no local cleanup can undo, so the script
+waits five seconds and then asks a human to look rather than reaching for a
+bigger hammer.
 
 ## A MEASUREMENT THAT IS WRONG FOR ONE OF THE TWO THINGS IT COMPARES (2026-11-18)
 
@@ -1919,11 +1940,18 @@ mostly file edits, which `acceptEdits` mode never asks about.
 
 ```
 cd ~/crumar-seven-editor && S=/tmp/x && cat > "$S/p.js" <<'EOF' … EOF
-pkill -f Electron; SEVEN_NO_DEVICE=1 … npm start > "$S/l.log" 2>&1; python3 - <<'PY' … PY
+./scripts/quit-editor.sh; SEVEN_NO_DEVICE=1 … npm start > "$S/l.log" 2>&1; python3 - <<'PY' … PY
 ```
 
 Nothing in a permission file can ever match that, so adding rules does not
 help. Six habits, which between them remove most of the asking:
+
+> The first segment of that line read `pkill -f Electron` when this was
+> written, and it had a **second** problem that took until 18 Nov 2026 to
+> notice: it matches every Electron app running from a dev checkout, so it
+> took down the JUNO-Xtra, JP Patches and Hammond M-solo editors along with
+> this one. `./scripts/quit-editor.sh` is in its place — see
+> "A -f PATTERN KILLS WHATEVER SHARES THE STRING" above.
 
 - **Write scratch scripts with the Write tool**, never `cat > file <<'EOF'`.
 - **Read logs and source with the Read tool**, never `sed -n '10,40p'`.
@@ -1946,7 +1974,7 @@ which of the two it was.
 
 The five rules that cover what is genuinely left, after the habits above:
 `Bash(npm test)`, `Bash(npm run lint)`, `Bash(npm run test:ui *)`,
-`Bash(pkill -f MacOS/Electron)`, `Bash(./scripts/dev-offline.sh *)`.
+`Bash(./scripts/quit-editor.sh)`, `Bash(./scripts/dev-offline.sh *)`.
 
 **Deliberately NOT rules: `node`, `python3`, `npx`, or any shell.** A wildcard
 on an interpreter is a blank cheque for arbitrary code. If a script is worth
@@ -1954,10 +1982,12 @@ running often, give it a name in `scripts/` and allow that name.
 
 #### THIS REPO CARRIES ITS OWN PERMISSION RULES (2026-11-16)
 
-`.claude/settings.json`, committed. Twenty-one entries: the test runners, the
-read-only git subcommands, `grep`/`rg`/`ls`/`wc`/`ps`, `npm start` and the
-`pkill` that frees the instrument. Nothing that writes to the instrument or the
-library, no interpreter, no push. It is in the repo rather than in somebody's
+`.claude/settings.json`, committed. Twenty-two entries: the test runners, the
+read-only git subcommands, `grep`/`rg`/`ls`/`wc`/`ps`, `npm start` and
+`./scripts/quit-editor.sh`, which frees the instrument. Nothing that writes to
+the instrument or the library, no interpreter, no push, **and no process
+matcher** — the rule was `Bash(pkill -f MacOS/Electron)` until 18 Nov 2026 and
+matched every Electron app on the machine running from a dev checkout. It is in the repo rather than in somebody's
 user settings so it applies to every session here and survives a clean-up.
 
 **A COMMAND GETS A RULE ONLY IF IT IS BARE AND WILL RECUR.** Not a path, not a
