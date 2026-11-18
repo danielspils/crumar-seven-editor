@@ -66,31 +66,40 @@
     const moved = here.name !== patch.soundName;
     return (
       `<div class="engine-art engine-carousel${moved ? ' has-moved' : ''}" data-carousel>` +
-      // FIVE faces, not three. The two beyond the edges are invisible at rest
-      // and exist only so the turn has something to roll IN with: with three,
-      // the clicked picture moved to the middle and the side it came from was
-      // left empty, which reads as two images swapping rather than a wheel
-      // going round (Daniel, 2026-08-12).
+      // A DEPTH STACK, NOT A SIDE-PEEK WHEEL (Daniel, 18 Nov 2026, from a
+      // measured and approved prototype). The current sound is front and
+      // centre; the next two sit BEHIND it, offset up and to the right,
+      // scaled down and dimmed.
       //
-      // No arrows either: the neighbours ARE the targets. An arrow is a control
-      // pointing at a thing you could point at yourself, sitting on top of the
-      // very picture it scrolls.
-      face(wrap(at - 2), 'is-far is-far-prev') +
-      face(wrap(at - 1), 'is-peek is-prev') +
-      face(here, 'is-hero') +
-      face(wrap(at + 1), 'is-peek is-next') +
-      face(wrap(at + 2), 'is-far is-far-next') +
-      // TURNING WITHOUT THE PEEKS. Below the no-peek width the neighbours do
-      // not render, and clicking a neighbour is the ONLY thing that turns the
-      // wheel — so hiding them removed the function and not just the hint
-      // (found 2026-11-15; Daniel's correction the same day). These are that
-      // function's replacement and CSS shows them only in that band, because
-      // above it the peeks are the control and an arrow pointing at a picture
-      // you could click yourself is what the comment above refuses.
+      // THE WHOLE POINT IS THAT IT DRAWS INSIDE ITS OWN CELL. The wheel's
+      // neighbours were painted OUTSIDE .engine-stage on purpose, and
+      // everything that cost came from that: a clearance bar measured per
+      // window width so the left peek did not land on Save patch, a
+      // document-level pointermove test to decide whether the wheel was open,
+      // and a media query that hid the peeks below 1031px — which took the
+      // only way of turning the wheel with them. None of that is needed by a
+      // stack, and all of it is gone rather than left inert.
       //
-      // Always in the DOM, shown by media query alone: the band is a property
-      // of the window and not of the patch, so nothing here needs to know the
-      // width — and a JS answer would have to re-render on resize.
+      // FOUR FACES, in depth order back to front. Three are visible at rest;
+      // the fourth is the card that arrives from the LEFT when the stack is
+      // stepped backwards, parked off-screen until then. It exists for the
+      // same reason the old wheel carried faces beyond its edges: a turn
+      // needs something to roll in with, or it reads as two pictures swapping.
+      //
+      // DOM ORDER IS PAINT ORDER HERE. These are absolutely positioned with
+      // no z-index of their own, so the front card must come LAST or the two
+      // behind it would paint over the thing they sit behind.
+      face(wrap(at - 1), 'is-waiting') +
+      face(wrap(at + 2), 'is-after') +
+      face(wrap(at + 1), 'is-next') +
+      face(here, 'is-front') +
+      // THE CHEVRONS ARE THE ONLY HIT TARGETS NOW. On the wheel a click
+      // landed on a peek, and the chevrons existed ONLY below 1031px as a
+      // replacement for peeks that were hidden there. A stacked card is
+      // mostly covered by the one in front of it, so there is nothing
+      // reliable to aim at — the chevrons become the control at every width
+      // and the media query that hid them is gone with the one that hid the
+      // peeks.
       //
       // The chevron is the app's geometric one, rotated by CSS. Not a font
       // glyph: see picker.js for the two rounds that cost, and .fx-chevron for
@@ -99,6 +108,17 @@
       ` aria-label="Previous" title="Previous">${STEP_CHEVRON}</button>` +
       `<button type="button" class="car-step is-step-next" data-car-step="1"` +
       ` aria-label="Next" title="Next">${STEP_CHEVRON}</button>` +
+      // WHERE YOU ARE IN THE LIST. The wheel gave no sense of place — the
+      // peeks showed two neighbours and nothing said how many there were or
+      // how far along you had come — and the stack gives no more. This is
+      // what replaces it (Daniel, 18 Nov 2026).
+      //
+      // 1-BASED, because it is for a person counting instruments, not an
+      // index. The same `at` the faces are drawn from, so it cannot drift.
+      // `fresh` IS THE FRESHNESS LINE'S OWN CLASS, not a copy of its values:
+      // Daniel asked for the same type, and sharing the rule is the only way
+      // "the same" stays true when one of them is next edited.
+      `<span class="car-count fresh">${at + 1} of ${sounds.length}</span>` +
       // Under the wheel, and only while the middle is something other than
       // what the instrument holds: with nothing to install, a Select button
       // would be a control that does nothing.

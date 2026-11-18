@@ -235,150 +235,104 @@ test('elements with a display rule also have a [hidden] rule', () => {
   assert.deepStrictEqual(broken, [], `these are hidden in markup but have a display rule that overrides it: ${broken.join(', ')}`);
 });
 
-// THE CAROUSEL CLEARS SAVE PATCH AT EVERY WIDTH, checked here because the
-// alternative is one app launch per width.
+// THE DEPTH STACK'S GEOMETRY, which replaced the side-peek wheel on
+// 18 Nov 2026.
 //
-// A UI scenario can only ask this question at the width it was launched at —
-// the rule is a media query on the viewport, so SEVEN_WINDOW_WIDTH is set
-// before the window opens and cannot change afterwards. Two scenarios cover
-// the two tight points with real layout (carousel-narrow.js at 1032,
-// carousel-no-peek.js at 1000). This covers the RANGE, from the arithmetic
-// those two validate.
+// WHAT THIS TEST USED TO BE, and why it is gone rather than edited: "no
+// carousel peek can land on Save patch, at any window width". It modelled a
+// clearance ceiling swept on hardware — ceiling%(w) = 48.4 + 0.5 x (w - 1020),
+// one per cent of the 128px face being 1.28px, minus 5.12px for the hover
+// growth — and walked every width from 480 to 1600 asserting an 8px bar.
+// All of that was about faces drawn OUTSIDE .engine-stage. The stack draws
+// inside its own cell, so there is nothing to collide with and no width at
+// which to hide anything. The measurements are kept in index.html beside the
+// deletion; they were not wrong, their subject is gone.
 //
-// WHAT IT CANNOT DO, said plainly: it knows about Save patch, because Save
-// patch is what the ceiling was swept against and it is the tightest control
-// in the column. A static read of the stylesheet cannot know what else is
-// laid out there or where. The scenario is the half that checks EVERY
-// interactive element in column 1 — it loops over them and asserts both the
-// overlap and the press — and it can only do that at the width it was
-// launched at. Neither half is the whole guarantee.
-//
-// The ceiling — the largest spread whose left peek still clears the Save patch
-// button — was swept on hardware and is linear in the window width at half a
-// percentage point per pixel: 68.4% at 1060, 58.4% at 1040, 48.4% at 1020,
-// 38.4% at 1000, 28.4% at 980. One per cent of the 128px face is 1.28px.
-// Validated against real forced-width windows at 1020 (predicted 5.63px,
-// measured 5.7) and at 1032, where carousel-narrow.js asserts the margin.
-// Re-validated 16 Nov 2026 by test/ui/scenarios/carousel-ceiling.js, a sweep
-// of every whole per cent at four widths: the RESTING model holds to a tenth
-// of a pixel, and the ceiling is unchanged. What was wrong was not the sweep
-// but what the bar was applied to — see HOVER_LOSS below.
-//
-// WHAT WOULD MAKE THIS TEST LIE: a change to the engine column's layout that
-// moves the button or the carousel relative to the window. The ceiling is a
-// property of that geometry, not of the stylesheet, so the two scenarios are
-// what keep this honest — if either stops agreeing with the model, the model
-// is what is wrong.
-test('no carousel peek can land on Save patch, at any window width', () => {
-  const MIN_MARGIN = 8;
-  const FACE = 128;
-  const ceilingAt = (w) => 48.4 + 0.5 * (w - 1020);
-
-  // THE BOUND IS THE HOVERED PEEK, AND LEAVING THAT OUT IS THE BUG THIS
-  // VERSION EXISTS FOR (16 Nov 2026).
-  //
-  // `ceilingAt` was swept with the peek at REST. The stylesheet's own note
-  // says the bound belongs to the hover size — "anything wider escapes on
-  // hover before it escapes at rest" — and both thresholds were nonetheless
-  // derived without it, so every width in 1024..1031 drew a resting picture
-  // that cleared the button and a hovered one that did not.
-  //
-  // It took a stray mouse to find: a full-suite run on 16 Nov happened to
-  // have the pointer parked on that peek, and carousel-narrow.js measured
-  // 3.2px where it passes at 8.29px standalone.
-  //
-  // THE TWO SCALES ARE READ FROM THE RULES, not written down here, so
-  // changing either one moves this bound with it. A hover state that grew the
-  // face further would otherwise re-open the same gap silently.
-  // The selectors are comma lists (`.is-open .is-prev, :focus-within .is-prev`),
-  // so these match on CONTENT rather than on an exact string — and the resting
-  // one excludes `:hover` explicitly, or it would find whichever came first.
-  const scaleOf = (pick, what) => {
-    const r = rules.find((x) => pick(x) && /scale\(/.test(x.body));
-    assert.ok(r, `${what} is still a recognisable rule`);
-    const m = r.body.match(/scale\(([\d.]+)\)/);
-    assert.ok(m, `${what} still carries a scale()`);
-    return Number(m[1]);
+// WHAT A STATIC READ CAN STILL ANSWER is that the approved numbers are the
+// ones in the file. The painted BOUNDS are a layout question and belong to
+// test/ui/scenarios/carousel-stack.js, which measures them against
+// .engine-stage at two pane widths — Daniel's brief calls that the point of
+// the change, and this is the half that runs automatically.
+test('the depth stack carries the approved geometry, and nothing of the wheel', () => {
+  const face = (cls) => {
+    const r = rules.find((x) => x.selector === `.engine-carousel .${cls}` && !x.media);
+    assert.ok(r, `.${cls} has a rule of its own`);
+    return r.body;
   };
-  const restScale = scaleOf(
-    (x) => /\.is-prev\b/.test(x.selector) && !/:hover/.test(x.selector)
-      && /translateX/.test(x.body),
-    "the peek's resting rule"
-  );
-  const hoverScale = scaleOf(
-    (x) => /\.is-prev:hover/.test(x.selector) && /translateX/.test(x.body),
-    "the peek's hover rule"
-  );
-  assert.ok(hoverScale > restScale,
-    `hovering must enlarge the peek (rest ${restScale}, hover ${hoverScale})`);
-  // Both boxes share a centre, so half the growth is taken off the left edge.
-  const HOVER_LOSS = FACE * (hoverScale - restScale) / 2;
-  assert.ok(Math.abs(HOVER_LOSS - 5.12) < 0.01,
-    `hovering costs ${HOVER_LOSS}px of clearance — measured 5.12px on hardware,`
-    + ' so a different figure means a scale changed and the thresholds want re-deriving');
-
-  // The spread in force at width w: the last rule that applies wins, and a
-  // media-gated one applies only when w is inside its bound.
-  const spreadRules = rules.filter(
-    (r) => /^\.engine-carousel$/.test(r.selector) && /--peek\s*:/.test(r.body)
-  );
-  assert.ok(spreadRules.length >= 2,
-    `expected a base --peek and at least one override, found ${spreadRules.length}`);
-
-  const boundOf = (media) => {
-    if (!media) return Infinity;
-    const m = media.match(/max-width\s*:\s*(\d+)px/);
-    assert.ok(m, `--peek override has no max-width bound: "${media}"`);
-    return Number(m[1]);
+  // DANIEL'S PROTOTYPE, VALUE FOR VALUE. These were measured and approved
+  // before any of this was written, so a drift here is a drift from
+  // something he looked at rather than from an idea in this file.
+  const approved = {
+    'is-front': [/translate\(-50%,\s*-50%\)/, /scale\(1\)/, /opacity:\s*1\b/],
+    'is-next': [/translate\(-36%,\s*-53%\)/, /scale\(\.86\)/, /opacity:\s*\.30\b/],
+    'is-after': [/translate\(-26%,\s*-56%\)/, /scale\(\.75\)/, /opacity:\s*\.14\b/],
+    'is-waiting': [/translate\(-140%,\s*-50%\)/, /scale\(\.9\)/, /opacity:\s*0\b/],
   };
-  const spreadAt = (w) => {
-    let value = null;
-    for (const r of spreadRules) {
-      if (w > boundOf(r.media)) continue;
-      value = Number((r.body.match(/--peek\s*:\s*([\d.]+)%/) || [])[1]);
-    }
-    assert.ok(value != null, `no --peek applies at ${w}px`);
-    return value;
-  };
-
-  // The width at or below which no non-hero face renders at all.
-  const hideRules = rules.filter(
-    (r) => /\.car-face:not\(\.is-hero\)/.test(r.selector) && /display\s*:\s*none/.test(r.body)
-  );
-  assert.strictEqual(hideRules.length, 1,
-    `expected exactly one rule hiding the non-hero faces, found ${hideRules.length}`);
-  const hiddenUpTo = boundOf(hideRules[0].media);
-  assert.ok(Number.isFinite(hiddenUpTo),
-    'the rule hiding the peeks must be inside a max-width media query, or it hides them always');
-
-  // Every width from the forced-width floor in main.js to well past any real
-  // display. The floor matters: a window cannot actually open below the
-  // display's own width, but the plumbing clamps at 480 and the invariant
-  // should hold wherever the rules can be evaluated.
-  const thin = [];
-  for (let w = 480; w <= 1600; w += 1) {
-    if (w <= hiddenUpTo) continue;          // nothing is drawn to collide
-    // THE HOVERED margin, which is the smaller of the two and so the one the
-    // bar is spent on. Measured against this model at four widths on 16 Nov:
-    // 1031 predicted 7.55 / measured 7.65, 1032 predicted 8.19 / measured
-    // 8.29, 1087 predicted 7.55 / measured 7.65, 1088 predicted 8.19 /
-    // measured 8.28 — the model runs a tenth of a pixel pessimistic, which is
-    // the safe direction for a bound.
-    const margin = (ceilingAt(w) - spreadAt(w)) * (FACE / 100) - HOVER_LOSS;
-    if (margin < MIN_MARGIN) thin.push(`${w}px: ${Math.round(margin * 10) / 10}px`);
+  for (const [cls, pats] of Object.entries(approved)) {
+    const body = face(cls);
+    for (const re of pats) assert.match(body, re, `.${cls}: ${re}`);
   }
-  assert.deepStrictEqual(thin.slice(0, 6), [],
-    'these widths render a HOVERED peek with less than '
-    + `${MIN_MARGIN}px of clearance over Save patch (first few of ${thin.length}): `
-    + thin.slice(0, 6).join(', '));
 
-  // AND THE BANDS MUST TILE. A gap would be a width with no rule at all; the
-  // check above would not notice, because it only looks at what the rules say.
-  assert.strictEqual(spreadAt(hiddenUpTo + 1), 44,
-    `the width just above the hide threshold (${hiddenUpTo + 1}px) should get the`
-    + ' tucked spread — otherwise the two overrides do not meet');
-  assert.strictEqual(spreadAt(1600), 72,
-    'a wide window keeps the approved spread');
+  // THE LEAVING POSITION, which only exists mid-turn.
+  const leavingRight = rules.find(
+    (r) => r.selector === '.engine-carousel.is-turning-next .is-front'
+  );
+  assert.ok(leavingRight, 'the front card has a leaving position');
+  assert.match(leavingRight.body, /translate\(40%,\s*-50%\)/, 'it leaves to the right');
+  assert.match(leavingRight.body, /opacity:\s*0\b/, 'and fades out');
+
+  // ONE CURVE, HIS: transform .3s cubic-bezier(.22,.68,.24,1), opacity .3s ease.
+  //
+  // ACROSS EVERY .car-face RULE, not the first one found. The selector
+  // legitimately has more than one — the size is set apart from the
+  // positioning — and `find` returned whichever came first in the file,
+  // which made this fail on a stylesheet that was correct.
+  const baseRules = rules.filter(
+    (r) => r.selector === '.engine-carousel .car-face' && !r.media
+  );
+  assert.ok(baseRules.length, '.car-face has at least one base rule');
+  const base = baseRules.map((r) => r.body).join('\n');
+  assert.match(base, /transform\s+\.3s\s+cubic-bezier\(\.22,\s*\.68,\s*\.24,\s*1\)/,
+    'the approved transform curve');
+  assert.match(base, /opacity\s+\.3s\s+ease/, 'and the opacity curve');
+  // THE CARDS ARE NOT TARGETS. The chevrons are the only hit targets, and a
+  // card that could take a click would be the wheel's behaviour returning
+  // through a side door.
+  assert.match(base, /pointer-events:\s*none/,
+    'the cards take no pointer events — the chevrons are the only hit targets');
+
+  // REDUCED MOTION: the state changes instantly, per the brief.
+  // THE EXACT SELECTOR. A substring match on `.engine-carousel .car-face`
+  // also catches `.engine-carousel .car-face.is-landing .sound-art`, which
+  // is the sampled afterglow and legitimately keeps an animation under
+  // reduced motion — so `find` returned that one and this failed against a
+  // correct stylesheet.
+  const still = rules.filter((r) => r.media && /prefers-reduced-motion/.test(r.media)
+    && r.selector === '.engine-carousel .car-face');
+  assert.ok(still.length, 'the stack is addressed under prefers-reduced-motion');
+  assert.ok(still.some((r) => /transition:\s*none/.test(r.body)),
+    'and does not transition');
+
+  // AND NOTHING OF THE WHEEL SURVIVES. Each of these would be live machinery
+  // for a thing that no longer exists — the shape CLAUDE.md warns about,
+  // where a dead hazard is re-found and re-fixed later.
+  const peekSpread = rules.filter((r) => /--peek\s*:/.test(r.body));
+  assert.deepStrictEqual(peekSpread.map((r) => r.selector), [],
+    'the --peek spread is gone with the peeks it positioned');
+  const hidesFaces = rules.filter(
+    (r) => /\.car-face:not\(/.test(r.selector) && /display\s*:\s*none/.test(r.body)
+  );
+  assert.deepStrictEqual(hidesFaces.map((r) => r.media || r.selector), [],
+    'no width hides a face any more — that rule existed because a peek landed on Save patch');
+  // THE CHEVRONS ARE UNCONDITIONAL NOW. They were display:none outside
+  // @media (max-width: 1031px); the stack makes them the control at every
+  // width, so a media-gated .car-step would take the control away again.
+  const stepRules = rules.filter((r) => /^\.car-step$/.test(r.selector));
+  assert.ok(stepRules.length, '.car-step has a rule');
+  for (const r of stepRules) {
+    assert.ok(!r.media, `.car-step must not be media-gated (found "${r.media}")`);
+    assert.ok(!/display\s*:\s*none/.test(r.body), '.car-step is not hidden');
+  }
 });
 
 // THE BOOT LOADER HONOURS prefers-reduced-motion, asserted here because a UI

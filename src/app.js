@@ -853,16 +853,18 @@
   // Measure, then start. If the picture has not decoded yet the animation
   // waits for it rather than running against a guess — a few milliseconds
   // later is invisible, a mis-measured scan is not.
-  function startSampledArrival(hero, name) {
-    const wrap = hero.querySelector('.sound-art.is-sampled');
+  // `card` since 18 Nov 2026: it was `hero`, which was the wheel's name for
+  // the centre face. The caller passes the front card of the depth stack.
+  function startSampledArrival(card, name) {
+    const wrap = card.querySelector('.sound-art.is-sampled');
     const begin = () => {
       if (wrap) {
         sampledLanding = { startedAt: Date.now(), name };
         wrap.style.setProperty('--scan-delay', '0ms');
       }
-      hero.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
+      card.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
       setTimeout(() => {
-        hero.classList.remove('is-landing', `is-${SAMPLED_ARRIVAL}`);
+        card.classList.remove('is-landing', `is-${SAMPLED_ARRIVAL}`);
         sampledLanding = null;
       }, LAND_MS);
     };
@@ -875,80 +877,33 @@
     else img.addEventListener('load', go, { once: true });
   }
 
+  // THE HOVER-OPEN TEST IS GONE WITH THE PEEKS (18 Nov 2026).
+  //
+  // What stood here: `carouselOpen`, OPEN_MARGIN_X/Y, a document-level
+  // `pointermove` listener comparing clientX/clientY against the carousel's
+  // rect once a frame, and a `seven-modal-open` listener whose only job was
+  // to close the wheel when a dialog arrived over it.
+  //
+  // ALL OF IT EXISTED BECAUSE THE PEEKS WERE DRAWN OUTSIDE THE BOX. An
+  // element big enough to cover them would have caught passing traffic, so
+  // the test was done in coordinates instead — and a coordinate test on
+  // `document` does not care what is painted over the rect it is testing.
+  // That is where the modal click-through came from (Daniel, 2026-11-14):
+  // the wheel went on opening and animating under an open save dialog. It
+  // was fixed by asking SevenModal.isOpen(), which was the right fix for
+  // that bug and left the shape of the hazard in place.
+  //
+  // The depth stack draws entirely inside its own cell and has no hover
+  // state at all — the chevrons are the only hit targets — so there is
+  // nothing to open and nothing to test. REMOVED RATHER THAN LEFT INERT,
+  // which is Daniel's instruction and the right one: a dead listener gets
+  // re-found and re-fixed later by somebody who cannot tell it is dead.
+  //
+  // SevenModal.isOpen() KEEPS ITS OTHER CALLERS and is not removed; only
+  // this one stopped needing it. Same for the `seven-modal-open` event,
+  // which modal.js still dispatches.
   let turning = false;
-  // Whether the wheel is open. A STATE rather than a :hover query, because a
-  // turn re-renders the faces and fresh nodes are not hovered until the
-  // pointer moves — so the carousel shut itself the moment you used it
-  // (Daniel, 2026-08-12). It opens when the pointer arrives and closes when it
-  // leaves, and it survives everything in between.
-  let carouselOpen = false;
 
-  // Opening and staying open are DIFFERENT areas.
-  //
-  // The wheel used to claim a hit pad 104px to either side, so that a pointer
-  // travelling out to a peek did not leave it and shut it. But that pad also
-  // reached into the effects column, and coming up past Master Volume or FX1
-  // opened the carousel without going near it (Daniel, 2026-08-13).
-  //
-  // So: it OPENS only when the pointer is over the carousel itself, and it
-  // stays open until the pointer leaves a margin around it. Measured against
-  // the box rather than hit-tested against an element, because the peeks are
-  // drawn outside the box on purpose and an element big enough to cover them
-  // is an element big enough to catch passing traffic.
-  const OPEN_MARGIN_X = 96; // far enough to reach a peek
-  const OPEN_MARGIN_Y = 22;
-  let pointerQueued = false;
-  document.addEventListener('pointermove', (e) => {
-    if (pointerQueued) return;
-    pointerQueued = true;
-    // One test per frame: this fires on every mouse move.
-    requestAnimationFrame(() => {
-      pointerQueued = false;
-      const car = document.querySelector('[data-carousel]');
-      if (!car) { carouselOpen = false; return; }
-      // A DIALOG IS UP: this listener cannot see it any other way.
-      //
-      // The coordinate test a few lines down is deliberate — the peeks are
-      // drawn outside the carousel's box, so hit-testing an element big enough
-      // to cover them would catch passing traffic. What that trade gives up is
-      // the one thing an overlay relies on: a listener on `document` comparing
-      // clientX/clientY against a rect does not care what is painted over that
-      // rect. So the carousel went on opening and animating under an open save
-      // dialog, which Daniel saw and reported (2026-11-14).
-      //
-      // Asking SevenModal is the fix for the cause. Putting pointer-events:
-      // none on the carousel would not be: it would hide this from the mouse
-      // while leaving the actual defect — a coordinate test that believes it is
-      // the frontmost thing on screen — in place for the next listener.
-      //
-      // It also CLOSES one already open, so a dialog opening over a hovered
-      // carousel does not freeze it mid-animation behind the backdrop.
-      if (window.SevenModal && SevenModal.isOpen()) {
-        if (carouselOpen) { carouselOpen = false; car.classList.remove('is-open'); }
-        return;
-      }
-      const r = car.getBoundingClientRect();
-      const x = e.clientX;
-      const y = e.clientY;
-      const over = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-      const near = x >= r.left - OPEN_MARGIN_X && x <= r.right + OPEN_MARGIN_X
-        && y >= r.top - OPEN_MARGIN_Y && y <= r.bottom + OPEN_MARGIN_Y;
-      const want = carouselOpen ? near : over;
-      if (want === carouselOpen) return;
-      carouselOpen = want;
-      car.classList.toggle('is-open', want);
-    });
-  });
-  // A DIALOG JUST OPENED. The guard above only runs when the pointer MOVES, so
-  // a dialog arriving over an already-hovered carousel left it open and
-  // mid-animation behind the backdrop until the mouse happened to move — which
-  // is the same report, by a different route. modal.js announces; this reacts.
-  document.addEventListener('seven-modal-open', () => {
-    if (!carouselOpen) return;
-    carouselOpen = false;
-    const car = document.querySelector('[data-carousel]');
-    if (car) car.classList.remove('is-open');
-  });
   // Where the wheel is now: liveSound when the instrument is holding something
   // other than what the file names, otherwise the file's own sound. Counting
   // from the FILE swallowed the first turn after a selection — the wheel
@@ -967,16 +922,16 @@
     if (!sampledLanding) return;
     const elapsed = Date.now() - sampledLanding.startedAt;
     if (elapsed >= SCAN_MS) { sampledLanding = null; return; }
-    const hero = document.querySelector('[data-carousel] .is-hero');
-    if (!hero) return;
+    const front = document.querySelector('[data-carousel] .is-front');
+    if (!front) return;
     // Only if it is still the same instrument — a scan must never be handed
     // to whatever happens to be in the middle now.
-    if (hero.dataset.carName !== sampledLanding.name) return;
-    const wrap = hero.querySelector('.sound-art.is-sampled');
-    if (!wrap || hero.classList.contains('is-landing')) return;
+    if (front.dataset.carName !== sampledLanding.name) return;
+    const wrap = front.querySelector('.sound-art.is-sampled');
+    if (!wrap || front.classList.contains('is-landing')) return;
     measureScanBox(wrap);
     wrap.style.setProperty('--scan-delay', `${-elapsed}ms`);
-    hero.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
+    front.classList.add('is-landing', `is-${SAMPLED_ARRIVAL}`);
   }
 
   function turnCarousel(dir) {
@@ -985,23 +940,30 @@
     const from = carouselAt == null ? carouselHome() : carouselAt;
     if (!car) { carouselAt = from + dir; renderDetail(); return; }
     turning = true;
-    // Two classes: one selects the direction, the other doubles the rule's
-    // specificity so a pointer resting on the face it just clicked cannot pin
-    // it in its hover position while the wheel turns.
+    // ONE CLASS PER DIRECTION. There used to be a second, `is-open`, and a
+    // note about doubling the rule's specificity "so a pointer resting on
+    // the face it just clicked cannot pin it in its hover position while the
+    // wheel turns". Neither survives the stack: the cards have no hover
+    // state and `pointer-events: none`, so there is no hover to be pinned in
+    // and nothing for a second class to out-rank.
     car.classList.add('is-turning', dir > 0 ? 'is-turning-next' : 'is-turning-prev');
-    car.classList.add('is-open');
     setTimeout(() => {
       turning = false;
       carouselAt = from + dir;
       renderDetail();
-      // The rebuilt faces inherit the open state; without this the wheel
-      // vanished under a stationary cursor. They inherit it WITHOUT the waking
-      // animation, or every turn would end with the neighbours fading in all
-      // over again.
+      // THE FRESH CARDS MUST NOT ANIMATE INTO PLACE. The faces are rebuilt
+      // at their new resting positions, and without this they would
+      // transition there from wherever the browser considers their start —
+      // which plays the whole step a second time, backwards.
+      //
+      // What this replaces: the same `no-anim` trick applied to re-open a
+      // wheel that would otherwise vanish under a stationary cursor. The
+      // vanishing is gone with the hover state; the one-frame suppression is
+      // still needed, for the different reason above.
       const fresh = document.querySelector('[data-carousel]');
-      if (fresh && carouselOpen) {
-        fresh.classList.add('is-open', 'no-anim');
-        void fresh.offsetWidth; // settle the open state before animating again
+      if (fresh) {
+        fresh.classList.add('no-anim');
+        void fresh.offsetWidth; // settle the new positions before animating again
         requestAnimationFrame(() => fresh.classList.remove('no-anim'));
       }
     }, TURN_MS);
@@ -1037,44 +999,38 @@
   });
 
   document.addEventListener('click', (e) => {
-    // THE STEP BUTTONS, which exist only below the no-peek width — see
-    // index.html. They go through turnCarousel exactly as a peek click does,
-    // deliberately: the turn has a guard against re-entry, an open-state
-    // reapplication after the rebuild, and a no-anim window, and a second
-    // path into it would be a second place for all of that to be wrong.
+    // THE CHEVRONS ARE THE ONLY HIT TARGETS (18 Nov 2026). They used to
+    // exist only below the no-peek width, as a stand-in for peeks that were
+    // hidden there; with the depth stack there is nothing aimable on a card,
+    // so they are the control at every width.
     const step = e.target.closest('[data-car-step]');
     if (step && step.closest('[data-carousel]')) {
       turnCarousel(Number(step.dataset.carStep) > 0 ? 1 : -1);
       return;
     }
-    // The Select button under the wheel does what clicking the middle does.
+    // SELECT IS THE PICK, and now the only one. It appears under the stack
+    // only while the front card is something other than what the instrument
+    // holds — with nothing to install it would be a control that does
+    // nothing — and it does exactly what clicking the middle of the wheel
+    // did: chosenFromCarousel, which sends 0x46 and nothing else.
     const sel = e.target.closest('[data-car-select]');
     if (sel) {
-      const hero = document.querySelector('[data-carousel] .is-hero');
-      if (hero) chosenFromCarousel(hero.dataset.carName);
+      const front = document.querySelector('[data-carousel] .is-front');
+      if (front) chosenFromCarousel(front.dataset.carName);
       return;
     }
-    // Clicking a neighbour ADVANCES to it; only the one in the middle is a
-    // choice. Reaching past the centre to pick something would make the
-    // carousel a row of buttons rather than a wheel you turn.
-    const face = e.target.closest('[data-car-name]');
-    if (face && face.closest('[data-carousel]')) {
-      if (face.classList.contains('is-peek')) {
-        turnCarousel(face.classList.contains('is-next') ? 1 : -1);
-        return;
-      }
-      // The hero: this is the choice.
-      const carousel = face.closest('[data-carousel]');
-      const target = carousel.dataset;
-      const name = face.dataset.carName;
-      // What the instrument is actually holding — which after a selection is
-      // liveSound, not what the patch file still says.
-      const patch = currentPatch();
-      const loaded = (liveSound && liveSound.name) || (patch && patch.soundName);
-      if (name === loaded) return; // already playing this one
-      chosenFromCarousel(name);
-      return;
-    }
+    // THE FACE-CLICK BRANCH IS GONE, and it is gone because it became
+    // unreachable rather than because the behaviour was unwanted. It read:
+    // a click on a peek ADVANCED to it, a click on the hero CHOSE it. The
+    // cards carry `pointer-events: none` now — each is mostly covered by the
+    // one in front, so there is nothing reliable to aim at — so no click can
+    // land on one and the branch could only ever have been dead code that
+    // looked live. Both halves survive: advancing is the chevrons, choosing
+    // is Select.
+    //
+    // The "already playing this one" guard went with it and is not needed:
+    // Select is only rendered when the front card DIFFERS from what is
+    // loaded, which is the same condition stated one layer up.
 
     // Clicking away from the wheel puts it back where it was. Turning it is a
     // QUESTION — you spin two places to look at something, decide against it,
@@ -1087,10 +1043,15 @@
     // click on the empty space either side of the pictures targets the
     // carousel itself and is not "away" (Daniel, 2026-08-12).
     if (turning) return;
-    if (carouselAt === null && !carouselOpen) return;
+    // `carouselAt === null` IS THE WHOLE TEST NOW. It used to be
+    // `carouselAt === null && !carouselOpen` — with the wheel, a hovered
+    // carousel that had not been turned was still a state worth leaving,
+    // because the peeks were out. The stack has no open state: it looks the
+    // same whether or not a pointer is near it, so the only thing a click
+    // away can undo is a step that was actually taken.
+    if (carouselAt === null) return;
     if (e.target.closest('[data-carousel]')) return;
     carouselAt = null;
-    carouselOpen = false;
     renderDetail();
   });
 
@@ -1193,9 +1154,9 @@
     audition.beginLive({ soundName: name, params: { ...(chain || {}) } });
     renderDetail();
     // Land the choice on the freshly rendered face — the old one is gone.
-    const hero = document.querySelector('[data-carousel] .is-hero');
-    if (hero) {
-      startSampledArrival(hero, name);
+    const front = document.querySelector('[data-carousel] .is-front');
+    if (front) {
+      startSampledArrival(front, name);
     }
   }
 

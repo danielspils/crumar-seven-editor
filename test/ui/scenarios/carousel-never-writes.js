@@ -94,37 +94,41 @@
     if (!ui.check(!!car, `the carousel renders in ${tab} with no preset selected`)) {
       await ui.closeLibrary(); continue;
     }
-    const hero = ui.$('[data-carousel] .is-hero');
-    const box = hero && hero.getBoundingClientRect();
+    // THE DEPTH STACK, SINCE 18 Nov 2026. This drove the side-peek wheel:
+    // it dispatched a pointermove to OPEN the wheel, clicked a `.is-peek`
+    // face to turn it, then clicked `.is-hero` to choose. All three are gone
+    // — there is no open state, the cards take no pointer events, and the
+    // chevrons are the only hit targets — so the gesture is rewritten rather
+    // than the selectors renamed. What it asserts is unchanged: turning
+    // centres something different, choosing raises no refusal, and NOTHING
+    // IS WRITTEN TO DISK by either.
+    const front = ui.$('[data-carousel] .is-front');
+    const box = front && front.getBoundingClientRect();
     ui.check(!!box && box.width > 0 && box.height > 0,
-      `and its centre is clickable in ${tab} (${box ? Math.round(box.width) : 0}px)`);
+      `and the front card is drawn in ${tab} (${box ? Math.round(box.width) : 0}px)`);
 
     const file = (ui.$('[data-file]') && ui.$('[data-file]').dataset.file) || row.dataset.file;
     const before = await onDisk(file);
-    const wasCentred = hero.dataset.carName;
+    const wasCentred = front.dataset.carName;
 
-    // OPEN THE WHEEL FIRST. At rest it is one picture; the neighbours only
-    // come out from under the centre when the pointer is over it, so a click
-    // aimed at a peek face while it is closed lands on whatever is on top.
-    // This is the real gesture, not a shortcut around it.
-    const r = car.getBoundingClientRect();
-    document.dispatchEvent(new PointerEvent('pointermove', {
-      clientX: Math.round(r.left + r.width / 2),
-      clientY: Math.round(r.top + r.height / 2),
-      bubbles: true,
-    }));
-    await ui.sleep(600);
-    ui.check(car.classList.contains('is-open'), `the wheel opens on hover in ${tab}`);
-
-    // TURN IT, then CHOOSE the centre.
-    const peek = ui.$('[data-carousel] .is-peek');
-    if (!ui.check(!!peek, `the wheel turns in ${tab}`)) { await ui.closeLibrary(); continue; }
-    peek.click();   // .click() not ui.click(): the faces overlap by design
+    // TURN IT with the chevron, which is the whole control now.
+    const step = ui.$('[data-carousel] [data-car-step="1"]');
+    if (!ui.check(!!step, `the stack has a next chevron in ${tab}`)) {
+      await ui.closeLibrary(); continue;
+    }
+    ui.click(step, 'the next chevron');
     await ui.sleep(1300);
-    const nowCentred = ui.$('[data-carousel] .is-hero').dataset.carName;
-    ui.check(nowCentred !== wasCentred, `turning centres a different instrument in ${tab}`);
+    const nowCentred = ui.$('[data-carousel] .is-front').dataset.carName;
+    ui.check(nowCentred !== wasCentred, `stepping centres a different instrument in ${tab}`);
 
-    ui.$('[data-carousel] .is-hero').click();   // the choice
+    // CHOOSE IT with Select, which appears only once the front card differs
+    // from what the instrument holds — which is exactly the state the step
+    // above just produced.
+    const sel = ui.$('[data-carousel] [data-car-select]');
+    if (!ui.check(!!sel, `Select appears once the stack has moved in ${tab}`)) {
+      await ui.closeLibrary(); continue;
+    }
+    ui.click(sel, 'Select');
     await ui.sleep(2800);
     // SAY WHAT WAS RAISED. "choosing raised no refusal in backups" named the
     // expectation and not the thing on screen, so a real failure here arrived

@@ -169,24 +169,30 @@
   const before = await compare('BEFORE: the chain the instrument is running');
 
   // ---- 2. PICK A MODEL FROM THE CAROUSEL --------------------------------
+  // THE DEPTH STACK, SINCE 18 Nov 2026. This forced `is-open` on the wheel
+  // and clicked a `.is-peek` face to turn it, then the `.is-hero` face to
+  // choose. There is no open state now, the cards take no pointer events,
+  // and the chevrons are the only hit targets — so the gesture is rewritten.
+  // What it reproduces is unchanged: turn, then choose, then compare the
+  // chain the instrument is running.
   const car = ui.$('#detail .engine-carousel');
   if (!car) { ui.note('no carousel on screen — cannot reproduce'); return; }
-  car.classList.add('is-open');
-  await ui.sleep(300);
-  const peek = ui.$('#detail .car-face.is-peek.is-prev')
-    || ui.$('#detail .engine-carousel [data-car-step="-1"]');
-  if (!peek) { ui.note('no way to turn the wheel at this width'); return; }
-  const wasHero = ui.$('#detail .car-face.is-hero');
-  const wasName = wasHero && wasHero.dataset.carName;
-  peek.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const step = ui.$('#detail .engine-carousel [data-car-step="-1"]');
+  if (!step) { ui.note('no chevron to step the stack with'); return; }
+  const wasFront = ui.$('#detail .car-face.is-front');
+  const wasName = wasFront && wasFront.dataset.carName;
+  step.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await ui.sleep(1200);
-  const nowHero = ui.$('#detail .car-face.is-hero');
-  const nowName = nowHero && nowHero.dataset.carName;
-  ui.note(`the wheel turned: "${wasName}" -> "${nowName}"`);
-  // CHOOSING is the hero click — turning alone sends nothing.
-  if (nowHero) {
-    nowHero.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const nowFront = ui.$('#detail .car-face.is-front');
+  const nowName = nowFront && nowFront.dataset.carName;
+  ui.note(`the stack stepped: "${wasName}" -> "${nowName}"`);
+  // CHOOSING is Select — stepping alone sends nothing.
+  const sel = ui.$('#detail .engine-carousel [data-car-select]');
+  if (sel) {
+    sel.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await ui.sleep(2600);
+  } else {
+    ui.note('no Select button — the stack did not move, so nothing was chosen');
   }
 
   const after = await compare('AFTER: a model was chosen from the carousel');

@@ -617,6 +617,20 @@
       background: none; border: 1px solid #8f2420; border-radius: 4px;
       color: #8f2420; font: inherit; font-size: 12px; font-weight: 600;
       padding: 2px 10px; cursor: pointer;
+      /* IT DOES NOT WRAP AND IT DOES NOT SHRINK (Daniel, 18 Nov 2026, with a
+         screenshot of "Back up / instrument" on two lines).
+         THE CAUSE IS NOT THE LABEL'S LENGTH. #fresh-line is a flex row and
+         this is a flex item, so it is shrinkable by default — and on Bank 1
+         the line also carries "BANK 1 IS RESERVED FOR CRUMAR MODELS", which
+         is long enough to squeeze the button below its own text width. Any
+         label wraps once whatever sits beside it grows, so a shorter one
+         would move the threshold rather than remove it.
+         flex: none IS THE FIX, nowrap is the belt: the first stops the
+         button being compressed, the second guarantees one line even if some
+         later rule makes it shrinkable again. The note beside it is the
+         thing that should give way — it already truncates nowhere and is the
+         less important of the two. */
+      flex: none; white-space: nowrap;
     }
     /* :not(:disabled), or the hover still lights a button that cannot be
        pressed — which is exactly the "looks enabled, does nothing" state a
@@ -3792,9 +3806,13 @@
       position: relative; overflow: visible; isolation: isolate;
       height: 128px;
     }
-    .engine-carousel .car-face {
-      position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
-    }
+    /* THE SIZE ONLY. Where a card SITS is the stack's business and is set in
+       one place further down (left/top 50% with a centring translate); this
+       used to also say `bottom: 0; left: 0`, which the stack's rule then
+       overrode by source order — two rules positioning the same element,
+       with the earlier one silently dead. Removed rather than left to be
+       read as live. */
+    .engine-carousel .car-face { width: 100%; height: 100%; }
     .engine-carousel .car-face .sound-art.is-drawing { height: 100%; }
     /* Specific enough to beat `.engine-art .sound-art.is-drawing img`, which
        sets height:auto — without that the tall instruments (the Venice grand)
@@ -3877,264 +3895,215 @@
         animation: car-afterglow-dark 900ms ease-out both;
       }
     }
-    .engine-carousel .is-hero { position: relative; z-index: 3; }
-    /* Waking up: the centre grows a little and the neighbours fade in, rather
-       than appearing all at once. Turning gets its own, longer curve below.
-       And after a turn the faces are REBUILT — so the waking animation would
-       replay every time the wheel moved, which is what .no-anim suppresses
-       (Daniel, 2026-08-12). */
+    /* ====================================================================
+       THE DEPTH STACK (Daniel, 18 Nov 2026 — prototype measured and
+       approved). It replaces the side-peek wheel.
+
+       THE NUMBERS ARE HIS, not derived here. Four positions and a transition:
+
+         front    translate(-50%, -50%) scale(1)    opacity 1
+         next     translate(-36%, -53%) scale(.86)  opacity .30
+         after    translate(-26%, -56%) scale(.75)  opacity .14
+         leaving  translate( 40%, -50%) scale(.9)   opacity 0   (right)
+                  translate(-140%,-50%) scale(.9)   opacity 0   (left)
+
+       EVERY CARD IS PLACED FROM THE SAME ORIGIN — left/top 50% with a
+       -50%,-50% translate as its resting position — so the offsets above are
+       all relative to one centre and read as depth. That is why `front` has
+       a translate at all: it is not an offset, it is the centring.
+
+       TRANSFORM, NOT translate:/scale:. The opposite of the modal's rule,
+       and deliberately: these values were approved as composed transforms in
+       a prototype, the order of composition is what produces the offset-plus
+       -shrink look, and no card here carries a transform of its own that
+       separate properties would need to preserve. Splitting them would be a
+       change to geometry Daniel has already looked at.
+
+       transform-origin IS THE BOX CENTRE, not `bottom center` as the wheel
+       used. The wheel stood its instruments on a shared floor line because
+       they sat side by side and a flat one looked sunk; a stack is read as
+       depth and the cards must shrink towards the same point they are
+       offset from, or the scale drags them off the diagonal. */
     .engine-carousel .car-face {
       display: block;
-      transition: transform .26s cubic-bezier(.3, 1, .5, 1), opacity .26s ease;
+      position: absolute; left: 50%; top: 50%; bottom: auto;
+      transform-origin: center center;
+      /* THE CARDS ARE NOT TARGETS. On the wheel a click landed on a peek;
+         here each card is mostly covered by the one in front of it, so the
+         chevrons are the only hit targets and nothing on a card can take a
+         press meant for one. */
+      pointer-events: none;
+      transition: transform .3s cubic-bezier(.22, .68, .24, 1), opacity .3s ease;
     }
-    .engine-carousel.is-turning .car-face {
-      transition: transform .42s cubic-bezier(.22, .9, .3, 1), opacity .38s ease;
-    }
+    /* A turn and a rest share one curve now. The wheel had a second, longer
+       one for turning because a peek had much further to travel; a stack's
+       cards move within the cell and .3s carries all of it. */
     .engine-carousel.no-anim .car-face { transition: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .engine-carousel .car-face { transition: none; }
+    }
     .engine-carousel .car-face .sound-art.is-drawing { display: block; width: 100%; }
     .engine-carousel .car-face img, .engine-carousel .car-face svg {
       display: block; width: 100%; height: auto;
     }
-    /* The two neighbours sit exactly on the hero until the pointer arrives,
-       then move out and dim. Pointer-events off until then, or an invisible
-       peek would eat the hero's clicks. */
-    .engine-carousel .is-peek, .engine-carousel .is-far {
-      /* Bottom-aligned, not top: the instruments are different shapes, and a
-         wide flat one (the stacked synths) rendered at the same WIDTH is much
-         shorter — hung from the top it floated above the others. Sharing a
-         floor line is what makes a row of instruments look like a row of
-         instruments. */
-      transform-origin: bottom center;
-      opacity: 0; pointer-events: none; cursor: pointer; z-index: 1;
-    }
-    .engine-carousel .is-hero { transform-origin: bottom center; }
-    .engine-carousel .is-far { z-index: 0; }
-    /* Parked out of sight either side. Never visible at rest — their whole job
-       is to arrive during a turn. */
-    .engine-carousel .is-far-prev { transform: translateX(-140%) scale(.6); }
-    .engine-carousel .is-far-next { transform: translateX(140%) scale(.6); }
 
-    /* A NARROW WINDOW TUCKS THE PEEKS IN, because below a certain width the
-       LEFT one lands on the Save patch button — a picture taking a press meant
-       for a control.
-       DANIEL CANNOT SEE THIS. main.js sets minWidth: Math.min(1280,
-       work.width) and his work area is 1147, so his default IS his floor and
-       the window never gets narrow enough. Anyone on a smaller display meets
-       it immediately, which is why it is fixed rather than watched.
-       THE CEILING IS MEASURED AND LINEAR. Swept with the Seven attached, the
-       largest spread that still clears the button falls with the width at half
-       a percentage point per pixel — 68.4% at 1060, 58.4% at 1040, 48.4% at
-       1020, 38.4% at 1000, 28.4% at 980 — so
+    .engine-carousel .is-front {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    .engine-carousel .is-next {
+      transform: translate(-36%, -53%) scale(.86);
+      opacity: .30;
+    }
+    .engine-carousel .is-after {
+      transform: translate(-26%, -56%) scale(.75);
+      opacity: .14;
+    }
+    /* PARKED OFF TO THE LEFT AND INVISIBLE. Its whole job is to have
+       somewhere to come FROM when the stack is stepped backwards, which is
+       the same reason the wheel carried faces beyond its own edges. */
+    .engine-carousel .is-waiting {
+      transform: translate(-140%, -50%) scale(.9);
+      opacity: 0;
+    }
+
+    /* ---- A STEP, EITHER WAY ------------------------------------------
+       The classes on each card describe where it is NOW; these say where it
+       goes during the turn, and the re-render at the end puts the new set in
+       their resting places. TURN_MS in app.js matches the .3s above.
+
+       FORWARD: the front card leaves to the right and the two behind it come
+       up one place. The card that was `after` has nothing behind it to be
+       replaced by, which is correct — at rest there are only ever three
+       visible and the fourth arrives with the next render. */
+    .engine-carousel.is-turning-next .is-front {
+      transform: translate(40%, -50%) scale(.9);
+      opacity: 0;
+    }
+    .engine-carousel.is-turning-next .is-next {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    .engine-carousel.is-turning-next .is-after {
+      transform: translate(-36%, -53%) scale(.86);
+      opacity: .30;
+    }
+    /* BACKWARD: the parked card arrives from the left and takes the front,
+       and everything else falls back one place. */
+    .engine-carousel.is-turning-prev .is-waiting {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    .engine-carousel.is-turning-prev .is-front {
+      transform: translate(-36%, -53%) scale(.86);
+      opacity: .30;
+    }
+    .engine-carousel.is-turning-prev .is-next {
+      transform: translate(-26%, -56%) scale(.75);
+      opacity: .14;
+    }
+    .engine-carousel.is-turning-prev .is-after { opacity: 0; }
+
+    /* ====================================================================
+       WHAT THE STACK DELETED, AND WHY THE RECORD IS KEPT (18 Nov 2026).
+
+       Removed here: ~220 lines that existed solely because the wheel drew
+       its neighbours OUTSIDE .engine-stage.
+
+         --peek                 the spread, 72% with a 44% override
+         @media (max-width: 1087px)   the clearance band
+         @media (max-width: 1031px)   hid every non-hero face
+         .is-open / :focus-within     the spread's two triggers
+         .is-peek:hover               two hover sizes, .72 and .82
+         .is-turning-* .is-far-*      where the incoming faces came from
+
+       THE MEASUREMENTS ARE WORTH KEEPING EVEN THOUGH THE CODE IS NOT, and
+       this is the whole reason this comment exists rather than a clean
+       deletion. The clearance ceiling was swept on hardware, not modelled:
 
            ceiling%(w)       = 48.4 + 0.5 x (w - 1020)
            margin(spread, w) = (ceiling%(w) - spread) x 1.28px
+           hover margin      = rest margin - 5.12px   (scale .74 -> .82)
 
-       since the faces are 128px and one per cent of that is 1.28px. Checked
-       against a real forced-width window rather than trusted: predicted 5.63px
-       at 1020 and 44%, measured 5.7px.
-       BOTH THRESHOLDS ARE THE 8px BAR, NOT THE CROSSING POINT. A spread keeps
-       clearing by SOMETHING for a while after the margin stops being real, but
-       a bound met by a hair is not met, and two or three pixels is a guarantee
-       a longer button label or a different font would quietly cancel (Daniel,
-       2026-11-15).
+       which put the two thresholds at 1088 and 1032. They are gone because
+       the thing they bounded is gone, not because they were wrong.
 
-       AND THE BAR IS MEASURED ON THE HOVERED PEEK, RE-DERIVED 2026-11-16.
-       The note above this one already said the bound belongs to the hover
-       size — "anything wider escapes on hover before it escapes at rest" —
-       and both thresholds were nevertheless derived from the RESTING peek.
-       Hovering takes the face from scale .74 to .82, so it grows
-       128 x 0.08 = 10.24px and its left edge moves 5.12px further LEFT:
+       THE 1031 BREAKPOINT NO LONGER MEANS ANYTHING, asked and answered as
+       Daniel's brief required. It existed for one reason: below that width
+       the LEFT peek landed on the Save patch button. A stack has no left
+       peek — every card is drawn inside the cell, offset up and to the RIGHT
+       — so there is nothing to collide and no width at which to hide
+       anything. The chevrons it used to reveal in that band are now the
+       control at every width, which is the other half of the same answer.
 
-           hover margin(spread, w) = rest margin(spread, w) - 5.12px
+       A REAL FAULT IT ONCE FOUND, kept because it is a lesson about testing
+       rather than about peeks: at 1024..1031 the RESTING picture cleared the
+       button and the HOVERED one did not, and that was found by a stray
+       mouse parked on a peek during a full-suite run. A geometry test that
+       measures only the resting state measures the easier half.
 
-       which is 8px of window width at the measured 0.64px per px. So each
-       threshold moved up by exactly 8:
+       AND THE DOCUMENT-LEVEL pointermove TEST WENT WITH THEM (src/app.js).
+       It decided whether the wheel was open by comparing clientX/clientY
+       against a rect, which is a test that believes it is the frontmost
+       thing on screen — and that is exactly where the modal click-through
+       came from (Daniel, 2026-11-14). It is removed rather than left inert,
+       because a dead hazard gets re-found and re-fixed later. */
 
-           72% needs w >= 1088  (measured 8.28px; 7.65px at 1087)
-           44% needs w >= 1032  (measured 8.29px; 7.65px at 1031)
-
-       SWEPT, NOT MODELLED (test/ui/scenarios/carousel-ceiling.js, a probe
-       that applies the hover transform inline and reads the real boxes at
-       every whole per cent). At 1024 the hovered 44% peek clears by 3.17px,
-       which is the number a full-suite run of 16 Nov produced by accident —
-       the pointer happened to be parked on that peek, and carousel-narrow.js
-       measured 3.2px and went red. The same scenario passes standalone at
-       8.29px, because nothing was hovering it. A REAL FAULT FOUND BY A STRAY
-       MOUSE: at any width in 1024..1031 the resting picture clears the button
-       and the hovered one does not.
-
-       THE FIRST NUMBER HAD ALREADY MOVED ONCE FOR THE BAR. It was 1068 —
-       where the 72% overlap actually begins — then 1080 for the 8px bar, and
-       1088 once the bar was put on the hovered size. It costs nothing Daniel
-       can see: his default is 1147.
-       BELOW 1032 NO SPREAD WORKS, so nothing is tried. Clearing the control
-       needs a spread under 35.2% by 1002px; showing 30% of the peek needs one
-       over it. The two requirements cross, so the window has to give up one of
-       them, and Daniel's call is to give up the peeks: a missing invitation
-       beats a picture sitting on a button. Note that below 1032 a value would
-       still technically clear for a while — it is the 8px bar, on the hovered
-       peek, that puts that slice in the no-peek band rather than an
-       impossibility.
-       WHAT THAT COSTS, because it is more than an invitation: clicking a peek
-       is the ONLY thing that turns the wheel (src/app.js, the single caller of
-       turnCarousel). The Select button under it confirms the middle; it does
-       not move. So below 1032 the hero is visible and selectable and the
-       sound cannot be CHANGED from this view at all. Flagged to Daniel
-       2026-11-15 with the one-sided alternative — the collision is with Save
-       patch on the LEFT, and the right-hand peek lands on no interactive
-       element — so keeping only .is-next would preserve turning, forwards
-       only. His call, not this file's. */
-
-    .engine-carousel.is-open .is-peek, .engine-carousel:focus-within .is-peek {
-      opacity: .38; pointer-events: auto;
-      /* ABOVE the hero while open, so the whole neighbour is a target. The
-         hero's box is a full-width square scaled to 1.12, and it was covering
-         most of each peek — how much depended on the instrument's proportions,
-         so a wide one like the Clavi or the DX7 left almost nothing to aim at
-         (Daniel, 2026-08-13). The hero keeps the middle, which is where you
-         click to choose it. */
-      z-index: 4;
+    /* ---- THE CHEVRONS, NOW THE ONLY HIT TARGETS ----------------------
+       These were `display: none` outside @media (max-width: 1031px) — they
+       existed only in the band where the peeks were hidden, as a
+       replacement for the control the peeks had been. With the stack there
+       is nothing to aim at on a card (each is mostly covered by the one in
+       front) so they are the control at every width, and the media query
+       that revealed them is gone with the one that hid the peeks.
+       EVERYTHING ELSE ABOUT THEM IS UNCHANGED, which is what Daniel's brief
+       asked: same size, same ground, same rotation reasoning, same focus
+       ring. Only the `display: none` and the query around it went. */
+    .car-step {
+      position: absolute; top: 50%; z-index: 4;
+      display: flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; padding: 0;
+      border-radius: 50%;
+      /* Its own ground, because it sits on a photograph. Palette variables
+         in both themes — nothing here invents a colour (DESIGN.md, "Both
+         palettes, always"). */
+      background: var(--bg-raised); border: 1px solid var(--line);
+      color: var(--text); cursor: pointer;
+      opacity: .85;
     }
-    /* THE SPREAD, AS ONE NUMBER. 72% put the right-hand neighbour off the end
-       of the column — see the centring note on .engine-carousel above for the
-       measurements. 56% is what fits with the wheel centred: at the measured
-       187px face, the hero's own half-width at scale 1.12 is 104.7px, so a
-       peek centred at ±104.7 shows 69px of itself beyond the hero's edge on
-       each side, and its hover state at scale .82 still lands 6px inside the
-       column. Anything wider escapes on hover before it escapes at rest,
-       which is why the bound was taken from the HOVER size, not this one. */
-    /* THE SPREAD, AS ONE VALUE, so a narrow window can change it in one place.
-       72% is Daniel's approved geometry and is what every width at or above
-       1088px gets — unchanged. The overrides below are for widths he cannot
-       reach on his own display. */
-    .engine-carousel { --peek: 72%; }
-    /* AFTER the declaration it overrides, not before. Same selector, same
-       specificity, so source order decides — and written above it the media
-       query lost silently: the window really was 1020px and --peek still
-       computed 72%. css-hazards.test.js caught it by itself, which is the
-       whole reason that test exists. */
-    @media (max-width: 1087px) {
-      .engine-carousel { --peek: 44%; }
-    }
-    /* ONE RULE, AND IT TAKES OUT EVERY NON-HERO FACE — peeks, far faces,
-       their hover positions and their turning positions. Scoping it to
-       .is-peek would leave the far faces to fly across Save patch during a
-       turn, which is the same bug arriving 400ms later. `display: none` is
-       deliberate over `visibility` or `opacity`: it takes the box with it, so
-       nothing can be measured, hovered, pressed or focused there, and a test
-       asking "is a peek rendered" gets an unambiguous answer.
-       SAFE AGAINST THE TURN LOGIC, checked rather than assumed: turnCarousel
-       advances on a fixed setTimeout(TURN_MS) and never waits for a
-       transitionend, so faces that cannot animate do not wedge it. */
-    @media (max-width: 1031px) {
-      .engine-carousel .car-face:not(.is-hero) { display: none; }
-    }
-    /* AND THE WHEEL STILL TURNS THERE. Hiding the peeks took the function with
-       the hint: clicking a peek is the only caller of turnCarousel, so without
-       them the sound could not be changed from this view at all. These two
-       replace it, and ONLY in that band — above it the peeks are the control
-       Daniel approved, and an arrow next to a picture you can click yourself
-       is the thing renderer.js's own comment refuses.
-       FLANKING THE HERO, NOT ON IT — where a peek would be, which is the
-       whole point: the control that replaces the peeks should sit where the
-       peeks sat, because that is what says which way the wheel goes. The
-       first version put them at left: 0 / right: 0, INSIDE the 128px box, and
-       they ate the hero's edges while giving no sense of direction (Daniel's
-       screenshot, 2026-11-15).
-       Negative offsets rather than a flex row, because the carousel is a
-       fixed 128px with asymmetric margins (14px left, 20px right) and the
-       hero must stay exactly where it is — it is the picture, and moving it
-       to make room for a button would be the tail wagging the dog.
-       THE LEFT ONE IS THE TIGHT SIDE, always: Save patch is the control it
-       has to clear, and the gap between them is what the measured 8px bar is
-       spent on. carousel-no-peek.js asserts it. */
-    .car-step { display: none; }
-    @media (max-width: 1031px) {
-      .car-step {
-        position: absolute; top: 50%; z-index: 4;
-        display: flex; align-items: center; justify-content: center;
-        width: 20px; height: 20px; padding: 0;
-        border-radius: 50%;
-        /* Its own ground, because it sits on a photograph. Palette variables
-           in both themes — nothing here invents a colour (DESIGN.md, "Both
-           palettes, always"). */
-        background: var(--bg-raised); border: 1px solid var(--line);
-        color: var(--text); cursor: pointer;
-        opacity: .85;
-      }
-      .car-step:hover { opacity: 1; border-color: var(--text-dim); }
-      .car-step:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
-      .car-step svg { display: block; }
-      /* DIRECTION, WHICH IS THE PART THAT WAS WRONG ON SCREEN. The shared
-         path is a V with its apex at the BOTTOM, so a quarter turn clockwise
-         swings the apex to the left and reads "‹", and a quarter the other
-         way reads "›". A downward chevron means "expand" everywhere else in
-         this app — the fx sections and the picker — so leaving it unrotated
-         both pointed the wrong way and spent a treatment that already has a
-         meaning.
-         translateY(-50%) centres on the box and the rotation is composed with
-         it: written as two declarations, the second would replace the first
-         and the buttons would sit low. */
-      .car-step.is-step-prev { left: -22px; transform: translateY(-50%) rotate(90deg); }
-      .car-step.is-step-next { right: -22px; transform: translateY(-50%) rotate(-90deg); }
-    }
-    .engine-carousel.is-open .is-prev, .engine-carousel:focus-within .is-prev {
-      transform: translateX(calc(-1 * var(--peek))) scale(.74);
-    }
-    .engine-carousel.is-open .is-next, .engine-carousel:focus-within .is-next {
-      transform: translateX(var(--peek)) scale(.74);
-    }
-    .engine-carousel .is-peek:hover { opacity: .72; }
-    .engine-carousel .is-hero { cursor: pointer; }
-    /* THE OPEN HERO NO LONGER GROWS (Daniel, 2026-11-15): it was scale(1.12)
-       and he reported it overlapping the Sample badge and the tail of the
-       sound name above it.
-       IT IS NOT A TUNING PROBLEM. The resting hero has ZERO headroom — its top
-       sits exactly on y240, which is where the name row ends — so every scale
-       above 1 goes into the header, measured: 1.12 overlaps by 15.4px, 1.08 by
-       10.2, 1.04 by 5.1. 1.00 is the only one that clears, and it clears by
-       exactly 0. Growing it at all would need headroom the layout does not
-       have, which is a layout change and not this one.
-       THE HIERARCHY SURVIVES WITHOUT THE GROWTH: the peeks are scale(.74), so
-       the hero still reads 1.35x its neighbours, and the open state is now
-       signalled by the peeks arriving and SELECT appearing rather than by the
-       middle swelling into the title.
-       WHAT THIS DOES NOT FIX, and must not be credited with: the right-hand
-       peek still runs 55.5px past the column. Its transform is
-       translateX(±92.16px), computed from the FACE width — it does not depend
-       on the hero's scale at all, so no change here could move it. */
-    .engine-carousel.is-open .is-hero, .engine-carousel:focus-within .is-hero {
-      transform: scale(1);
-    }
-    /* Turning the wheel: every face moves one position along, so the picture
-       you clicked travels INTO the middle and the middle one travels out.
-       Re-rendering without this made the images change in place — a jump cut,
-       not a rotation. */
+    .car-step:hover { opacity: 1; border-color: var(--text-dim); }
+    .car-step:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+    .car-step svg { display: block; }
+    /* DIRECTION, WHICH IS THE PART THAT WAS WRONG ON SCREEN. The shared
+       path is a V with its apex at the BOTTOM, so a quarter turn clockwise
+       swings the apex to the left and reads "‹", and a quarter the other
+       way reads "›". A downward chevron means "expand" everywhere else in
+       this app — the fx sections and the picker — so leaving it unrotated
+       both pointed the wrong way and spent a treatment that already has a
+       meaning.
+       translateY(-50%) centres on the box and the rotation is composed with
+       it: written as two declarations, the second would replace the first
+       and the buttons would sit low.
+       INSIDE THE CELL NOW, not -22px outside it. The stack's whole claim is
+       that it draws within .engine-stage, and a control hanging 22px past
+       the edge would break that for the sake of the thing the stack
+       replaced. 2px in, on the ground the button brings with it. */
+    .car-step.is-step-prev { left: 2px; transform: translateY(-50%) rotate(90deg); }
+    .car-step.is-step-next { right: 2px; transform: translateY(-50%) rotate(-90deg); }
 
-    /* No arrows. Clicking a neighbour brings it to the middle, so the picture
-       you want IS the button — one target instead of a control pointing at a
-       control. It lifts on hover to say it can be reached. */
-    .engine-carousel .is-peek:hover { opacity: .82; }
-    .engine-carousel.is-open .is-prev:hover { transform: translateX(calc(-1 * var(--peek))) scale(.82); }
-    .engine-carousel.is-open .is-next:hover { transform: translateX(var(--peek)) scale(.82); }
-    /* THE LANDING FACE MATCHES. These two are a separate literal from the rule
-       above, not a shared variable — but they have to agree, or the incoming
-       instrument arrives at 1.12 and then shrinks to 1 once the turn settles,
-       which is the double movement Daniel caught earlier in the day. */
-    .engine-carousel.is-turning.is-turning-next .is-next,
-    .engine-carousel.is-turning.is-turning-prev .is-prev { transform: translateX(0) scale(1); opacity: 1; }
-    .engine-carousel.is-turning.is-turning-next .is-hero { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-hero { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-next .is-prev { transform: translateX(-140%) scale(.6); opacity: 0; }
-    .engine-carousel.is-turning.is-turning-prev .is-next { transform: translateX(140%) scale(.6); opacity: 0; }
-    /* The one rolling in from beyond, taking the vacated side. */
-    /* The far faces land in the peek positions as a turn completes, so they
-       answer to the same value — otherwise a narrow window would pull the
-       peeks in and then throw the incoming one back out to 72%. */
-    .engine-carousel.is-turning.is-turning-next .is-far-next { transform: translateX(var(--peek)) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-prev .is-far-prev { transform: translateX(calc(-1 * var(--peek))) scale(.74); opacity: .38; }
-    .engine-carousel.is-turning.is-turning-next .is-far-prev { transform: translateX(-210%) scale(.5); opacity: 0; }
-    .engine-carousel.is-turning.is-turning-prev .is-far-next { transform: translateX(210%) scale(.5); opacity: 0; }
+    /* ---- WHERE YOU ARE IN THE LIST ------------------------------------
+       "7 of 24", under the stack. The wheel gave no sense of place and the
+       stack gives no more; this is what replaces it.
+       THE FRESHNESS LINE'S OWN TYPE, as Daniel asked — .fresh is 10px/700,
+       .07em, uppercase, --text-dim. Not reached for by copying those values:
+       the class is applied in renderer.js so one rule serves both, the same
+       way the Bank 1 note wears it. The only thing set here is where it
+       sits. */
+    .car-count {
+      position: absolute; left: 0; right: 0; bottom: -2px;
+      text-align: center; pointer-events: none;
+    }
+
 
     /* No labels on the faces: the SOUND ENGINE heading names the centre
        instead, so nothing is drawn over the instruments. */
