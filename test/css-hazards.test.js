@@ -254,10 +254,21 @@ test('elements with a display rule also have a [hidden] rule', () => {
 // .engine-stage at two pane widths — Daniel's brief calls that the point of
 // the change, and this is the half that runs automatically.
 test('the depth stack carries the approved geometry, and nothing of the wheel', () => {
+  // EVERY RULE THAT ADDRESSES THE CLASS, joined — not the first one found.
+  // Since 18 Nov the stack is BARE AT REST and opens on hover, so `.is-next`
+  // and `.is-after` carry their resting state (at the front's position,
+  // opacity 0) in one rule and the APPROVED OFFSETS in the hover rule. A
+  // `find` on the plain selector returned the resting one and reported the
+  // offsets missing from a stylesheet that has them.
+  //
+  // THE OFFSETS ARE STILL THE THING BEING PINNED, whichever state they live
+  // in: they are Daniel's measured prototype, and this test exists so a
+  // drift from them is a drift from something he looked at.
   const face = (cls) => {
-    const r = rules.find((x) => x.selector === `.engine-carousel .${cls}` && !x.media);
-    assert.ok(r, `.${cls} has a rule of its own`);
-    return r.body;
+    const rs = rules.filter((x) => new RegExp(`\\.${cls}\\b`).test(x.selector)
+      && /\.engine-carousel/.test(x.selector) && !x.media);
+    assert.ok(rs.length, `.${cls} has at least one rule`);
+    return rs.map((r) => r.body).join('\n');
   };
   // DANIEL'S PROTOTYPE, VALUE FOR VALUE. These were measured and approved
   // before any of this was written, so a drift here is a drift from
@@ -330,7 +341,14 @@ test('the depth stack carries the approved geometry, and nothing of the wheel', 
   const stepRules = rules.filter((r) => /^\.car-step$/.test(r.selector));
   assert.ok(stepRules.length, '.car-step has a rule');
   for (const r of stepRules) {
-    assert.ok(!r.media, `.car-step must not be media-gated (found "${r.media}")`);
+    // A WIDTH GATE IS THE HAZARD, not any media query at all. The original
+    // read "must not be media-gated", which was right while the only media
+    // query in sight was the @media (max-width: 1031px) that used to reveal
+    // these buttons — and wrong the moment they gained a
+    // prefers-reduced-motion rule for their fade. A motion preference does
+    // not take the control away; a width does.
+    assert.ok(!/width/.test(r.media || ''),
+      `.car-step must not be gated on a width (found "${r.media}")`);
     assert.ok(!/display\s*:\s*none/.test(r.body), '.car-step is not hidden');
   }
 });

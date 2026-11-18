@@ -3933,18 +3933,14 @@
       aspect-ratio: 363 / 512;
       display: flex; align-items: center; justify-content: center;
     }
-    /* Under the wheel, appearing only when the middle is a candidate. */
-    .car-select {
-      /* Tucked against the foot of the instrument, not floating below the box:
-         at -30px it landed on the first parameter row. */
-      position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
-      z-index: 4; font: inherit; font-size: 11px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
-      padding: 4px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap;
-      color: var(--action-ink); background: var(--action); border: 1px solid var(--action);
-    }
-    .car-select:hover { filter: brightness(1.08); }
-    .car-select:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+    /* .car-select IS GONE (18 Nov 2026) — the Select button that sat under
+       the stack and appeared when the front card differed, which meant the
+       block below it moved the moment you turned. The chip on the card does
+       the same job and takes no layout: see .car-load above.
+       ITS ONE MEASUREMENT IS WORTH KEEPING: it was `bottom: 2px`, tucked
+       against the foot of the instrument, because at -30px it landed on the
+       first parameter row. Anything else that reaches below this box has
+       the same distance to respect. */
     /* A name the instrument is not playing yet. */
     .engine-sound.is-candidate { color: var(--text-muted); }
     /* The picture as a carousel. At rest it is one instrument: the sound this
@@ -4123,14 +4119,39 @@
       transform: translate(-50%, -50%) scale(1);
       opacity: 1;
     }
-    .engine-carousel .is-next {
+    /* ---- BARE AT REST, A STACK ON HOVER (Daniel, 18 Nov 2026) ---------
+       At rest the panel is a PICTURE OF THE SOUND YOU ARE ON, not a
+       control: no cards behind the front one and the chevrons at 22%. The
+       two behind fade and slide into their offsets when the pointer
+       arrives.
+       THEY REST AT THE FRONT'S OWN POSITION, not at their offsets with
+       opacity 0. That is what makes it a slide rather than a fade-in-place
+       — the transform has somewhere to travel from — and it costs nothing,
+       since an element at opacity 0 is not drawn wherever it sits.
+       HOVER ON THE CAROUSEL, not on each card. The cards take no pointer
+       events except the front one, so a per-card hover would never fire on
+       the two behind; and the whole stack opening together is the point. */
+    .engine-carousel .is-next,
+    .engine-carousel .is-after {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0;
+    }
+    .engine-carousel:hover .is-next,
+    .engine-carousel:focus-within .is-next {
       transform: translate(-36%, -53%) scale(.86);
       opacity: .30;
     }
-    .engine-carousel .is-after {
+    .engine-carousel:hover .is-after,
+    .engine-carousel:focus-within .is-after {
       transform: translate(-26%, -56%) scale(.75);
       opacity: .14;
     }
+    /* A TURN OPENS THE STACK TOO, whatever the pointer is doing. The turn
+       rules below move the cards between the three positions, and they are
+       meaningless if the two behind are still at opacity 0 — a step taken
+       from the keyboard would animate nothing. */
+    .engine-carousel.is-turning .is-next { opacity: .30; }
+    .engine-carousel.is-turning .is-after { opacity: .14; }
     /* PARKED OFF TO THE LEFT AND INVISIBLE. Its whole job is to have
        somewhere to come FROM when the stack is stepped backwards, which is
        the same reason the wheel carried faces beyond its own edges. */
@@ -4243,8 +4264,65 @@
       color: var(--text); cursor: pointer;
       opacity: .85;
     }
+    /* 22% AT REST, FULL ON HOVER (Daniel, 18 Nov 2026). They were .85 at
+       all times, which made the panel look like a control sitting there
+       waiting — the resting state is a picture of the sound you are on.
+       They stay in the DOM and keep their size at 22%, so nothing moves
+       when they come up and the keyboard can still reach them. */
+    .engine-carousel .car-step { opacity: .22; }
+    .engine-carousel:hover .car-step,
+    .engine-carousel:focus-within .car-step { opacity: .85; }
     .car-step:hover { opacity: 1; border-color: var(--text-dim); }
+    .car-step { transition: opacity .3s ease, border-color .12s ease; }
+    @media (prefers-reduced-motion: reduce) { .car-step { transition: none; } }
     .car-step:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+
+    /* ---- THE CARD IS THE CONTROL -------------------------------------
+       Clicking the front card loads it. The chip is the affordance, and it
+       sits ON the card so nothing below it moves when it appears — which
+       is what the Select button under the stack could not do.
+       THE AFFORDANCE ONLY EXISTS WHEN THE ACTION DOES. No pointer, no lift
+       and no chip while the front card is already the loaded sound: that
+       absence is how a player can tell they are home. `.has-moved` is the
+       renderer's own flag for "the front card differs", and
+       :not(.is-unverified) is the offline rule already in place — nothing
+       can be sent, so nothing may look like it would send.
+       THE CHIP IS NOT IN THE DOM AT ALL in either of those cases (see
+       renderer.js), so these rules are the second half of a guarantee
+       rather than the whole of it. */
+    .engine-carousel.has-moved:not(.is-unverified) .is-front {
+      pointer-events: auto; cursor: pointer;
+    }
+    .engine-carousel.has-moved:not(.is-unverified):hover .is-front {
+      /* A LIFT, NOT A SCALE. The front card's transform is the stack's own
+         centring, and overriding it here would fight the turn animation —
+         a filter leaves the geometry alone, which is what keeps the
+         "nothing moves" promise literal. */
+      filter: brightness(1.06);
+    }
+    .car-load {
+      position: absolute; left: 50%; bottom: 14%;
+      transform: translateX(-50%);
+      /* OVER THE LOWER PART OF THE CARD: the instruments are drawn with
+         their mass at the bottom (a keybed, a cabinet) and their identity
+         at the top (a lid, a logo), so a chip low on the card covers the
+         part that says least. */
+      padding: 3px 10px; border-radius: 4px;
+      background: var(--action); color: var(--action-ink);
+      font-size: 10px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; line-height: 1.4;
+      white-space: nowrap;
+      /* THE CARD TAKES THE CLICK, not the chip. One hit target, so there is
+         no edge where the press lands on a label that does nothing. */
+      pointer-events: none;
+      opacity: 0; transition: opacity .3s ease;
+    }
+    .engine-carousel:hover .car-load,
+    .engine-carousel:focus-within .car-load { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .car-load { transition: none; }
+      .engine-carousel.has-moved:not(.is-unverified):hover .is-front { filter: none; }
+    }
     .car-step svg { display: block; }
     /* DIRECTION, WHICH IS THE PART THAT WAS WRONG ON SCREEN. The shared
        path is a V with its apex at the BOTTOM, so a quarter turn clockwise
@@ -4275,6 +4353,12 @@
       position: absolute; left: 0; right: 0; bottom: -2px;
       text-align: center; pointer-events: none;
     }
+    /* THE DOT IS PUNCTUATION, not a third fact. Dimmer than the name on one
+       side and the count on the other, so the line reads as two things
+       rather than three. --text-dim against .fresh's own --text-dim would
+       be no dimmer at all, so this takes the opacity route: one value, and
+       it cannot drift from whatever colour .fresh is given next. */
+    .car-count-dot { opacity: .5; }
 
 
     /* No labels on the faces: the SOUND ENGINE heading names the centre

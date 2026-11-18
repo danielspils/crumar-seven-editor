@@ -196,10 +196,15 @@
     await ui.sleep(300);
   }
 
-  // ---- THE POSITION COUNTER ---------------------------------------------
+  // ---- THE CAPTION'S TYPE, WHEN THERE IS ONE ---------------------------
+  //
+  // ABSENT AT REST SINCE 18 Nov, so this reports rather than asserting its
+  // presence — the presence rules are checked where the stack has been
+  // turned, further down. What is still worth pinning HERE is the type:
+  // whenever it does appear it wears .fresh, the freshness line's own rule.
   ui.note('');
   const count = ui.$('#detail .car-count');
-  ui.check(!!count, 'the position counter is under the stack');
+  ui.note(`caption at rest: ${count ? `"${(count.textContent || '').trim()}"` : '(none)'}`);
   if (count) {
     const t = (count.textContent || '').trim();
     const cs = getComputedStyle(count);
@@ -261,20 +266,44 @@
   const car = ui.$('#detail [data-carousel]');
   const heading = ui.$('#detail .engine-sound');
   const headBefore = heading ? (heading.textContent || '').trim() : null;
-  const before = (ui.$('#detail .car-count') || {}).textContent;
+  // KEYED ON THE FRONT CARD, NOT ON THE CAPTION. This read the caption
+  // first and skipped the whole block when it was absent — which since
+  // 18 Nov is the RESTING state, by design, so the turning test silently
+  // stopped running and the scenario still went green. A guard on a thing
+  // that is sometimes absent is a guard that sometimes deletes the test.
+  ui.note(`caption at rest: ${ui.$('#detail .car-count') ? 'present' : '(none)'}`);
+  // A CAPTION ONLY WHILE IT IS NEEDED (rule 3): nothing under the stack
+  // while the front card IS the loaded sound, because the header already
+  // names it and a second copy is noise.
+  ui.check(!ui.$('#detail .car-count'),
+    'at rest there is no caption — the header already names the sound');
   const frontBefore = (ui.$('#detail .is-front') || {}).dataset;
   const next = ui.$('#detail [data-car-step="1"]');
-  if (next && before) {
+  if (next && frontBefore) {
     ui.click(next, 'the next chevron');
     await ui.sleep(900);
-    const after = (ui.$('#detail .car-count') || {}).textContent;
+    const capEl = ui.$('#detail .car-count');
+    const after = capEl ? (capEl.textContent || '').trim() : null;
     const frontAfter = (ui.$('#detail .is-front') || {}).dataset;
-    ui.note(`counter ${before} -> ${after}`);
+    ui.note(`caption after a step: ${after === null ? '(none)' : `"${after}"`}`);
     ui.note(`front ${frontBefore ? frontBefore.carName : '?'}`
       + ` -> ${frontAfter ? frontAfter.carName : '?'}`);
-    ui.check(after !== before, `a step advances the counter (${before} -> ${after})`);
-    ui.check(!frontBefore || !frontAfter || frontBefore.carName !== frontAfter.carName,
-      'and a different instrument is in front');
+    ui.check(!!frontAfter && frontBefore.carName !== frontAfter.carName,
+      'a step puts a different instrument in front');
+    // THE CAPTION APPEARS AND CARRIES BOTH FACTS — which instrument you are
+    // looking at, and how far along the list you have come.
+    ui.check(!!after, 'and the caption appears the moment the front card differs');
+    if (after && frontAfter) {
+      ui.check(after.startsWith(frontAfter.carName), `it names the front card ("${after}")`);
+      ui.check(/·\s*\d+ of \d+$/.test(after), `and ends with the count ("${after}")`);
+      const dot = ui.$('#detail .car-count-dot');
+      ui.check(!!dot, 'the dot is its own span, so it can be dimmer');
+      if (dot) {
+        ui.note(`  the dot's opacity: ${getComputedStyle(dot).opacity}`);
+        ui.check(Number(getComputedStyle(dot).opacity) < 1,
+          'and it is dimmer than either side');
+      }
+    }
 
     if (!connected) {
       // NO SELECT. `moved` is true the moment the stack turns, so without
@@ -298,6 +327,120 @@
       ui.check(!headAfter || !headAfter.classList.contains('is-candidate'),
         'and nothing is marked as a candidate');
     }
+  }
+
+  // ---- BARE AT REST, A STACK ON HOVER -----------------------------------
+  //
+  // Daniel, 18 Nov 2026: at rest the panel is a picture of the sound you are
+  // on, not a control. No cards behind the front one, chevrons at ~22%. On
+  // hover the two behind fade and slide into their offsets and the chevrons
+  // come up.
+  //
+  // :hover CANNOT BE SYNTHESISED from the renderer — a dispatched mouseover
+  // does not make it match — so the hovered state is produced the way
+  // row-hover-geometry.js produces it: by finding the app's OWN hover rules
+  // in the CSSOM and applying their declarations inline. That measures the
+  // declarations the stylesheet carries, not that the browser matches the
+  // selector to a real pointer; the latter is what the click test below
+  // covers, since a click does use real hit-testing.
+  ui.note('');
+  ui.note('=== REST vs HOVER ===');
+  // A rounded rect, local to this file. row-hover-geometry.js has one of its
+  // own; a scenario is a standalone script and shares nothing.
+  const r4 = (el) => {
+    const b = box(el);
+    return { l: px(b.left), r: px(b.right), t: px(b.top), h: px(b.height) };
+  };
+  const sheetRules = [];
+  for (const sheet of document.styleSheets) {
+    let list;
+    try { list = sheet.cssRules; } catch { continue; }
+    const walk = (set) => {
+      for (const r of set) {
+        if (r.selectorText) sheetRules.push(r);
+        if (r.cssRules && r.cssRules.length) walk(r.cssRules);
+      }
+    };
+    walk(list);
+  }
+  const hoverCss = (needle) => sheetRules
+    .filter((r) => /:hover/.test(r.selectorText) && r.selectorText.includes(needle))
+    .map((r) => r.style.cssText).join(';');
+
+  const readState = (label) => {
+    const stage = ui.$('#detail .engine-stage');
+    const out = { label, cards: {}, steps: [], caption: null, stage: null };
+    if (stage) out.stage = r4(stage);
+    for (const cls of ['is-front', 'is-next', 'is-after']) {
+      const el = ui.$(`#detail .${cls}`);
+      if (el) out.cards[cls] = { ...r4(el), op: getComputedStyle(el).opacity };
+    }
+    for (const s of ui.$$('#detail [data-car-step]')) {
+      out.steps.push({ ...r4(s), op: getComputedStyle(s).opacity });
+    }
+    const cap = ui.$('#detail .car-count');
+    out.caption = cap ? { text: (cap.textContent || '').trim(), ...r4(cap) } : null;
+    const p = ui.$('#detail .params .param');
+    out.firstParam = p ? r4(p).t : null;
+    ui.note(`  ${label}`);
+    for (const [k, v] of Object.entries(out.cards)) {
+      ui.note(`    ${k.padEnd(9)} opacity ${v.op.padEnd(5)} x ${v.l}..${v.r}`);
+    }
+    ui.note(`    chevrons  opacity ${out.steps.map((s) => s.op).join(', ') || '—'}`);
+    ui.note(`    caption   ${out.caption ? `"${out.caption.text}"` : '(none)'}`);
+    ui.note(`    first param row y ${out.firstParam}`);
+    return out;
+  };
+
+  const rest = readState('AT REST');
+  // THE CARDS BEHIND ARE NOT DRAWN. opacity 0 is the whole of rule 1 — they
+  // keep their boxes so there is somewhere to slide from.
+  ui.check(rest.cards['is-next'] && Number(rest.cards['is-next'].op) === 0,
+    `at rest the next card is not drawn (opacity ${rest.cards['is-next']
+      ? rest.cards['is-next'].op : '—'})`);
+  ui.check(rest.cards['is-after'] && Number(rest.cards['is-after'].op) === 0,
+    `nor the one after it (opacity ${rest.cards['is-after']
+      ? rest.cards['is-after'].op : '—'})`);
+  ui.check(rest.steps.length === 2 && rest.steps.every((s) => Math.abs(Number(s.op) - 0.22) < 0.03),
+    `and the chevrons rest at about 22% (${rest.steps.map((s) => s.op).join(', ')})`);
+
+  // APPLY THE CAROUSEL'S OWN HOVER DECLARATIONS.
+  const carEl = ui.$('#detail [data-carousel]');
+  const applied = [];
+  for (const cls of ['is-next', 'is-after']) {
+    const el = ui.$(`#detail .${cls}`);
+    const css = hoverCss(`.${cls}`);
+    if (el && css) { applied.push([el, el.getAttribute('style') || '']); el.style.cssText += `;${css}`; }
+  }
+  for (const s of ui.$$('#detail [data-car-step]')) {
+    const css = hoverCss('.car-step');
+    if (css) { applied.push([s, s.getAttribute('style') || '']); s.style.cssText += `;${css}`; }
+  }
+  await ui.sleep(420);
+  const hover = readState('HOVERED');
+  for (const [el, prev] of applied.reverse()) {
+    if (prev) el.setAttribute('style', prev); else el.removeAttribute('style');
+  }
+  await ui.sleep(320);
+
+  ui.check(hover.cards['is-next'] && Number(hover.cards['is-next'].op) > 0.2,
+    `hovered, the next card is drawn (${hover.cards['is-next']
+      ? hover.cards['is-next'].op : '—'})`);
+  ui.check(hover.cards['is-next'] && hover.cards['is-next'].l !== rest.cards['is-next'].l,
+    'and it has slid out of the front card\'s position');
+
+  // ---- ONLY THE CAPTION CHANGES -----------------------------------------
+  //
+  // THE PARAMETERS MUST NOT MOVE WHILE YOU TURN, which is the measurement
+  // Daniel asked for. The stage is a fixed box and the chip sits ON the
+  // card, so hovering and turning should both leave everything below alone.
+  ui.note('');
+  ui.check(rest.firstParam === hover.firstParam,
+    `the parameters do not move on hover (${rest.firstParam} / ${hover.firstParam})`);
+  if (rest.stage && hover.stage) {
+    ui.check(rest.stage.h === hover.stage.h && rest.stage.t === hover.stage.t,
+      `nor does the stage (${rest.stage.t}..${rest.stage.t + rest.stage.h}`
+      + ` / ${hover.stage.t}..${hover.stage.t + hover.stage.h})`);
   }
 
   // ---- OFFLINE IT CLAIMS NOTHING ----------------------------------------
@@ -335,9 +478,19 @@
     }
     // AND THE COUNTER STAYS. It is the only thing telling you where you are
     // offline, now that the heading does not follow the stack.
+    // THE CAPTION IS THE COUNTER NOW, and it is conditional. This asserted
+    // `^\d+ of \d+$` unconditionally, which was right under the earlier
+    // brief ("the counter stays — it is the only thing telling you where
+    // you are") and is contradicted by rule 3 of the later one: nothing
+    // under the stack while the front card IS the loaded sound.
+    //
+    // THE OFFLINE CLAIM SURVIVES IN THE FORM THAT STILL MATTERS: once the
+    // stack has been turned — which is the state this block is in — the
+    // caption is there and carries the count, because offline that is still
+    // the only thing saying where you are.
     const c = ui.$('#detail .car-count');
     const txt = c ? (c.textContent || '').trim() : '';
-    ui.check(!!c && /^\d+ of \d+$/.test(txt),
-      `offline: the counter is still there ("${txt}")`);
+    ui.check(!!c && /\d+ of \d+$/.test(txt),
+      `offline: a turned stack still says where you are ("${txt}")`);
   }
 })()

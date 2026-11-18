@@ -1008,29 +1008,34 @@
       turnCarousel(Number(step.dataset.carStep) > 0 ? 1 : -1);
       return;
     }
-    // SELECT IS THE PICK, and now the only one. It appears under the stack
-    // only while the front card is something other than what the instrument
-    // holds — with nothing to install it would be a control that does
-    // nothing — and it does exactly what clicking the middle of the wheel
-    // did: chosenFromCarousel, which sends 0x46 and nothing else.
-    const sel = e.target.closest('[data-car-select]');
-    if (sel) {
-      const front = document.querySelector('[data-carousel] .is-front');
-      if (front) chosenFromCarousel(front.dataset.carName);
+    // THE CARD IS THE CONTROL (Daniel, 18 Nov 2026). Clicking the front
+    // card loads it. The Select button that used to sit under the stack is
+    // gone — it appeared when the front card differed, which meant the block
+    // below it moved the moment you turned.
+    //
+    // IT DOES EXACTLY WHAT SELECT DID: chosenFromCarousel, 0x46 and nothing
+    // else. No change to the audition path, the kept chain, or the save flow.
+    //
+    // THE AFFORDANCE AND THE ACTION ARE THE SAME CONDITION, which is why
+    // neither needs a guard here. The front card only takes pointer events
+    // under `.has-moved:not(.is-unverified)` (index.html), and the chip is
+    // only in the DOM under the same test (renderer.js) — so a click cannot
+    // reach this branch when the front card is already loaded, or offline.
+    //
+    // WHY A DELEGATED CLICK IS NOT THE THING THE BRIEF WARNS ABOUT. The
+    // modal click-through came from a `pointermove` listener comparing
+    // clientX/clientY against getBoundingClientRect: a COORDINATE test,
+    // which is blind to whatever is painted over the rect it is testing.
+    // This is hit-testing — `e.target` is whatever the browser decided the
+    // press landed on, so with a dialog up the target is the dialog's own
+    // backdrop and `closest()` finds no card. The property the brief asks
+    // for holds by construction rather than by a guard, and
+    // view-anim-fires.js pins the modal half of it.
+    const card = e.target.closest('[data-carousel] .car-face.is-front');
+    if (card) {
+      chosenFromCarousel(card.dataset.carName);
       return;
     }
-    // THE FACE-CLICK BRANCH IS GONE, and it is gone because it became
-    // unreachable rather than because the behaviour was unwanted. It read:
-    // a click on a peek ADVANCED to it, a click on the hero CHOSE it. The
-    // cards carry `pointer-events: none` now — each is mostly covered by the
-    // one in front, so there is nothing reliable to aim at — so no click can
-    // land on one and the branch could only ever have been dead code that
-    // looked live. Both halves survive: advancing is the chevrons, choosing
-    // is Select.
-    //
-    // The "already playing this one" guard went with it and is not needed:
-    // Select is only rendered when the front card DIFFERS from what is
-    // loaded, which is the same condition stated one layer up.
 
     // Clicking away from the wheel puts it back where it was. Turning it is a
     // QUESTION — you spin two places to look at something, decide against it,

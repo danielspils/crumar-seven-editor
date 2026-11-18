@@ -58,10 +58,10 @@
     // flat instrument fitted to the box's WIDTH ends up short, and standing it
     // on the floor line leaves it sitting low against instruments that have
     // legs (Daniel, 2026-08-12).
-    const face = (s, cls) =>
+    const face = (s, cls, extra = '') =>
       `<span class="car-face ${cls}" data-car-name="${esc(s.name)}" ` +
       `data-car-art="${esc(art.artKeyFor(s.name, s.sampled))}">` +
-      `${art.iconFor(s.name, s.sampled)}</span>`;
+      `${art.iconFor(s.name, s.sampled)}${extra}</span>`;
     const here = wrap(at);
     const moved = here.name !== patch.soundName;
     // OFFLINE IT IS A BROWSER, NOT A CONTROL (Daniel, 18 Nov 2026).
@@ -97,7 +97,22 @@
       face(wrap(at - 1), 'is-waiting') +
       face(wrap(at + 2), 'is-after') +
       face(wrap(at + 1), 'is-next') +
-      face(here, 'is-front') +
+      // THE CARD IS THE CONTROL (Daniel, 18 Nov 2026). Clicking the front
+      // card loads it, and the chip is the affordance that says so — sitting
+      // ON the card, so nothing below it moves when it appears. It replaces
+      // the Select button that sat under the stack.
+      //
+      // RENDERED ONLY WHEN THE ACTION EXISTS, which is the whole of rule 5:
+      // no chip when the front card is already what is loaded (`moved`), and
+      // none offline (`unverified`), because nothing can be sent with no
+      // instrument attached. The absence IS the signal — it is how a player
+      // can tell they are home.
+      //
+      // IT IS IN THE DOM ONLY WHEN IT COULD BE PRESSED, rather than hidden
+      // by CSS: a chip that exists and is transparent is a thing a later
+      // rule can reveal by accident, and this one must never appear offline.
+      face(here, 'is-front',
+        moved && !unverified ? '<span class="car-load">Load</span>' : '') +
       // THE CHEVRONS ARE THE ONLY HIT TARGETS NOW. On the wheel a click
       // landed on a peek, and the chevrons existed ONLY below 1031px as a
       // replacement for peeks that were hidden there. A stacked card is
@@ -123,21 +138,28 @@
       // `fresh` IS THE FRESHNESS LINE'S OWN CLASS, not a copy of its values:
       // Daniel asked for the same type, and sharing the rule is the only way
       // "the same" stays true when one of them is next edited.
-      `<span class="car-count fresh">${at + 1} of ${sounds.length}</span>` +
-      // Under the stack, and only while the front card is something other
-      // than what the instrument holds: with nothing to install, a Select
-      // button would be a control that does nothing.
       //
-      // AND NEVER OFFLINE, which is the same rule with the same reason and
-      // not a second one. With no instrument there is nothing to send to, so
-      // every press would be a refusal — and `moved` is TRUE offline the
-      // moment the stack is turned, so without this clause the button would
-      // appear and do nothing. That is the exact shape Daniel's brief names
-      // as worse than absence: a control that appears to act and silently
-      // does not.
-      (moved && !unverified
-        ? '<button type="button" class="car-select" data-car-select>Select</button>'
+      // A CAPTION ONLY WHILE IT IS NEEDED (Daniel, 18 Nov 2026). It used to
+      // be "15 of 24" at all times. Nothing is drawn while the front card IS
+      // the loaded sound — the header already names it, and a second copy of
+      // the name with a count after it is noise under a picture that is not
+      // asking anything. The moment the front card differs, one line appears
+      // and carries BOTH facts: which instrument you are looking at and how
+      // far along the list you have come.
+      //
+      //     Combo Piano · 15 of 24
+      //
+      // THE DOT IS ITS OWN SPAN so it can be dimmer than either side: it is
+      // punctuation between two facts, not a third one.
+      (moved
+        ? `<span class="car-count fresh">${esc(here.name)}` +
+          `<span class="car-count-dot"> · </span>` +
+          `${at + 1} of ${sounds.length}</span>`
         : '') +
+      // THE SELECT BUTTON IS GONE. It sat under the stack and appeared when
+      // the front card differed — which meant the block below it moved as
+      // soon as you turned. The chip on the card does the same job without
+      // taking any layout: see the `face(here, 'is-front', …)` call above.
       `</div>`
     );
   }

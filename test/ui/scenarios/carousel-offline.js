@@ -63,10 +63,22 @@
     // THE CHEVRONS ARE THERE, because turning is what still works.
     ui.check(ui.$$('#detail [data-car-step]').length === 2,
       `${where}: both chevrons are present`);
-    // AND THE COUNTER, which offline is the only thing saying where you are.
+    // AND NO CAPTION, because nothing has been turned yet. Rule 3 of the
+    // 18 Nov brief: nothing under the stack while the front card IS the
+    // loaded sound — the header already names it.
+    //
+    // THIS ASSERTED THE OPPOSITE until that day, when the caption was an
+    // unconditional "7 of 24". The offline claim it was protecting survives
+    // in the form that still matters and is checked in carousel-stack.js:
+    // once the stack has been TURNED, the caption is there and carries the
+    // count, because offline that is still the only thing saying where you
+    // are. Here the stack has not been turned.
     const c = ui.$('#detail .car-count');
-    const txt = c ? (c.textContent || '').trim() : '';
-    ui.check(!!c && /^\d+ of \d+$/.test(txt), `${where}: the counter reads "${txt}"`);
+    ui.check(!c,
+      `${where}: no caption at rest (${c ? `"${c.textContent.trim()}"` : 'none'})`);
+    // AND NO LOAD CHIP, which is the offline half: nothing can be sent, so
+    // nothing may look like it would send.
+    ui.check(!ui.$('#detail .car-load'), `${where}: and no Load chip`);
   };
 
   // 1. ON THE SEVEN — the tab whose behaviour this has now changed twice.
