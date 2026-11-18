@@ -187,8 +187,30 @@ tools/       capture-hook.js, probe.js, listen.js (passive wfp-redacting recorde
 assets/      seven-panel.svg — panel artwork, inlined into the DOM for id access
 fixtures/    generate.js + sample-library.json — DEMO data only, never evidence
 src/         Electron app: main.js, preload.js (the data-source swap point),
-             index.html, app.js, renderer.js (pure view), defaults.js
+             index.html, app.js, renderer.js (pure view), defaults.js,
+             view-anim.js (the one arrival/departure vocabulary)
 ```
+
+**`src/view-anim.js` IS THE APP'S ONE ANIMATION VOCABULARY** (18 Nov 2026),
+ported from JUNO-Xtra as BEHAVIOUR rather than as files — the two apps'
+markup differs and a copied rule attaches to the wrong thing. Three
+consumers: the four top tabs and the bank tabs (`app.js`), the list moves
+inside the library (`library-view.js`), and every modal (`modal.js`). It also
+absorbed the two separate copies of the `prefers-reduced-motion` expression
+that `app.js` and `library-view.js` each carried.
+
+Two things in it are load-bearing rather than decorative:
+
+- **THE REFLOW READ.** Remove the class, READ LAYOUT, add it back. Without
+  the read the browser never sees a frame without the class, so adding it is
+  not a change and nothing plays — **and the FIRST fade still works**, which
+  is why a test that only checks one transition passes with the bug in.
+  Every test of it does the move twice.
+- **THE MODAL'S LEAVING HALF IS A FIX, not polish.** A modal was reported
+  still standing behind the next one (Daniel, 16 Nov 2026). The leaving root
+  stops taking pointer events in the same statement that starts it leaving,
+  and the removal is guaranteed **by a timer** — `animationend` does not fire
+  when an animation is cancelled, and a modal that fails to leave is the bug.
 
 Two fences on the new code, in the spirit of Rule 2:
 
@@ -1100,6 +1122,51 @@ reporting" is worth re-running the named scenarios individually before
 believing it. If it becomes routine, the thing to capture is whether a pause
 between launches clears it and what `MIDIClientCreate` actually returned.
 
+## A MEASUREMENT THAT IS WRONG FOR ONE OF THE TWO THINGS IT COMPARES (2026-11-18)
+
+Third member of the family above, and the one that hid the longest.
+
+`one-header-line.js` asserted that the two column titles sit on the same
+baseline as the word tabs. It was green for weeks. Daniel could see they
+were below the row, and he was right by **4.6px**.
+
+**The formula centred the line box in the element's RECT:**
+
+```js
+r.top + (r.height - lineHeight) / 2 + (L - (A + D)) / 2 + A
+```
+
+which is only correct when the padding is **symmetric**. `.top-tab` carries
+`padding: 0 0 7px` and a 2px bottom border — all of it BELOW the text — so
+the term added 4.5px that is not there and reported every tab's baseline
+4.5px low. `.col-title` has no padding, so ITS number was right. **Comparing
+the two made a 4.7px gap read as 0.2.**
+
+**NEITHER SIDE WAS OBVIOUSLY WRONG, which is what makes this worth its own
+heading.** A fixture that cannot express the thing under test (above) is
+visible once you ask what the fake would have to DO. A test that asserts the
+buggy behaviour (below) is visible once you ask which of two things it pins.
+This one looks correct in every way at the call site: real elements, real
+font metrics, a plausible formula, a number that agreed with a comment.
+
+**IT TOOK A SECOND SET OF MEASUREMENTS DOWN THE SAME WIRE.** The defect was
+found by measuring all FIVE baselines on that row rather than one tab against
+one title: the three tabs came out 4.5px below the logo's strut, which is the
+element the flex row is actually baseline-aligned against, and a 4.5px gap
+between things the browser is aligning is not a layout fault — it is an
+arithmetic one.
+
+**AND IT HAD ALREADY CORRUPTED A DECISION.** `#detail`'s `padding-top` was
+swept with this formula to land the titles on the tabs' line, and RE-SWEPT
+with it after `.top-tab`'s invalid font shorthand was fixed — "the number did
+NOT have to change" was measured twice by the same broken instrument. It was
+33.5px; it is 28.9px.
+
+The transferable part: **when a comparison depends on a derived quantity,
+derive it for BOTH sides from first principles at least once.** The formula
+was right for the element it was written against and wrong for the one it was
+later pointed at, and nothing in a green run can tell you which.
+
 ## A FIXTURE THAT CANNOT EXPRESS THE THING UNDER TEST (2026-08-23)
 
 Second instance, so it gets a name: **a test is only as honest as the fake it
@@ -1696,12 +1763,40 @@ already verified, so this is app work, not reverse-engineering:
    Verified on hardware 2026-08-11: `rho_atk` 64 → 32 echoed, 41 live rows,
    0 after disconnect.
 3. ~~**Task 10 — Sound selection UI**~~ **DONE.** The instrument picture is a
-   carousel: turn it, and the sound engine's heading follows the centre —
-   muted while it is only a candidate, solid once the instrument holds it.
-   Choosing sends `0x46` and drops straight into playing it. It NEVER
-   rewrites a file; five of Daniel's backup records were silently renamed by
-   what he thought was auditioning (2026-08-12), and a file is edited by
-   asking to edit it.
+   DEPTH STACK since 18 Nov 2026 — it was a side-peek wheel until then, and
+   the difference matters to anyone reading older entries in this file.
+
+   **The shape:** the current sound front and centre, the next two behind it
+   offset up and to the right, scaled down and dimmed. Bare at rest (the two
+   behind at opacity 0, chevrons at 22%); the stack opens on hover. The
+   chevrons are the only way to turn it. Clicking the FRONT CARD loads it,
+   with a filled green LOAD chip as the affordance — on the card, so nothing
+   below it moves. A caption appears only while the front card differs from
+   the loaded sound: `Combo Piano · 15 of 24`.
+
+   **Choosing sends `0x46` and drops straight into playing it.** Unchanged
+   from the wheel, and so is the rest: it NEVER rewrites a file; five of
+   Daniel's backup records were silently renamed by what he thought was
+   auditioning (2026-08-12), and a file is edited by asking to edit it.
+
+   **OFFLINE IT IS A BROWSER, NOT A CONTROL.** The wheel refused to render
+   without a connection, because `soundList` falls back to the schema's 24 —
+   this build's list, not the player's instrument. It renders now, because
+   Daniel demonstrates the app without a Seven to hand, and the two
+   objections are answered rather than overruled: turning works and picking
+   does not (no chip, no selection state, no heading renaming itself), and
+   every card wears the unverified fade the stale bank rows use.
+
+   **WHAT THE CHANGE DELETED**, all of it machinery for peeks drawn OUTSIDE
+   `.engine-stage`: the `--peek` spread and its two media queries, the
+   clearance ceiling swept per window width, the document-level `pointermove`
+   test that decided whether the wheel was open — **which is where the modal
+   click-through came from** — five scenarios and one unit test. The
+   measurements are kept beside the deletions in `src/index.html`; they were
+   never wrong, their subject is gone. The entries further down this file
+   about peeks, the 1031/1088 thresholds and `carousel-peeks.js` are history
+   now, and are left in place as the record of how those numbers were
+   derived.
 4. ~~**Task 9 — Transfer**~~ **DONE.** Walks a setlist's slots, pre-selecting
    the bank so a three-second hold cannot land in the wrong one, and
    auto-advancing: a store announces nothing of its own, but the recall burst
@@ -1853,6 +1948,12 @@ is off for this account by policy.
 
 ### A REPORTED WORKING STATE OUTRANKS A MEASURED IMPROVEMENT (2026-11-15)
 
+**THE WHEEL THIS IS ABOUT NO LONGER EXISTS** — it was replaced by a depth
+stack on 18 Nov 2026 (see Task 10 above). The entry stays because the lesson
+is about how the work went, not about peeks, and because the "little overlap"
+it ends with is precisely what the stack was chosen to remove: a picture that
+draws outside its own cell.
+
 Daniel, after a day of carousel work: **"It used to work great except for a
 little overlap."** That sentence was worth more than every measurement taken
 after it, and it took five commits to hear.
@@ -1906,6 +2007,14 @@ peeks are drawn" passed with the clip reinstated, because
 painted and `opacity` belongs to the element rather than to what survives an
 ancestor's `overflow`. Asking whether a press at the peek's centre lands on
 the peek fails, correctly, on both.
+
+**`carousel-peeks.js` WAS DELETED WITH THE WHEEL on 18 Nov 2026**, along with
+`carousel-narrow`, `carousel-no-peek`, `carousel-ceiling` and
+`modal-blocks-carousel`. **Its sharpest idea survived and was generalised:**
+`carousel-stack.js` asks `document.elementFromPoint` what answers at the
+centre of EVERY interactive control in the pane, rather than at Save patch
+alone. That is the press test above, pointed at everything instead of at the
+one control the clearance ceiling was swept against.
 
 ### Smaller things still open
 

@@ -88,12 +88,48 @@
   // gone with the two-tray layout — and so is that collision, which is one of
   // the things the redesign removed rather than fixed. What is still worth
   // asserting is that the label is on screen and says something.
+  // ON BANK 2, NOT WHICHEVER BANK THE APP OPENED ON.
+  //
+  // THIS COULD NOT PASS FROM A FRESH LAUNCH and was red for weeks without
+  // anybody noticing (recorded as item 14 in out/next-1.5.7.md, 17 Nov
+  // 2026). `bankIndex` starts at 0 in app.js and is NEVER persisted, so a
+  // freshly launched app always lands on Bank 1 — and Bank 1 is the
+  // FACTORY bank, which cannot go stale, so its caveat is deliberately
+  // empty. The check asked the one bank exempt from the rule it was
+  // checking, and `/as of|verified|backup/.test('')` is false.
+  //
+  // IT SURVIVED BECAUSE OF THE OTHER HAZARD CLAUDE.md ALREADY DOCUMENTS:
+  // the runner does not reset userData between scenarios, so inside a full
+  // run it could inherit a bank selection from whatever ran before it and
+  // pass for a reason that had nothing to do with this file. Run alone from
+  // a fresh launch, it failed.
+  //
+  // THE FIX IS THE ONE one-list-on-screen.js GOT: choose the state rather
+  // than inherit it. Bank 2 always has one of the two honest answers — an
+  // age, or "not yet backed up".
   await ui.selectTab('seven');
+  await ui.sleep(500);
+  const bank2 = ui.$$('#bank-tabs .bank-tab')[1];
+  if (bank2) { ui.click(bank2, 'bank 2'); await ui.sleep(600); }
   const asof = ui.$('#bank-asof');
   ui.check(!!asof, 'the freshness caveat is on the Seven tab');
   if (asof) {
-    ui.note(`freshness: "${asof.textContent.trim()}"`);
-    ui.check(/as of|verified|backup/i.test(asof.textContent),
-      'and it says what the view is as of');
+    const text = (asof.textContent || '').trim();
+    ui.note(`freshness on bank 2: "${text}"`);
+    ui.check(/as of|verified|backup/i.test(text),
+      `and it says what the view is as of ("${text}")`);
+    // AND BANK 1 SAYS NOTHING, which is the other half of the same rule and
+    // is worth pinning now that the first half is measured on the right
+    // bank: a factory bank cannot drift, so a caveat there would be a
+    // claim the app has no business making.
+    const bank1 = ui.$$('#bank-tabs .bank-tab')[0];
+    if (bank1) {
+      ui.click(bank1, 'bank 1');
+      await ui.sleep(600);
+      const b1 = (ui.$('#bank-asof') || {}).textContent || '';
+      ui.note(`freshness on bank 1 (the factory bank): "${b1.trim()}"`);
+      ui.check(b1.trim() === '' || /not yet backed up/i.test(b1),
+        `Bank 1 claims no staleness — it cannot drift ("${b1.trim()}")`);
+    }
   }
 })()

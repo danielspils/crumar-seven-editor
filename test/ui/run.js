@@ -15,7 +15,8 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..', '..');
 const dir = path.join(__dirname, 'scenarios');
-const only = process.argv[2];
+// `only` is parsed below, beside the --device flag, so the two cannot
+// disagree about which argument is which.
 
 // Scenarios edit patches and save them — that is the point of the save test —
 // so they must never run against the real library. Each run gets a scratch
@@ -166,6 +167,22 @@ function runScenario(file, libraryDir) {
 // file cannot be required without running the suite. See the comment there for
 // why a command-line substring was the wrong thing to match.
 const { appAlreadyRunning } = require('./app-running');
+const { deviceAnswered } = require('./device-present');
+
+// A DEVICE PASS IS A DIFFERENT RUN, AND IT SAYS SO (Daniel, 18 Nov 2026).
+//
+// `--device` means "this run exists for the scenarios that need the Seven".
+// It changes two things and nothing else: the suite REFUSES TO START unless
+// the instrument answered, and any device scenario that skips makes the pass
+// FAIL rather than quietly shrinking it.
+//
+// WHY IT IS A FLAG AND NOT AUTOMATIC. Most runs are offline and should stay
+// useful on a machine with no Seven — which is every machine but Daniel's.
+// What must never happen again is a run STARTED for device coverage that
+// silently became an offline one. The flag is the statement of intent, and
+// the gate below holds the run to it.
+const wantDevice = process.argv.includes('--device');
+const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
 (async () => {
   if (appAlreadyRunning()) {
@@ -175,6 +192,29 @@ const { appAlreadyRunning } = require('./app-running');
     );
     process.exit(2);
   }
+
+  // THE PORT BEING FREE IS NOT THE INSTRUMENT BEING THERE. The check above
+  // only establishes that no sibling session holds it. This one asks the
+  // Seven directly — a STRING-4 round trip through the app's own connect().
+  let device = null;
+  if (wantDevice) {
+    process.stdout.write('device pass: asking the Seven… ');
+    device = await deviceAnswered();
+    console.log(device.ok
+      ? `answered, firmware ${device.firmware}`
+      : `NO — ${device.reason}`);
+    if (!device.ok) {
+      console.error(
+        '\nREFUSING TO START A DEVICE PASS WITHOUT THE DEVICE.\n'
+        + `  ${device.reason}\n`
+        + '  A device pass that skipped device scenarios is a failed pass, and\n'
+        + '  running one anyway would answer a different question than the one\n'
+        + '  asked. Plug the Seven in, or drop --device for an offline pass.'
+      );
+      process.exit(2);
+    }
+  }
+
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.js') && (!only || f.includes(only))).sort();
   // SAID ONCE, AND ABOUT THE SOURCE. This used to make an extra scratch copy
   // purely to print its path — a directory no scenario ever ran in, since each
@@ -188,6 +228,9 @@ const { appAlreadyRunning } = require('./app-running');
   console.log('library: a fresh copy per scenario — the real one is never touched\n');
   let failed = 0;
   let skipped = 0;
+  let ran = 0;
+  const deviceSkipped = [];
+  const otherSkipped = [];
   const made = [];   // every scratch copy, so none is left behind in /tmp
   for (const file of files) {
     // A fresh copy per scenario, so one cannot leave state for the next.
@@ -195,7 +238,42 @@ const { appAlreadyRunning } = require('./app-running');
     made.push(lib);
     const r = await runScenario(file, lib);
     if (r.skipped) {
+      // A DEVICE SKIP IN A DEVICE PASS IS A FAILURE, in those words.
+      //
+      // The gate at the top means the Seven answered before the run began,
+      // so a scenario skipping for want of an instrument NOW is not a
+      // machine without one — it is the instrument having gone away
+      // mid-run, or a scenario asking a question the gate did not. Either
+      // is a result, and counting it as a skip would let the pass end green
+      // having covered none of what it was for.
+      //
+      // OTHER SKIPS STAY SKIPS even here: SEVEN_WRITE_BANK, a reset flag, a
+      // library with no backup runs. Those are preconditions the scenario
+      // cannot control and that the device being present does not supply.
+      // THE REASON, NOT A WORD IN IT. This matched /instrument|device|seven/
+      // for one run and was too broad by exactly the amount that matters:
+      // "SEVEN_WRITE_BANK not set" contains "SEVEN" and would have been
+      // reported as a device scenario skipping for want of the device, when
+      // it is a scenario declining to WRITE to the instrument without being
+      // told which bank it may use. Flattening those two together is the
+      // same error as counting a skip as a pass, one level up — a report
+      // that says the wrong thing about why.
+      //
+      // A DEVICE SKIP IS THE INSTRUMENT NOT BEING THERE, which is what
+      // `ui.requireDevice()` says in those words. Everything else — a write
+      // flag, a reset flag, a library with nothing in it — is a precondition
+      // the pass cannot supply by having a Seven plugged in, and stays a
+      // skip that the summary lists by name.
+      const deviceSkip = /no instrument attached/i.test(r.skipped);
+      if (wantDevice && deviceSkip) {
+        failed++;
+        deviceSkipped.push(`${file} — ${r.skipped}`);
+        console.log(`✗ ${file} — SKIPPED FOR WANT OF THE DEVICE in a device pass`);
+        console.log(`    ${r.skipped}`);
+        continue;
+      }
       skipped++;
+      otherSkipped.push(`${file} — ${r.skipped}`);
       console.log(`- ${file} — skipped (${r.skipped})`);
       continue;
     }
@@ -205,10 +283,26 @@ const { appAlreadyRunning } = require('./app-running');
       console.log(`✗ ${file}`);
       for (const f of r.failures) console.log(`    ${f}`);
     } else {
+      ran++;
       console.log(`✓ ${file}`);
     }
   }
   console.log(`\n${files.length - failed - skipped} passed, ${failed} failed, ${skipped} skipped`);
+  if (wantDevice) {
+    console.log(`device pass · ${ran} ran · ${skipped} skipped · ${failed} failed`);
+    if (deviceSkipped.length) {
+      console.log('\nA DEVICE PASS THAT SKIPPED DEVICE SCENARIOS IS A FAILED PASS.');
+      for (const s of deviceSkipped) console.log(`  ${s}`);
+    }
+    // NAMED, NOT COUNTED. A number beside "skipped" invites the reader to
+    // assume they were all the harmless kind. These are the preconditions
+    // the pass could not supply even with the instrument attached, and each
+    // one is a scenario that covered nothing.
+    if (otherSkipped.length) {
+      console.log('\nSkipped for a precondition the device does not supply:');
+      for (const s of otherSkipped) console.log(`  ${s}`);
+    }
+  }
   // ALL of them. The old cleanup removed the single throwaway copy and left
   // one directory per scenario in /tmp on every run.
   for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
