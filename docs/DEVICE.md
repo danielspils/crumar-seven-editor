@@ -814,7 +814,7 @@ never held. The circle is forced visible on a driven row — it is normally
 hover-only, and with the fill showing the pedal it is the only thing left
 saying what the patch holds (docs/DESIGN.md). See `pedalEstimates` in
 `src/renderer.js`, pinned by eight unit tests in `test/renderer.test.js`
-including the reversed range, and `test/ui/scenarios/pedal-driven-row.js` on
+including the reversed range, and `test/ui/scenarios/hands-on-pedal-driven-row.js` on
 hardware.
 
 **The unit tests prove the ARITHMETIC, not the model.** They cannot do otherwise
@@ -846,7 +846,7 @@ it back**, which is the whole experiment: at 0 → 127 raw and scaled produce
 identical numbers, so a sweep at the default range would prove nothing. It
 writes to the edit buffer only and stores nothing.
 
-The third pedal scenario, `pedal-live-mark`, is **not** a probe and stays in
+The third pedal scenario, `hands-on-pedal-live-mark`, is **not** a probe and stays in
 every device pass: it asserts what the app does with CC 11, not what the
 instrument does.
 
@@ -862,7 +862,7 @@ instrument does.
   This is the usual "pickup" or "catch" behaviour, and it matters for any
   instruction given to a person at the panel: **"turn it a good amount" is
   not a reliable gesture, because they cannot see which side of the stored
-  value they are on.** `test/ui/scenarios/panel-cc-follow.js` asks for a full
+  value they are on.** `test/ui/scenarios/hands-on-panel-cc-follow.js` asks for a full
   sweep for this reason, and failed once asking for the other.
 - **Volume knob blue = Local Off.** The instrument will not play its
   internal engine. Worth surfacing in the app, since it presents as "no

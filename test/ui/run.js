@@ -250,14 +250,14 @@ const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
     // A DEVICE PASS HAS A PERSON AT THE PANEL, so it provisions the hook that
     // lets a scenario ask them for something (18 Nov 2026).
     //
-    // WHY: panel-cc-follow and signal-hook both reported GREEN in the first
+    // WHY: hands-on-panel-cc-follow and hands-on-signal-hook both reported GREEN in the first
     // real device pass having tested nothing. SEVEN_UI_SIGNAL was unset, so
     // waitForHuman returned false immediately, and both scenarios took their
     // no-signal branch — which noted the word "skipped" and then returned
     // normally. Daniel was sitting at the instrument and was never asked for
     // the knob.
     //
-    // THE FIX IS NOT A PER-SCENARIO @env LINE. amp-follow-live.js carried one,
+    // THE FIX IS NOT A PER-SCENARIO @env LINE. hands-on-amp-follow-live.js carried one,
     // which is why it alone worked, and it hardcoded a session-specific
     // scratchpad path — a path that is wrong on any other machine and gone
     // after a temp sweep. The hook is a property of the RUN (is anyone there?),
@@ -372,7 +372,7 @@ const only = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
     // A SCENARIO THAT SKIPS ITSELF IN A NOTE REPORTED GREEN (18 Nov 2026).
     //
-    // panel-cc-follow.js and signal-hook.js both ended:
+    // hands-on-panel-cc-follow.js and hands-on-signal-hook.js both ended:
     //
     //     ui.note('skipped: no signal arrived …');
     //     return;

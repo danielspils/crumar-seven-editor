@@ -15,7 +15,7 @@
 // the patch stays in the Seven's buffer and stays audible, and the columns go
 // on REPORTING what is live. Dimmed does not mean frozen; it means you cannot
 // drive it from here. The half of that which needs an instrument is in
-// panel-cc-follow.js and skips without one; the half that does not is here.
+// hands-on-panel-cc-follow.js and skips without one; the half that does not is here.
 (async () => {
   const cols = () => ui.$('#detail .detail-cols');
   const dimmed = () => !!cols() && cols().classList.contains('out-of-view');
@@ -114,7 +114,7 @@
   // from here. Proven by making it repaint — a bank tab is a render of the
   // whole panel — and checking the parameter rows are NEW NODES afterwards
   // rather than a frozen picture. That a live value from the instrument
-  // arrives this way needs the cable and is asserted in panel-cc-follow.js.
+  // arrives this way needs the cable and is asserted in hands-on-panel-cc-follow.js.
   // A repaint, forced without changing what is selected: a bank tab is a
   // render of the whole panel. The tray has to be closed for one to be
   // reachable — with the library open, "On the Seven" is a collapsed strip.

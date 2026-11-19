@@ -4,7 +4,7 @@
 // refusal is correct; its DETECTION matched any `ps` line containing both
 // "crumar-seven-editor" and "Electron", which is satisfied by a shell whose
 // own arguments mention them. That false refusal cost Daniel three attempts
-// at panel-cc-follow on 14 Nov 2026 and sent a session after a wrong
+// at hands-on-panel-cc-follow on 14 Nov 2026 and sent a session after a wrong
 // diagnosis.
 //
 // These tests feed `isAppRunning` the two cases that matter. They are in the

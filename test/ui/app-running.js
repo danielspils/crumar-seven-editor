@@ -13,7 +13,7 @@
 //
 // contains both strings and is not the editor. The runner then refused to
 // start with nothing running, which cost Daniel three attempts at
-// panel-cc-follow on 14 Nov 2026 and sent a session after a wrong diagnosis
+// hands-on-panel-cc-follow on 14 Nov 2026 and sent a session after a wrong diagnosis
 // on the strength of it.
 //
 // MATCH THE BINARY, NOT THE COMMAND LINE. `ps -Ao comm=` reports the

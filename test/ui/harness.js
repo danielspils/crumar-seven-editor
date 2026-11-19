@@ -215,7 +215,7 @@ window.ui = (() => {
 
     // AND IN THE RUNNER'S OUTPUT, NOT ONLY ON SCREEN. The banner below covers
     // a person sitting at the app. It does not cover whoever is watching the
-    // terminal — or an agent driving the run, which is how signal-hook was
+    // terminal — or an agent driving the run, which is how hands-on-signal-hook was
     // skipped on 18 Nov 2026: the writer waited for "WAITING FOR YOU" to
     // appear in the runner's log, and notes do not reach it until the child
     // has exited. Both readers need telling, and they are not the same reader.
@@ -229,7 +229,7 @@ window.ui = (() => {
     // prints after the child exits. So this asked for a knob turn and then
     // showed nothing at all for up to three minutes — the person is looking at
     // the app and the instrument, and the instruction arrived in a terminal
-    // after the window had closed. panel-cc-follow has never been run, and
+    // after the window had closed. hands-on-panel-cc-follow has never been run, and
     // this is the likeliest reason: there was no way to know what it wanted.
     //
     // pointer-events: none, so it cannot swallow a click a scenario still

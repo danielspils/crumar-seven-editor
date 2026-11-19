@@ -65,6 +65,20 @@
   // COUNT THE RENDERS. renderDetail assigns detailEl.innerHTML, which arrives
   // here as one record carrying removed nodes — so this counts rebuilds of the
   // pane, and the number is the whole point of section 4 below.
+  //
+  // WHAT TO EXPECT DEPENDS ON WHETHER THE MARK IS ALREADY DRAWN. The first
+  // CC 11 of a session renders once, because the mark cannot be moved into
+  // existence; every message after that moves it. If the pedal was nudged
+  // before this point — easy, with a foot resting on it, and it is what
+  // happened on the 18 Nov device pass — that render has already happened and
+  // the sweep should cost NONE. Hard-coding 1 failed a correct 0 while every
+  // other assertion passed, including a mark landing 0px from where the
+  // formula put it. Read off the screen rather than assumed; either way the
+  // claim is the same: NOT one render per message.
+  const markedBefore = !!mark();
+  const wantRenders = markedBefore ? 0 : 1;
+  ui.note(`the pedal mark ${markedBefore ? 'is already' : 'is not yet'} drawn,`
+    + ` so the sweep should cost ${wantRenders} render(s)`);
   let renders = 0;
   const obs = new MutationObserver((recs) => {
     for (const m of recs) if (m.removedNodes.length) renders += 1;

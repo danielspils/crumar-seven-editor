@@ -1098,7 +1098,7 @@ no `[ui-test]` line and the runner could only say the app had not reported.
 **It is not the scenarios and not any one branch.** Three runs the same
 afternoon hit three different sets: `hold-fake-button` + `switch-patch-guard`,
 then `backup-grid` + `engine-art-slot` + `modal-buttons`, then `backup-grid` +
-`engine-art-slot` + `panel-cc-follow`. Several of those have not been touched
+`engine-art-slot` + `hands-on-panel-cc-follow`. Several of those have not been touched
 in months. Every one of them PASSES when run on its own, immediately
 afterwards, with the instrument attached — checked for `backup-grid` and
 `engine-art-slot`.
@@ -1437,7 +1437,7 @@ Both are facts about FW 1.37. No edit to this app can make either false, and
 between them they cost two more hands-on steps per pass — the device pass went
 from four to six in a single afternoon, which is how the rule got written.
 
-**`pedal-live-mark.js` STAYED IN, and the contrast is the whole distinction.**
+**`hands-on-pedal-live-mark.js` STAYED IN, and the contrast is the whole distinction.**
 It asserts what the app does with that CC: the mark appears only once the pedal
 has spoken, it lands where the last message said, it takes no press, and the
 sweep costs one render. It caught a real bug within an hour of being written —
@@ -1462,7 +1462,7 @@ changed**:
   Either answer passes.
 
 Two others are legitimate: `notes-strip.js:75` sits after a guard that returns
-on failure, so the tick means "we got here", and `signal-hook.js:24` is the
+on failure, so the tick means "we got here", and `hands-on-signal-hook.js:24` is the
 harness self-test, where reaching the line IS the result.
 
 **ONE CANDIDATE WAS FOUND AND LEFT IN PLACE, with the argument both ways,

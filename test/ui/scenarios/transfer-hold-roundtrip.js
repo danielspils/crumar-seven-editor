@@ -38,6 +38,15 @@
     if (ev && ev.type === 'transfer-stored') detected = ev;
   });
 
+  // Set when a prompt went unanswered, so the callers can tell "the person
+  // walked away" from "the walk refused to start" — two very different
+  // results that both arrive here as a null.
+  let lapsed = false;
+  const handSkip = () => ({
+    skipped: 'nobody answered the hold prompt — nothing was measured',
+    hand: true,
+  });
+
   async function sendAndHold(ref, label) {
     detected = null;
     const started = await window.sevenAPI.transfer.startSlot(BANK, PRESET, ref);
@@ -54,7 +63,13 @@
       `Or don't, and signal anyway — declining is a valid outcome and this checks that too.`,
       { timeout: 240000 }
     );
-    if (!got) { await window.sevenAPI.transfer.cancel(); return null; }
+    // A LAPSED PROMPT IS A HAND-SKIP AND MUST SAY SO. This used to cancel and
+    // `return null`, and the callers answer a null with a bare `return` — so a
+    // run where nobody held the preset ended with no skip object, every
+    // executed check passed, and the runner reported it **GREEN**. Found
+    // 18 Nov 2026 while auditing which scenarios need a hand: every other one
+    // carries `hand: true`, and this was the only one the gate could not see.
+    if (!got) { lapsed = true; await window.sevenAPI.transfer.cancel(); return null; }
 
     // Give the recall burst room to arrive and be read.
     await ui.waitFor(() => !!detected, { timeout: 6000, what: 'the runner to notice a store' });
@@ -64,7 +79,7 @@
 
   // ── out ──────────────────────────────────────────────────────────────
   const away = await sendAndHold(AWAY, 'Shapes Clav');
-  if (!away) return;
+  if (!away) return lapsed ? handSkip() : undefined;
   ui.note(`store detected by the app: ${away.detected ? 'yes' : 'no'}`);
   ui.check(!!away.detected,
     'the runner SAW the hold land — inferred from the recall burst, since a store announces nothing');
@@ -72,6 +87,10 @@
     `preset ${PRESET} is reported stored (${away.report && JSON.stringify(away.report.confirmed)})`);
 
   // ── and home again ───────────────────────────────────────────────────
+  // A LAPSE HERE IS A FAILURE, NOT A SKIP, and the asymmetry with the first
+  // half is deliberate. By this point the instrument HAS been written to, so
+  // walking away leaves somebody's Bank 3 holding the wrong preset. A skip
+  // says "nothing happened"; something did.
   const home = await sendAndHold(HOME, 'Bank 3 Preset 1 — Tine Piano');
   if (!home) {
     ui.check(false, 'THE BANK WAS NOT RESTORED — send it back by hand from the backup setlist');

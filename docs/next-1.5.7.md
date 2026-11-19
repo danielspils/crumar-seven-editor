@@ -1238,7 +1238,7 @@ protocol.md: sub-127-max parameters broadcast scaled. It does not matter here
 port in the same session: **115 messages** of `be 16` (CC 22). So "nothing
 arrived" could never have been confused with "nothing was listening".
 
-**3. And the app DOES follow it.** `test/ui/scenarios/amp-follow-live.js`,
+**3. And the app DOES follow it.** `test/ui/scenarios/hands-on-amp-follow-live.js`,
 which waits for a human push rather than faking one — the change has to arrive
 as a real CC, which the app originating it cannot produce:
 
