@@ -35,3 +35,10 @@ Thumbs.db
 *globals*.dump
 *.globals.json
 raw-globals*
+
+# Scratch HTML a Claude session drops in the repo root while working — one-off
+# prototypes and mock-ups, the same kind of thing out/ holds. Ignored rather
+# than deleted: it is working material, and a prototype that turns out to be
+# worth keeping should be MOVED somewhere tracked (as the release list and the
+# save spec both were) rather than committed from here.
+Claude outputs/
