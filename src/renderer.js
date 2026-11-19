@@ -890,11 +890,10 @@
       ['fx1_sp'],               // 4  FX 1 Rate
       ['fx2_sp'],               // 5  FX 2 Rate
       ['fx1_sp', 'fx2_sp'],     // 6  FX 1 + 2 Rate    — two rows
-      ['amp_dr'],               // 7  Amp Drive        — only with amp_sw on
+      ['amp_dr'],               // 7  Amp Drive
       ['pad_lv'],               // 8  Pad Level
       ['pad_bl'],               // 9  Pad Blend
     ];
-    const PEDAL_AMP_DRIVE = 7;
 
     function pedalEstimates(params, pedalPos) {
       if (pedalPos == null || !params) return null;
@@ -907,11 +906,22 @@
       if (fn == null || mn == null || mx == null) return null;
       const keys = PEDAL_DEST[fn];
       if (!keys) return null;
-      // AMP DRIVE APPLIES ONLY WITH THE AMP SIMULATOR ON (manual). Drawing the
-      // mark on a row the pedal cannot reach would be the claim this whole
-      // feature is trying not to make. Strictly 1: a missing amp_sw is unknown,
-      // not off.
-      if (fn === PEDAL_AMP_DRIVE && params.amp_sw !== 1) return null;
+      // AN INERT ROW STILL SHOWS THE PEDAL (Daniel, 18 Nov 2026). This gated
+      // Amp Drive on the amp simulator being ON, from the v1.22 manual, and it
+      // was wrong twice over:
+      //
+      //   - THE APP ALREADY SAYS THE SECTION IS OFF. Its rows are dimmed and
+      //     carry an inert marker with a reason. Suppressing the mark was a
+      //     SECOND rule saying the same fact invisibly, and what it actually
+      //     communicated was "broken" — which is exactly how Daniel read it,
+      //     switching the pedal to Amp Drive and getting nothing.
+      //   - IT PUT A MANUAL'S CLAIM INTO RUNNING CODE. Rule 1: documentation
+      //     is stale and unverified, and that line is fifteen firmware
+      //     revisions old. Not gating means the app asserts nothing about it.
+      //
+      // The mark answers "where is the pedal, mapped through its range". That
+      // is true whether or not anything downstream is listening, and whether
+      // anything is listening is a question the row already answers.
       const est = Math.round(mn + (pedalPos / 127) * (mx - mn));
       const out = {};
       for (const k of keys) out[k] = est;

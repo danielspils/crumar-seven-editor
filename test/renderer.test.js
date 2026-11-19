@@ -295,14 +295,19 @@ test('every exp_fn names parameters the schema actually has', () => {
   }
 });
 
-test('Amp Drive is modelled only while the amp simulator is ON', () => {
-  // Per the manual the pedal cannot reach Drive with the amp off, and drawing
-  // the mark there would be the claim this feature is built not to make.
-  assert.deepStrictEqual(pedal({ exp_fn: 7, amp_sw: 1 }, 127), { amp_dr: 127 });
-  assert.strictEqual(pedal({ exp_fn: 7, amp_sw: 0 }, 127), null, 'amp off');
-  // STRICTLY 1: a patch with no amp_sw is unknown, not off, and unknown is not
-  // a licence to claim the pedal is reaching the row.
-  assert.strictEqual(pedal({ exp_fn: 7 }, 127), null, 'amp_sw absent');
+test('AN INERT ROW STILL SHOWS THE PEDAL — Amp Drive is not gated', () => {
+  // This gated Amp Drive on amp_sw, from the v1.22 manual. Removed 18 Nov 2026
+  // (Daniel): the app ALREADY dims an off section's rows and marks them inert
+  // with a reason, so hiding the mark was a second rule stating the same fact
+  // invisibly — and it read as the feature being broken. It also put a manual's
+  // claim into running code, which Rule 1 exists to prevent.
+  //
+  // The mark answers "where is the pedal, mapped through its range". Whether
+  // anything downstream is listening is a different question, and the row
+  // answers that one itself.
+  assert.deepStrictEqual(pedal({ exp_fn: 7, amp_sw: 1 }, 127), { amp_dr: 127 }, 'amp on');
+  assert.deepStrictEqual(pedal({ exp_fn: 7, amp_sw: 0 }, 127), { amp_dr: 127 }, 'amp off');
+  assert.deepStrictEqual(pedal({ exp_fn: 7 }, 127), { amp_dr: 127 }, 'amp_sw absent');
 });
 
 test('nothing is modelled without a position or the pedal\'s own parameters', () => {

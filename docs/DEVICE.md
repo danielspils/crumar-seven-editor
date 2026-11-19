@@ -763,8 +763,18 @@ pedal is and what the range's two ends are, and must invent the middle.
   parameter each one drives is read off the label, not demonstrated. Two of them
   drive two rows each, which is inference from the names "FX 1 + 2 Depth" and
   "FX 1 + 2 Rate".
-- **that Amp Drive needs the amp simulator on.** That one is the manual's claim
-  (v1.22, Rule 1), not a measurement.
+**NOT ON THAT LIST ANY MORE: whether Amp Drive needs the amp simulator on.**
+The manual (v1.22) says it does, and the app gated the mark on it until
+18 Nov 2026. **The gate is gone and the app now asserts nothing about it** —
+partly because the claim is fifteen firmware revisions old and unmeasured here
+(Rule 1), and partly because the app already dims an off section's rows and
+marks them inert with a reason, so suppressing the mark stated the same fact a
+second time, invisibly. It read as the feature being broken.
+
+**The question is still open and still worth a minute at the instrument:** with
+the pedal assigned to Amp Drive and the amp simulator OFF, does rocking it
+change the sound? Silence confirms the manual; a change refutes it. Either way
+nothing in the app depends on the answer now.
 
 **WHAT WOULD ACTUALLY VERIFY IT, and why nobody has.** The applied value cannot
 be read over the wire at all, so a check has to leave the protocol:

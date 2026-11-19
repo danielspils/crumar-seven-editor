@@ -321,6 +321,15 @@ failure this project has recorded three times under other names.
 **Why texture and not a second colour.** A different hue would say *a different
 thing*; what differs is only **how well it is known**.
 
+**AN INERT ROW STILL SHOWS THE PEDAL.** A row in a switched-off section is
+already dimmed and already carries an inert marker with its reason, so hiding
+the pedal's fill there would state the same fact a second time — invisibly, and
+in a way that reads as the feature being broken rather than as the section
+being off. It did exactly that for Amp Drive (Daniel, 18 Nov 2026: *"No
+workie"*). The fill answers **where the pedal is, mapped through its range**;
+whether anything downstream is listening is a different question, and the row
+answers that one itself.
+
 **THE ROW'S NUMBER NEVER MOVES.** It is the stored value. The pedal modulates;
 it does not edit. A number that followed the pedal would make Save patch write
 a value the patch never held.
