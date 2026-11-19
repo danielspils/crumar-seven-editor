@@ -310,6 +310,78 @@ test('AN INERT ROW STILL SHOWS THE PEDAL — Amp Drive is not gated', () => {
   assert.deepStrictEqual(pedal({ exp_fn: 7 }, 127), { amp_dr: 127 }, 'amp_sw absent');
 });
 
+// ── THE FIVE THAT ARE NOT DRAWN ─────────────────────────────────────────────
+//
+// Daniel, 18 Nov 2026: "If they don't work... they're confusing to me." Each
+// of the five takes a write, echoes it and holds it on a fresh read, and
+// changes nothing audible (docs/DEVICE.md). So they are not rendered.
+//
+// FIVE AND NOT SEVEN. `dly_mf` and `dly_ml` were briefly in this list and were
+// taken out the same day: the manual says they are CEILINGS on how far DEPTH
+// can push feedback and level, so the test that found them silent never
+// controlled for DEPTH and may never have exercised them. They are asserted
+// below as STILL DRAWN, which is the half of this test that would catch them
+// being hidden again on the same untested premise.
+//
+// HIDING A ROW MUST NEVER BECOME DROPPING A VALUE. That is the whole risk in
+// this change: a patch that lost them on save would rewrite somebody's preset
+// the next time it was transferred back, silently and permanently. Both halves
+// are asserted here, in one test, reading the SAME list the renderer uses —
+// a copy of the seven keys in this file would be a second place for the
+// decision to live, which is exactly what the constant exists to prevent.
+test('the inaudible five are not drawn, and their values still round-trip', () => {
+  const { serializeLibrary, parseLibrary } = require('../src/format/index.js');
+  const hidden = Array.from(R.INAUDIBLE_KEYS);
+  assert.strictEqual(hidden.length, 5, 'the list is the five in DEVICE.md');
+  for (const k of ['dly_mf', 'dly_ml']) {
+    assert.ok(!R.INAUDIBLE_KEYS.has(k),
+      `${k} is NOT hidden — it is a ceiling on DEPTH and has never been tested as one`);
+  }
+
+  // A SAMPLED sound, or the pno_rom group never renders at all and every
+  // "rom_p03 is absent" assertion below would pass for the wrong reason.
+  const sampled = schema.sounds.find((s) => s.sampled);
+  assert.ok(sampled, 'the schema knows a sampled sound');
+  // THE REAL FIXTURE, not a hand-built object. The first attempt assembled a
+  // library literal here and the parser refused it for a missing `format`
+  // string — correctly, and it would have been a test of my object rather
+  // than of the round trip.
+  const lib = JSON.parse(fs.readFileSync(
+    path.join(root, 'fixtures', 'library-roundtrip.json'), 'utf8'));
+  const patch = lib.patches[0];
+  patch.soundName = sampled.name;
+  patch.sampled = sampled.sampled;
+  Object.assign(patch.params,
+    Object.fromEntries(schema.parameters.map((p) => [p.key, Math.min(64, p.max)])));
+  // Distinctive, non-default, and inside every max.
+  hidden.forEach((k, i) => { patch.params[k] = 7 + i * 11; });
+
+  const html = R.renderDetail(patch, { collapsed: {}, live: true });
+  for (const k of hidden) {
+    assert.ok(!html.includes(`data-key="${k}"`), `${k} is not drawn`);
+  }
+  // THE POSITIVE CONTROLS, one from each group the seven come from. Without
+  // them this test would pass just as happily against a renderer that drew
+  // nothing at all.
+  assert.ok(html.includes('data-key="rom_p00"'), 'rom_p00 Level is still drawn');
+  assert.ok(html.includes('data-key="fx2_dp"'), 'fx2_dp Depth is still drawn');
+  // THE TWO THAT WERE NEARLY HIDDEN BY MISTAKE. Their silence has a published
+  // explanation nobody has tested against, so they stay as working controls
+  // until somebody sweeps DEPTH with the ceilings high and then low.
+  assert.ok(html.includes('data-key="dly_mf"'), 'dly_mf Max Feedback is still drawn');
+  assert.ok(html.includes('data-key="dly_ml"'), 'dly_ml Max Level is still drawn');
+
+  // AND THE FILE KEEPS THEM. Same values, through a real serialize/parse.
+  const { library, report } = parseLibrary(serializeLibrary(lib), { schema });
+  hidden.forEach((k, i) => {
+    assert.strictEqual(library.patches[0].params[k], 7 + i * 11,
+      `${k} survives the round trip`);
+  });
+  assert.strictEqual(report.errors.length, 0, 'and the file is clean');
+  assert.strictEqual(Object.keys(library.patches[0].params).length, 110,
+    'all 110 parameters are still in the file — hiding is not dropping');
+});
+
 test('nothing is modelled without a position or the pedal\'s own parameters', () => {
   // NULL IS NOT ZERO. A pedal that has not moved this session is in a position
   // the app does not know, and the heel is a claim rather than a reading.

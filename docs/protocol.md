@@ -705,151 +705,42 @@ The July 2021 manual documents v1.22. On v1.37:
    recall land before starting a run; anything else driving the buffer during a
    backup (the manufacturer's editor, a second copy of this app) would corrupt
    a record the same way, and nothing on the wire would say so.
-5b. **`dly_mf` / `dly_ml` accept writes but were reported to change nothing
-   audible (2026-08-12).**
+5b. **`dly_mf` / `dly_ml` take, echo and hold values and have not been heard
+   to do anything — STILL OPEN, AND LESS ESTABLISHED THAN IT LOOKED. THE
+   RECORD MOVED TO `docs/DEVICE.md` on 18 Nov 2026** — see "FIVE SAMPLE-PLAYER
+   PARAMETERS TAKE, ECHO AND HOLD", subsection "THE TWO FX2 DELAY MAXIMA".
 
-   **THIS CATEGORY HAS SEVEN MEMBERS, NOT TWO, as of 18 Nov 2026.** Five
-   sample-player parameters — `rom_p03` Filter, `rom_p04` Velocity, `rom_p05`
-   Piano Harp, `rom_p08` Rel. Smp. Level, `rom_p09` Ped. Smp. Level — were
-   found to behave the same way: inaudible on two sampled sets by ear, and
-   taking, echoing and holding both 0 and 127 on the wire, with `rom_p00`
-   Level as a control behaving identically. **The full record is in
-   `docs/DEVICE.md`** rather than repeated here; whether the two groups share a
-   cause is not established and nothing suggests one.
- With FX2 in Delay mode, the owner adjusted Max
-   Feedback (id 86) and Max Level (id 87) and heard no change. A direct check
-   ruled the app out: each was read, written to 100, echoed 100 and read back
-   100 on a fresh `0x22`, then restored — the instrument takes and holds the
-   value. `dly_sp` (Stereo Spread, id 88) in the same group behaves the same on
-   the wire and IS audible. So the two are conditional on something not yet
-   identified. Candidates worth a session, none of them evidence yet: another
-   parameter gating them, a mod/expression assignment they cap rather than set
-   (the "Max" in both names), or a firmware quirk. Do not label them inert in
-   the UI until the condition is demonstrated — the app currently shows them as
-   ordinary controls, which is what the device reports them to be.
+   **It belongs there because what is unexplained is a fact about the
+   INSTRUMENT, not about the wire format.** The wire behaviour is the one part
+   that was never in doubt: both are read, written, echoed and read back
+   correctly, twice, on different patches and different starting values.
 
-   **Re-checked 2026-08-12, second run.** Same result on a different patch and
-   different starting values: `dly_mf` read 113, was written to 20, echoed 20,
-   read back 20 on a fresh `0x22`, and restored. `dly_ml` read 127, same round
-   trip. FX2 was on and in Delay mode at the time (`fx2_sw` 1, `fx2_md` 3,
-   `fx2_dp` 47, `fx2_sp` 72). The write path is not in question.
+   **THESE TWO ARE NOT IN THE SAME CATEGORY AS THE FIVE, and this entry said
+   they were for about an hour on 18 Nov 2026.** Five sample-player parameters
+   — `rom_p03` Filter, `rom_p04` Velocity, `rom_p05` Piano Harp, `rom_p08`
+   Rel. Smp. Level, `rom_p09` Ped. Smp. Level — were found that day to be
+   inaudible on two sample sets with `rom_p00` Level as a control behaving
+   identically, and these two were filed beside them. **Daniel stopped it:**
 
-   The run also turned up a **display discrepancy worth chasing separately**:
-   the app's panel showed Speed, Max Feedback and Max Level all as 0 while the
-   instrument reported 72, 113 and 127. Depth and Stereo Spread matched
-   exactly, so it is not the whole section. If the panel is showing 0 for a
-   parameter the device holds at 113, "adjusting it does nothing" has a second
-   possible cause that has nothing to do with the delay: dragging from a value
-   that was never there. Establish which panel state produced that before
-   attributing any of it to the instrument.
+   > "They are CEILINGS, not amounts. They cap how far DEPTH can push feedback
+   > and level. With DEPTH low, moving a ceiling changes nothing — which is
+   > exactly the observation we have. The test that produced 'no change' may
+   > never have exercised them."
 
-   **Third confirmation, 2026-11-15.** Daniel, playing the instrument with the
-   app connected, FX2 in Delay: moving DEPTH changes what sounds like
-   feedback, moving MAX FEEDBACK appears to change nothing. Panel at the time:
-   Depth 34, Speed 27, Max Feedback 127, Max Level 0, Stereo Spread 127.
+   **The manual says so** (§20.5, quoted in `docs/MANUAL.md` and in the
+   DEVICE.md entry), and the 15 Nov session had Max Level at **0** and Depth
+   at **34** — which is what the ceiling model predicts, not a contradiction
+   of it. So the state is **unknown, not dead**, and `dly_mf`/`dly_ml` **stay
+   visible and working** while the five are hidden.
 
-   The first half is not a defect, and the manual settles it outright.
-   **§20.5, verbatim** (`docs/MANUAL.md`):
+   **THE EXPERIMENT THAT WOULD SETTLE IT is written out in DEVICE.md** and has
+   never been run: both maxima at 127, sweep DEPTH 0 → 127 and listen for the
+   repeats running away; then both at 20 and sweep again. Tamer the second
+   time means they work.
 
-   > "When the Delay effect is selected, the DEPTH parameter varies both the
-   > delay feedback and level at the same time."
-
-   > "This section allows to establish the maximum amount of feedback and
-   > level that can be varied by the DEPTH parameter."
-
-   So DEPTH **is** the feedback amount in Delay mode, by design, and `dly_mf`
-   and `dly_ml` are **CEILINGS on what DEPTH can reach** rather than amounts
-   in their own right. Not a mislabelling and not a mis-wiring.
-
-   **THAT SHARPENS THIS ITEM RATHER THAN CLOSING IT.** What is left is a
-   genuine manual-versus-device disagreement: the manual says the maxima bound
-   DEPTH, and on FW 1.37 Daniel cannot hear them do it, across three sessions.
-   By the authority rule the device wins and the manual is fifteen revisions
-   stale — but "the manual says it should" is now a documented expectation
-   this item is measured against, which it never had before.
-   **Still do not label them inert in the UI**; the device reports them as
-   ordinary controls.
-
-   Two details from the manual that bear on how this can ever be observed, and
-   both make it harder: the manual gives **no front-panel or menu route** to
-   either maximum, and lists **no CC** for them — §10.4's fixed map has
-   nothing for feedback, level, spread or Delay TIME. They are editor-only
-   parameters with no controller. That is exactly the B7 mechanism below: a
-   parameter with no CC and no panel control cannot be followed when it moves,
-   because there is no route by which it CAN move except an editor.
-
-   Two things were ruled out this session rather than assumed, both measured
-   with the Seven attached (`test/ui/scenarios/fx2-delay-map.js`,
-   `fx2-delay-rows.js`):
-
-   - **No id offset anywhere in FX2.** 17 writes across all four modes: every
-     write moved exactly the id it was aimed at and no other. `pha_st`
-     correctly clamped 119 → 3 at its max.
-   - **No mis-wired control.** Every rendered row's label matches its own
-     `data-key` — Depth→`fx2_dp`, Max Feedback→`dly_mf` and so on — and no
-     phaser row leaks into Delay. This needed its own probe: a by-the-seam
-     test writes by KEY and so cannot see a row carrying the wrong one.
-
-   **The display discrepancy above became its own bug and is now FIXED** —
-   B7 in `out/next-1.5.7.md`. The panel is a cached view; when the instrument
-   moved without the app originating it, the slider was stale, and a drag
-   wrote the pointer's ABSOLUTE position. Measured: panel 0, device 113, drag
-   to 25% wrote 32, so the instrument moved −81 while the player aimed +32. It
-   self-corrected on that same write, which is why this item sat here for
-   three months. Since 16 Nov 2026 grabbing a bar reads that one parameter
-   first, so the value a player aims from is the instrument's own.
-
-   **THAT MATTERS HERE, and it is the part to carry forward:** one of the two
-   explanations for "I moved Max Feedback and heard nothing" has now been
-   removed. Dragging from a value that was never there is no longer possible.
-   A fourth report of silence would therefore be better evidence than the
-   first three were.
-
-   ---
-
-   **SETTLED 16 Nov 2026 — THE APP LEAVES THEM ALONE. Daniel's call.**
-
-   `dly_mf` and `dly_ml` stay as ordinary controls. No dimming, no badge, no
-   note on the row. **Do not re-open this a fourth time without new evidence
-   from the instrument.**
-
-   **Why not dim them, which was the obvious thing and was considered and
-   dropped:** that panel ALREADY dims something, and nobody has ever
-   established what the existing dimming means. A second reason to dim would
-   make the first ambiguous — the reader would no longer know whether a dim
-   row meant "switched off", "not applicable in this mode" or "we think this
-   does nothing". And the case that kills it outright: **Stereo Spread is
-   dimmed too, and Stereo Spread demonstrably WORKS.** A treatment that
-   already contains a counter-example cannot be given a new meaning.
-
-   **WHAT IS AND IS NOT KNOWN, in one place, so the next session starts from
-   here rather than from the instrument:**
-
-   - **Three sessions of silence**, by the owner, on the instrument: 12 Aug
-     2026 twice and 15 Nov 2026. Not one of them a measurement — they are
-     reports of not hearing something, which is the only kind of evidence
-     available for an audible effect.
-   - **The write path is not in question.** Read, written, echoed, read back
-     on a fresh `0x22`, restored — twice, on different patches and different
-     starting values.
-   - **No id offset and no mis-wired row**, both measured (17 writes across
-     four modes; every rendered label matches its own `data-key`).
-   - **The manual says they are ceilings DEPTH moves within** (§20.5), which
-     makes the first half of the original report — "Depth changes the
-     feedback" — correct behaviour rather than a defect.
-   - **The manual documents FW 1.22 and the unit runs 1.37**, fifteen
-     revisions apart, and by the order of authority the device wins.
-   - **NOTHING IN ANY RELEASE NOTE HAS EVER MENTIONED THE DELAY** — not
-     feedback, level, the maxima, stereo spread or delay time, across ten
-     releases and four years (`docs/MANUAL.md` §5 of the firmware history).
-     So §20.5 is the ONLY statement about these two that exists anywhere, and
-     it describes a firmware nobody here is running.
-
-   **So the honest position is that this is not knowable from reading.** Every
-   document has been read; the remaining question is audible and belongs to
-   the instrument. **Still do not label them inert in the UI** — the device
-   reports them as ordinary controls, and an app that says otherwise would be
-   asserting something no measurement supports.
+   **WHAT STAYS HERE is the one question that is genuinely about the wire**,
+   below: whether the instrument emits anything at all when a `cc: -1`
+   parameter is moved on its own front panel.
 
    Scope, from the code rather than guessed: 25 of 110 parameters carry a CC
    and ARE followed (`audition.js onPanelCc` reads the value back); the other

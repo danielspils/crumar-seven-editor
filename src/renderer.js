@@ -194,6 +194,38 @@
   // values are still stored and backed up.
   const SWITCH_KEYS = new Set(['veq_byp', 'fx1_sw', 'fx2_sw', 'amp_sw', 'rev_sw', 'pad_sw']);
 
+  // NOT DRAWN, BECAUSE NOBODY CAN HEAR THEM (Daniel, 18 Nov 2026: "If they
+  // don't work... they're confusing to me"). Each of these takes a write,
+  // echoes it, and holds it on a fresh read — and changes nothing audible.
+  // The evidence, its limits, and what is still unknown are in docs/DEVICE.md
+  // under "FIVE SAMPLE-PLAYER PARAMETERS TAKE, ECHO AND HOLD"; this list does
+  // not restate it.
+  //
+  // `dly_mf` AND `dly_ml` ARE DELIBERATELY NOT HERE. They look like members of
+  // this family — inaudible on three occasions, taking and holding on the wire
+  // — and they were briefly added. The manual supplies a mechanism the test
+  // never controlled for: they are CEILINGS on how far DEPTH can push feedback
+  // and level, so with DEPTH low, moving one changes nothing and the
+  // observation is what it should be. **Unknown is not dead**, and hiding a
+  // working control on an untested premise is worse than showing one that does
+  // nothing. See DEVICE.md for the experiment that would settle it.
+  //
+  // A DISPLAY DECISION AND NOTHING ELSE — exactly like SWITCH_KEYS above. The
+  // values are still stored, still read, still written, still saved and still
+  // backed up; a patch round-trips through the library with all five intact
+  // (test/format.test.js). Hiding a row must never become dropping a value:
+  // that would quietly rewrite somebody's preset on the next transfer.
+  //
+  // ONE LIST, ONE PLACE. If a firmware update ever hooks them up, deleting a
+  // line here is the whole change.
+  const INAUDIBLE_KEYS = new Set([
+    'rom_p03',   // Filter
+    'rom_p04',   // Velocity
+    'rom_p05',   // Piano Harp
+    'rom_p08',   // Rel. Smp. Level
+    'rom_p09',   // Ped. Smp. Level
+  ]);
+
   // Sound → engine group. Any sampled sound (incl. a missing one) is the sample
   // player; modeled sounds map by name.
   // Short day form ("9 Aug"), matching the library's origin lines.
@@ -544,7 +576,8 @@
     };
 
     function rowsFor(group, patch, view) {
-      let params = byGroup(group).filter((p) => !SWITCH_KEYS.has(p.key));
+      let params = byGroup(group)
+        .filter((p) => !SWITCH_KEYS.has(p.key) && !INAUDIBLE_KEYS.has(p.key));
       const order = DISPLAY_ORDER[group];
       if (order) {
         params = params.slice().sort((a, b) => {
@@ -560,19 +593,12 @@
             const partner = byKey.get(p.pairMax);
             if (partner) return renderRangeRow(p, partner, patch, view);
           }
-          // rom_p05 "Piano Harp" does nothing unless the loaded sample is a
-          // piano (manual) — show it as inert instead of pretending it applies.
-          const opts =
-            p.key === 'rom_p05' && !/piano|grand|upright/i.test(patch.soundName || '')
-              ? {
-                inertReason: {
-                  mark: 'not used',
-                  why: 'This control only does something when the loaded sample is a ' +
-                    'piano. The Seven still stores a value for it.',
-                },
-              }
-              : undefined;
-          return paramRow(p, patch.params[p.key], view, opts, patch.soundName);
+          // rom_p05 "Piano Harp" USED TO RENDER HERE AS INERT on a non-piano
+          // sample, on the manual's say-so. That treatment is gone with the
+          // row: it is in INAUDIBLE_KEYS now and hidden on EVERY sound, for a
+          // different and stronger reason — measured on hardware rather than
+          // read in a document, and silent on piano samples too (DEVICE.md).
+          return paramRow(p, patch.params[p.key], view, undefined, patch.soundName);
         })
         .join('');
     }
@@ -1000,6 +1026,7 @@
       sectionSummary,
       FX_SECTIONS,
       SWITCH_KEYS,
+      INAUDIBLE_KEYS,
     };
   }
 

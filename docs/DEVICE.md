@@ -880,7 +880,26 @@ instrument does.
 
 ### FIVE SAMPLE-PLAYER PARAMETERS TAKE, ECHO AND HOLD — AND NOBODY CAN HEAR THEM
 
-Measured 18 Nov 2026 on FW 1.37. **Two halves, measured separately and by
+**FIVE, NOT SEVEN, AND THE CORRECTION IS THE MOST USEFUL THING ON THIS PAGE.**
+
+| key | id | label |
+|---|---|---|
+| `rom_p03` | 63 | Filter |
+| `rom_p04` | 64 | Velocity |
+| `rom_p05` | 65 | Piano Harp |
+| `rom_p08` | 66 | Rel. Smp. Level |
+| `rom_p09` | 67 | Ped. Smp. Level |
+
+The FX2 delay maxima `dly_mf` and `dly_ml` were put in this list on 18 Nov 2026
+and taken straight back out by Daniel the same day. **They look like members of
+this family and they are not established as such** — the section below says
+why, and it is the better worked example of this project's own rule.
+
+---
+
+#### THE EVIDENCE FOR THE FIVE (18 Nov 2026)
+
+Measured on FW 1.37. **Two halves, measured separately and by
 different methods, and they must not be blurred together.**
 
 **THE AUDIBLE HALF — Daniel, by ear.** Filter (`rom_p03`), Velocity
@@ -919,11 +938,6 @@ Nothing here establishes that K8 is silent too, or that Tine and Reed echo —
 only that the same five parameters are inaudible on two sets and held on a
 third. **And two sets out of sixteen is not all of them.**
 
-**THIS IS THE `dly_mf` / `dly_ml` PATTERN** — "takes, echoes and holds on
-hardware but has never been audible" — recorded at `docs/protocol.md` open
-item 5b. **That category now has SEVEN parameters rather than two.** Whether
-the two groups share a cause is not established and nothing here suggests one.
-
 **THE IDS ARE NOT IN QUESTION, and the near-miss is worth naming.** The KEYS
 jump `rom_p05` → `rom_p08`, so a reader may expect a gap in the ids. There is
 none: they run 60..67 straight through. An off-by-two would have addressed 68
@@ -933,10 +947,171 @@ its id by direct lookup (`parameters.find(p => p.key === key)`), never by
 parsing the name, and `seven-midi.js`'s reply matchers validate the echoed id,
 so an accepted echo is itself evidence of the right address.
 
-**THE UI IS UNCHANGED, and that is Daniel's standing call** — the same one made
-for `dly_mf`/`dly_ml`. They remain ordinary working controls, because the
-device reports them as ordinary working parameters and labelling them inert
-would be a claim about a condition nobody has identified.
+---
+
+#### THE TWO FX2 DELAY MAXIMA — UNKNOWN, NOT DEAD (12 Aug — 18 Nov 2026)
+
+Three months of record, moved here from `docs/protocol.md` open item 5b.
+
+**THEY ARE NOT HIDDEN AND THEY STAY WORKING CONTROLS.** They were added to the
+hidden list on 18 Nov 2026 and removed again within the hour, by Daniel:
+
+> *"The evidence against them is weaker than it looked… They are CEILINGS, not
+> amounts. They cap how far DEPTH can push feedback and level. With DEPTH low,
+> moving a ceiling changes nothing — which is exactly the observation we have.
+> The test that produced 'no change' may never have exercised them."*
+
+**THE MANUAL HAD SUPPLIED THE MECHANISM ALL ALONG**, in the §20.5 quotation
+reproduced further down this very section — and it was quoted in the writeup
+that filed them as inaudible anyway. The discipline went into the measurement
+and skipped the premise, which is the exact failure CLAUDE.md records under
+**AN UNDETECTABLE RISK IS NOT A DEMONSTRATED ONE**. Worth more than the fix:
+the counter-evidence was already written down, in the same paragraph, and
+nobody read it as counter-evidence.
+
+**THE 15 Nov PANEL STATE CORROBORATES THE CEILING STORY RATHER THAN THE
+SILENCE.** Max Level was **0** and Depth was **34**. With the level ceiling at
+zero, DEPTH has nothing to push the level to; with DEPTH at 34, neither ceiling
+is near being reached. That session is what the manual predicts, not a
+contradiction of it.
+
+**SO THE HONEST STATE IS UNKNOWN.** Hiding them would delete two controls on an
+untested premise, which is worse than showing two that might do nothing:
+nobody loses a control they can see.
+
+##### THE EXPERIMENT THAT WOULD SETTLE IT
+
+For whenever Daniel has the instrument. It is the test the three silent
+sessions never ran, because none of them varied DEPTH against a ceiling:
+
+1. **FX2 on, Mode = Delay. Both maxima at 127.** Sweep DEPTH 0 → 127 and listen
+   for the repeats running away.
+2. **Both maxima at 20.** Sweep DEPTH 0 → 127 again.
+
+**If the repeats are tamer the second time, they work** and this entry closes.
+If the two sweeps sound the same, that is the first evidence against them that
+actually tests the published mechanism — and it would be worth more than all
+three previous reports together.
+
+---
+
+##### THE RECORD AS IT STOOD
+
+**THREE SESSIONS OF SILENCE**, by the owner, on the instrument: 12 Aug 2026
+twice and 15 Nov 2026. **Not one of them is a measurement** — they are reports
+of not hearing something, which is the only kind of evidence available for an
+audible effect. The 15 Nov panel state: Depth 34, Speed 27, Max Feedback 127,
+Max Level 0, Stereo Spread 127.
+
+**THE WRITE PATH IS NOT IN QUESTION**, measured twice on different patches with
+different starting values: each read, written, echoed and read back on a fresh
+`0x22`, then restored. First run, both written to 100, echoed 100, read 100.
+Second run, `dly_mf` read 113 → written 20 → echoed 20 → read 20; `dly_ml` read
+127, same round trip. FX2 was on and in Delay mode throughout (`fx2_sw` 1,
+`fx2_md` 3, `fx2_dp` 47, `fx2_sp` 72).
+
+**`dly_sp` STEREO SPREAD (id 88) IS THE CONTROL**, in the same group, behaving
+identically on the wire — and it is audible. The same role `rom_p00` Level
+plays for the five above.
+
+**NO ID OFFSET AND NO MIS-WIRED ROW**, both measured rather than assumed
+(`fx2-delay-map.js`, `fx2-delay-rows.js`): 17 writes across all four FX2 modes,
+every write moving exactly the id it was aimed at and no other, with `pha_st`
+correctly clamping 119 → 3 at its max; and every rendered row's label matching
+its own `data-key`, with no phaser row leaking into Delay. That second one
+needed its own probe — a test that writes by KEY cannot see a row carrying the
+wrong one.
+
+**THE MANUAL SAYS WHAT THEY ARE, AND IT SHARPENS THE QUESTION RATHER THAN
+CLOSING IT.** §20.5, verbatim:
+
+> "When the Delay effect is selected, the DEPTH parameter varies both the
+> delay feedback and level at the same time."
+
+> "This section allows to establish the maximum amount of feedback and level
+> that can be varied by the DEPTH parameter."
+
+So DEPTH **is** the feedback amount in Delay mode, by design, and these two are
+**CEILINGS on what DEPTH can reach** rather than amounts in their own right.
+Not a mislabelling and not a mis-wiring — and it makes the first half of the
+original report ("Depth changes the feedback") correct behaviour. What is left
+is a genuine manual-versus-device disagreement: the manual says the maxima
+bound DEPTH, and on FW 1.37 the owner cannot hear them do it.
+
+**THE MANUAL DOCUMENTS FW 1.22 AND THE UNIT RUNS 1.37**, fifteen revisions
+apart, and by the order of authority the device wins. **No release note has
+ever mentioned the delay** — not feedback, level, the maxima, stereo spread or
+delay time, across ten releases and four years. So §20.5 is the ONLY statement
+about these two that exists anywhere, and it describes a firmware nobody here
+is running.
+
+**THEY ARE EDITOR-ONLY WITH NO CONTROLLER**, which is why this is hard to
+observe at all: the manual gives no front-panel or menu route to either, and
+§10.4's fixed CC map has nothing for feedback, level, spread or delay time.
+A parameter with no CC and no panel control cannot be followed when it moves,
+because there is no route by which it CAN move except an editor.
+
+**ONE OF THE TWO EXPLANATIONS FOR THE SILENCE HAS BEEN REMOVED.** The app's
+panel was a cached view, and a drag wrote the pointer's ABSOLUTE position — so
+with the panel reading 0 while the device held 113, a drag to 25% wrote 32 and
+the instrument moved −81 while the player aimed +32. It self-corrected on that
+same write, which is why the item sat open for three months. Since 16 Nov 2026
+grabbing a bar reads that one parameter first, so the value a player aims from
+is the instrument's own. **A fourth report of silence would therefore be better
+evidence than the first three were.**
+
+---
+
+#### WHAT THE APP DOES ABOUT ALL SEVEN
+
+**HIDDEN, SINCE 18 Nov 2026. Daniel's call:** *"If they don't work... they're
+confusing to me."* One list, `INAUDIBLE_KEYS` in `src/renderer.js`, and
+deleting a line from it is the whole of restoring a row.
+
+**THE FIVE ONLY.** `dly_mf` and `dly_ml` remain ordinary working controls, and
+the 16 Nov 2026 decision to leave them alone **stands** — it was briefly
+reversed on 18 Nov and reinstated the same day when Daniel pointed out that the
+ceiling mechanism had never been tested. The five are a different group, in a
+different engine, with their own control (`rom_p00`) that behaved identically.
+
+**HIDING IS NOT DIMMING, and that distinction is why this is available at all.**
+Dimming was considered on 16 Nov and dropped for a reason that still stands:
+that panel already dims things, nobody has established what the existing
+dimming means, and **Stereo Spread is dimmed and demonstrably WORKS** — a
+treatment that already contains a counter-example cannot be given a new
+meaning. Hiding makes no claim on the panel at all.
+
+**AND HIDING IS ONLY AVAILABLE WHERE THE ANSWER IS ESTABLISHED.** That is the
+line between the five and the two: an unseen control cannot be reached by
+somebody who disagrees with us, so it costs more to be wrong about than a dim
+one does. The five have a measured audible result on two sample sets with a
+control; the two have a published mechanism nobody has tested against.
+
+**A DISPLAY DECISION AND NOTHING ELSE.** The values are still stored, read,
+written, saved, backed up and transferred. A patch round-trips through the
+library with all five intact, asserted in `test/renderer.test.js` against the
+same constant the renderer uses — because hiding a row that became dropping a
+value would rewrite somebody's preset on the next transfer, silently.
+
+**`rom_p05` LOST A SEPARATE TREATMENT HERE.** It used to render as inert on
+non-piano samples, on the manual's say-so. That is gone with the row: it is
+hidden on every sound now, for a stronger reason — measured on hardware rather
+than read in a document, and silent on piano samples too.
+
+---
+
+#### WHERE THIS STOPS — FOR THE FIVE
+
+**The remaining question is firmware, and nothing on this side of the cable can
+answer it.** Addressing, delivery, sample set and load timing are all ruled out
+by measurement above; the wire does what it should in every case. **Asking
+Crumar is the only step beyond this point.** Do not spend another session
+re-deriving what is already eliminated.
+
+**THIS DOES NOT APPLY TO `dly_mf` AND `dly_ml`.** Those two have a cheap,
+unrun, decisive experiment waiting for them — sweep DEPTH with the ceilings
+high, then low — and it is written out above. Do that before concluding
+anything about them.
 
 ### Service shortcuts and curios
 
