@@ -305,8 +305,33 @@ approval has them in hand.
 
 | token | dark | light | jobs |
 |---|---|---|---|
-| `--amber` | `#E0A23C` | `#E0A23C` | active-state marker, focus rings, the field being edited, warnings |
-| `--mark-amber` | `#c9a25e` | `#8a5d00` | locating marks only |
+| `--amber` | `#E0A23C` | `#E0A23C` | the active-state marker only — tab and bank-tab underlines, `.seg-btn`, the field being edited |
+| `--mark-amber` | `#c9a25e` | `#8a5d00` | everything that is FUNCTION: locating marks, the four focus rings, the reversed-range readout, `.tx-alarm-soft` |
+
+**THE SPLIT IS TASTE VERSUS FUNCTION, not two kinds of mark.** `--amber` keeps
+the jobs Daniel judged by eye and approved twice; `--mark-amber` takes the ones
+where being seen is the whole point. A focus ring nobody can see is a keyboard
+user stuck, and that is not an aesthetic question (Daniel, 18 Nov 2026).
+
+**Measured in the running app, both themes**, by
+`test/ui/scenarios/amber-jobs-contrast.js` — against the ground each element
+actually sits on, found by walking ancestors for the first non-transparent
+background rather than naming one by hand:
+
+| | light | dark | bar |
+|---|---|---|---|
+| focus ring · search / param select | 4.26:1 | 5.99:1 | 3:1 |
+| focus ring · library folder | 4.84:1 | 6.74:1 | 3:1 |
+| focus ring · fx state | 4.88:1 | 5.00:1 | 3:1 |
+| reversed-range readout (TEXT) | 5.29:1 | 5.99:1 | 4.5:1 |
+
+All six were 1.88:1 or worse in light before the move.
+
+**`.tx-alarm-soft` IS NOT IN THAT TABLE** — it lives inside a modal that the
+scenario does not open, so it is not measured. It uses the same token on the
+same dialog ground as the readout, so it is expected to land near 5:1, but
+**expected is not measured** and the scenario says "not measured in this
+state" rather than quietly leaving it out.
 
 **Measured contrast, light theme, against all three grounds.** `--page` is the
 WORST ground and the one that binds: these marks are darker than the paper, so

@@ -75,7 +75,14 @@
          deliberately not done in that pass" — this is that cleanup, arriving
          as a red rather than as tidying.
          The values are yesterday's, so marks look exactly as they did before
-         the token moved: nothing here is a new design decision. */
+         the token moved: nothing here is a new design decision.
+         IT ALSO CARRIES THE JOBS THAT ARE FUNCTION RATHER THAN TASTE (Daniel,
+         18 Nov 2026): the four focus rings, the reversed-range readout and
+         .tx-alarm-soft. A focus ring nobody can see is a keyboard user stuck,
+         which is not an aesthetic question — and the readout is TEXT, so its
+         bar is 4.5:1 rather than 3:1. THE UNDERLINES DID NOT MOVE: those are
+         taste, Daniel approved #E0A23C from a screenshot twice, and the
+         exception is recorded with its numbers in docs/DESIGN.md. */
       --mark-amber: #c9a25e;
       /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
@@ -2004,7 +2011,7 @@
       background: var(--bg-panel); color: var(--text-dim);
       border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
     }
-    .lib-search-wrap:focus-within { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .lib-search-wrap:focus-within { outline: 1px solid var(--mark-amber); outline-offset: 1px; }
     .lib-search-mag { flex: none; }
     .lib-search {
       flex: 1; min-width: 0; font: inherit; font-size: 12px;
@@ -2028,7 +2035,7 @@
       border: 1px solid transparent; border-radius: 5px;
     }
     .lib-folder:hover { color: var(--text); border-color: var(--line); }
-    .lib-folder:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+    .lib-folder:focus-visible { outline: 2px solid var(--mark-amber); outline-offset: 1px; }
     /* The list is the internal scroller — fixed max height so the bank rows
        above never leave the viewport. The scrollbar is ALWAYS visible
        (custom-drawn, so macOS overlay hiding doesn't apply): without it, a
@@ -2530,7 +2537,7 @@
        has gone wrong, somebody has simply reached for the drawing instead of
        the instrument, and a red correction for a reasonable mistake reads as
        telling them off. */
-    .seven-modal-body .tx-alarm-soft { color: var(--amber); }
+    .seven-modal-body .tx-alarm-soft { color: var(--mark-amber); }
     /* THREE BLINKS, THEN REST. 260ms on, 260ms off; app.js's BLINK_MS is
        3 * 520 and has to agree with this.
        TWO MECHANISMS STOP IT, DELIBERATELY REDUNDANT: the iteration count
@@ -4681,7 +4688,7 @@
     .fx-state.off { background: transparent; color: var(--text-muted); border: 1px solid var(--line); }
     .fx-state.on:hover { filter: brightness(1.12); }
     .fx-state.off:hover { color: var(--text); border-color: var(--text-muted); }
-    .fx-state:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .fx-state:focus-visible { outline: 1px solid var(--mark-amber); outline-offset: 1px; }
     .fx-head .fx-summary + .fx-state { margin-left: 0; }
     /* Non-interactive pill variant (kept for reuse elsewhere). */
     .fx-state.static { pointer-events: none; cursor: default; }
@@ -4875,7 +4882,20 @@
       content: ''; position: absolute; inset: -7px; border-radius: 50%;
     }
     .param.is-live .range-handle:hover { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--bar-fill-changed); }
-    .param-value.range-reversed { color: var(--amber); font-weight: 600; }
+    /* BOTH ROW STATES SPELLED OUT, and it is not belt and braces. Every range
+       row carries is-default or is-changed (renderer.js builds the class list
+       that way), and `.param.is-changed .param-value` is (0,3,0) and sits
+       LATER in this file than a bare `.param-value.range-reversed` at (0,2,0)
+       — so this rule lost the cascade on every row that could ever use it and
+       the readout has NEVER painted amber. It painted --text-muted or --text.
+       Found 18 Nov 2026 by a contrast check that asked whether the token was
+       doing the work rather than only whether the number was big enough.
+       Specificity rather than source order, so a rule added below cannot
+       quietly take it back. */
+    .param.is-default .param-value.range-reversed,
+    .param.is-changed .param-value.range-reversed {
+      color: var(--mark-amber); font-weight: 600;
+    }
     /* Inert parameters: dimmed with the reason inline; section-level override
        notes span the params grid. */
     .param.is-inert { opacity: .45; }
@@ -4997,7 +5017,7 @@
     .param-select:hover { border-color: var(--text-muted); }
     /* Accent ring on keyboard focus only — app.js blurs after a reverted
        change so the ring never lingers as a false selected/error state. */
-    .param-select:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+    .param-select:focus-visible { outline: 1px solid var(--mark-amber); outline-offset: 1px; }
     .param.is-default .param-select { color: var(--text-muted); }
     .param-value em { font-style: normal; color: var(--text-dim); margin-left: 4px; }
     /* Default vs changed: default is muted, changed is primary. */
