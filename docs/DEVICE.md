@@ -878,6 +878,66 @@ instrument does.
   3 seconds; pressing again within that window advances the selection.
   Works whether or not the FX section is on.
 
+### FIVE SAMPLE-PLAYER PARAMETERS TAKE, ECHO AND HOLD — AND NOBODY CAN HEAR THEM
+
+Measured 18 Nov 2026 on FW 1.37. **Two halves, measured separately and by
+different methods, and they must not be blurred together.**
+
+**THE AUDIBLE HALF — Daniel, by ear.** Filter (`rom_p03`), Velocity
+(`rom_p04`), Piano Harp (`rom_p05`), Rel. Smp. Level (`rom_p08`) and Ped. Smp.
+Level (`rom_p09`) produced **no audible effect** at 0 or at 127, with the sound
+reloaded in between, on **Sampled Tine Piano** and **Sampled Reed Piano**.
+
+**That rules out the two explanations that were standing.** Not a thin sample
+set — two different sets behaved the same. Not a load-time parameter — the
+sound was reloaded after each change.
+
+**THE WIRE HALF — `test/ui/scenarios/rom-param-roundtrip.js`.** Each was read,
+written to 0 and to 127, with the device's `0x23` echo and a fresh `0x22`
+read-back recorded for each value, then restored:
+
+| key | id | label | was | set 0 | set 127 |
+|---|---|---|---|---|---|
+| `rom_p03` | 63 | Filter | 64 | echo 0, read 0 | echo 127, read 127 |
+| `rom_p04` | 64 | Velocity | 64 | echo 0, read 0 | echo 127, read 127 |
+| `rom_p05` | 65 | Piano Harp | 127 | echo 0, read 0 | echo 127, read 127 |
+| `rom_p08` | 66 | Rel. Smp. Level | 78 | echo 0, read 0 | echo 127, read 127 |
+| `rom_p09` | 67 | Ped. Smp. Level | 72 | echo 0, read 0 | echo 127, read 127 |
+| `rom_p00` | 60 | **Level (control)** | 64 | echo 0, read 0 | echo 127, read 127 |
+
+**So the instrument holds them. It is not the app showing its own value** —
+which is what a slider surviving a sound change would also have looked like,
+and the reason this was asked for.
+
+**`rom_p00` Level is the control and behaves identically**, which is what makes
+the five mean something: a parameter nobody doubts round-trips the same way, so
+the method is not what is producing the result.
+
+**THE TWO HALVES USED DIFFERENT SOUNDS, and that is a real limit.** The audible
+test was Tine and Reed; the wire test was **Venice Upright K8**, a third set.
+Nothing here establishes that K8 is silent too, or that Tine and Reed echo —
+only that the same five parameters are inaudible on two sets and held on a
+third. **And two sets out of sixteen is not all of them.**
+
+**THIS IS THE `dly_mf` / `dly_ml` PATTERN** — "takes, echoes and holds on
+hardware but has never been audible" — recorded at `docs/protocol.md` open
+item 5b. **That category now has SEVEN parameters rather than two.** Whether
+the two groups share a cause is not established and nothing here suggests one.
+
+**THE IDS ARE NOT IN QUESTION, and the near-miss is worth naming.** The KEYS
+jump `rom_p05` → `rom_p08`, so a reader may expect a gap in the ids. There is
+none: they run 60..67 straight through. An off-by-two would have addressed 68
+and 69 — `veq_vol` and `veq_bas`, Volume and Bass — and writing 0 to those is
+not something anyone fails to notice. Independently: the app resolves a key to
+its id by direct lookup (`parameters.find(p => p.key === key)`), never by
+parsing the name, and `seven-midi.js`'s reply matchers validate the echoed id,
+so an accepted echo is itself evidence of the right address.
+
+**THE UI IS UNCHANGED, and that is Daniel's standing call** — the same one made
+for `dly_mf`/`dly_ml`. They remain ordinary working controls, because the
+device reports them as ordinary working parameters and labelling them inert
+would be a claim about a condition nobody has identified.
+
 ### Service shortcuts and curios
 
 - **Music demo** — hold CLAVI TABS and push VOLUME (manual p.44).

@@ -706,7 +706,17 @@ The July 2021 manual documents v1.22. On v1.37:
    backup (the manufacturer's editor, a second copy of this app) would corrupt
    a record the same way, and nothing on the wire would say so.
 5b. **`dly_mf` / `dly_ml` accept writes but were reported to change nothing
-   audible (2026-08-12).** With FX2 in Delay mode, the owner adjusted Max
+   audible (2026-08-12).**
+
+   **THIS CATEGORY HAS SEVEN MEMBERS, NOT TWO, as of 18 Nov 2026.** Five
+   sample-player parameters — `rom_p03` Filter, `rom_p04` Velocity, `rom_p05`
+   Piano Harp, `rom_p08` Rel. Smp. Level, `rom_p09` Ped. Smp. Level — were
+   found to behave the same way: inaudible on two sampled sets by ear, and
+   taking, echoing and holding both 0 and 127 on the wire, with `rom_p00`
+   Level as a control behaving identically. **The full record is in
+   `docs/DEVICE.md`** rather than repeated here; whether the two groups share a
+   cause is not established and nothing suggests one.
+ With FX2 in Delay mode, the owner adjusted Max
    Feedback (id 86) and Max Level (id 87) and heard no change. A direct check
    ruled the app out: each was read, written to 100, echoed 100 and read back
    100 on a fresh `0x22`, then restored — the instrument takes and holds the
