@@ -65,6 +65,33 @@ test('the stylesheet parses into rules', () => {
   assert.ok(rules.length > 100, `expected a real stylesheet, parsed ${rules.length} rules`);
 });
 
+// NO COMMENT MARKER SURVIVES THE STRIP, which is how you know every one of
+// them is balanced. A stray `*/` leaves prose sitting in the stylesheet as
+// garbage, and CSS does not complain — the parser SKIPS FORWARD until it can
+// resync, silently swallowing whatever rule comes next.
+//
+// MEASURED, 18 Nov 2026, and it cost a hardware run: a comment was closed, then
+// fourteen more lines of prose were added before a second `*/`. The rule right
+// after it — the expression pedal's hatched fill — was never applied, while the
+// NEXT rule along was, so the stylesheet looked fine and one feature was simply
+// absent. It took a scenario reporting `background-image: none` with the
+// instrument attached and somebody's foot on the pedal to find it.
+//
+// Same family as the SVG trap in seven-panel.svg (CLAUDE.md): comment syntax
+// that fails by deleting something rather than by erroring.
+test('every CSS comment is balanced', () => {
+  const stripped = ((html.match(/<style>([\s\S]*?)<\/style>/) || [])[1] || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const stray = stripped.indexOf('*/');
+  if (stray !== -1) {
+    const where = stripped.slice(Math.max(0, stray - 160), stray + 2).split('\n').slice(-4).join('\n');
+    assert.fail(`a stray "*/" is left after stripping comments — the rule after `
+      + `it is being swallowed:\n…${where}`);
+  }
+  assert.strictEqual(stripped.indexOf('/*'), -1,
+    'an unterminated "/*" swallows the rest of the stylesheet');
+});
+
 // FULL CHROMA FOR MARKS, DAMPED FOR TEXT (DESIGN.md). --action is borrowed
 // from a printed legend a few millimetres tall; set as the colour of WORDS it
 // is the same hue at many times the ink, and the first pass of the list design
