@@ -2260,6 +2260,40 @@ returning early it reproduces the report exactly (`device 0 -> 0 · pill "OFF"
 
 ---
 
+### 18. SAVE PATCH IS CLIPPED TO ZERO WIDTH IN A NARROW PANE — **OPEN, PRE-EXISTING, found 18 Nov 2026**
+
+Measured by `picture-box-headroom.js` while sizing the picture box, **before
+any change in that pass**:
+
+```
+SQUEEZED to 520px
+  engine column 147px
+  save label at rest: CLIPPED (86 into 0)
+```
+
+The Save patch button's `clientWidth` is **0** at a 520px pane, holding an 86px
+label. Not caused by the picture going to 160 — growing the box while squeezed
+moves nothing, because the engine column is already down to 147px — and
+present at 128 too.
+
+**DELIBERATELY NOT FIXED in the 160px pass** (Daniel): one thing at a time, and
+the measurement that found it should land with the measurement rather than
+with a fix that would blur what caused what.
+
+**COULD THE SUITE HAVE CAUGHT IT? No, and the gap is specific.** Only four
+scenarios narrow the pane at all — `carousel-caption`, `fx-head-fits`,
+`carousel-stack` and the new `picture-box-headroom` — and the first three
+narrow it to look at the PICTURE and the FX head. **Nothing squeezed the pane
+and then looked at the engine column's text side**, which is where Save patch
+lives. `save-slot-spacing.js` and `save-button-contexts.js` both measure that
+button, and both only ever see it at the default width.
+
+So the shape of the hole: a region is covered at one width and a width is
+covered for one region, and the intersection is nobody's. Worth remembering
+before trusting that "the save flow is well covered" — it is, at 747px.
+
+---
+
 ### THREE INTERMITTENTS IN ONE DAY — **noted together so the fourth is recognisable**
 
 All three appeared in long-running sessions and were gone when looked at.

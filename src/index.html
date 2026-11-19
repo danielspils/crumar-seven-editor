@@ -3910,13 +3910,31 @@
          14 + 20 = 34 = 17 + 17, so the cell's width and the picture's
          position relative to the column are both unchanged and the stage's
          own 30px nudge — a separate, settled decision — is untouched. */
-      float: none; width: 128px; margin: 0 17px 6px;
+      /* 160px SINCE 18 Nov 2026, from 128. Measured first
+         (picture-box-headroom.js): HEIGHT was never the constraint — the
+         parameter rows are in a separate column and the pane has 323px of
+         unused space below the engine column — and WIDTH binds on Save patch,
+         which shares this column and loses a pixel for every pixel the
+         picture gains. 180 was proposed and declined: it leaves the button at
+         88px holding an 86px label, which is 2px and not a margin. 160 leaves
+         22px and still grows every drawing by x1.25.
+         THE SAME FACTOR FOR EVERY DRAWING, because the box is SQUARE: both
+         constraints scale together, so a drawing's proportions cannot change
+         which one binds. */
+      float: none; width: 160px; margin: 0 17px 6px;
     }
     /* THE PLAIN VARIANT KEEPS ITS OWN SHAPE — the one a library patch gets,
        where there is no picker. 363/512 at 128 wide, as before the stage: the
        carousel fixed its own proportions on 2026-08-12 with a square box and
        each instrument fitted inside it, and this one never needed to. */
     .engine-stage .engine-art:not(.engine-carousel) {
+      /* HELD AT 128 WHILE THE CAROUSEL GOES TO 160. The rule above covers
+         both selectors, and this variant is a DIFFERENT box — 363/512 rather
+         than square — so widening it would make it 160x225.7 and change a
+         shape nobody asked about. Whether it has any reachable state left is
+         an open question (18 Nov 2026); until that is answered it does not
+         move. More specific than the shared rule, so order cannot undo it. */
+      width: 128px;
       aspect-ratio: 363 / 512;
       display: flex; align-items: center; justify-content: center;
     }
@@ -4059,7 +4077,11 @@
          (Daniel, 2026-08-12). Now the box never moves and each instrument is
          fitted inside it, standing on the same floor. */
       position: relative; overflow: visible; isolation: isolate;
-      height: 128px;
+      /* SQUARE, and it must stay square: the width above is 160 and this is
+         what makes every drawing grow by the same factor whichever way it is
+         proportioned. If these two ever differ, the relative scale between
+         instruments stops being preserved. */
+      height: 160px;
     }
     /* THE SIZE ONLY. Where a card SITS is the stack's business and is set in
        one place further down (left/top 50% with a centring translate); this
