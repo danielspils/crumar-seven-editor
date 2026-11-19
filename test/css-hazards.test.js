@@ -304,7 +304,16 @@ test('the depth stack carries the approved geometry, and nothing of the wheel', 
     'is-front': [/translate\(-50%,\s*-50%\)/, /scale\(1\)/, /opacity:\s*1\b/],
     'is-next': [/translate\(-36%,\s*-53%\)/, /scale\(\.86\)/, /opacity:\s*\.30\b/],
     'is-after': [/translate\(-26%,\s*-56%\)/, /scale\(\.75\)/, /opacity:\s*\.14\b/],
-    'is-waiting': [/translate\(-140%,\s*-50%\)/, /scale\(\.9\)/, /opacity:\s*0\b/],
+    // is-waiting MOVED FROM -140% TO +40% on 18 Nov 2026, after Daniel
+    // prototyped it against two alternatives and picked this one. The card
+    // used to park off to the LEFT, so a card left the stack one way and
+    // returned the other: forward sends the front card out to +40% and
+    // backward brought the new one in from the opposite side, which is why
+    // pressing the left chevron felt wrong. One corridor now.
+    //
+    // THE VALUE IS SHARED WITH `.is-turning-next .is-front`, which is checked
+    // below — if that exit ever moves, this must move with it.
+    'is-waiting': [/translate\(40%,\s*-50%\)/, /scale\(\.9\)/, /opacity:\s*0\b/],
   };
   for (const [cls, pats] of Object.entries(approved)) {
     const body = face(cls);
@@ -318,6 +327,22 @@ test('the depth stack carries the approved geometry, and nothing of the wheel', 
   assert.ok(leavingRight, 'the front card has a leaving position');
   assert.match(leavingRight.body, /translate\(40%,\s*-50%\)/, 'it leaves to the right');
   assert.match(leavingRight.body, /opacity:\s*0\b/, 'and fades out');
+
+  // ONE CORRIDOR: A CARD RETURNS FROM EXACTLY WHERE IT LEAVES (18 Nov 2026).
+  //
+  // The two literals above are each pinned on their own, which would let one
+  // be edited without the other — and that is the bug this replaced, not a
+  // hypothetical: `.is-waiting` sat at -140% while the exit was +40%, so a
+  // card left to the right and came back from the left, and the left chevron
+  // felt wrong. Pinning the RELATION means a future tune to the exit fails
+  // here until the parking follows it.
+  const waiting = rules.find(
+    (r) => r.selector === '.engine-carousel .is-waiting' && !r.media
+  );
+  assert.ok(waiting, 'the waiting card has a parked position');
+  const xOf = (body) => (body.match(/translate\(\s*(-?[\d.]+%)/) || [])[1];
+  assert.strictEqual(xOf(waiting.body), xOf(leavingRight.body),
+    'the waiting card parks where the front card exits to — one corridor, not two');
 
   // ONE CURVE, HIS: transform .3s cubic-bezier(.22,.68,.24,1), opacity .3s ease.
   //

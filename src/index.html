@@ -4231,11 +4231,24 @@
        from the keyboard would animate nothing. */
     .engine-carousel.is-turning .is-next { opacity: .30; }
     .engine-carousel.is-turning .is-after { opacity: .14; }
-    /* PARKED OFF TO THE LEFT AND INVISIBLE. Its whole job is to have
-       somewhere to come FROM when the stack is stepped backwards, which is
-       the same reason the wheel carried faces beyond its own edges. */
+    /* PARKED WHERE THE FRONT CARD EXITS TO, AND INVISIBLE. Its whole job is
+       to have somewhere to come FROM when the stack is stepped backwards,
+       which is the same reason the wheel carried faces beyond its own edges.
+
+       ONE CORRIDOR, NOT TWO (Daniel, 18 Nov 2026). It used to park off to the
+       LEFT, at translate(-140%, -50%), which made a card leave one way and
+       return the other: forward sent the front card out to translate(40%),
+       and backward brought the new one in from the opposite side. Pressing
+       the left chevron felt wrong for a reason — off to the RIGHT is now both
+       where a card goes when you move forward and where it comes back from
+       when you move back, so the two directions describe one path rather
+       than two unrelated ones.
+
+       THIS VALUE IS THE SAME AS .is-turning-next .is-front's, deliberately.
+       If that exit ever moves, this must move with it or the corridor splits
+       again. */
     .engine-carousel .is-waiting {
-      transform: translate(-140%, -50%) scale(.9);
+      transform: translate(40%, -50%) scale(.9);
       opacity: 0;
     }
 
@@ -4260,8 +4273,15 @@
       transform: translate(-36%, -53%) scale(.86);
       opacity: .30;
     }
-    /* BACKWARD: the parked card arrives from the left and takes the front,
-       and everything else falls back one place. */
+    /* BACKWARD: the parked card arrives from the RIGHT — the same side the
+       front card leaves by when going forward — and takes the front, while
+       everything else falls back one place.
+
+       SO THE TWO CARDS CROSS on this step: the incoming one travels leftward
+       into the centre while the outgoing front card moves rightward into the
+       stack. Under the old left-hand parking they diverged instead. That is a
+       consequence of the one corridor, not an oversight; measured at the real
+       card size it reads as a shuffle rather than a collision. */
     .engine-carousel.is-turning-prev .is-waiting {
       transform: translate(-50%, -50%) scale(1);
       opacity: 1;
