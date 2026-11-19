@@ -64,6 +64,19 @@
          6.74:1 -> 7.19:1 on --bg. See the --logo block for the light theme,
          which takes the HUE and not the value. */
       --amber: #E0A23C;
+      /* LOCATING MARKS KEEP THE OLDER VALUE. --amber became the Seven's
+         script colour in BOTH themes on 18 Nov 2026, which is right for the
+         thing it was changed for — the active-tab underline Daniel approved
+         from a screenshot — and wrong for a thin graphic line on light paper.
+         It took modal-panel-choose red: the bracket measured 1.65:1 against a
+         3:1 requirement for a non-text mark.
+         THIS IS THE SPLIT DESIGN.md PREDICTED. The note on --amber's five
+         jobs said "splitting them into named tokens is a later cleanup,
+         deliberately not done in that pass" — this is that cleanup, arriving
+         as a red rather than as tidying.
+         The values are yesterday's, so marks look exactly as they did before
+         the token moved: nothing here is a new design decision. */
+      --mark-amber: #c9a25e;
       /* Action green: the panel's own DEPTH/RATE legend (#4fb96a in
          assets/seven-panel.svg). Filled buttons that DO something wear it. */
       --action: #7f9c78;
@@ -245,6 +258,10 @@
          thicker line in the sign's own colour is the harmony that was asked
          for; a darker line is the thing this change undid. */
       --amber: #E0A23C;
+      /* THE DARK GOLD THIS THEME USED TO HAVE, kept for locating marks only.
+         See the dark block for the whole argument. On paper a 2px underline
+         can afford the script colour and a 2px bracket cannot: 1.65:1. */
+      --mark-amber: #8a5d00;
       /* THE LIGHT GROUND IS ALREADY TAME. Change 1 is dark-only: these values
          were measured against the mock and match it, so only --page is new —
          the antiqued paper one step down, for the artwork to sit on. */
@@ -2703,7 +2720,7 @@
       .modal-panel.is-hold .is-chosen .led.on { animation: none; }
     }
 
-    .modal-panel .mp-bracket { fill: none; stroke: var(--amber); stroke-width: 2; }
+    .modal-panel .mp-bracket { fill: none; stroke: var(--mark-amber); stroke-width: 2; }
     .modal-panel .mp-cap {
       fill: var(--text); font-family: 'Archivo', Helvetica, Arial, sans-serif;
       font-weight: 700; font-size: 17px;
@@ -3271,7 +3288,7 @@
     .lib-slot.slot-cleared { animation: slot-cleared 340ms ease-in-out; }
     .lib-slot.slot-restored { animation: slot-restored 340ms ease-in-out; }
     /* Drop feedback while dragging a patch or a slot over a target slot. */
-    .lib-slot.drop-target { outline: 1px dashed var(--amber); outline-offset: -2px; background: rgba(255, 176, 32, .06); }
+    .lib-slot.drop-target { outline: 1px dashed var(--mark-amber); outline-offset: -2px; background: rgba(255, 176, 32, .06); }
     /* Reordering shows a LINE where the row will land, not a highlight on the
        row under the pointer: a highlight says "drop onto this", and dropping
        onto a patch means something else in this app (assign it to that slot).
@@ -3279,7 +3296,7 @@
     .lib-row.drop-above, .lib-row.drop-below { position: relative; }
     .lib-row.drop-above::before, .lib-row.drop-below::after {
       content: ''; position: absolute; left: 0; right: 0; height: 2px;
-      background: var(--amber); pointer-events: none; z-index: 2;
+      background: var(--mark-amber); pointer-events: none; z-index: 2;
     }
     .lib-row.drop-above::before { top: -1px; }
     .lib-row.drop-below::after { bottom: -1px; }
@@ -3684,7 +3701,7 @@
       pointer-events: auto; cursor: default;
       text-align: left;
     }
-    .panel-reach .reach-arrow { flex: none; color: var(--amber); }
+    .panel-reach .reach-arrow { flex: none; color: var(--mark-amber); }
     .panel-reach .reach-lead {
       margin: 0; font-size: 15px; font-weight: 700; color: var(--text);
     }
