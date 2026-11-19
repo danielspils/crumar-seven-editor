@@ -4781,6 +4781,49 @@
       /* No transition: it follows a pedal at ~140 messages a sweep, and
          easing each step would lag the foot that is moving it. */
     }
+    /* THE SAME PEDAL, ON THE ROW IT IS DRIVING — AND THIS ONE IS A GUESS.
+       The app cannot read what the instrument is applying (docs/DEVICE.md),
+       so this amount is computed from exp_mn/exp_mx on the assumption that the
+       Seven maps linearly, which is unverifiable from here.
+
+       NO NEW SYMBOL. The row's two existing marks already mean the right
+       things — the FILL is how much there is, the CIRCLE is where the value is
+       set — so the pedal drives the fill and the circle keeps the stored value
+       (Daniel, 18 Nov 2026).
+
+       TEXTURE CARRIES THE UNCERTAINTY. A solid fill is the most authoritative
+       thing on the row, and this number was never read off the instrument, so
+       while the pedal owns the fill it is HATCHED in the pedal's amber. Not a
+       different hue for the whole bar: amber means the pedal in both places,
+       because it is the same pedal.
+
+       BACKGROUND-IMAGE ONLY, AND ONE CLASS DEEPER THAN IT NEEDS TO BE. Both
+       are deliberate, and both come from a measurement (18 Nov 2026):
+
+       - `.param.is-changed .param-bar-fill` sits LATER in this file at the
+         same specificity, and it uses the `background` SHORTHAND — which
+         resets background-image to none. So a hatch declared here was wiped on
+         every changed row while working perfectly on default ones, which is
+         why it looked right on screen and reported `background-image: none` in
+         the scenario. The extra `.param-bar` wins it on specificity rather
+         than on line order, so a rule added later cannot quietly take it back.
+       - Setting only the IMAGE leaves the row's own state colour underneath,
+         so a changed row keeps `--bar-fill-changed` and the hatch rides on it.
+         Declaring background-color here would have flattened that distinction
+         to buy nothing. */
+    .param.is-pedal .param-bar .param-bar-fill {
+      background-image: repeating-linear-gradient(135deg,
+        var(--amber) 0 2px, rgba(0, 0, 0, 0) 2px 5px);
+      /* No transition: it follows a pedal at ~140 messages a sweep, and easing
+         each step would lag the foot that is moving it. */
+      transition: none;
+    }
+    /* THE CIRCLE IS PERMANENT ON A DRIVEN ROW, and this is load-bearing rather
+       than polish. It is opacity: 0 until the bar is hovered, so without this
+       the moving fill would be the ONLY thing on the row and the stored value
+       would have no mark at all — the pedal's estimate would read as the
+       patch's value, which is the one thing this feature must never say. */
+    .param.is-pedal .param-bar-knob { opacity: 1; }
     /* GRABBABLE SINCE 18 Nov 2026. .param-rangebar is pointer-events: none —
        correct for the track, which is deliberately not a hit target: picking
        the NEAREST handle is a coin toss once min and max coincide, and

@@ -290,14 +290,79 @@
   const PEDAL_CC = 11;
   let pedalPos = null;
 
-  // Moves the mark without re-rendering. Returns false when there is nothing
-  // on screen to move, which is the ordinary case — the pedal's row is only
-  // drawn when a patch is open and its section expanded.
+  // Moves both marks without re-rendering — the READING on the pedal's own
+  // range bar, and the ESTIMATE on whichever row the pedal drives. Returns
+  // false when there was nothing on screen to move, which is the ordinary
+  // case: the rows are only drawn when a patch is open and its section
+  // expanded.
+  //
+  // THE ESTIMATES COME FROM renderer.js, not from a second copy of the
+  // formula. Two copies of `exp_mn + (cc/127) * (exp_mx - exp_mn)` — one that
+  // draws and one that moves — is how the mark on screen and the mark after a
+  // re-render would come to disagree.
+  // THE CONTRACT IS "IS THE SCREEN NOW RIGHT", not "did I move something".
+  // Those differ in the case that matters: with no patch open there is nothing
+  // to move and nothing is wrong, and a function answering "did I move
+  // anything" would say no and earn a render for every one of ~140 messages —
+  // the exact cost this whole mechanism exists to avoid. So it answers true
+  // when the drawing is correct, including when there is nothing to draw, and
+  // false ONLY when a render is genuinely owed.
   function movePedalMark() {
+    if (pedalPos == null) return true;
     const mark = document.querySelector('#detail .pedal-pos');
-    if (!mark || pedalPos == null) return false;
-    mark.style.left = `${(pedalPos / 127) * 100}%`;
-    mark.setAttribute('title', `Expression pedal: ${pedalPos}`);
+    if (mark) {
+      mark.style.left = `${(pedalPos / 127) * 100}%`;
+      mark.setAttribute('title', `Expression pedal: ${pedalPos}`);
+    } else if (document.querySelector('#detail .param.param-range')) {
+      // The pedal's own row is on screen with no reading on it — the Tier 1
+      // birth case, and the bug of 18 Nov: a mark cannot be moved into
+      // existence.
+      return false;
+    }
+    // shownPatch(), NOT currentPatch(). In a live session the pane renders
+    // `working` — the live edit buffer — and `currentPatch().params` is still
+    // what the FILE says. Reading the file here made this function answer for
+    // the pedal's OLD assignment: measured on hardware 18 Nov 2026, with
+    // exp_fn moved to FX 2 Rate through its dropdown, the estimate lookup
+    // missed on every message and earned a render for each — 133 renders for
+    // 133 messages, the one thing this path exists to avoid. The marks were
+    // drawn CORRECTLY throughout, because the render reads the working copy,
+    // so nothing on screen looked wrong.
+    const patch = shownPatch();
+    const est = R.pedalEstimates((patch && patch.params) || null, pedalPos);
+    const driven = document.querySelectorAll('#detail .param.is-pedal');
+    // A DRIVEN-LOOKING ROW THE PEDAL NO LONGER DRIVES IS A STALE CLAIM, and
+    // the assignment can move under us: a panel recall, or a live edit of
+    // exp_fn, exp_mn or the amp switch. A hatched fill left where the pedal
+    // has no effect is exactly the wrong statement for a feature whose whole
+    // point is not to overclaim, so that case asks for a render rather than a
+    // nudge — and a render also restores the fill to the stored value, which
+    // nothing here could do from the DOM alone.
+    for (const row of driven) {
+      const key = row.getAttribute('data-key');
+      const max = Number(row.getAttribute('data-max')) || 0;
+      const fill = row.querySelector('.param-bar-fill');
+      if (!est || !key || est[key] == null || max <= 0 || !fill) return false;
+      const v = est[key];
+      fill.style.width = `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
+      const bar = row.querySelector('.param-bar');
+      if (bar) {
+        bar.setAttribute('title',
+          `Expression pedal: about ${v} — estimated, not read from the Seven.`);
+      }
+    }
+    // And the other direction: a destination row that IS on screen and is not
+    // yet marked as driven needs the class, the hatch and the permanent circle,
+    // which only a render can give it. Checked per row rather than by counting,
+    // because a row in a COLLAPSED section is absent for reasons that have
+    // nothing to do with the pedal — counting would force a render on every
+    // message whenever a section was folded.
+    if (est) {
+      for (const key of Object.keys(est)) {
+        const row = document.querySelector(`#detail .param[data-key="${key}"]`);
+        if (row && !row.classList.contains('is-pedal')) return false;
+      }
+    }
     return true;
   }
   // The sound the INSTRUMENT says its buffer holds, when that is no longer the
@@ -2022,8 +2087,13 @@
     // While a patch is live, the panel shows the WORKING copy — the values the
     // instrument currently holds, including edits not yet saved to disk.
     const live = audition.isLive();
-    const working = audition.workingParams();
-    let shown = live && working ? { ...patch, params: working } : patch;
+    // ONE EXPRESSION FOR "THE PATCH AS SHOWN", shared with everything else
+    // that has to agree with this pane. It was written out longhand here AND
+    // in shownPatch() — the same three lines twice — and on 18 Nov 2026 a new
+    // consumer reached for the wrong one: movePedalMark read currentPatch(),
+    // got the FILE's exp_fn while the pane was rendering the working copy's,
+    // and so disagreed with this render on every single CC message.
+    let shown = shownPatch();
     // The buffer's own instrument wins while live: name, badge, illustration
     // and — through engineGroupFor — which engine's controls are shown.
     if (live && liveSound && shown) {
@@ -5007,16 +5077,16 @@
           // transition from unknown keeps it in exactly one.
           const wasUnknown = pedalPos == null;
           pedalPos = ev.value;
-          if (wasUnknown) {
-            renderDetail();
-          } else {
-            // NOT A RE-RENDER, for every message after the first. A slow sweep
-            // is ~140 of them, and rebuilding the detail pane for each would be
-            // 140 full renders — and would fight the scroll position the pane
-            // works to preserve. The mark is moved in place; the next ordinary
-            // render picks the value up from `view`.
-            movePedalMark();
-          }
+          // NOT A RE-RENDER, for every message after the first. A slow sweep
+          // is ~140 of them, and rebuilding the detail pane for each would be
+          // 140 full renders — and would fight the scroll position the pane
+          // works to preserve. The marks are moved in place; the next ordinary
+          // render picks the value up from `view`.
+          //
+          // movePedalMark answers whether the drawing is CORRECT, so the only
+          // renders here are the first message of the session and the moments
+          // the pedal's assignment has changed out from under the marks.
+          if (wasUnknown || !movePedalMark()) renderDetail();
         }
         audition.onPanelCc(ev.cc);
       } else if (ev.type === 'program-change' && !backupRunning) {

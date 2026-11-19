@@ -733,6 +733,72 @@ effect's oscillator.
   **before** that call, in the `panel-cc` branch of `app.js`, to place the live
   mark on the pedal's own Range bar.
 
+#### THE MARK ON THE DRIVEN ROW IS MODELLED, NOT MEASURED (18 Nov 2026)
+
+**Read this before trusting that number.** The app draws a dotted amber mark on
+whichever parameter row the pedal drives, showing roughly where the pedal is
+putting it. **Nothing on the instrument was asked.** It is arithmetic:
+
+```
+estimate = exp_mn + (cc11 / 127) × (exp_mx − exp_mn)
+```
+
+**Everything in that line except `cc11` is an assumption about the Seven.** The
+findings above are why there is no alternative: the destination parameter is not
+modulated, so it cannot be read; and CC 11 carries the raw pedal position, so
+the instrument never transmits the value it is applying. The app knows where the
+pedal is and what the range's two ends are, and must invent the middle.
+
+**What the formula assumes, none of it verified:**
+
+- **that the mapping is LINEAR.** Plausible, and nothing establishes it. A
+  curve — audio-taper, or an S — would put the true value anywhere between the
+  two ends while this says the midpoint.
+- **that the pedal's full 0..127 is used.** A dead zone at either end, or a
+  calibration offset, would shift the whole estimate.
+- **how the Seven ROUNDS.** `Math.round` here is a guess at a device that may
+  truncate.
+- **that `exp_fn` maps to the parameters we think it does.** The ten labels are
+  the device's own display strings (the `0x23` sweep of 2026-08-09), but which
+  parameter each one drives is read off the label, not demonstrated. Two of them
+  drive two rows each, which is inference from the names "FX 1 + 2 Depth" and
+  "FX 1 + 2 Rate".
+- **that Amp Drive needs the amp simulator on.** That one is the manual's claim
+  (v1.22, Rule 1), not a measurement.
+
+**WHAT WOULD ACTUALLY VERIFY IT, and why nobody has.** The applied value cannot
+be read over the wire at all, so a check has to leave the protocol:
+
+1. **By ear, with a coarse range.** Assign the pedal to Volume, set the range to
+   0 → 127, and compare the midpoint of the pedal's travel against the volume
+   at a stored value of 64. This tells linear from heavily curved and nothing
+   finer. **Cheapest real evidence available, and it has not been done.**
+2. **By measuring the audio.** Assign to Volume, sweep the pedal in steps,
+   record the output and measure the level at each step. This is the only
+   method that could establish the curve's shape, and it needs an interface and
+   an analyser rather than the MIDI port.
+3. **By a firmware disassembly or a word from Crumar.** Out of reach, and the
+   second is worth asking for if anyone is in touch with them.
+
+Until one of those happens, **it is drawn so that it cannot be mistaken for a
+reading.** The pedal drives the row's own FILL and the stored value keeps the
+CIRCLE — no third symbol — and while the pedal owns the fill it is **hatched**,
+because a solid fill is the most authoritative-looking thing on the row. The
+bar's tooltip says "estimated, not read from the Seven". **The row's number
+stays the STORED value**, because the pedal modulates and does not edit: a
+number that followed the pedal would make Save patch write a value the file
+never held. The circle is forced visible on a driven row — it is normally
+hover-only, and with the fill showing the pedal it is the only thing left
+saying what the patch holds (docs/DESIGN.md). See `pedalEstimates` in
+`src/renderer.js`, pinned by eight unit tests in `test/renderer.test.js`
+including the reversed range, and `test/ui/scenarios/pedal-driven-row.js` on
+hardware.
+
+**The unit tests prove the ARITHMETIC, not the model.** They cannot do otherwise
+— they assert that the code computes what this section says it computes, which
+is exactly as true as the assumptions above. No green suite here is evidence
+about the instrument.
+
 #### How to re-establish all of this (and when)
 
 Both findings above came from two UI scenarios that are **gated behind

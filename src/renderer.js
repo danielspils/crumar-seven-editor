@@ -276,6 +276,38 @@
       const factory = defaultFor(p, soundName);
       const isDefault = factory !== null && value === factory;
       const pct = p.max > 0 ? Math.max(0, Math.min(100, (value / p.max) * 100)) : 0;
+      // THE EXPRESSION PEDAL'S ESTIMATED EFFECT ON THIS ROW, if the pedal
+      // drives it and has moved this session. MODELLED, NOT MEASURED — see
+      // pedalEstimates.
+      //
+      // THE FILL MOVES AND THE CIRCLE STAYS (Daniel, 18 Nov 2026). The row
+      // already has two marks and they already mean the right things: the FILL
+      // is how much there is, the CIRCLE is where the value is set. So the
+      // pedal drives the fill and the circle holds the stored value — no third
+      // symbol, and the number on the right stays the stored one.
+      //
+      // The first version drew a dotted line beside an unchanged fill, which
+      // put three marks on a 6px bar to say two things.
+      //
+      // THE FILL IS HATCHED WHILE THE PEDAL OWNS IT, because a solid fill is
+      // this row's most authoritative-looking element and this value is a
+      // model resting on an assumed linear mapping (docs/DEVICE.md). The
+      // texture is the hedge; see docs/DESIGN.md.
+      //
+      // ONLY THE PLAIN CONTINUOUS BAR. All eight destinations exp_fn can name
+      // are 0..127 continuous parameters — checked against the schema, and the
+      // seven bipolar parameters are engine detunes the pedal cannot reach —
+      // so the bipolar branch above is deliberately left alone rather than
+      // carrying a case nothing can produce.
+      const estVal = view && view.pedalEst ? view.pedalEst[p.key] : null;
+      const estPct = estVal != null && p.max > 0
+        ? Math.max(0, Math.min(100, (estVal / p.max) * 100))
+        : null;
+      const pedalCls = estPct != null ? ' is-pedal' : '';
+      const pedalTitle = estPct != null
+        ? ` title="Expression pedal: about ${estVal} — estimated, not read from the Seven.`
+          + ` The circle marks the stored ${value}."`
+        : '';
       const label = p.values && p.values[value] != null ? p.values[value] : null;
       // Conditional/inert overlay (docs/DESIGN.md item: show when a parameter
       // is inert rather than pretending it applies).
@@ -402,12 +434,16 @@
       }
       // CONTINUOUS: plain left-origin bar.
       return (
-        `<div class="param ${unset ? 'is-unset' : (isDefault ? 'is-default' : 'is-changed')}${inertCls}${liveCls}" ${attrs}>` +
+        `<div class="param ${unset ? 'is-unset' : (isDefault ? 'is-default' : 'is-changed')}${inertCls}${liveCls}${pedalCls}" ${attrs}>` +
         `<span class="param-label"${labelTitle}>${labelHtml}</span>` +
-        `<span class="param-bar"><span class="param-bar-fill" style="width:${pct}%"></span>` +
+        `<span class="param-bar"${pedalTitle}>` +
+        // THE FILL IS THE PEDAL'S while it is driving this row, and the stored
+        // value's otherwise. One element, one meaning at a time.
+        `<span class="param-bar-fill" style="width:${estPct != null ? estPct : pct}%"></span>` +
         // A mark AT the value: something to aim a drag at, and the only way a
         // value of zero shows at all — an empty fill and an empty bar look the
-        // same otherwise.
+        // same otherwise. IT NEVER MOVES FOR THE PEDAL: on a driven row it is
+        // the only thing still showing what the patch holds.
         `<span class="param-bar-knob" style="left:${pct}%"></span></span>` +
         `<span class="param-value">${unset ? '\u2014' : String(value)}</span>` +
         `</div>`
@@ -812,7 +848,84 @@
       );
     }
 
+    // WHERE THE PEDAL IS PUTTING THE PARAMETER IT DRIVES — AN ESTIMATE, AND
+    // THE ONLY HONEST WORD FOR IT IS MODELLED (Daniel, 18 Nov 2026).
+    //
+    // THE APP CANNOT READ THIS. Measured on hardware: the destination
+    // parameter is NOT modulated — `veq_vol` read 127 with the pedal at the
+    // heel and 127 held at the toe — and CC 11 carries the pedal's RAW
+    // position, ignoring exp_mn/exp_mx (docs/DEVICE.md). So the instrument
+    // never transmits the value it is applying, and nothing here is a reading.
+    //
+    //     estimate = exp_mn + (cc11 / 127) * (exp_mx - exp_mn)
+    //
+    // THAT FORMULA ASSUMES THE SEVEN MAPS LINEARLY, which is probable and is
+    // NOT verifiable from this side of the cable. Its linearity, its rounding,
+    // and whether it uses the pedal's full travel are all unverified — see
+    // docs/DEVICE.md for what verifying it would take. The mark is therefore
+    // drawn DIFFERENTLY from the stored value's solid one, and the number in
+    // the row stays the STORED value: the pedal modulates, it does not edit,
+    // and a bar that followed it would make Save patch write a lie.
+    //
+    // THE OPERANDS ARE NOT SORTED. exp_mn above exp_mx is legal and reverses
+    // the pedal's direction (the manual says so, and it is surfaced in the
+    // range row); subtracting in the written order handles that for free,
+    // while a min/max pair would silently un-reverse it.
+    //
+    // exp_fn's ten values are the device's own display strings, harvested in
+    // the 0x23 sweep of 2026-08-09 and stored in the schema. TWO OF THEM DRIVE
+    // TWO ROWS — "FX 1 + 2 Depth" and "FX 1 + 2 Rate" — so this answers with a
+    // key-to-estimate map rather than one key.
+    //
+    // THE KEYS ARE NOT WHAT exp_fn CALLS THEM. The function list says "Rate";
+    // the parameters are `fx1_sp`/`fx2_sp`, labelled "Speed" (and "Time" when
+    // the FX2 mode is Delay). pedal-position-probe.js carried `fx1_rt`/`fx2_rt`
+    // in its own copy of this map, which exist nowhere in the schema — it only
+    // ever ran with exp_fn=0, so nothing ever looked them up.
+    const PEDAL_DEST = [
+      ['veq_vol'],              // 0  Volume
+      ['fx1_dp'],               // 1  FX 1 Depth
+      ['fx2_dp'],               // 2  FX 2 Depth
+      ['fx1_dp', 'fx2_dp'],     // 3  FX 1 + 2 Depth   — two rows
+      ['fx1_sp'],               // 4  FX 1 Rate
+      ['fx2_sp'],               // 5  FX 2 Rate
+      ['fx1_sp', 'fx2_sp'],     // 6  FX 1 + 2 Rate    — two rows
+      ['amp_dr'],               // 7  Amp Drive        — only with amp_sw on
+      ['pad_lv'],               // 8  Pad Level
+      ['pad_bl'],               // 9  Pad Blend
+    ];
+    const PEDAL_AMP_DRIVE = 7;
+
+    function pedalEstimates(params, pedalPos) {
+      if (pedalPos == null || !params) return null;
+      const fn = params.exp_fn;
+      const mn = params.exp_mn;
+      const mx = params.exp_mx;
+      // A patch that does not carry the pedal's own three parameters cannot be
+      // modelled at all. Backup patches carry the effects chain only, so this
+      // is the ordinary case rather than an error.
+      if (fn == null || mn == null || mx == null) return null;
+      const keys = PEDAL_DEST[fn];
+      if (!keys) return null;
+      // AMP DRIVE APPLIES ONLY WITH THE AMP SIMULATOR ON (manual). Drawing the
+      // mark on a row the pedal cannot reach would be the claim this whole
+      // feature is trying not to make. Strictly 1: a missing amp_sw is unknown,
+      // not off.
+      if (fn === PEDAL_AMP_DRIVE && params.amp_sw !== 1) return null;
+      const est = Math.round(mn + (pedalPos / 127) * (mx - mn));
+      const out = {};
+      for (const k of keys) out[k] = est;
+      return out;
+    }
+
     function renderDetail(patch, view) {
+      // Computed ONCE per render and handed down through `view`, so paramRow
+      // stays a pure function of one parameter and the formula has one home.
+      const pedalEst = pedalEstimates(
+        (patch && patch.params) || null,
+        view && view.pedalPos != null ? view.pedalPos : null
+      );
+      if (pedalEst) view = { ...view, pedalEst };
       return (
         `<div class="detail-cols">` +
         `<div class="col col-engine">${renderEngine(patch, view)}</div>` +
@@ -866,6 +979,10 @@
       isMissing,
       setKnownSounds,
       paramRow,
+      // Exported so app.js can move the estimate marks on every CC without a
+      // re-render, using THE SAME arithmetic that drew them. A second copy of
+      // the formula in the interaction layer is how the two would drift.
+      pedalEstimates,
       renderEngine,
       renderSection,
       renderDetail,

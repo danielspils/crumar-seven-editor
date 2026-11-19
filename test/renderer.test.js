@@ -207,3 +207,111 @@ test('an inherited name is not marked on the row', () => {
   assert.ok(!/borrowed/.test(borrowed), 'and leaves no trace of the old badge');
   assert.ok(!/Kitchen Dishes Delay/.test(borrowed), 'the lender is not named on the row');
 });
+
+// ── THE EXPRESSION PEDAL'S ESTIMATED EFFECT ──────────────────────────────────
+//
+// R.pedalEstimates models what the pedal is doing to the parameter it drives.
+// IT IS A MODEL: the instrument does not transmit the applied value and the
+// destination parameter is not modulated, so this arithmetic is the whole
+// feature and there is nothing on the device to check it against
+// (docs/DEVICE.md). That is exactly why it is pinned here, where every case
+// including the ones nobody can reach on hardware in one sitting is cheap.
+//
+// The formula, and the operands are NOT sorted:
+//     exp_mn + (cc11 / 127) * (exp_mx - exp_mn)
+
+// SPREAD INTO THIS REALM, or deepStrictEqual fails on two identical objects.
+// loadRenderer runs the shipped file inside a `vm` context, so what it returns
+// carries THAT context's Object.prototype — and deepStrictEqual compares
+// prototypes, reporting `{ amp_dr: 127 }` unequal to `{ amp_dr: 127 }` with no
+// visible difference at all. null is preserved, because "no estimate" and "an
+// empty estimate" are different answers.
+const pedal = (over, pos) => {
+  const est = R.pedalEstimates({ exp_fn: 0, exp_mn: 0, exp_mx: 127, ...over }, pos);
+  return est == null ? null : { ...est };
+};
+
+test('the estimate spans the range, and the ends are the ends', () => {
+  assert.deepStrictEqual(pedal({ exp_mn: 40, exp_mx: 80 }, 0), { veq_vol: 40 });
+  assert.deepStrictEqual(pedal({ exp_mn: 40, exp_mx: 80 }, 127), { veq_vol: 80 });
+  // Halfway along the pedal is halfway along the range.
+  assert.deepStrictEqual(pedal({ exp_mn: 40, exp_mx: 80 }, 64), { veq_vol: 60 });
+});
+
+test('A REVERSED RANGE REVERSES THE ESTIMATE', () => {
+  // exp_mn above exp_mx is legal and flips the pedal's direction (the manual
+  // says so, and the range row surfaces it). Sorting the operands anywhere in
+  // this path would silently un-reverse it, which is the one mistake the
+  // formula's shape exists to prevent — so heel must give the HIGHER number.
+  assert.deepStrictEqual(pedal({ exp_mn: 80, exp_mx: 40 }, 0), { veq_vol: 80 });
+  assert.deepStrictEqual(pedal({ exp_mn: 80, exp_mx: 40 }, 127), { veq_vol: 40 });
+  assert.deepStrictEqual(pedal({ exp_mn: 80, exp_mx: 40 }, 64), { veq_vol: 60 });
+  // And it is genuinely the mirror of the forward case, not merely different.
+  for (const pos of [0, 32, 64, 96, 127]) {
+    const up = pedal({ exp_mn: 40, exp_mx: 80 }, pos).veq_vol;
+    const down = pedal({ exp_mn: 80, exp_mx: 40 }, pos).veq_vol;
+    assert.strictEqual(up + down, 120, `mirrored at cc ${pos}`);
+  }
+});
+
+test('an equal range is a flat line — the pedal is disarmed', () => {
+  // Settled on hardware by ear, 18 Nov 2026: 95 -> 95 produces no change in
+  // volume across the pedal's whole travel. The estimate has to agree, or the
+  // mark would travel while nothing was happening.
+  for (const pos of [0, 40, 64, 127]) {
+    assert.deepStrictEqual(pedal({ exp_mn: 95, exp_mx: 95 }, pos), { veq_vol: 95 });
+  }
+});
+
+test('the two "FX 1 + 2" functions mark BOTH rows', () => {
+  assert.deepStrictEqual(
+    pedal({ exp_fn: 3, exp_mn: 0, exp_mx: 100 }, 127),
+    { fx1_dp: 100, fx2_dp: 100 }, 'FX 1 + 2 Depth'
+  );
+  assert.deepStrictEqual(
+    pedal({ exp_fn: 6, exp_mn: 0, exp_mx: 100 }, 127),
+    { fx1_sp: 100, fx2_sp: 100 }, 'FX 1 + 2 Rate'
+  );
+});
+
+test('every exp_fn names parameters the schema actually has', () => {
+  // THE GUARD THAT WOULD HAVE CAUGHT fx1_rt. pedal-position-probe.js carried
+  // `fx1_rt`/`fx2_rt` in its own copy of this map — keys that exist nowhere in
+  // the schema — and nothing noticed, because that probe only ever ran with
+  // exp_fn=0 so the entries were never looked up. The function list says
+  // "Rate"; the parameters are fx1_sp/fx2_sp, labelled "Speed".
+  const keys = new Set(schema.parameters.map((p) => p.key));
+  const fn = schema.parameters.find((p) => p.key === 'exp_fn');
+  assert.ok(fn && fn.values, 'exp_fn has its device-sourced label list');
+  for (let i = 0; i <= fn.max; i += 1) {
+    const est = R.pedalEstimates(
+      { exp_fn: i, exp_mn: 0, exp_mx: 127, amp_sw: 1 }, 127
+    );
+    assert.ok(est, `exp_fn ${i} (${fn.values[i]}) has a destination`);
+    for (const k of Object.keys(est)) {
+      assert.ok(keys.has(k), `${fn.values[i]} -> ${k} is a real parameter`);
+      assert.strictEqual(est[k], 127, `${k} reaches the top of the range`);
+    }
+  }
+});
+
+test('Amp Drive is modelled only while the amp simulator is ON', () => {
+  // Per the manual the pedal cannot reach Drive with the amp off, and drawing
+  // the mark there would be the claim this feature is built not to make.
+  assert.deepStrictEqual(pedal({ exp_fn: 7, amp_sw: 1 }, 127), { amp_dr: 127 });
+  assert.strictEqual(pedal({ exp_fn: 7, amp_sw: 0 }, 127), null, 'amp off');
+  // STRICTLY 1: a patch with no amp_sw is unknown, not off, and unknown is not
+  // a licence to claim the pedal is reaching the row.
+  assert.strictEqual(pedal({ exp_fn: 7 }, 127), null, 'amp_sw absent');
+});
+
+test('nothing is modelled without a position or the pedal\'s own parameters', () => {
+  // NULL IS NOT ZERO. A pedal that has not moved this session is in a position
+  // the app does not know, and the heel is a claim rather than a reading.
+  assert.strictEqual(pedal({}, null), null, 'no position');
+  assert.strictEqual(R.pedalEstimates(null, 64), null, 'no params');
+  // Backup patches carry the effects chain only, so a patch without the
+  // pedal's three parameters is ordinary rather than broken.
+  assert.strictEqual(R.pedalEstimates({ exp_fn: 0, exp_mn: 0 }, 64), null, 'no exp_mx');
+  assert.strictEqual(R.pedalEstimates({ exp_mn: 0, exp_mx: 127 }, 64), null, 'no exp_fn');
+});

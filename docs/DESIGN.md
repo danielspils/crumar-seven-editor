@@ -285,6 +285,46 @@ The mock at `out/lists-design.html` implements this — a same-hue spill at low
 alpha, widening and weakening, so the sign reads as more saturated than the
 paper rather than brighter than it.
 
+### THE EXPRESSION PEDAL: A READING ON ITS OWN BAR, AND A MODEL ON THE ROW IT DRIVES
+
+Added 18 Nov 2026, and **a sixth job for `--amber`** — the note above lists
+five. Both are amber because both are the same pedal.
+
+| where | what is drawn | what it means |
+|---|---|---|
+| the pedal's own Range bar | `.pedal-pos`, a **solid** 2px line | the pedal's position, **read** from CC 11 |
+| the row the pedal drives | the row's own **fill**, hatched | where that probably puts it, **computed** |
+
+**THE DRIVEN ROW GETS NO NEW SYMBOL** (Daniel's call). The row already has two
+marks that mean the right things — **the fill is how much there is, the circle
+is where the value is set** — so the pedal drives the fill and the circle keeps
+the stored value. The first attempt drew a dotted line *beside* an unchanged
+fill, which put three marks on a 6px bar to say two things.
+
+**THE CIRCLE BECOMES PERMANENT ON A DRIVEN ROW, and that is load-bearing.**
+`.param-bar-knob` is `opacity: 0` until the bar is hovered. With the fill now
+showing the pedal, the circle is the only thing left saying what the patch
+holds — so an invisible one would leave the estimate as the only number on the
+row. Reassigning the pedal moves this: the new destination row gains the class,
+the old one reverts to hover-only with its fill back at the stored value.
+
+**TEXTURE CARRIES THE UNCERTAINTY.** A solid fill is the most authoritative
+thing on the row and this number was never read off the instrument, so while
+the pedal owns the fill it is **hatched** in the pedal's amber. The app cannot
+read what the instrument is applying — the destination parameter is not
+modulated and CC 11 carries the raw position — so the amount is arithmetic
+resting on an assumed linear mapping that cannot be checked from this side of
+the cable (docs/DEVICE.md says what would verify it). A reader who cannot tell
+a reading from a model will quote the estimate as a measurement, which is the
+failure this project has recorded three times under other names.
+
+**Why texture and not a second colour.** A different hue would say *a different
+thing*; what differs is only **how well it is known**.
+
+**THE ROW'S NUMBER NEVER MOVES.** It is the stored value. The pedal modulates;
+it does not edit. A number that followed the pedal would make Save patch write
+a value the patch never held.
+
 ## Parameter rendering taxonomy
 
 How a parameter renders is decided from **schema data** (`max`, `values`,

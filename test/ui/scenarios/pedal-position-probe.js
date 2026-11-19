@@ -40,10 +40,19 @@
   const FUNCTIONS = ['Volume', 'FX 1 Depth', 'FX 2 Depth', 'FX 1 + 2 Depth',
     'FX 1 Rate', 'FX 2 Rate', 'FX 1 + 2 Rate', 'Amp Drive', 'Pad Level', 'Pad Blend'];
   // exp_fn's value is an index into the list above; this maps it to the
-  // parameter the pedal is actually driving.
+  // parameter the pedal is actually driving. The two nulls drive TWO rows each
+  // and this probe only needed one.
+  //
+  // CORRECTED 18 Nov 2026: entries 4 and 5 said `fx1_rt`/`fx2_rt`, which exist
+  // nowhere in the schema — the function list says "Rate", the parameters are
+  // `fx1_sp`/`fx2_sp` labelled "Speed". Nothing noticed because this probe only
+  // ever ran with exp_fn=0, so those entries were never looked up: a map whose
+  // wrong half is unreachable. The live version lives in `pedalEstimates`
+  // (src/renderer.js) and a unit test now walks every exp_fn against the
+  // schema's own key list, which is the guard that would have caught it.
   const DEST = {
     0: 'veq_vol', 1: 'fx1_dp', 2: 'fx2_dp', 3: null,
-    4: 'fx1_rt', 5: 'fx2_rt', 6: null, 7: 'amp_dr', 8: 'pad_lv', 9: 'pad_bl',
+    4: 'fx1_sp', 5: 'fx2_sp', 6: null, 7: 'amp_dr', 8: 'pad_lv', 9: 'pad_bl',
   };
 
   const read = async (key) => {
