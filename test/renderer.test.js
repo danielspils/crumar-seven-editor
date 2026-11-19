@@ -310,6 +310,59 @@ test('AN INERT ROW STILL SHOWS THE PEDAL — Amp Drive is not gated', () => {
   assert.deepStrictEqual(pedal({ exp_fn: 7 }, 127), { amp_dr: 127 }, 'amp_sw absent');
 });
 
+// ── THE PLAIN INSTRUMENT PICTURE IS STILL REACHABLE ─────────────────────────
+//
+// It was proposed for deletion on 18 Nov 2026 on the grounds that every view
+// now passes `canPickSound`, so the stack always wins. IT IS NOT DEAD, and
+// this test is the deliberate entry into the state that proves it — asked for
+// in those terms, because `plain-variant-probe.js` drove TEN gestures in the
+// running app and reached the stack every time.
+//
+// WHY THE UI SUITE CANNOT REACH IT. The gesture is: select a bank slot, select
+// a library patch, then DELETE that patch. app.js's refreshLibrary keeps the
+// invariant on purpose —
+//
+//     libSelected = null;
+//     if (lastTouched === 'library') setLastTouched('device');
+//
+// — but that sits inside `if (libSelected)`, and the two trash sites (app.js
+// 3229 and 3383) null libSelected THEMSELVES first, so the refresh skips it
+// and lastTouched stays 'library'. currentPatch() then answers from deviceSel
+// while the view's `pos` falls through both canPickSound arms to `{}`.
+// The delete is behind window.sevenAPI.library.contextMenu(), a NATIVE
+// Electron menu, which a DOM scenario cannot click — so the state is
+// reachable by a person and not by the suite. Hence this, here.
+test('without canPickSound the engine header draws the PLAIN picture', () => {
+  // ITS OWN RENDERER, WITH THE ART STUBBED. The shared loadRenderer gives the
+  // vm a bare `window`, so window.SevenSoundArt is absent and soundCarousel
+  // takes its `!art` early return — the OTHER plain-variant path. Without the
+  // stub both views come out plain and this test would pass while measuring
+  // the wrong mechanism, which is the failure mode this file has three
+  // headings about. The stub isolates canPickSound as the only variable.
+  const ctx = { window: { SevenSoundArt: {
+    iconFor: () => '<svg data-stub="1"></svg>',
+    artKeyFor: (name) => String(name || '').toLowerCase(),
+  } }, module: { exports: {} }, define: undefined };
+  ctx.exports = ctx.module.exports;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8'), ctx);
+  const api = ctx.module.exports.createRenderer ? ctx.module.exports : ctx.window.SevenRenderer;
+  const Ra = api.createRenderer(schema, (p) => Math.min(64, p.max));
+
+  const patch = patchFor(schema.sounds[0]);
+  const withPick = Ra.renderDetail(patch, {
+    collapsed: {}, live: false, canPickSound: { file: 'x.json', patchIndex: 0 }, sounds: schema.sounds,
+  });
+  const without = Ra.renderDetail(patch, { collapsed: {}, live: false });
+
+  assert.ok(withPick.includes('engine-carousel'),
+    'with canPickSound the stack renders');
+  assert.ok(!without.includes('engine-carousel'),
+    'WITHOUT canPickSound the stack does NOT render — this is the live path');
+  assert.match(without, /class="engine-art"/,
+    'and the plain picture takes its place, so the rules for it are not dead code');
+});
+
 // ── THE FIVE THAT ARE NOT DRAWN ─────────────────────────────────────────────
 //
 // Daniel, 18 Nov 2026: "If they don't work... they're confusing to me." Each

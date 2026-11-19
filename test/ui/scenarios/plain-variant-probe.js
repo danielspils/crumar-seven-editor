@@ -64,6 +64,84 @@
   if (row) { ui.click(row, 'a library patch'); await ui.sleep(2000); }
   seen.add(say('library patch selected'));
 
+  // ---- 5. SELECT A PATCH, THEN MAKE IT GO AWAY -------------------------
+  //
+  // The first four states established that lastTouched does NOT move on a tab
+  // switch — the stack survived all of them — so the candidate state needs
+  // lastTouched left at 'library' while libSelected is CLEARED. Selecting a
+  // patch and then filtering it out of the list is the ordinary gesture that
+  // should do that.
+  const search = ui.$('#library input[type="search"], #library .lib-search input, .lib-search-wrap input');
+  if (search) {
+    search.focus();
+    search.value = 'zzzzz-no-such-patch-zzzzz';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await ui.sleep(900);
+    const rows = ui.$$('#library .lib-row.lib-patch, #library [data-file]').length;
+    ui.note(`search filtered the list to ${rows} row(s)`);
+    seen.add(say('selected patch filtered out of the list'));
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await ui.sleep(700);
+  } else {
+    ui.note('no search field found — that state was not tried');
+  }
+
+  // ---- 6. AND ON A TAB WHOSE LIST CANNOT HOLD THE SELECTION ------------
+  for (const view of ['setlists', 'backups']) {
+    const tab = ui.$(`#top-tabs .top-tab[data-view="${view}"]`);
+    if (!tab) continue;
+    ui.click(tab, `the ${view} tab after a patch was selected`);
+    await ui.sleep(900);
+    seen.add(say(`${view} tab holding a patch selection`));
+  }
+
+  // ---- 7. TRASH THE SELECTED PATCH WHILE A SLOT IS ALSO SELECTED -------
+  //
+  // THE STATE THE SOURCE PREDICTS, found by reading the two places that clear
+  // libSelected rather than by guessing at more gestures.
+  //
+  // refreshLibrary() keeps the invariant deliberately:
+  //
+  //     libSelected = null;
+  //     if (lastTouched === 'library') setLastTouched('device');
+  //
+  // but that lives inside `if (libSelected)`. The TWO TRASH SITES (app.js
+  // 3229 and 3383) null libSelected THEMSELVES first, so by the time the
+  // refresh runs the block is skipped and lastTouched is never moved. Delete
+  // the patch you have selected while a bank slot is also selected and
+  // currentPatch() answers from deviceSel while the view falls through to {}.
+  //
+  // SAFE: the runner hands every scenario a scratch COPY of the library
+  // (Rule 7), so this trashes a copy and never the real one.
+  await ui.openLibrary();
+  await ui.sleep(500);
+  const victim = ui.$('#library .lib-row.lib-patch, #library [data-file]');
+  if (victim) {
+    ui.click(victim, 'the patch that is about to be deleted');
+    await ui.sleep(1200);
+    ui.note(`before the delete: ${state()}`);
+    victim.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    await ui.sleep(600);
+    const del = ui.$$('button, [role="menuitem"], .menu-item')
+      .find((b) => /delete|trash/i.test(b.textContent || ''));
+    if (del) {
+      ui.click(del, 'Delete in the row menu');
+      await ui.sleep(700);
+      const confirm = ui.$$('button')
+        .find((b) => /delete patch/i.test(b.textContent || ''));
+      if (confirm) {
+        ui.click(confirm, 'confirming the delete');
+        await ui.sleep(1800);
+        seen.add(say('the selected patch was deleted'));
+      } else {
+        ui.note('the confirm button was not found — state not reached');
+      }
+    } else {
+      ui.note('no Delete item in the context menu — state not reached');
+    }
+  }
+
   // ---- THE VERDICT ------------------------------------------------------
   ui.note(`states seen: ${[...seen].join(', ')}`);
   // REPORTED, NOT ASSERTED EITHER WAY. The question is which paths are alive;
