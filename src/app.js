@@ -1772,6 +1772,53 @@
     tintTimers[group] = setTimeout(() => el.classList.remove('nav-flash'), 1200);
   }
 
+  // BRING A JUST-OPENED SECTION INTO VIEW — AFTER IT HAS ROOM TO BE IN.
+  //
+  // THE TIMING IS THE WHOLE THING, and getting it wrong is silent. The body
+  // animates `grid-template-rows: 0fr -> 1fr` over 180ms, so at the moment the
+  // class is toggled the pane's scrollHeight STILL EQUALS its clientHeight —
+  // there is nowhere to scroll yet. A scrollIntoView issued there is not
+  // ignored, it SUCCEEDS at scrollTop 0, and by the time the section has
+  // height the scroll is long finished. Measured 18 Nov 2026: opening the
+  // Expression Pedal tray gave `scrollTop 0 -> 0 of 86`, with the contents
+  // ending 57px below the pane.
+  //
+  // Waiting also makes the measurement exact rather than predicted, so this
+  // asks the plain question — is any of it outside the pane — against the real
+  // rect.
+  //
+  // transitionend AND A TIMER, because a cancelled transition never fires one
+  // (the same hazard view-anim.js guards for modals, and for the same reason:
+  // the tray that fails to arrive is the bug). Whichever comes first wins, and
+  // `once` makes the second a no-op.
+  function scrollSectionIntoView(el) {
+    const body = el.querySelector('.fx-body');
+    const reduced = SevenViewAnim.reducedMotion();
+    const go = () => {
+      const dr = detailEl.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      if (er.top >= dr.top && er.bottom <= dr.bottom) return;   // already whole
+      // BLOCK: 'START' — "anchor down to that tray" (Daniel, 18 Nov 2026).
+      // 'nearest' does the smallest scroll that satisfies the test, which for
+      // a tall section leaves its header at the bottom edge and most of it
+      // still below. Anchoring the top is also the same answer however the
+      // tray was opened, by its own header or by a knob on the panel strip.
+      // The browser clamps it, which is what makes the LAST section behave:
+      // it comes up as far as there is room for and no further.
+      el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    };
+    if (reduced || !body) { go(); return; }
+    let done = false;
+    const once = () => {
+      if (done) return;
+      done = true;
+      body.removeEventListener('transitionend', once);
+      go();
+    };
+    body.addEventListener('transitionend', once);
+    setTimeout(once, 260);
+  }
+
   // Single path for all expand/collapse changes: keeps the `collapsed` map and
   // the DOM class in sync, animates via CSS (no re-render), and applies the
   // open cues. Closing is plain — no highlight.
@@ -1781,13 +1828,7 @@
     if (el) {
       el.classList.toggle('collapsed', isCollapsed);
       if (!isCollapsed) {
-        if (opts.scroll) {
-          const dr = detailEl.getBoundingClientRect();
-          const er = el.getBoundingClientRect();
-          if (er.top < dr.top || er.bottom > dr.bottom) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }
-        }
+        if (opts.scroll) scrollSectionIntoView(el);
         if (opts.tint !== false) flashTint(el, group);
       }
     }
@@ -2924,7 +2965,14 @@
     if (!head || !head.dataset.group) return;
     // Toggle without re-render so the body height animates. Knob rings update
     // as part of setSectionCollapsed (persistent while open; pdl_exp has none).
-    setSectionCollapsed(head.dataset.group, !collapsed[head.dataset.group]);
+    //
+    // SCROLL: TRUE SINCE 18 Nov 2026 (Daniel) — opening a tray anchors to it,
+    // as the JUNO-Xtra editor does. The option and its logic already existed
+    // and only the PANEL-KNOB path passed it, so navigating to a section from
+    // the instrument's drawing brought it into view and opening the very same
+    // section by its own header did not. One behaviour now, both doors.
+    // Closing never scrolls: nothing arrived to look at.
+    setSectionCollapsed(head.dataset.group, !collapsed[head.dataset.group], { scroll: true });
   });
 
   // Enum dropdowns follow the same honesty rule as the pill: a change never
