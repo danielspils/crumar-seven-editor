@@ -4547,6 +4547,11 @@
        the number to change is Daniel's ("18/24" exists as a fallback and is
        his call), not this one. */
     .car-count {
+      /* `bottom` IS A FALLBACK ONLY — app.js's placeCaption() overwrites it
+         per drawing, because how much space sits under the art depends on the
+         drawing's own proportions and CSS cannot see the painted rectangle
+         under object-fit. This value is what an unloaded image gets for the
+         instant before the real one is computed. */
       position: absolute; left: 50%; bottom: -2px;
       transform: translateX(-50%);
       max-width: 228px;

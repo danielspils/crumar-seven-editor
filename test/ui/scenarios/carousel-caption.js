@@ -222,4 +222,62 @@
   const restore = await ui.squeeze(ui.$('#detail'), 360, { what: 'the detail pane' });
   await look('THE DETAIL PANE SQUEEZED TO 360px');
   await restore();
+
+  // ---- BOTH ENDS OF THE SHAPE RANGE, CHOSEN RATHER THAN ACCEPTED --------
+  //
+  // THE WHOLE POINT, AND WHY THIS SECTION EXISTS. Everything above measures
+  // whichever drawing the library happened to open with, and for months that
+  // was a 512x418 LANDSCAPE one. The caption was pinned to the BOX, the art
+  // is centred INSIDE the box by object-fit, and how much empty space sits
+  // under it depends entirely on the drawing's proportions:
+  //
+  //   LANDSCAPE — letterboxing below the art. The caption falls into it.
+  //   PORTRAIT  — the art fills the box top to bottom. No letterbox at all,
+  //               so a box-pinned caption sits INSIDE the artwork.
+  //
+  // So the overlap was real on roughly four of nineteen drawings and the test
+  // could not see it. Worse, when the box grew 128 -> 160 the red CLEARED —
+  // the letterbox grew past the caption's fixed offset — and the cause had
+  // simply moved out from under the assertion.
+  //
+  // This pages the stack until it finds each shape and asserts on BOTH, so a
+  // regression on the portrait end cannot hide behind a convenient landscape
+  // drawing again.
+  const front = () => ui.$('#detail .engine-carousel .car-face.is-front img');
+  const nextChevron = () => ui.$('#detail .engine-carousel .is-step-next');
+  const shapeNow = () => {
+    const img = front();
+    if (!img || !img.naturalWidth) return null;
+    return img.naturalHeight > img.naturalWidth ? 'portrait' : 'landscape';
+  };
+  const findShape = async (want) => {
+    for (let i = 0; i < 24; i += 1) {
+      if (shapeNow() === want) return true;
+      const s = nextChevron();
+      if (!s) return false;
+      ui.click(s, `paging for a ${want} drawing`);
+      await ui.sleep(620);
+    }
+    return shapeNow() === want;
+  };
+
+  for (const want of ['portrait', 'landscape']) {
+    if (!(await findShape(want))) {
+      ui.check(false, `a ${want} drawing could be reached by paging the stack`);
+      continue;
+    }
+    const img = front();
+    const cap = ui.$('#detail .car-count');
+    const ink = paintedRect(img);
+    if (!cap || !ink) { ui.check(false, `${want}: the caption and the art are both measurable`); continue; }
+    const cb = box(cap);
+    const name = img.closest('.car-face').getAttribute('data-car-name');
+    const gap = cb.top - ink.bottom;
+    ui.note(`${want.toUpperCase()}: "${name}" natural ${img.naturalWidth}x${img.naturalHeight}`);
+    ui.note(`  art ends y${px(ink.bottom)} · caption starts y${px(cb.top)} · clearance ${px(gap)}px`);
+    const hit = overlap(cb, ink);
+    ui.check(!hit,
+      hit ? `${want} "${name}": the caption is drawn across the instrument (${hit.x}x${hit.y}px)`
+        : `${want} "${name}": the caption clears the art by ${px(gap)}px`);
+  }
 })()

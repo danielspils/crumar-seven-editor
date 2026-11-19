@@ -2080,6 +2080,48 @@
   let lastDetailKey = null;
   let lastSaveBar = false; // was the save block showing on the previous render?
 
+  // THE CAPTION SITS BELOW THE PAINTED DRAWING, NOT BELOW THE BOX.
+  //
+  // `.car-count` was pinned to the box at `bottom: -2px`. The box is square
+  // and the art is centred inside it by object-fit: contain, so how much empty
+  // space there is under the drawing DEPENDS ON THE DRAWING: a landscape one
+  // leaves letterboxing the caption can fall into, and a PORTRAIT one fills
+  // the box top to bottom and leaves none at all.
+  //
+  // So the caption bit into the artwork on every portrait instrument —
+  // bechstein_piano, venice, both uprights, reed — and had done since it was
+  // written. carousel-caption reported it as a 0.8px overlap because it
+  // happened to be measuring a 512x418 landscape drawing, and the red
+  // CLEARED when the box went to 160 for the same accidental reason: the
+  // letterbox grew past the caption's fixed offset. The cause moved out from
+  // under the test rather than being fixed (Daniel, 18 Nov 2026).
+  //
+  // CSS CANNOT EXPRESS THIS — there is no selector for the painted area under
+  // object-fit — so the offset is computed from the image's natural ratio,
+  // which is the same arithmetic the scenario already does to measure it.
+  const CAPTION_GAP = 2;
+  function placeCaption() {
+    const cap = detailEl.querySelector('.car-count');
+    const img = detailEl.querySelector('.engine-carousel .car-face.is-front img');
+    if (!cap || !img) return;
+    const box = detailEl.querySelector('.engine-carousel');
+    if (!box) return;
+    const side = box.getBoundingClientRect().height;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    // NOT LOADED YET MEANS NOT MEASURABLE. Placing it on a guess would be the
+    // same mistake one layer down, so wait for the image and re-place then.
+    if (!nw || !nh || !side) {
+      img.addEventListener('load', placeCaption, { once: true });
+      return;
+    }
+    const scale = Math.min(side / nw, side / nh);
+    const letterbox = (side - nh * scale) / 2;   // empty space under the art
+    const capH = cap.getBoundingClientRect().height || 14.5;
+    // `bottom` is measured up from the box's bottom edge; negative hangs below.
+    cap.style.bottom = `${letterbox - capH - CAPTION_GAP}px`;
+  }
+
   function renderDetail() {
     const patch = currentPatch();
     // A library patch has no bank position — the pos line is omitted. A
@@ -2168,6 +2210,7 @@
     updateKnobRings();
     dressParamSelects(detailEl);
     resumeSampledArrival();
+    placeCaption();
     // LAST, because it decorates what was just painted. Every path that
     // repaints the panel goes through here, so nothing has to remember to
     // re-apply it.
