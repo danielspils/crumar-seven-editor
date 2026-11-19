@@ -128,7 +128,7 @@
       // `live` is this bar's own argument — whether anything has drifted — so
       // the button follows drift everywhere except ON THE SEVEN, where it is
       // always present because there is no file to compare against.
-      // TWO STATES, BOTH CLICKABLE (out/save-what-you-hear.md §3). Outlined
+      // TWO STATES, BOTH CLICKABLE (docs/save-what-you-hear.md §3). Outlined
       // with nothing changed, solid once something has — the button was always
       // reachable on a bank slot, and now it says which of the two it is
       // rather than only appearing when it has something to ask for.

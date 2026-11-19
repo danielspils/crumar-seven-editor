@@ -2571,7 +2571,7 @@ it.
 edit buffer off the instrument and writes that to a file, which can be sent back
 any time — so the hold keeps a sound *in that preset on the instrument*, which is
 a different and optional thing. UI copy must not present it as the only way to
-keep work (`out/save-what-you-hear.md` §4). The sentence that did —
+keep work (`docs/save-what-you-hear.md` §4). The sentence that did —
 "Nothing is kept until you hold the button on the Seven" — was false in the
 direction that loses work: it told the player the computer was not an option.
 

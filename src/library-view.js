@@ -126,7 +126,7 @@
   //
   // A save taken off the instrument lands in Patches among patches that were
   // built there, and without this it arrives unexplained — the thing §3 of
-  // out/save-what-you-hear.md asked for.
+  // docs/save-what-you-hear.md asked for.
   //
   // NOT A NEW FIELD. The store has written `origin.copiedFrom.bank` since
   // 2026-08-21, for copies of backup records, and nothing ever displayed it —

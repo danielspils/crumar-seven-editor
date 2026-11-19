@@ -169,7 +169,7 @@
         value: 'hold',
         // PRESET, with a ·, because that is what the instrument prints on its
         // own panel and what the other nine places in this app say. "Slot" was
-        // the spec's word (out/save-what-you-hear.md §3, corrected 14 Nov) and
+        // the spec's word (docs/save-what-you-hear.md §3, corrected 14 Nov) and
         // it made this flow the only place in the app using it — the modal and
         // the hold screen would say Slot while the library row the save lands
         // in says Preset, which is the confusion this feature exists to remove.

@@ -9,7 +9,7 @@
 // IT BIT. Daniel lost two patches on 13 Nov 2026, walking out of a patch
 // looking for a save control while the edits he was looking for went with the
 // click. So the rare case is no longer rare enough, and the dialog is back —
-// but only where it is earned (out/save-what-you-hear.md §5).
+// but only where it is earned (docs/save-what-you-hear.md §5).
 //
 // Both halves are on trial here, and the second one is the one that keeps the
 // 2026-08-12 reasoning alive: browsing must still be untolled.

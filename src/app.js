@@ -249,7 +249,7 @@
   // moment of entering the view: true, and three seconds later gone, said
   // while nobody was saving anything. It matters at one moment only — a save,
   // where the button may have sat outlined through a panel move — so the save
-  // modal reads this and says it there (out/save-what-you-hear.md §5b, "say so
+  // modal reads this and says it there (docs/save-what-you-hear.md §5b, "say so
   // once in the save modal and carry on"). Never fatal, in either place.
   let ccFailed = false;
 
@@ -461,7 +461,7 @@
     if (!isConnected()) return toast('Connect the Seven to choose a sound for a preset');
     const pickedSound = await chooseSound(
       `Bank ${bank} · Preset ${preset}`,
-      // §4 of out/save-what-you-hear.md: the hold is no longer the only way
+      // §4 of docs/save-what-you-hear.md: the hold is no longer the only way
       // to keep a sound, so this no longer says it is. Save Patch writes the
       // whole buffer to a file, which can be sent back any time; the hold is
       // what keeps it ON THE INSTRUMENT, in this slot, which is a different
@@ -2561,7 +2561,7 @@
     // nothing, so `deviceSel` can be stale from the moment it is set. Naming a
     // slot from a stale belief would be an instruction to overwrite something
     // the player did not mean, which is worse than naming nothing at all
-    // (out/save-what-you-hear.md §3).
+    // (docs/save-what-you-hear.md §3).
     //
     // The app's own recalls do NOT make this true. They put the instrument
     // somewhere, but say nothing about where it has been moved to since.

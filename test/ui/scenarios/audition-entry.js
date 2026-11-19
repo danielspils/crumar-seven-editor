@@ -37,7 +37,7 @@
   //
   // THE SWITCH ABOVE WAS AN EDIT, so navigating away now asks before it
   // discards — new on 14 Nov 2026, after Daniel lost two patches walking out
-  // of a patch looking for a save control (out/save-what-you-hear.md §5).
+  // of a patch looking for a save control (docs/save-what-you-hear.md §5).
   // That dialog is pinned in switch-patch-guard.js; here it is in the way of
   // what this scenario is actually about, so it is answered and the entry
   // claim is then made on a clean selection.

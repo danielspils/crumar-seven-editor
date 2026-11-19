@@ -14,7 +14,7 @@
 // A control that is always available claims nothing; a drift marker there would
 // be a guess.
 //
-// IT READS "Save patch" THERE SINCE 14 NOV 2026 (out/save-what-you-hear.md §3).
+// IT READS "Save patch" THERE SINCE 14 NOV 2026 (docs/save-what-you-hear.md §3).
 // It said "Save as new patch", and Daniel could not read that in the moment,
 // standing at the instrument: "They're hard to wrap my head around in the
 // moment. I found that yesterday with the existing 'save as a new patch'. What

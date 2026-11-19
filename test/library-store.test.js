@@ -1130,7 +1130,7 @@ test('save-as-new is a NEW patch, with new-patch provenance', () => {
   assert.strictEqual(doc.patches[0].origin.bank, undefined, 'it claims no slot');
 });
 
-// ---- WHERE A SAVED COPY CAME FROM (out/save-what-you-hear.md §3) -----------
+// ---- WHERE A SAVED COPY CAME FROM (docs/save-what-you-hear.md §3) -----------
 //
 // A save taken off the instrument lands in Patches among patches that were
 // built there, and without provenance it arrives unexplained. The design asked

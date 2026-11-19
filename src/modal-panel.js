@@ -556,7 +556,7 @@
   //
   // It lives here rather than being written a second time next to the save
   // modal. Two copies of an instruction drift, and the one that drifts is
-  // always the one the player is reading (out/save-what-you-hear.md §3: "Do
+  // always the one the player is reading (docs/save-what-you-hear.md §3: "Do
   // not write a second one").
   //
   // Three blinks at 260ms on / 260ms off, then rest — long enough to catch the

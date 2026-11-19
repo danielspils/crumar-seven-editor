@@ -1,6 +1,6 @@
 'use strict';
 
-// THE GUARDS FOR "SAVE WHAT YOU HEAR" (out/save-what-you-hear.md §8).
+// THE GUARDS FOR "SAVE WHAT YOU HEAR" (docs/save-what-you-hear.md §8).
 //
 // The thing being defended is a sentence: what the file says is what the
 // instrument was holding. Everything here is a way that sentence can quietly

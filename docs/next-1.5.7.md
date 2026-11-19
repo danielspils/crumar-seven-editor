@@ -1484,7 +1484,7 @@ touched and runs with the change.
 
 `save-what-you-hear` is merged into `four-tab-nav-wip` (and so are
 `live-on-the-seven` and `fx-keep-on-sound-swap`). The spec is still
-`out/save-what-you-hear.md`. This entry read as in-flight after the merge.
+`docs/save-what-you-hear.md`. This entry read as in-flight after the merge.
 
 ## 3. exp_fn / exp_mx CC 1 collision — **HALF DONE, and the other half is OPEN**
 

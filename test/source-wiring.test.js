@@ -484,7 +484,7 @@ test('the hold screen answers a mistaken press, on a CLICK', () => {
   // THE INSTRUCTION MOVED, AND NOTHING IS GIVEN UP BY FOLLOWING IT.
   // The save flow shows the same hold for the same act, so the markup and the
   // handler live in modal-panel.js and both callers use that one copy
-  // (out/save-what-you-hear.md §3: "Do not write a second one"). Each half is
+  // (docs/save-what-you-hear.md §3: "Do not write a second one"). Each half is
   // still pinned — just where its code now is.
   const src = code(read('app.js'));
   const walk = /async function transferWalk\(([\s\S]*?)\n  \}/.exec(src);
@@ -1083,7 +1083,7 @@ test('the backup still ends in its own dialog, with its own words', () => {
     'carrying the split and where the instrument was left');
 });
 
-// ---- Saving what you hear (out/save-what-you-hear.md §8) -------------------
+// ---- Saving what you hear (docs/save-what-you-hear.md §8) -------------------
 //
 // src/save-plan.js holds the decision and test/save-plan.test.js pins it. This
 // is the other half: that the APP is wired to that decision, and that the two

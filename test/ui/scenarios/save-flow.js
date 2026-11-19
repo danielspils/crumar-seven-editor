@@ -1,6 +1,6 @@
 // @env SEVEN_NO_DEVICE=1
 //
-// THE SAVE DIALOG, drawn (out/save-what-you-hear.md §3).
+// THE SAVE DIALOG, drawn (docs/save-what-you-hear.md §3).
 //
 // The problem it exists for is a reading problem, not a logic one. Daniel could
 // not tell "Save as new patch" from saving to the Seven while standing at the

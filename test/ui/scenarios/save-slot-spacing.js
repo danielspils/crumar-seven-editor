@@ -127,7 +127,7 @@
 
   // BOTH BUTTON STATES MUST HAVE THE SAME FOOTPRINT. Outlined when nothing
   // has changed, solid once there are edits, and both clickable
-  // (out/save-what-you-hear.md §3). If the solid state is taller, the
+  // (docs/save-what-you-hear.md §3). If the solid state is taller, the
   // parameter list below it moves the moment a patch becomes dirty — a new
   // version of the jump Daniel caught on the carousel.
   const bar = ui.$('#detail .save-slot .audition-bar');
