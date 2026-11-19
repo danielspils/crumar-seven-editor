@@ -771,10 +771,23 @@ partly because the claim is fifteen firmware revisions old and unmeasured here
 marks them inert with a reason, so suppressing the mark stated the same fact a
 second time, invisibly. It read as the feature being broken.
 
-**The question is still open and still worth a minute at the instrument:** with
-the pedal assigned to Amp Drive and the amp simulator OFF, does rocking it
-change the sound? Silence confirms the manual; a change refutes it. Either way
-nothing in the app depends on the answer now.
+**SETTLED ON HARDWARE THE SAME DAY — the manual was right.** Daniel's ear,
+FW 1.37, 18 Nov 2026, with the pedal assigned to Amp Drive:
+
+> *"When the amp is off and the pedal is assigned to amp drive, it does nothing
+> to the sound. When I turn the amp on, the pedal affects the drive."*
+
+So **the pedal cannot reach Drive with the amp simulator off**, and this is now
+a device fact rather than a document's claim. It is BY EAR — an audible
+difference, not a measured level — which is enough for a present/absent
+question and would not be enough for a question about the curve's shape.
+
+**It did not put the gate back, and that is deliberate.** The gate was removed
+for a reason that survives being right: the row is already dimmed and marked
+inert, so the mark is not the thing carrying "this does nothing" — it carries
+"here is where the pedal is". Both statements are true at once, and now both
+are known to be true. The app still does not branch on this fact, so nothing
+here can rot into a wrong behaviour if a firmware changes it.
 
 **WHAT WOULD ACTUALLY VERIFY IT, and why nobody has.** The applied value cannot
 be read over the wire at all, so a check has to leave the protocol:

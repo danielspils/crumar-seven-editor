@@ -330,6 +330,13 @@ workie"*). The fill answers **where the pedal is, mapped through its range**;
 whether anything downstream is listening is a different question, and the row
 answers that one itself.
 
+For Amp Drive the second question now has a measured answer — with the amp
+simulator off the pedal genuinely does nothing to the sound (docs/DEVICE.md,
+by ear, 18 Nov 2026) — and the drawing is unchanged by that. **Two true
+statements, carried by two different marks**: the dimming says the parameter is
+inert, the fill says where the pedal is. Folding them into one would lose the
+second, which is what the gate did.
+
 **THE ROW'S NUMBER NEVER MOVES.** It is the stored value. The pedal modulates;
 it does not edit. A number that followed the pedal would make Save patch write
 a value the patch never held.
