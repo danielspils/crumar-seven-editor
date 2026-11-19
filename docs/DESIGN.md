@@ -96,12 +96,21 @@ from a designer's preference.
 | Navigation | `--amber` | **the Seven script's own amber**, `#E0A23C`, in both themes | which tab or segment is selected, focus rings, an open rename field |
 
 > **The light marker is a deliberate contrast exception.** `#E0A23C` measures
-> 1.88:1 on `--bg` and 1.65:1 on `--bg-panel`, under the 3:1 WCAG asks of a
-> non-text marker. `#9e6c19` — the same hue at 3.37:1 — was built and shipped
-> for an hour first; beside the script it read as a different, duller gold.
-> Daniel compared both in the running app and chose the sign's own colour, so
-> the underline and the sign read as one thing. If it reads weak at 2px the
-> answer is 3px, not a darker colour.
+> 1.88:1 on `--bg`, 1.65:1 on `--bg-panel` and **1.53:1 on `--page`** — which
+> is the WORST ground and the one that binds, since the mark is darker than
+> every light ground. All three are under the 3:1 WCAG asks of a non-text
+> marker. `#9e6c19` — the same hue at 3.37:1 on `--bg-panel` — was built and
+> shipped for an hour first; beside the script it read as a different, duller
+> gold. Daniel compared both in the running app and chose the sign's own
+> colour, so the underline and the sign read as one thing. If it reads weak at
+> 2px the answer is 3px, not a darker colour.
+>
+> **RE-OFFERED WITH FULL NUMBERS ON 18 Nov 2026 AND DECLINED AGAIN** — the
+> underline at today's value beside `#936925` (3.36:1 on the worst ground,
+> same hue, Δ0.0 from the logo), on all three grounds, tabs and bank tabs
+> together. *"today looks great."* The exception is therefore made twice, with
+> the second one knowing what `--page` does. Full table and the declined
+> candidates: "THE AMBER VALUES, WITH THE NUMBERS ATTACHED" below.
 | Modeled | `--modeled` | panel blue legend | the Modeled badge, outlined |
 | Sampled | `--sampled` | panel green legend, darker | the Sampled badge, outlined |
 
@@ -273,13 +282,64 @@ the logo alone does is **bloom**: `--logo-glow`, a same-hue spill that widens
 and weakens. The tab underlines wear the colour flat, with no halo, and that
 is why they do not spend this. Anything that starts to glow does.
 
-**A note on `--amber`'s name.** It is now doing five jobs: the active-state
+**A note on `--amber`'s name.** It was doing five jobs: the active-state
 marker (tabs, bank tabs, `.seg-btn`), focus rings, the field being edited,
 locating marks (`.mp-bracket`, `.reach-arrow`, drop targets) and warnings
 (`.tx-alarm-soft`, `.param-value.range-reversed`). This change narrowed its
 *meaning* toward the first without touching the others, so the token's name no
-longer describes most of its users. Splitting them into named tokens is a
-later cleanup, deliberately not done in that pass.
+longer describes most of its users. ~~Splitting them into named tokens is a
+later cleanup, deliberately not done in that pass.~~ **THE SPLIT HAPPENED, in
+`52c599d` (18 Nov 2026), and it arrived as a red rather than as tidying** —
+`modal-panel-choose` failed with the bracket at 1.65:1. Locating marks moved
+to `--mark-amber`; the other four jobs stayed. See the table below.
+
+### THE AMBER VALUES, WITH THE NUMBERS ATTACHED (settled 18 Nov 2026)
+
+**This table exists because a contrast decision and a looks decision were made
+in different places and never met.** `#9e6c19` was chosen at 3.37:1 over
+`#a7721b` at 3.06 *explicitly because 3:1 is a floor and not a target* — and a
+later "use the Seven's script colour" change, approved from a screenshot, took
+the same mark to 1.88:1 with nobody re-measuring. Neither decision was wrong on
+its own terms. The numbers now live beside the values so the next screenshot
+approval has them in hand.
+
+| token | dark | light | jobs |
+|---|---|---|---|
+| `--amber` | `#E0A23C` | `#E0A23C` | active-state marker, focus rings, the field being edited, warnings |
+| `--mark-amber` | `#c9a25e` | `#8a5d00` | locating marks only |
+
+**Measured contrast, light theme, against all three grounds.** `--page` is the
+WORST ground and the one that binds: these marks are darker than the paper, so
+the darkest ground gives the least contrast. Gating on `--bg` is backwards, and
+it is what hid this — `#a7721b` reads 3.06:1 on `--bg-panel` and **2.84:1 on
+`--page`**, so the rejected candidate would have failed the real test too.
+
+| | `--bg` | `--bg-panel` | `--page` | bar |
+|---|---|---|---|---|
+| `--amber` `#E0A23C` | 1.88:1 | 1.65:1 | **1.53:1** | 3:1 marks, 4.5:1 text |
+| `--mark-amber` `#8a5d00` | 4.84:1 | 4.26:1 | **3.95:1** | 3:1 |
+
+Dark theme is not in question: `--amber` is 7.19:1 on `--bg` there.
+
+**`--amber` IS BELOW ITS BAR IN LIGHT, KNOWINGLY, AND THAT IS DANIEL'S CALL
+(18 Nov 2026).** He was shown the underline at today's value beside a candidate
+in the identical hue, on all three grounds, and chose today's: *"today looks
+great."* So the active-state marker, the focus rings, the field being edited
+and the reversed-range warning all sit under the WCAG figures in the light
+theme. **Recorded rather than quietly carried**, because the next person to
+measure this will otherwise think they have found a bug.
+
+**What was measured and declined, so nobody re-derives it.** Both are the
+Seven's exact hue, 37.3°, Δ0.0 from the logo:
+
+- `#936925` — 4.12 / 3.62 / **3.36:1**. Clears the 3:1 bar on the worst ground
+  with the same headroom as the 3.37 that was approved in the first place.
+- `#78561e` — 5.61 / 4.93 / **4.57:1**. The only thing at this hue that clears
+  **4.5:1** on `--page`, which is the bar for the reversed-range readout
+  because that one is TEXT. **No single value in this hue serves all four jobs**
+  without taking the underline considerably darker than what was approved.
+
+The comparison Daniel judged is `out/amber-underline-compare.html`.
 
 The mock at `out/lists-design.html` implements this — a same-hue spill at low
 alpha, widening and weakening, so the sign reads as more saturated than the
