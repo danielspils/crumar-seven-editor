@@ -1179,6 +1179,22 @@ function createWindow() {
   // save patches, and there is no version of that which is safe against real
   // data. If a probe is only meaningful against the real library, the probe is
   // wrong — take a copy and point at it.
+  // SEVEN_REEL IS THE SAME HAZARD AND TAKES THE SAME REFUSAL. It drives the
+  // app from a script for several seconds, which means it can save patches —
+  // the exact shape of the 2026-09-08 probe that renamed a sound in the real
+  // library. A capture hook is not a safe hook just because its OUTPUT is a
+  // picture.
+  if (process.env.SEVEN_REEL && !process.env.SEVEN_LIBRARY_DIR) {
+    console.error(
+      'REFUSED: SEVEN_REEL with no SEVEN_LIBRARY_DIR would run against the '
+      + 'REAL library, and a driving script can write to it.\n'
+      + 'Point SEVEN_LIBRARY_DIR at a scratch directory — out/reel/reel.sh '
+      + 'copies one per shot.'
+    );
+    app.exit(2);
+    return;
+  }
+
   if (process.env.SEVEN_UI_TEST && !process.env.SEVEN_LIBRARY_DIR) {
     console.error(
       'REFUSED: SEVEN_UI_TEST with no SEVEN_LIBRARY_DIR would run against the '
@@ -1209,6 +1225,192 @@ function createWindow() {
         console.log(`captured ${process.env.SEVEN_SHOT}`);
         app.quit();
       }, Number(process.env.SEVEN_SHOT_DELAY || 1500));
+    });
+  }
+
+  // ---- SEVEN_REEL: MANY FRAMES FROM ONE SESSION --------------------------
+  //
+  // SEVEN_SHOT above captures once and quits, which is right for a release
+  // screenshot and useless for MOTION. This is its sibling: a driving script
+  // runs in the page while an interval writes numbered frames, and the run
+  // ends when that script's promise settles.
+  //
+  //   SEVEN_REEL=<dir>         0001.png, 0002.png, … written here
+  //   SEVEN_REEL_JS=<path>     the driving script, same shape as a scenario
+  //   SEVEN_REEL_FPS=15        capture rate
+  //   SEVEN_REEL_SLOWMO=4      how much to slow the app's own motion
+  //
+  // SLOW THE APP, SPEED THE VIDEO. The card stack's transition is 0.3s; at
+  // 15fps that is four frames and reads as teleporting. So every animation's
+  // playbackRate is divided by SLOWMO and ffmpeg plays the result back at
+  // FPS * SLOWMO — smooth motion, and NOTHING SHIPPED CHANGES. It scales
+  // rather than replaces: a blanket `*` override would flatten every
+  // deliberately different duration in the stylesheet into one.
+  //
+  // THE WEB ANIMATIONS API DOES THE SCALING, not a CSS rewrite. CSS
+  // transitions are real Animation objects in document.getAnimations(), and
+  // playbackRate on a running one slows the remainder. Hooking
+  // transitionstart/animationstart catches each at its first frame, and a
+  // slow sweep catches anything that started between ticks.
+  //
+  // CAPTURES DO NOT QUEUE. capturePage() is slower than 15fps asks for, so a
+  // tick arriving while one is in flight is SKIPPED AND COUNTED rather than
+  // stacked — an unbounded queue would drift further behind the whole run and
+  // the timings would be a fiction. The counts are printed at the end,
+  // because a shot that skipped a third of its ticks did not capture what its
+  // timings claim.
+  if (process.env.SEVEN_REEL) {
+    win.webContents.once('did-finish-load', async () => {
+      const dir = process.env.SEVEN_REEL;
+      const fps = Math.max(1, Number(process.env.SEVEN_REEL_FPS) || 15);
+      const slowmo = Math.max(1, Number(process.env.SEVEN_REEL_SLOWMO) || 4);
+      let n = 0; let captured = 0; let skipped = 0; let busy = false; let timer = null;
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        const root = path.join(__dirname, '..');
+        const reelEnv = Object.fromEntries(
+          Object.entries(process.env).filter(([k]) => k.startsWith('SEVEN_'))
+        );
+        await win.webContents.executeJavaScript(
+          `window.__SEVEN_ENV = ${JSON.stringify(reelEnv)};\n`
+          + `${fs.readFileSync(path.join(root, 'test', 'ui', 'harness.js'), 'utf8')}\n;true;`
+        );
+        const reduced = await win.webContents.executeJavaScript(
+          "matchMedia('(prefers-reduced-motion: reduce)').matches"
+        );
+        if (reduced) console.error('[reel] WARNING: prefers-reduced-motion is ON — there is no motion to shoot');
+        // SCALING THE COMPUTED CSS DURATIONS, not the Web Animations
+        // playbackRate. The playbackRate route was tried first and MEASURED
+        // not to work: setting 0.25 by hand on all five of the stack's
+        // running transitions, and reading it back as 0.25, left the movement
+        // taking 347ms against an untouched 348ms. Chromium accepts the rate
+        // on a CSSTransition and does not retime it.
+        //
+        // So each element's own transition-duration, animation-duration and
+        // the matching delays are read and MULTIPLIED, element by element.
+        // That keeps every deliberately different duration in the stylesheet
+        // in proportion — a blanket `*` override would flatten the 140ms
+        // chevron, the 180ms tray and the 300ms stack into one number.
+        //
+        // RE-APPLIED ON EVERY RENDER. The detail pane replaces its contents
+        // wholesale, so elements scaled a moment ago are gone and their
+        // replacements arrive at shipped speed. A MutationObserver re-sweeps,
+        // debounced to a frame so a burst of renders costs one pass.
+        await win.webContents.executeJavaScript(`(() => {
+          const k = ${slowmo};
+          window.__REEL_SLOWMO = k;
+          const mul = (list) => list.split(',').map((v) => {
+            const t = v.trim();
+            const ms = t.endsWith('ms') ? parseFloat(t) : parseFloat(t) * 1000;
+            return (Number.isFinite(ms) ? ms * k : 0) + 'ms';
+          }).join(', ');
+          const anyNonZero = (s) => /[1-9]/.test(s || '');
+          const scale = (el) => {
+            if (!el || el.nodeType !== 1 || el.dataset.reelScaled === String(k)) return;
+            const cs = getComputedStyle(el);
+            if (anyNonZero(cs.transitionDuration)) el.style.transitionDuration = mul(cs.transitionDuration);
+            if (anyNonZero(cs.transitionDelay)) el.style.transitionDelay = mul(cs.transitionDelay);
+            if (anyNonZero(cs.animationDuration)) el.style.animationDuration = mul(cs.animationDuration);
+            if (anyNonZero(cs.animationDelay)) el.style.animationDelay = mul(cs.animationDelay);
+            el.dataset.reelScaled = String(k);
+          };
+          const sweep = () => { document.querySelectorAll('*').forEach(scale); };
+          let queued = false;
+          const soon = () => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => { queued = false; sweep(); });
+          };
+          sweep();
+          new MutationObserver(soon).observe(document.documentElement, { childList: true, subtree: true });
+          window.__reelSweep = sweep;
+
+          // AND THE APP'S OWN TIMERS, or the two halves come apart.
+          //
+          // Scaling CSS alone was measured failing: the stack's transition
+          // became 1200ms while app.js's TURN_MS stayed at 300, so the turn
+          // ENDED and re-rendered a quarter of the way through the movement,
+          // cancelling the transitions. The animations reported themselves as
+          // 1200ms and finished in 348ms, which is the signature of being
+          // cancelled rather than completing.
+          //
+          // "Slow the app down" has to mean the whole app. setTimeout and
+          // setInterval are multiplied by the same k, so JS sequencing and CSS
+          // motion stay in step — view-anim's own timer guarantees, the
+          // stack's TURN_MS, the tray's 180ms, all of it moves together.
+          //
+          // IT SLOWS THE DRIVING SCRIPT TOO, which is wanted rather than
+          // tolerated: ui.sleep stretches by k, so the same gesture is
+          // captured in k times as many frames, and ffmpeg plays them back at
+          // FPS * k for normal-speed motion at k times the temporal
+          // resolution. That is the whole trick.
+          if (k !== 1) {
+            const ST = window.setTimeout.bind(window);
+            const SI = window.setInterval.bind(window);
+            window.setTimeout = (fn, d, ...rest) => ST(fn, (Number(d) || 0) * k, ...rest);
+            window.setInterval = (fn, d, ...rest) => SI(fn, (Number(d) || 0) * k, ...rest);
+          }
+          return k;
+        })()`);
+        // The boot loader covers the window while the instrument is read, the
+        // same reason the UI runner waits above.
+        await win.webContents.executeJavaScript(
+          'new Promise((done) => { const t0 = Date.now(); (function poll() {'
+          + ' const b = document.getElementById("boot-loader");'
+          + ' if (!b || b.hidden || Date.now() - t0 > 20000) return done(true);'
+          + ' setTimeout(poll, 50); })(); })'
+        );
+        // ARMING: SHOTS SHOULD START ON THE ACTION, not on the app loading.
+        //
+        // Every shot needs setup — open the library, select a patch, wait for
+        // the pane — and captured from the first frame that is seconds of
+        // nothing at the head of a two-second clip. A script that wants a
+        // tight start logs `[reel-arm]` when its setup is done and capture
+        // begins there. Scripts that do not say anything are captured from
+        // the beginning, which is the old behaviour and the safe default.
+        //
+        // VIA console-message rather than polling the page: asking the
+        // renderer for a flag on every tick is an IPC round trip per frame,
+        // and the ticks are already the thing competing with capturePage.
+        let armed = true;
+        if (process.env.SEVEN_REEL_ARM) {
+          armed = false;
+          win.webContents.on('console-message', (_e, _lvl, message) => {
+            if (!armed && String(message).includes('[reel-arm]')) armed = true;
+          });
+        }
+        timer = setInterval(() => {
+          if (!armed) return;
+          if (busy) { skipped += 1; return; }
+          busy = true;
+          win.webContents.capturePage().then((img) => {
+            n += 1;
+            fs.writeFileSync(path.join(dir, `${String(n).padStart(4, '0')}.png`), img.toPNG());
+            captured += 1;
+          }).catch(() => { /* a frame lost is a frame, not a run */ })
+            .finally(() => { busy = false; });
+        }, Math.round(1000 / fps));
+        // THE SCRIPT'S ANSWER IS PRINTED. The harness buffers ui.note for the
+        // UI runner to render, and nothing renders it here — so a measuring
+        // shot that returned its findings had them silently discarded. A reel
+        // script that wants to SAY something returns it.
+        const answer = await win.webContents.executeJavaScript(
+          `Promise.resolve(${fs.readFileSync(process.env.SEVEN_REEL_JS, 'utf8')})`
+        );
+        if (answer !== undefined) console.log(`[reel-says] ${JSON.stringify(answer)}`);
+        clearInterval(timer); timer = null;
+        // FLUSH. A capture in flight when the script resolved is a frame that
+        // exists; exiting on top of it would truncate the PNG.
+        for (let i = 0; i < 100 && busy; i += 1) {
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        console.log(`[reel] captured ${captured} skipped ${skipped} fps ${fps} slowmo ${slowmo} reduced ${reduced}`);
+        app.exit(0);
+      } catch (err) {
+        if (timer) clearInterval(timer);
+        console.error(`[reel] driving script failed: ${(err && err.message) || err}`);
+        app.exit(1);
+      }
     });
   }
 }
