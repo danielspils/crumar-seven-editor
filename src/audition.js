@@ -1313,7 +1313,7 @@
     // ONLY A SLOT THE APP CANNOT NAME STOPS IT, and that is holdSlot()
     // answering null — Send PC off, so the app never knew which preset the
     // hold would land on. Nothing to forget, and nothing it could honestly
-    // guess: see out/next-1.5.7.md for that limit written down beside this one.
+    // guess: see docs/next-1.5.7.md for that limit written down beside this one.
     if (slot && deps.forgetSlot) deps.forgetSlot(slot);
     // Only the ANSWER. Whether a copy is then written, and from what, is
     // SevenSavePlan's — this screen's job is to teach the hold and to carry

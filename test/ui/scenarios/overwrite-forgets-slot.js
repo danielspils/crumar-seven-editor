@@ -30,7 +30,7 @@
   // Seven", and there is no slot to forget. That is a genuine precondition
   // this scenario cannot arrange — Send PC is a global on the instrument's own
   // menu — so it SKIPS rather than passing on a path where the assertion below
-  // is unreachable. The limit itself is recorded in out/next-1.5.7.md.
+  // is unreachable. The limit itself is recorded in docs/next-1.5.7.md.
   const status = await window.sevenAPI.midi.status();
   ui.note(`Send PC on the instrument: ${status && status.sendPc}`);
   if (!status || status.sendPc !== 1) {

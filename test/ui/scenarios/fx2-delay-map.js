@@ -1,4 +1,4 @@
-// INVESTIGATION, not a regression test yet. B5 in out/next-1.5.7.md.
+// INVESTIGATION, not a regression test yet. B5 in docs/next-1.5.7.md.
 //
 // Daniel, playing the instrument 15 Nov 2026, FX2 with Mode = Delay: moving
 // DEPTH changes what sounds like feedback, and moving MAX FEEDBACK appears to

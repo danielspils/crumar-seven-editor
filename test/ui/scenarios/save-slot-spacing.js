@@ -114,7 +114,7 @@
   // line came out: the block lost a line while the picture did not change,
   // so the leftover moves BELOW Save patch rather than pulling the
   // parameters up. Daniel named that as expected rather than a bug — the
-  // parameters only rise if the picture shrinks (out/next-1.5.7.md item 12).
+  // parameters only rise if the picture shrinks (docs/next-1.5.7.md item 12).
   const stage = box(ui.$('#detail .engine-stage'));
   const sub = box(ui.$('#detail .engine-sub'));
   if (stage && sub && save) {

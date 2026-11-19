@@ -91,7 +91,7 @@
   // ON BANK 2, NOT WHICHEVER BANK THE APP OPENED ON.
   //
   // THIS COULD NOT PASS FROM A FRESH LAUNCH and was red for weeks without
-  // anybody noticing (recorded as item 14 in out/next-1.5.7.md, 17 Nov
+  // anybody noticing (recorded as item 14 in docs/next-1.5.7.md, 17 Nov
   // 2026). `bankIndex` starts at 0 in app.js and is NEVER persisted, so a
   // freshly launched app always lands on Bank 1 — and Bank 1 is the
   // FACTORY bank, which cannot go stale, so its caveat is deliberately

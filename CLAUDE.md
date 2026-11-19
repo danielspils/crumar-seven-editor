@@ -2155,9 +2155,11 @@ one control the clearance ceiling was swept against.
 
 Kept here because they otherwise live only in a chat that ends.
 
-**THIS IS THE SECOND PUNCH LIST, AND THE OTHER ONE IS `out/next-1.5.7.md`.**
+**THIS IS THE SECOND PUNCH LIST, AND THE OTHER ONE IS `docs/next-1.5.7.md`.**
+It lived at `out/next-1.5.7.md` — inside the gitignored build scratch, so
+never committed and never pushed — until 18 Nov 2026.
 Read both. Neither referenced the other until 16 Nov 2026, and that is the
-root cause of the audit taken that day: `out/next-1.5.7.md` had five headings
+root cause of the audit taken that day: `docs/next-1.5.7.md` had five headings
 reading as open when the work was done, and this list held at least one item
 — the search count — that was **logged FOR 1.5.7 and does not appear in the
 1.5.7 file at all**. Two lists means the one nobody is reading is the one
@@ -2165,7 +2167,7 @@ that rots.
 
 **WHICH LIST A THING BELONGS ON.** This one is for standing facts about the
 repo that outlive a release: a hazard, a known gap, a thing that will bite
-somebody again. `out/next-1.5.7.md` is for the work of ONE release and dies
+somebody again. `docs/next-1.5.7.md` is for the work of ONE release and dies
 with it. An item that is "fix this before shipping" goes there; an item that
 is "this has always been true and will be after the release" stays here. An
 item that is both — the search count is — goes on the release list **and
@@ -2180,7 +2182,7 @@ in "A RULE IN THIS FILE IS NOT A RECORD THAT IT WAS DONE".
   1.5.7 (Daniel, 2026-11-15); deliberately NOT fixed in the four-tab branch,
   which is visual-only, because the fix is in the shared search paint path.
 
-  **ALSO ON THE RELEASE LIST NOW — `out/next-1.5.7.md` item 9a** (16 Nov
+  **ALSO ON THE RELEASE LIST NOW — `docs/next-1.5.7.md` item 9a** (16 Nov
   2026). It was logged FOR 1.5.7 and lived only here for a day, which is the
   single clearest thing the audit of 16 Nov went looking for. The full
   reasoning stays below; the release list carries the work.

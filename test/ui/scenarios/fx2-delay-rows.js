@@ -1,4 +1,4 @@
-// INVESTIGATION, second half. B5 in out/next-1.5.7.md.
+// INVESTIGATION, second half. B5 in docs/next-1.5.7.md.
 //
 // fx2-delay-map.js asked what the INSTRUMENT does with a write and found the
 // mapping clean. That probe went through sevenAPI.midi.setParam(key, …) — the
