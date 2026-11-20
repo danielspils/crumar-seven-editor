@@ -357,7 +357,13 @@ section; that is the difference between a punch list and a memory.
 Two of them (10, 11) were in flight when the rest arrived. A was established
 on hardware before anything was changed.
 
-### 10. The missing-file setlist row says too much, in two voices — **OPEN**
+### 10. The missing-file setlist row says too much, in two voices — **CLOSED**
+
+**CLOSED — shipped in `src/library-view.js:1319`, found by the 20 Nov audit.**
+The `(missing)` badge is gone; what survives at that line is a comment
+recording its removal ("the badge was the second voice and most of what
+crowded the right-hand end"). The sentence in `var(--warn)` is the one voice
+left.
 
 Today it renders `Missing file: shapes-clav-3-2.sevenlib.json` **plus** a
 `(missing)` sound-tag **plus** two tooltips saying the same thing differently.
@@ -379,7 +385,14 @@ nothing else, so once the file is gone the name is genuinely gone. Deriving
 one from the slug guesses, and guesses wrong: `shapes-clav-3-2` is "Shapes
 Clav 3" with a dedupe suffix, not "Shapes Clav 2". No setlist format change.
 
-### 11. `.slot-controls` paint over the row's own text — **OPEN**
+### 11. `.slot-controls` paint over the row's own text — **CLOSED**
+
+**CLOSED — shipped in `src/index.html:3353`, found by the 20 Nov audit.** The
+rule is `grid-column: 5; grid-row: 1; align-self: center`, not absolute
+positioning, so the controls occupy a cell of their own and cannot paint over
+the text. Its comment carries the measurement that settled the row-span
+question: spanning both rows forced row 2 to exist and grew missing-file rows
+from 36.9px to 55.7px.
 
 `.lib-slot .slot-controls` is `position: absolute; right: 6px`, so the trash
 and Select draw on top of whatever is in `.patch-sound`. It strikes through
@@ -419,7 +432,11 @@ visibly stale one. Measured **493ms for 39 parameters**, below the schema's
 507ms. **Fires once per session**, confirmed: a session does open on the
 choice, so a second choice has a snapshot.
 
-### B. Backups are keyed per day and should be keyed per run — **OPEN**
+### B. Backups are keyed per day and should be keyed per run — **CLOSED**
+
+**CLOSED — shipped in `src/library-store.js` (12 uses of `runId`) and
+`src/backup-runner.js` (2), found by the 20 Nov audit.** A run identifies
+itself, so two runs on one day no longer collide.
 
 Two backups five minutes apart produce one entry. `backup-runner.js` writes
 `Bank N setlist (<dateStr>)` and `createOrReplaceSetlist` replaces any
@@ -438,7 +455,11 @@ it, and keep the date-fallback grouping for setlists predating `runId`.
 **Then report** whether orphaned backup records already exist in the live
 library, and how many. **Report only — delete and merge nothing.**
 
-### C. A finished backup lands on the Backups tab and the row arrives — **OPEN, depends on B**
+### C. A finished backup lands on the Backups tab and the row arrives — **CLOSED**
+
+**CLOSED — shipped in `src/library-view.js:1518` (`arriveBackupRows`, called
+at 1786), found by the 20 Nov audit.** Its own comment says it is ported from
+JUNO-Xtra's `arriveBackupRows`. B, which this depended on, is closed above.
 
 Switch to the Backups tab on completion; already being there is not a special
 case. Port JUNO-Xtra's `arriveBackupRows()` behaviour, not its file: a Set of
@@ -450,7 +471,11 @@ starts empty.
 **A BRIGHTNESS FLARE, not a fade up from dim** — this app already uses
 opacity to mean "stale" on the Seven rows and the two must not converge.
 
-### D. "Back up instrument" moves to the foot of the Seven list — **OPEN**
+### D. "Back up instrument" moves to the foot of the Seven list — **CLOSED**
+
+**CLOSED — shipped in `src/app.js:4614`, found by the 20 Nov audit.** The
+button reads "Back up Seven"; the empty-state sentence at `app.js:2168` names
+it in the same words, so the two agree.
 
 Out of the toolbar, beside the freshness line. **A move, not a copy.**
 Accepted cost: not reachable from Patches, Setlists or Backups, which is
@@ -458,7 +483,13 @@ correct — backing up is a Seven-tab activity and that line is the only thing
 in the app that says a backup is overdue. Keep every disabled/connected state
 and the in-progress label swap. The toolbar keeps Disconnect and Settings.
 
-### E. The freshness line drops the counts — **OPEN**
+### E. The freshness line drops the counts — **CLOSED**
+
+**CLOSED — shipped in `src/ots-freshness.js:229`, found by the 20 Nov audit.**
+"THE MIXED CASE DROPS ITS COUNTS (Daniel, 16 Nov 2026)" — the mixed branch
+returns the backup caveat alone. **The one case this entry said to keep is
+kept**: `if (verified >= total) return 'as of ' + when` at line 227, with a
+comment saying it must stay so.
 
 "9 OF 32 AS OF 3:53PM - 23 AS OF LAST BACKUP" is too much and summarises what
 the per-row fade already shows. Reduce it to the backup caveat.
@@ -750,7 +781,15 @@ standing in for current state" happening to the punch list itself.
 These were reported in chat and are recorded here so they survive a lost
 session. Each one is a thing he SAW, not a thing anyone inferred.
 
-### B7. A stale slider writes its pointer position, and moves the instrument the wrong way — **OPEN**, measured 15 Nov 2026, awaiting Daniel's choice
+### B7. A stale slider writes its pointer position, and moves the instrument the wrong way — **CLOSED**, measured 15 Nov 2026
+
+**CLOSED — shipped in `src/audition.js:448` (`readBeforeDrag`), found by the
+20 Nov audit.** The heading said "awaiting Daniel's choice" and the choice was
+made on 16 Nov: read that one parameter at the grab. The code carries it and
+the reasoning — "THE FIX, Daniel's call 16 Nov 2026" at `audition.js:427`,
+with the ~13ms measurement and the explicit rejection of a relative drag.
+Item 2 at the top of this file already recorded the decision; this entry went
+on saying it was pending.
 
 **This came out of B5 and outranks it. B5 was a labelling question; this
 destroys a parameter value.** It touches every control in the app, so nothing
@@ -1348,12 +1387,21 @@ land on, so there is nothing to forget and nothing it could honestly guess. The
 overwrite row says "Overwrite the preset on your Seven" in that state, which is
 the same honesty one level up.
 
-### Bank 1 never needs re-reading — **OPEN, AND NOW UNBLOCKED** (Daniel, 16 Nov 2026)
+### Bank 1 never needs re-reading — **OPEN AND STARTABLE — NOTHING IS BLOCKING THIS** (Daniel, 16 Nov 2026)
 
 **ITS TWO PRECONDITIONS HAVE BOTH LANDED and nobody noticed.** The freshness
 work is `a15cae0` and the boot offer is `44536bc`, both committed 16 Nov. This
 said "not to be started until both land" and then went on saying it after they
 did — which is how a queued item becomes an invisible one.
+
+**BOTH COMMITS RE-CONFIRMED BY THE 20 Nov AUDIT**, by subject rather than by
+hash alone: `a15cae0` "Step 2: a slot not heard from this session is drawn
+faded" is the freshness work, and `44536bc` "Piece 2: the app offers to back up
+when the last one is old" is the boot offer. They are what this entry expects.
+
+**SO THE ONLY THING LEFT IS TO DO IT.** There is no hold, no dependency and no
+decision outstanding — the heading says STARTABLE because "UNBLOCKED" was read
+twice as "waiting on something".
 
 **Bank 1 is factory and cannot be stored to.** Hardware-confirmed 2026-08-13
 and stated in the manual. So a read of it can never go stale, and two things
@@ -1405,6 +1453,11 @@ show "Discarding Edits" — a dialog that TELLS rather than asks, where every wa
 out means go. If it asks anything, or refuses to let him leave, it is wrong.
 
 ### B3. --text-dim in light mode — **OPEN**: committed PROVISIONAL, Daniel has not seen it running
+
+**UNVERIFIED by the 20 Nov audit — this one cannot be settled from the code.**
+The value is in the stylesheet, so "is it there" is answerable and "does it
+read right in light" is not: the entry's own condition is Daniel looking at it
+running. State left alone.
 
 `#8a8375` on `--bg` measures 3.16:1 against the 4.5 small text needs. It has
 been failing since before the palette work; it was not introduced by it. It
@@ -2061,7 +2114,17 @@ both widths already.
 
 ---
 
-### 14. KNOWN RED: `backup-detail-controls.js`, the freshness caveat on Bank 1 — **FOUND 17 Nov 2026**
+### 14. KNOWN RED: `backup-detail-controls.js`, the freshness caveat on Bank 1 — **CLOSED**
+
+**CLOSED — the scenario passes, 20 Nov audit (run, not inferred).** The fix
+this entry proposed was taken: `test/ui/scenarios/backup-detail-controls.js`
+now handles the factory bank at lines 96 and 123-132 — "a factory bank cannot
+drift, so a caveat there would be" wrong — and asserts Bank 1 claims no
+staleness rather than expecting a caveat. It was a TEST defect, as the entry
+said, so nothing in `src/` changed for it.
+
+**Item 13, the other known red, was run in the same pass and is STILL RED** —
+correctly, since it is left red by decision.
 
 A second pre-existing red, found by the same sweep, and it is a TEST DEFECT
 rather than a product bug — the same defect `one-list-on-screen.js` had and
@@ -2200,6 +2263,12 @@ adjustment, so it would fight muscle memory.
 
 ### 17. THE EFFECTS CHAIN'S PILLS WENT INERT — **OPEN, CAUSE NOT ESTABLISHED, 18 Nov 2026**
 
+**UNVERIFIED by the 20 Nov audit, and unverifiable here by definition.** The
+entry records an intermittent nobody has reproduced; absence from the code is
+not evidence either way, and the guards added for it (`sendIsStuck`, the
+toasts on the two silent returns) would be present whether or not the cause
+was ever found. It needs the instrument and a recurrence. State left alone.
+
 **NOT CLOSED AS UNREPRODUCIBLE, AND THE RELOAD WAS NOT A FIX.**
 
 **What was seen**, on the instrument, connected: clicking ON left it ON,
@@ -2291,6 +2360,40 @@ button, and both only ever see it at the default width.
 So the shape of the hole: a region is covered at one width and a width is
 covered for one region, and the intersection is nobody's. Worth remembering
 before trusting that "the save flow is well covered" — it is, at 747px.
+
+---
+
+### 19. docs/COPY.md's LINE REFERENCES HAVE ROTTED WHOLESALE — **OPEN, found by the 20 Nov audit**
+
+Not fixed here deliberately: this was a documentation audit of THIS file, and
+rewriting 144 references in another one would have buried it in the diff.
+
+**MEASURED, not estimated.** A mechanical check of every `` `string` —
+file.js:N `` reference in `docs/COPY.md`, matching the quoted copy against the
+source at that line ±5:
+
+```
+checked 153   correct 9   wrong 144   unchecked 12
+```
+
+Spot-checked by hand before believing it: `app.js:2951` for "No instrument
+connected" — the string is at **4416**, and there are zero occurrences within
+ten lines of 2951. `app.js:3167` for "Reading sounds" — actually **5080**.
+
+**THE CAUSE IS GROWTH, not carelessness.** `app.js` is 5,218 lines now; most
+of these references were written when it was around 3,000, and nothing
+re-derives them. 95 of the 153 point into `app.js` alone.
+
+**TWO ARE A DIFFERENT PROBLEM:** `param-compat.js:153` and `:197` reference
+strings that are **not in the file at all**, so that copy was reworded or
+removed without COPY.md following. Those are worth reading before the line
+numbers are touched — a wrong line is a nuisance, a quoted string the app no
+longer says is a false record.
+
+**WHEN IT IS FIXED**, the fix is probably not new numbers. A reference that
+rots silently every time a file grows wants a generated check — the same shape
+as `test/source-wiring.test.js`, which asserts a string is where it claims to
+be and fails when it is not.
 
 ---
 
