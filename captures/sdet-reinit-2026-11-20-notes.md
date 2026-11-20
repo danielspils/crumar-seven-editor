@@ -1,14 +1,20 @@
 # String Detuning drag → the Seven recalls on its own — 2026-11-20
 
-Three raw captures, all from `tools/listen.js` (passive; it opens no output
+Four raw captures, all from `tools/listen.js` (passive; it opens no output
 port and cannot send). Rule 1: these files are ground truth and are never
 deleted or replaced by a decoded view.
 
 ```
-sdet-reinit-1-2026-11-20T16-22-19.jsonl   3797 rows   two recalls
-sdet-reinit-2-2026-11-20T16-36-28.jsonl    496 rows   two recalls
-sdet-control-2026-11-20T16-37-22.jsonl    1699 rows   CONTROL — no recall while sweeping
+sdet-reinit-1-2026-11-20T16-22-19.jsonl   3797 rows   one load, one FAILURE
+sdet-reinit-2-2026-11-20T16-36-28.jsonl    496 rows   one load, one FAILURE
+sdet-control-2026-11-20T16-37-22.jsonl    1699 rows   CONTROL — four loads, no failure
+sdet-reinit-3-2026-11-20T16-44-29.jsonl    491 rows   one load, one FAILURE, +95s TAIL
 ```
+
+**READ THE CORRECTION BELOW BEFORE THE SECTION IT CORRECTS.** The first write-up
+of this file said the failure emits the documented recall signature. It does
+not, and the two events are distinguishable on the wire. The full analysis of
+all five runs lives in `docs/next-1.5.7.md` item 20.
 
 Inbound only. **Outbound was not captured and capturing it would mean editing
 the send path**, which was not done during a live investigation —
@@ -31,9 +37,20 @@ f0 73 26 14 47 02 "Electric G…"   0x47 name reply
 f0 … 23 00 30|rho_tp|8 …     0x23 parameter replies
 ```
 
-**THAT IS THE DOCUMENTED RECALL SIGNATURE**, not a novel frame: 22 fixed panel
-CCs plus the doubled `B0 01` pair that `docs/protocol.md` open item 6 already
-lists as unexplained.
+~~**THAT IS THE DOCUMENTED RECALL SIGNATURE**, not a novel frame~~ — **WRONG,
+CORRECTED 20 Nov 2026 by the fifth capture.** The `0x45` and `0x47` frames in
+the block above belong to the patch LOADS earlier in the same captures, 11 and
+9 seconds before the failure; I read two events as one. **What actually follows
+the failure's `ce 02` is an unsolicited `0x71` STRING reply at index `0x7f`
+carrying the firmware banner, 20-21ms later, with NO second `0x45` and NO
+`0x47`** — three for three in the failures, zero in the control's four loads.
+The corrected signature, the `0x7f` index, and why the 24-CC burst must not be
+decoded as state are all in `docs/next-1.5.7.md` item 20.
+
+The CC burst itself is as described — 22 fixed panel CCs plus the doubled
+`B0 01` pair that `docs/protocol.md` open item 6 already lists as unexplained —
+and **all ten bursts across the five captures are byte-identical**, so its
+VALUES are fixed too and carry no state.
 
 **So the instrument reinitialised itself AND ANNOUNCED IT.** Of the three
 outcomes this capture was meant to discriminate between — the Seven announcing
@@ -48,6 +65,12 @@ preset — your unsaved edits are gone", which `app.js` says only on a
 ---
 
 ## NOT EVERY `ce 02` IS THE FAILURE
+
+**AND SINCE THE FIFTH CAPTURE, THE TWO KINDS CAN BE TOLD APART ON THE WIRE** —
+a load is followed by a second `0x45` and a `0x47` name reply, a failure by the
+`0x71 7f` firmware banner and neither of those. The open question at the end of
+this section is therefore no longer "indistinguishable", though it is still
+unexplained. See `docs/next-1.5.7.md` item 20.
 
 Both repros contain two. In `sdet-reinit-2` the FIRST, at 16:36:50, is the
 patch being loaded — immediately after it the Seven reported a working patch:
@@ -110,8 +133,21 @@ preset" from "initialised the buffer": the first `ce 02` in reinit-2 loaded a
 patch with FX1 and FX2 ON, so if the second loaded everything OFF from the
 same program number, a plain recall does not account for it.
 
-**NEXT CAPTURE: keep listening for 10-15 seconds after it breaks**, then read
-the switch parameters out of the tail.
+~~**NEXT CAPTURE: keep listening for 10-15 seconds after it breaks**, then read
+the switch parameters out of the tail.~~ **DONE — `sdet-reinit-3`, held open 95
+seconds past the break, and IT DID NOT CLOSE THIS GAP.** The switch parameters
+are not in the tail, because nothing asks for them: the 1Hz `0x23` traffic is
+the APP's own `startPanelPoll` (`src/audition.js:472`), which stops when the
+foreign program-change ends the live session. The capture holds exactly one
+`0x23` group after the break — the six `zd6_*` keys plus `egp_sdet = 64`,
+confirming Daniel's "returned to center default" — and then no `0x23` at all
+for 95 seconds.
+
+**The instrument did NOT go quiet** — note traffic continues throughout,
+including notes played 35s and 95s after the break. The missing switch values
+would need a read issued AFTER the break, which the passive listener cannot do.
+See `docs/next-1.5.7.md` item 20 for what that implies and what was
+deliberately not done about it.
 
 Also absent: `egp_dyna` was swept 50 times in `sdet-reinit-1` at 16:24:45-47
 and the next recall came 24 seconds later, at 16:25:11. Too far apart to

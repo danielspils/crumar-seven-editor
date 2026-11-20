@@ -2463,6 +2463,128 @@ making it rarer — which is the worst of both.
 
 ---
 
+#### THE FIFTH CAPTURE: THE TAIL, AND IT CORRECTS TWO THINGS ABOVE
+
+`captures/sdet-reinit-3-2026-11-20T16-44-29.jsonl`, 491 rows. Passive inbound
+only, like the rest. The listener was held open **95 seconds past the break**
+(16:44:58 → 16:46:33) — through 16 seconds in which Daniel touched nothing,
+then two groups of notes he played on request. That was the one thing the first
+four captures were missing.
+
+**1. THE FAILURE HAS ITS OWN SIGNATURE, AND IT IS NOT THE RECALL SIGNATURE.
+This CORRECTS the "Seven announces it" paragraph above.**
+
+```
+FAILURE                                   LOAD
+f0 73 26 14 45 02 32 f7   0x45 sound 02   f0 73 26 14 45 02 32 f7
+be 07 6e … be 01 7f       24-CC burst     be 07 6e … be 01 7f
+ce 02                     PC ch15 prog 2  ce 02
+f0 73 26 14 71 7f  <firmware banner>      f0 73 26 14 45 02 32 f7   <- again
+                                          f0 73 26 14 47 02 "Electric Grand Piano"
+```
+
+Note also that the `0x45` comes **before** the CC burst and the `ce 02`, not
+after it — the paragraph above has the order wrong as well.
+
+After the failure's `ce 02` there is **no second `0x45` and no `0x47` name
+reply** — 0 of each, in all three failure captures — and there IS an
+unsolicited **`0x71` STRING reply at index `0x7f`**, 20-21ms later. Three for
+three (reinit-1 `16:34:55.019`, reinit-2 `16:37:00.017`, reinit-3
+`16:44:58.022`) and **zero in the control**, which contains four clean loads.
+
+**So the claim that the failure emits a `0x45` broadcast and a `0x47`
+"Electric G…" reply was wrong.** Those frames belong to the patch LOADS in the
+same captures, 11 and 9 seconds earlier. I read the two events as one.
+
+**The open question above — "the same program number produced a working patch
+the first time and the reported breakage the second, and that is not yet
+explained" — is now at least no longer INDISTINGUISHABLE.** The two outcomes
+differ on the wire, reliably, in the frames that follow the identical `ce 02`.
+That is a discriminator, not a mechanism.
+
+**2. THE `0x71 7f` PAYLOAD IS THE FIRMWARE BANNER, AND THE APP NEVER ASKS FOR
+INDEX `0x7f`.** `src/seven-midi.js` sends `OP.STRING` with
+`STRING_FIRMWARE = 4` and matches on `m[5] === STRING_FIRMWARE`. reinit-1
+contains exactly one `71 04`, at 16:34:10 after a 523-second silence — the app
+connecting. The three failure frames are `71 7f`. The 57-byte payload is
+**byte-identical** in both: `CRUMAR Seven v.1.37 Build date: Thu May 12
+15:43:17 2022`.
+
+**WHAT INDEX `0x7f` MEANS IS UNKNOWN AND IS NOT GUESSED HERE.** An unrequested
+firmware banner is the kind of thing a boot announces, and `docs/protocol.md`
+lists no index `0x7f` at all. That is a RESEMBLANCE, not a finding — exactly
+the shape of "AN UNDETECTABLE RISK IS NOT A DEMONSTRATED ONE", and nothing
+here establishes that the instrument restarted.
+
+**3. `egp_sdet` READS 64 ON THE WIRE, 82ms AFTER THE BREAK** — down from 96,
+its last swept value 548ms earlier. **The wire corroborates Daniel's report**
+("the string detune returned to center default").
+
+**It does not discriminate between three stories, because all three predict
+64:** 64 is the centre of a bipolar 0..127 parameter, it is
+`schema/factory-defaults-1.37.json`'s value for `egp_sdet`, and it is what
+this patch itself reported at load time (reinit-2, `16:36:51.147`). "Reset to
+centre", "reset to factory" and "reloaded the stored preset" are all still
+live.
+
+**4. THE 24-CC BURST IS A CONSTANT. IT IS NOT STATE, AND MUST NEVER BE DECODED
+AS STATE.**
+
+All **ten** bursts across all five captures — 2 + 2 + 4 + 2 — are byte-identical:
+24 frames each, sha1 of the CC stream `0c0962ad576b` in every one. Including
+the four in the control, where nothing broke.
+
+**And it contradicts the device's own replies at the same instant.** In
+reinit-2 the burst at `16:36:50.772` decodes to `veq_byp 127`, `fx1_sw 0`,
+`fx2_sw 0`; one second later the `0x23` replies say `veq_byp 0 "Bypass OFF"`,
+`fx1_sw 1 "ON"`, `fx2_sw 1 "ON"`, `fx2_md 3 "Delay"`. Same instrument, same
+patch, opposite answers.
+
+**This one nearly cost a wrong conclusion.** The burst decodes cleanly against
+the schema's `cc` map and lands on `fx1_sw OFF`, `fx2_sw OFF`, `rev_sw ON` —
+which is Daniel's post-state almost word for word, Reverb included. It is a
+fanfare that happens to resemble the answer. CLAUDE.md's "22 fixed panel CCs"
+is right, and **"fixed" turns out to cover the VALUES too**, which had not been
+established before today.
+
+**5. THE TAIL STILL CANNOT CONFIRM THE FX WENT OFF, AND THAT IS NOW THE WHOLE
+REMAINING GAP.** After the break the capture holds exactly ONE `0x23` group —
+`zd6_br/tr/md/sf/cd/ab` plus the `egp_sdet 64` — at `16:44:58.072`-`.142`, and
+then **no `0x23` frame at all for the remaining 95 seconds**. `veq_byp`,
+`fx1_sw`, `fx2_sw` and `rev_sw` were never read after the failure. **The
+screenshot is still the only record of the post-state**, which is what this
+capture was taken to fix, and it did not fix it.
+
+**WHY THE REPLIES STOP IS THE APP, NOT THE INSTRUMENT — do not record this as
+the Seven going quiet.** The 1Hz traffic is ours: `startPanelPoll` in
+`src/audition.js:472-495` reads exactly those six `zd6_*` keys on a 1000ms
+`setInterval`, and its first line is `if (!isLive()) return stopPanelPoll()`.
+The foreign program-change ends the live session, so the poll stops on its next
+tick. Measured: the group arrives every ~1000ms from `16:44:30.257` to
+`16:44:56.846`, once more at `16:44:58.072` — 70ms after the break — and never
+again.
+
+**The instrument kept talking.** Note-on/note-off traffic continues throughout,
+including the notes Daniel played 35s and 95s after the break
+(`16:45:34`, `16:46:32`). **This is NOT the 2026-09-08 "instrument went silent
+under heavy read traffic" case**, and the two should not be filed together.
+
+**6. NO SECOND RECALL IN THE TAIL.** Two `ce` frames in the whole capture: the
+load at `16:44:45.254` and the failure at `16:44:58.002`. The 35-second and
+58-second silences after it carry note traffic only.
+
+**WHAT WOULD CAPTURE THE POST-STATE, stated rather than done.** The four
+switches can only be read by ASKING, and the app stops asking at the moment
+they become interesting. A passive listener cannot reach them. So the next step
+needs a read issued after the break — which means touching the app while it is
+the thing under investigation — and **that is a decision to put to Daniel, not
+one to take mid-session.** The send path was not edited and `tools/listen.js`
+was not changed.
+
+**STILL NO FIX, NO THROTTLE, NO RATE LIMIT.**
+
+---
+
 ### THREE INTERMITTENTS IN ONE DAY — **noted together so the fourth is recognisable**
 
 All three appeared in long-running sessions and were gone when looked at.
@@ -2494,12 +2616,24 @@ soon as the previous app exits.
 
 ---
 
-### 20. DRAGGING STRING DETUNING REINITIALISES THE EDIT BUFFER — **OPEN, REPRODUCIBLE, 20 Nov 2026**
+### ~~20.~~ 20a. DRAGGING STRING DETUNING REINITIALISES THE EDIT BUFFER — **SUPERSEDED by item 20 above, same day**
+
+**THERE WERE TWO HEADINGS NUMBERED 20, AND THIS IS THE EARLIER ONE.** It was
+written from the live session BEFORE any capture existed; item 20 above was
+written after captures 1-3 and then extended with the fifth. Both describe the
+same fault. Found while appending the tail findings, 20 Nov 2026.
+
+**Kept, not deleted, and renumbered rather than merged** — "HOW TO RETIRE AN
+ENTRY: STRIKE THE CLAIM, KEEP THE MEASUREMENT". The claim to strike is "THE
+WIRE HAS NOT BEEN SEEN"; it has been, five times. The measurement worth keeping
+is the screenshot inventory below, which is more specific than item 20's
+summary of it and is still the only record of the post-failure state.
 
 **Daniel can trigger this on demand**, which is what makes it worth more than
 the three intermittents above it. Recorded from the live session while the
 instrument was still attached; the battery ran out before a capture could be
-taken, so THE WIRE HAS NOT BEEN SEEN. Nothing below is a diagnosis.
+taken, so ~~THE WIRE HAS NOT BEEN SEEN~~ — **the wire has since been seen five
+times; see item 20.** Nothing below is a diagnosis.
 
 **THE TRIGGER, in his words:** *"moving string detuning around a lot turns off
 the FX"*. An Electric Grand patch (Yamaha CP80, Bank 1 preset 3), dragging
@@ -2542,3 +2676,48 @@ parts are the failure and which are just what a drag looks like.
 **NO FIX, NO THROTTLE, NO RATE LIMIT** until the wire has been seen. A limit
 invented now would be a number nobody can defend, and it would make the bug
 harder to reproduce without making it rarer.
+
+---
+
+### 21. THE PANEL POLL'S COMMENT CLAIMS A GUARD IT DOES NOT HAVE — **OPEN, OBSERVED ON THE WIRE, 20 Nov 2026**
+
+Found while establishing why the `0x23` replies stop in
+`captures/sdet-reinit-3`. **Documentation accuracy, not a behaviour change —
+and deliberately NOT offered as a cause of item 20.**
+
+`src/audition.js:471` says:
+
+> *"While a Clavi patch is live, poll them about once a second — six reads,
+> well inside what the port carries (a backup does ~75 a second). **Any other
+> engine polls nothing.**"*
+
+The guard four lines down is:
+
+```js
+if (!PANEL_OWNED.some((k) => k in liveEdit.params)) return stopPanelPoll();
+```
+
+`liveEdit.params` is keyed by schema key and carries all 110 of them for every
+patch, so `'zd6_br' in liveEdit.params` is true on every engine and the poll
+never stops for this reason.
+
+**MEASURED, NOT INFERRED.** In `sdet-reinit-3` the live patch is an **Electric
+Grand** — `0x47 02 "Electric Grand Piano"` at `16:44:47.374`, and `egp_sdet` is
+being swept, which exists on no other engine — and the six `zd6_*` Clavi
+parameters are read every ~1000ms right through it, from `16:44:49.846` to
+`16:44:58.072`. So the comment's last sentence is false, on the wire, for the
+only engine anyone has looked at.
+
+**WHY THIS IS SEPARATE FROM ITEM 20, and must stay separate.** The tempting
+move is to join them: the poll adds six reads a second on top of a continuous
+sweep, the control's sweeps came in bursts, therefore traffic. **That is the
+throttle argument Daniel ruled out, arriving through the back door.** Nothing
+here establishes that the poll contributes to the fault — the control capture
+had the same poll running and did not break — and the only reason this entry
+exists is that a comment says something the code does not do.
+
+**What to decide, when somebody picks it up:** whether the comment is wrong or
+the guard is. If the intent was genuinely "Clavi only", the guard needs the
+patch's ENGINE, not the presence of a key every patch has. If polling every
+engine is fine, the comment should say so. Either way it is one line, and it is
+not urgent.
