@@ -89,8 +89,6 @@ export default [
       'src/ipc-result.js', 'src/notes-feed.js', 'src/notes-seen.js',
       'src/instrument-report.js', 'src/param-compat.js', 'src/globals-cleanup.js',
       'src/param-read.js',
-      // TEMPORARY outbound tap for item 20's capture — remove with the file.
-      'src/wire-out.js',
       'src/telemetry.js', 'src/cc-map.js',
       'src/demo-cleanup.js', 'src/donations.js', 'src/mailto.js',
       // A data migration, extracted from main.js so `npm test` can reach it.
