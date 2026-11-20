@@ -42,6 +42,11 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+// TEMPORARY outbound tap for item 20's capture — REVERT WITH src/wire-out.js.
+// Inert unless SEVEN_WIRE_OUT is set; see that file for why it is shaped the
+// way it is and why it must not become a feature.
+const wireOut = require('./wire-out');
+
 const {
   compareParamTables, unreadableVerdict, blockMessage, gateParagraphs,
 } = require('./param-compat');
@@ -468,7 +473,9 @@ class SevenMidi extends EventEmitter {
 
   _send(opcode, payload = []) {
     if (!this.output) throw new Error('not connected');
-    this.output.sendMessage([...HEADER, opcode, ...payload, SYSEX_END]);
+    const frame = [...HEADER, opcode, ...payload, SYSEX_END];
+    wireOut.log(frame); // TEMPORARY outbound tap — see src/wire-out.js. REVERT ME.
+    this.output.sendMessage(frame);
   }
 
   // ONE request at a time. Replies carry no request id: a 0x23 answering a
@@ -1020,7 +1027,9 @@ class SevenMidi extends EventEmitter {
   sendProgramChange(program) {
     this._sentProgram = { program: program & 0x7f, at: Date.now() };
     if (!this.output) throw new Error('not connected');
-    this.output.sendMessage([0xc0 | this._deviceChannel(), program & 0x7f]);
+    const pc = [0xc0 | this._deviceChannel(), program & 0x7f];
+    wireOut.log(pc); // TEMPORARY outbound tap — see src/wire-out.js. REVERT ME.
+    this.output.sendMessage(pc);
   }
 }
 
