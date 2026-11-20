@@ -828,15 +828,23 @@
       }
     }
 
+    // WHEN FX1 RUNS PEDAL WHA-WHA, THE PEDAL IGNORES ITS exp_fn ASSIGNMENT —
+    // the wha always takes priority (manual). Index 3 = Pedal Wha-Wha per the
+    // fx1_md values (valuesUnverified — if that mapping is wrong on the
+    // device, everything downstream of this is wrong for the same mode).
+    //
+    // ONE TEST, TWO READERS. renderSection dims the Expression Pedal tray by
+    // it and pedalEstimates refuses to place a mark by it. A second copy of
+    // `fx1_md === 3` would let the two drift, and the failure would be the app
+    // contradicting itself on one screen — a tray saying the assignment is
+    // ignored above a row still wearing the pedal's hatching.
+    const whaHasThePedal = (params) => !!params && params.fx1_md === 3;
+
     function renderSection(section, patch, view) {
       // Inverted switches (veq_byp): value 1 means the section is OFF.
       const off = section.sw != null &&
         patch.params[section.sw] === (section.invert ? 1 : 0);
-      // When FX1 runs Pedal Wha-Wha, the pedal IGNORES its exp_fn assignment —
-      // the wha always takes priority (manual). Index 3 = Pedal Wha-Wha per
-      // the fx1_md values (valuesUnverified — if that mapping is wrong on the
-      // device, this dims for the wrong mode).
-      const whaOverride = section.group === 'pdl_exp' && patch.params.fx1_md === 3;
+      const whaOverride = section.group === 'pdl_exp' && whaHasThePedal(patch.params);
       const collapsed = !!(view && view.collapsed && view.collapsed[section.group]);
       // The body is ALWAYS in the DOM — expand/collapse is a CSS class toggled
       // by app.js without re-rendering, so height/opacity/chevron can animate.
@@ -848,10 +856,23 @@
         else if (md === 3) rows += rowsFor('efx_dly', patch, view); // Delay
       }
       // Say WHY the section is dimmed when it's an override, not a bypass.
+      // IT NAMES WHERE CONTROL WENT, not only that this assignment lost.
       if (whaOverride) {
         rows =
-          `<div class="fx-inert-banner">FX1 is set to Pedal Wha-Wha — the wha takes priority and this assignment is ignored.</div>` +
+          `<div class="fx-inert-banner">FX1 is set to Pedal Wha-Wha — the pedal is controlling the wha, and this assignment is ignored.</div>` +
           rows;
+      }
+      // AND THE TRAY THAT HAS THE PEDAL SAYS SO. Until now the Expression
+      // Pedal tray explained itself while the tray actually being driven said
+      // nothing, so control went somewhere and nothing on screen named it.
+      //
+      // A STATEMENT, NOT AN INERT BANNER, and it has its own class for that
+      // reason: FX1 is WORKING. `.fx-inert-banner` sits in a dimmed section
+      // and reads as "this is disabled" — reusing it here would say the
+      // opposite of the truth about FX1, which is not dimmed and must not
+      // become dimmed.
+      if (section.group === 'efx_fx1' && whaHasThePedal(patch.params)) {
+        rows = `<div class="fx-note">The expression pedal is controlling this wha.</div>` + rows;
       }
       return (
         `<div class="fx-section${off || whaOverride ? ' dimmed' : ''}${collapsed ? ' collapsed' : ''}" data-group="${section.group}">` +
@@ -930,6 +951,16 @@
       // modelled at all. Backup patches carry the effects chain only, so this
       // is the ordinary case rather than an error.
       if (fn == null || mn == null || mx == null) return null;
+      // THE WHA TAKES THE PEDAL, SO exp_fn NO LONGER NAMES THE DESTINATION.
+      // With FX1 in Pedal Wha-Wha the pedal drives the wha and the parameter
+      // exp_fn names is untouched — so a mark there is on the WRONG ROW, not
+      // a mark on a row that happens to be inert.
+      //
+      // AND THE MARK DOES NOT MOVE SOMEWHERE ELSE. Pedal Wha-Wha has no
+      // parameter row of its own, and the mark only lands on a plain
+      // continuous bar. Under the wha it belongs nowhere, so this returns
+      // null rather than re-pointing it.
+      if (whaHasThePedal(params)) return null;
       const keys = PEDAL_DEST[fn];
       if (!keys) return null;
       // AN INERT ROW STILL SHOWS THE PEDAL (Daniel, 18 Nov 2026). This gated
@@ -948,6 +979,23 @@
       // The mark answers "where is the pedal, mapped through its range". That
       // is true whether or not anything downstream is listening, and whether
       // anything is listening is a question the row already answers.
+      //
+      // THE WHA GUARD ABOVE IS NOT THIS DECISION REOPENED, and it must not be
+      // read as one. The two cases differ in what the mark would be SAYING:
+      //
+      //   AMP DRIVE — the pedal IS assigned there. The mark is true, the row
+      //   is dimmed and carries an inert marker, and the two cues agree:
+      //   "here is the pedal, and this section is off". Suppressing it was
+      //   stating the same fact twice, the second time invisibly.
+      //
+      //   THE WHA — the pedal is NOT assigned to the marked row at all.
+      //   exp_fn has stopped naming the destination, so the mark is simply on
+      //   the wrong parameter. And "the row already answers it" fails here:
+      //   Volume / EQ is ON and undimmed, so the row answers the OPPOSITE.
+      //   Nothing else on screen contradicts a mark that is false.
+      //
+      // One is a true statement beside a row that says it does nothing. The
+      // other is a false statement beside a row that says it is working.
       const est = Math.round(mn + (pedalPos / 127) * (mx - mn));
       const out = {};
       for (const k of keys) out[k] = est;

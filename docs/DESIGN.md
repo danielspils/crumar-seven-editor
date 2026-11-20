@@ -460,10 +460,28 @@ Semantics carried by the renderer:
 - **veq_byp is EQ *Bypass* — inverted**: 1 means bypassed, i.e. EQ OFF. The
   section pill, section dimming, and the two EQ knobs' lit state all read
   through the inversion.
-- **Inert parameters say so** instead of pretending to apply: rom_p05 Piano
-  Harp dims unless the loaded sample is a piano; the Expression Pedal section
-  dims with an explanation while FX1 runs Pedal Wha-Wha (the wha takes
-  priority over the pedal assignment, per the manual).
+- **Inert parameters say so** instead of pretending to apply: ~~rom_p05 Piano
+  Harp dims unless the loaded sample is a piano~~ (that row is hidden
+  outright since 18 Nov 2026 — it is one of the five nobody can hear); the
+  Expression Pedal section dims with an explanation while FX1 runs Pedal
+  Wha-Wha (the wha takes priority over the pedal assignment, per the manual).
+
+  **AND THE PEDAL'S MARK IS SUPPRESSED ON THE OVERRIDDEN DESTINATION**
+  (20 Nov 2026). While the wha has the pedal, `exp_fn` has stopped naming the
+  destination, so the hatched fill and the permanent circle do not appear on
+  the parameter it names — the mark would be on the WRONG ROW, not merely on
+  an inert one. **This is not the Amp Drive case reopened:** there the pedal
+  IS assigned to the marked row and the mark is true beside a dimmed section
+  that already says it does nothing, so hiding it stated the same fact twice.
+  Here the mark would be false beside Volume / EQ, which is ON and undimmed
+  and therefore contradicts it. The mark does not move somewhere else either
+  — Pedal Wha-Wha has no parameter row of its own.
+
+  **AND FX1 NAMES THE PEDAL** — "The expression pedal is controlling this
+  wha." Before it, the overridden tray explained itself while the tray
+  actually being driven said nothing, so control went somewhere and the
+  screen never said where. It is a statement rather than an inert banner, in
+  its own class: FX1 is working and must not read as disabled.
 - **All four Clavi filters at 0 = no sound** from the instrument — surfaced as
   a warning banner on the patch, not left as a silent state.
 - The range pair renders as one track with both handles; **min above max

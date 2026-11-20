@@ -310,6 +310,69 @@ test('AN INERT ROW STILL SHOWS THE PEDAL — Amp Drive is not gated', () => {
   assert.deepStrictEqual(pedal({ exp_fn: 7 }, 127), { amp_dr: 127 }, 'amp_sw absent');
 });
 
+// ── THE WHA TAKES THE PEDAL, SO NO ROW WEARS THE PEDAL'S MARK ───────────────
+//
+// THE BUG (20 Nov 2026). pedalEstimates read exp_fn to find the destination
+// and never asked whether FX1's Pedal Wha-Wha had overridden it. With
+// fx1_md === 3 and exp_fn === 0 the Volume row got the full is-pedal
+// treatment — amber hatching, a permanent circle — while the pedal was in
+// fact driving the wha and Volume was untouched.
+//
+// WHY THIS IS PINNED HERE AND NOT IN A UI SCENARIO. `pedalPos` is a closure
+// variable in app.js, set only when CC 11 arrives from the instrument; there
+// is no seam a scenario can inject a position through, which is why both
+// existing pedal scenarios are hands-on. The RENDERER takes the position as
+// an argument — renderDetail(patch, { pedalPos }) — so the whole behaviour is
+// reachable offline at this layer with no hardware and nothing faked. The
+// hands-on scenarios still cover the real pedal; this covers the rule.
+test('with the wha on the pedal, no row carries is-pedal', () => {
+  // Its own renderer with the art stubbed, for the reason the plain-picture
+  // test below gives: without it soundCarousel takes its !art early return.
+  const ctx = { window: { SevenSoundArt: {
+    iconFor: () => '<svg data-stub="1"></svg>',
+    artKeyFor: (name) => String(name || '').toLowerCase(),
+  } }, module: { exports: {} }, define: undefined };
+  ctx.exports = ctx.module.exports;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8'), ctx);
+  const api = ctx.module.exports.createRenderer ? ctx.module.exports : ctx.window.SevenRenderer;
+  const Rw = api.createRenderer(schema, (p) => Math.min(64, p.max));
+
+  const patchWith = (fx1md) => {
+    const p = patchFor(schema.sounds.find((s) => s.sampled) || schema.sounds[0]);
+    Object.assign(p.params, { exp_fn: 0, exp_mn: 0, exp_mx: 127, fx1_md: fx1md, fx1_sw: 1 });
+    return p;
+  };
+  const view = { collapsed: {}, live: true, pedalPos: 100 };
+
+  // THE CONTROL, and it is what makes the assertion mean anything: with any
+  // other FX1 mode the mark IS there, so "no is-pedal" cannot pass because
+  // the test is looking in the wrong place.
+  const normal = Rw.renderDetail(patchWith(0), view);
+  assert.ok(/is-pedal/.test(normal),
+    'with FX1 in another mode the pedal mark is drawn somewhere');
+  assert.ok(Rw.pedalEstimates(patchWith(0).params, 100).veq_vol != null,
+    'and the estimate names veq_vol, which is what exp_fn 0 points at');
+
+  // THE FIX.
+  const wha = Rw.renderDetail(patchWith(3), view);
+  assert.ok(!/is-pedal/.test(wha),
+    'with Pedal Wha-Wha on FX1, NO row carries is-pedal');
+  assert.strictEqual(Rw.pedalEstimates(patchWith(3).params, 100), null,
+    'pedalEstimates returns null rather than re-pointing the mark — the wha '
+    + 'has no parameter row for it to move to');
+
+  // AND THE SCREEN SAYS WHERE CONTROL WENT, in both trays.
+  assert.match(wha, /The expression pedal is controlling this wha\./,
+    'FX1 names the pedal');
+  assert.match(wha, /the pedal is controlling the wha, and this assignment is ignored/,
+    'and the Expression Pedal tray says the assignment lost');
+  // FX1 IS WORKING AND MUST NOT READ AS DISABLED: its line is its own class,
+  // not the inert banner that lives in dimmed sections.
+  assert.ok(/class="fx-note"/.test(wha),
+    'the FX1 line is a statement (.fx-note), not an inert banner');
+});
+
 // ── THE PLAIN INSTRUMENT PICTURE IS STILL REACHABLE ─────────────────────────
 //
 // It was proposed for deletion on 18 Nov 2026 on the grounds that every view

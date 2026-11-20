@@ -4931,6 +4931,19 @@
       grid-column: 1 / -1; margin: 8px 0 2px; padding: 6px 10px; border-radius: 4px;
       background: var(--shade); color: var(--text-muted); font-size: 12px;
     }
+    /* A STATEMENT, NOT AN INERT BANNER — and that is why it is not
+       .fx-inert-banner with a different string in it.
+       It appears in FX1 while the wha has the pedal, and FX1 IS WORKING: it
+       is not dimmed and must not become dimmed. The inert banner lives in a
+       dimmed section and reads as "this is disabled", so reusing it here
+       would tell the opposite of the truth about the one section that is
+       actually doing something.
+       Same shape and rhythm so the two read as siblings; the pedal's own
+       amber marks it as being about the pedal rather than about a fault. */
+    .fx-note {
+      grid-column: 1 / -1; margin: 8px 0 2px; padding: 6px 10px; border-radius: 4px;
+      background: var(--shade); color: var(--mark-amber); font-size: 12px;
+    }
     /* Discrete selector (unnamed N-position params): segmented control in the
        bar column, current position filled; value cell shows 1-based pos/total.
        Non-interactive. */
