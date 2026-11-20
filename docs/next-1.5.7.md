@@ -2585,6 +2585,99 @@ was not changed.
 
 ---
 
+#### THE OUTBOUND CAPTURE: THE SEVEN STOPS ANSWERING, AND IT IS THE PARAMETER
+
+`captures/wireout-1-*` and `wireout-2-*` (inbound) plus
+`captures/wireout-1-out-*` (outbound), written up in
+`captures/wireout-2026-11-20-notes.md`. **Three breaks, both directions, one
+timeline** — the first captures in this project that include what the app sent.
+
+Taken with a deliberately temporary log-only tap on the send path
+(`src/wire-out.js`), **reverted immediately afterwards**; its commit and its
+revert are both in the history.
+
+**1. IT IS THE PARAMETER. NOT THE RATE, NOT THE VOLUME.** Every write burst in
+the window both captures cover:
+
+| parameter | id | writes | rate | result |
+|---|---|---|---|---|
+| `egp_pucm` Pickup Compress | 22 | **123** | **48/s** | survived |
+| `egp_rell` Release Length | 23 | **77** | **51/s** | survived |
+| `egp_stun` Stretch Tuning | 24 | 28-51 | 45-48/s | **broke, twice** |
+| `egp_sdet` String Detuning | 21 | 203 | 40/s | **broke** |
+
+**`egp_pucm` took more writes at a higher rate than anything that broke.** So
+rate and volume are eliminated by measurement. Daniel called it before it was
+measured — *"only String Detuning and Stretch Detuning"* — after dragging the
+group from the top down and reaching String Detuning before anything broke.
+
+`egp_sdet` and `egp_stun` are the only two parameters in `pno_egp` whose labels
+name tuning, and `acp_sdet`/`acp_stun` are their acoustic-piano twins.
+**Whether retuning the string model is the mechanism is NOT established**; that
+these two do it and four neighbours do not, is.
+
+**This retires a wrong reading of the first control.** The old note says
+"`egp_sdet` is also not special on its own". It is; that run just never
+produced an unanswered write.
+
+**2. THE ANSWER TO "WHAT DOES THE APP SEND IN THE GAP" IS NOTHING, AND ONCE IT
+COULD NOT HAVE BEEN ANYTHING.**
+
+```
+OUT  0x20 WRITE id=24 val=46      <- NEVER ANSWERED
+     ...instrument silent 444-645ms...
+IN   0x45 RECALL sound=0 / 24 CCs / ce 00 / 0x71 banner
+```
+
+| break | parameter | unanswered write | app's next send | recall |
+|---|---|---|---|---|
+| 1 | `egp_sdet` | 17:59:33.130 | +601ms, a read | +622ms |
+| 2 | `egp_stun` | 18:05:29.857 | +610ms, a write | +645ms |
+| 3 | `egp_stun` | 18:06:08.314 | **nothing** | **+444ms** |
+
+**THE 601ms IS OURS.** `src/seven-midi.js:201` sets `timeout = 600`, and
+`_request` serialises everything through one chain — so a write whose `0x23`
+never arrives holds the chain until its matcher times out. **The "quiet half
+second" this investigation was aimed at is the app blocked, not the app
+deciding**, and the ~0.55s figure in the brief above is that timeout, not a
+mystery interval.
+
+**BREAK 3 SETTLES IT:** the recall landed before the timeout could fire, so the
+app had sent nothing at all between the unanswered write and the announcement.
+
+**3. THE APP SENT NO PROGRAM CHANGE.** It does send `ce 00` on a patch load and
+the instrument echoes those ~90ms later, so they have to be separated: the two
+inbound `ce 00`s with an outbound match are echoes; **all three break ones have
+no outbound counterpart.** `ce 00` is the instrument's own.
+
+**4. TWO CORRECTIONS TO MY OWN CORRECTION ABOVE.**
+
+- **The 24-CC burst is NOT a constant.** The ten byte-identical bursts were ten
+  recalls of the SAME program. These recall program 0 and the burst differs
+  (`cc7` 114 not 110). **It reports the stored contents of the slot being
+  recalled** — which dissolves the contradiction that produced the wrong
+  conclusion: the burst is the stored slot, the `0x23` a second later is the
+  edit buffer after the app wrote the patch in. Both correct, one second apart.
+- **The recall is not always the current slot.** Every earlier break was
+  `ce 02`; all three here are `ce 00`. Daniel saw it too: *"it switched patches
+  to bank 1, slot 1 ... a first"*.
+
+**5. RETRACTED BUT RECORDED.** Daniel first thought playing while dragging was
+required, then crashed it twice without playing and withdrew it. The capture
+agrees: the `wireout-1` break carried 3 note-ons, the two `wireout-2` breaks
+none.
+
+**WHAT IS NOW FENCED OFF**, for whoever picks this up: not the send rate, not
+the write volume, not a program change from the app, not anything the app sends
+in the gap, and not the app's own timeout, which is a consequence. **Why the
+instrument stops answering is still unexplained.**
+
+**NO FIX, NO THROTTLE, NO RATE LIMIT — and the control table is why a rate
+limit would have been the wrong answer even if one were wanted.** `egp_pucm` at
+48/s is fine; `egp_stun` at 45/s is not.
+
+---
+
 ### THREE INTERMITTENTS IN ONE DAY — **noted together so the fourth is recognisable**
 
 All three appeared in long-running sessions and were gone when looked at.
