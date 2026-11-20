@@ -2397,6 +2397,72 @@ be and fails when it is not.
 
 ---
 
+### 20. DRAGGING STRING DETUNING MAKES THE SEVEN RECALL ON ITS OWN — **OPEN, REPRODUCIBLE, cause not established, 20 Nov 2026**
+
+**THE TRIGGER, IN DANIEL'S WORDS:** moving String Detuning (`egp_sdet`, id 21,
+bipolar, `cc -1`, `flag 0` — editor-only, so every move is a SysEx write)
+around a lot on an Electric Grand patch. **He can do it on demand.**
+
+**THE POST-STATE**, from his screenshot: every engine parameter reads 64,
+Volume / EQ OFF with Vol still reading 110, FX1 OFF (Mono Tremolo), FX2 OFF
+with the mode reverted to Chorus, Amp OFF, Synth Pad OFF, Save patch disabled,
+the panel-strip knobs unlit — **except Reverb, which is still ON.**
+
+**IT IS AUDIBLE, NOT COSMETIC.** Daniel: "FX trays and FX audio turned off at
+the same moment." The effects are gone from the sound, not merely from the
+panel.
+
+**REVERB SURVIVING IS THE SHARPEST THING IN THE REPORT.** A reinitialisation
+that spares exactly one section is a far narrower fault than "everything
+reset", and it must not be smoothed into the latter. Daniel, unprompted and
+twice: "the Reverb sound and tray remains on in all these cases."
+
+---
+
+**WHAT THE CAPTURES SHOWED.** Three raw captures, `captures/sdet-reinit-1`,
+`-2` and `sdet-control` of 2026-11-20, written up in
+`captures/sdet-reinit-2026-11-20-notes.md`. Passive inbound only.
+
+**The Seven announces it.** At the moment of failure it emits the documented
+recall signature — 22 fixed panel CCs plus the doubled `B0 01` pair, then
+`ce 02`, then `f0 73 26 14 45 02 32 f7` (the `0x45` recall broadcast) and a
+`0x47` name reply. Identical byte for byte in both repros. **The replies never
+stop**, so this is not the flood case. The app agrees independently: it showed
+"The Seven recalled a different preset — your unsaved edits are gone", which
+it says only on a `program-change` it did not originate.
+
+**THE CONTROL IS THE VALUABLE ONE.** Daniel swept String Detuning *and* Hammer
+Offset "the same-ish amount" and nothing broke — 64 writes to `egp_sdet` and
+**134 to `egp_hoff`**, against 109 writes in the repro that did break. **So a
+long sweep is not sufficient, the write count does not separate them, and
+`egp_sdet` is not special on its own.** What differs across these four runs is
+that the repro sweeps are continuous while the control's come in bursts about
+a second apart — an observation about four runs, **not a mechanism**.
+
+**AND THE SAME PROGRAM NUMBER DID BOTH THINGS.** In `sdet-reinit-2` the first
+`ce 02` loaded a working patch (`fx1_sw` 1, `fx2_sw` 1 Delay, `rev_sw` 1) and
+the second `ce 02` is the failure. A plain recall of a stored preset does not
+obviously account for that.
+
+**WHAT IS MISSING, and it is mine:** the listener was stopped too soon in both
+repros, so the post-failure state was never captured ON THE WIRE — the
+screenshot is the only record of it. That is exactly what would separate
+"recalled a stored preset" from "initialised the buffer". **Next capture:
+keep listening 10-15 seconds after it breaks.**
+
+**THIS IS NOT ITEM 17.** That one is the app showing an EMPTY chain while the
+effects were audibly RUNNING — a display that had lost touch with a working
+instrument. This is the opposite: the instrument genuinely stopped running the
+effects, and the app reported it correctly. Filing them together would merge a
+display fault with a device event.
+
+**NO FIX, NO THROTTLE, NO RATE LIMIT IS PROPOSED HERE.** One reproducible
+trigger and no established cause. A limit invented today would be a number
+nobody could defend, and it would make the bug harder to reproduce without
+making it rarer — which is the worst of both.
+
+---
+
 ### THREE INTERMITTENTS IN ONE DAY — **noted together so the fourth is recognisable**
 
 All three appeared in long-running sessions and were gone when looked at.
@@ -2425,3 +2491,54 @@ instrument mid-pass on 18 Nov, green run alone. The likeliest cause there is
 the MIDI port not being free yet, because the runner launches each scenario as
 soon as the previous app exits.
 
+
+---
+
+### 20. DRAGGING STRING DETUNING REINITIALISES THE EDIT BUFFER — **OPEN, REPRODUCIBLE, 20 Nov 2026**
+
+**Daniel can trigger this on demand**, which is what makes it worth more than
+the three intermittents above it. Recorded from the live session while the
+instrument was still attached; the battery ran out before a capture could be
+taken, so THE WIRE HAS NOT BEEN SEEN. Nothing below is a diagnosis.
+
+**THE TRIGGER, in his words:** *"moving string detuning around a lot turns off
+the FX"*. An Electric Grand patch (Yamaha CP80, Bank 1 preset 3), dragging
+String Detuning back and forth repeatedly. `egp_sdet`, id 21, bipolar,
+`cc: -1`, `flag: 0` — editor-only, so every move is a SysEx write and the app
+is its only writer.
+
+**THE STATE AFTERWARDS**, from the screenshot:
+
+- every engine parameter reads **64**, including the Stretch Tuning 101 and
+  Sympathetic Res 116 he had set moments before
+- **Volume / EQ OFF** — though the summary still reads Vol 110
+- **FX1 OFF**, Mono Tremolo
+- **FX2 OFF, and its mode has reverted to Chorus** — index 0
+- **Amp Simulator OFF**, Synth Pad OFF
+- **REVERB STILL ON**, Level 50 · Decay 64
+- Save patch disabled; panel-strip knobs unlit except Reverb
+
+**IT IS AUDIBLE, NOT COSMETIC.** Asked directly: *"I do not hear the FX. They
+are off in the tray and in sound."* That is what separates it from item 17,
+where the chain rendered empty while the effects were audibly running. **This
+is not item 17 and must not be filed against it.**
+
+**REVERB SURVIVING IS THE SHARPEST CLUE IN THE REPORT.** Everything reading 64
+with every switch off looks like a blanket reset, and a blanket reset would
+have taken Reverb too. Whatever happened spared exactly one section. Do not
+smooth that detail away into "the patch reset" — it is a narrower fault than
+that, and it is the thing a capture should be aimed at.
+
+**WHAT HAS NOT BEEN ESTABLISHED.** Whether the instrument reinitialised itself
+and said so, whether the app sent something that caused it, or whether the
+Seven's replies simply stopped partway through the drag. Those three predict
+different captures and the same screenshot.
+
+**NEXT STEP: capture before anything else.** `tools/listen.js`, passive, while
+Daniel reproduces it — plus a CONTROL capture of a long drag that does NOT
+trigger it, because a single capture of an intermittent cannot show which
+parts are the failure and which are just what a drag looks like.
+
+**NO FIX, NO THROTTLE, NO RATE LIMIT** until the wire has been seen. A limit
+invented now would be a number nobody can defend, and it would make the bug
+harder to reproduce without making it rarer.
